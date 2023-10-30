@@ -1,0 +1,11 @@
+[tools]
+python = {version='3.11', virtualenv='.venv'}
+poetry = "1.6"
+pnpm = "8.10.0"
+deno = "1.37.2"
+rust = ["1.73.0", "nightly"]
+pre-commit = "3.5.0"
+protoc = "24.4"
+node = "21.1.0"
+jq = "1.7"
+
