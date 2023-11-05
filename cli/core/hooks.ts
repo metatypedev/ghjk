@@ -1,5 +1,5 @@
-import { basename, dirname, resolve } from "./deps.ts";
-import { dirs, runAndReturn } from "./utils.ts";
+import { basename, dirname, resolve } from "../deps.ts";
+import { dirs, runAndReturn } from "../utils.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const vfs = {

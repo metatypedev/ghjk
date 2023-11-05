@@ -41,8 +41,20 @@ export async function runOrExit(
   }
 }
 
+function home_dir(): string | null {
+  switch (Deno.build.os) {
+    case "linux":
+    case "darwin":
+      return Deno.env.get("HOME") ?? null;
+    case "windows":
+      return Deno.env.get("USERPROFILE") ?? null;
+    default:
+      return null;
+  }
+}
+
 export function dirs() {
-  const home = Deno.env.get("HOME");
+  const home = home_dir();
   if (!home) {
     throw new Error("cannot find home dir");
   }

@@ -21,14 +21,18 @@ ghjk is a programmable runtime manager.
 
 ## Getting started
 
+Install the hooks:
+
 ```bash
 deno run -A https://raw.githubusercontent.com/metatypedev/ghjk/main/install.ts
-cat <<EOF
+```
+
+In your project, create a configuration file `ghjk.ts`:
+
+```ts
 export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
 
-ghjk.task(...);
-
-EOF
+node({ version: "14.17.0" });
 ```
 
 ## How it works
@@ -68,4 +72,4 @@ and looks as follows (abstracting away some implementation details):
 - poetry
 - pnpm
 - mold({ if: Deno.build.os === "Macos" })
-- hash verifiable dependencies
+- hash verifiable dependencies (timestamp)
