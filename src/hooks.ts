@@ -10,7 +10,7 @@ console.log = (...args) => {
 };
 const module = await import(Deno.args[0]);
 console.log = log;
-await module.ghjk(Deno.args.slice(1));
+module.ghjk.runCli(Deno.args.slice(1));
     `,
   "hooks/hook.fish": `
 function ghjk_hook --on-variable PWD

@@ -1,5 +1,5 @@
-import { Command, dirname, exists, resolve } from "../deps.ts";
-import { dirs } from "../utils.ts";
+import { Command, dirname, exists, resolve } from "./deps.ts";
+import { dirs } from "./utils.ts";
 
 async function findConfig(path: string): Promise<string | null> {
   let current = path;

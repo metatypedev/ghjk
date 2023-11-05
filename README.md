@@ -23,34 +23,42 @@ ghjk is a programmable runtime manager.
 
 ```bash
 deno run -A https://raw.githubusercontent.com/metatypedev/ghjk/main/install.ts
+cat <<EOF
+export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
+
+ghjk.task(...);
+
+EOF
 ```
 
 ## How it works
 
-The only dependency required is `deno`. Everything else is managed by `ghjk`.
-Namely, it will:
+The only required dependency is `deno`. Everything else is managed automatically
+and looks as follows (abstracting away some implementation details):
 
-- install or upgrade itself using `deno install`
-- set up a "directory change" hook in your shell profile
+- the installer sets up a directory hook in your shell profile
   - `.bashrc`
   - `.zshrc`
   - `.config/fish/config.fish`
-- for every visited directory where an upstream `$PWD/ghjk.ts` file exists
-  - add the `$HOME/.local/share/ghjk/shims/$PWD` to your `$PATH`
-  - source environment variables in `$HOME/.local/share/ghjk/shims/$PWD/loader`
-    and clear previously loaded ones
+- for every visited directory, the hook looks for `$PWD/ghjk.ts` in the
+  directory or its parents, and
+  - adds the `$HOME/.local/share/ghjk/shims/$PWD` to your `$PATH`
+  - sources environment variables in `$HOME/.local/share/ghjk/shims/$PWD/loader`
+    and clear previously loaded ones (if any)
+  - defines an alias `ghjk` running `deno run -A $PWD/ghjk.ts`
+- you can then
+  - sync your runtime with `ghjk sync` which
+    - installs the missing tools at `$HOME/.local/share/ghjk/installs`
+    - regenerates the shims with symlinks and environment variables
+    - detects any violation of the enforced rules
+  - `ghjk list`: list installed tools and versions
+  - `ghjk outdated`: list outdated tools
+  - `ghjk cleanup`: remove unused tools and versions
 
-Using the `ghjk install` subcommand, you will
+## Extending `ghjk`
 
-- install the missing tools at `$HOME/.local/share/ghjk/installs`
-- regenerate the shims with symlinks and environment variables
-- detect any violation of specified rules
-
-Additional subcommands are available:
-
-- `ghjk list`: list installed tools and versions
-- `ghjk outdated`: list outdated tools
-- `ghjk cleanup`: remove unused tools and versions
+```ts
+```
 
 ## todo
 

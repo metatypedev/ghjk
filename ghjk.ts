@@ -13,6 +13,6 @@ rust({
 await run();
 */
 
-export { ghjk } from "./src/main.ts";
+export { ghjk } from "./mod.ts";
 
 console.log("config");
