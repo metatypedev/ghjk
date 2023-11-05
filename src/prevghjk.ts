@@ -1,26 +1,3 @@
-export async function runOrExit(
-  cmd: string[],
-  cwd?: string,
-  env: Record<string, string> = Deno.env.toObject(),
-) {
-  const p = new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-    env,
-  }).spawn();
-
-  // keep pipe asynchronous till the command exists
-  void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
-  void p.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
-
-  const { code, success } = await p.status;
-  if (!success) {
-    Deno.exit(code);
-  }
-}
-
 interface GeneralEnvs {
   ASDF_INSTALL_TYPE: "version" | "ref";
   ASDF_INSTALL_VERSION: string; //	full version number or Git Ref depending on ASDF_INSTALL_TYPE
@@ -215,7 +192,7 @@ await Deno.writeTextFile(
     `set --global --append GHJK_ENV "export ${k}='$k';"; set --global --export ${k} '${v}'`
   ).join("\n"),
 );
-await Deno.chmod(envPath, 0o755);
+//await Deno.chmod(envPath, 0o755);
 
 /*
 
