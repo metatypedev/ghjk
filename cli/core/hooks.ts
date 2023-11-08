@@ -8,10 +8,56 @@ const log = console.log;
 console.log = (...args) => {
   log("[ghjk.ts]", ...args);
 };
-const module = await import(Deno.args[0]);
-console.log = log;
-module.ghjk.runCli(Deno.args.slice(1));
+const mod = await import(Deno.args[0]);
+mod.ghjk.runCli(Deno.args.slice(1));
     `,
+  "hooks/hook.sh": `
+ghjk_already_run=false
+
+ghjk_hook() {
+    # Check if the trap has already executed
+    if [[ "$ghjk_already_run" = true ]]; then
+      return
+    fi
+    ghjk_already_run=true
+    if [[ -v GHJK_CLEANUP ]]; then
+        eval $GHJK_CLEANUP
+        unset GHJK_CLEANUP
+    fi
+    current_dir=$PWD
+    while [ "$current_dir" != "/" ]; do
+        if [ -e "$current_dir/ghjk.ts" ]; then
+            shim="$HOME/.local/share/ghjk/shims/$(echo "$current_dir" | tr '/' '.')"
+            if [ -d "$shim" ]; then
+                PATH="$shim:$(echo "$PATH" | grep -v "^$HOME\/\.local\/share\/ghjk\/shim")"
+                source "$shim/loader.fish"
+                if [ "$shim/loader.fish" -ot "$current_dir/ghjk.ts" ]; then
+                    echo -e "\e[38;2;255;69;0m[ghjk] Detected changes, please sync...\e[0m"
+                fi
+            else
+                echo -e "\e[38;2;255;69;0m[ghjk] Uninstalled runtime found, please sync...\e[0m"
+                echo "$shim"
+            fi
+            alias ghjk="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $current_dir/ghjk.ts"
+            return
+        fi
+        cur_dir="$(dirname "$current_dir")"
+    done
+    alias ghjk "echo 'No ghjk.ts config found.'"
+}
+
+trap 'ghjk_hook' DEBUG
+
+set_again() {
+    ghjk_already_run=false
+}
+
+if [[ -n "$PROMPT_COMMAND" ]]; then
+    PROMPT_COMMAND+=";"
+fi
+
+PROMPT_COMMAND+="set_again;"
+`,
   "hooks/hook.fish": `
 function ghjk_hook --on-variable PWD
     if set --query GHJK_CLEANUP
@@ -55,10 +101,15 @@ async function detectShell(): Promise<string> {
     "-o",
     "comm=",
   ]);
-  const path = parent.unwrapOrElse((e) => {
-    throw new Error(`cannot get parent process name: ${e}`);
-  }).trimEnd();
-
+  const path = parent
+    .unwrapOrElse((e) => {
+      const envShell = Deno.env.get("SHELL");
+      if (!envShell) {
+        throw new Error(`cannot get parent process name: ${e}`);
+      }
+      return envShell;
+    })
+    .trimEnd();
   return basename(path, ".exe").toLowerCase();
 }
 
@@ -116,6 +167,12 @@ export async function install() {
       resolve(homeDir, ".config/fish/config.fish"),
       /\.local\/share\/ghjk\/hooks\/hook.fish/,
       "source $HOME/.local/share/ghjk/hooks/hook.fish",
+    );
+  } else if (shell === "bash") {
+    await filterAddFile(
+      resolve(homeDir, ".bashrc"),
+      /\.local\/share\/ghjk\/hooks\/hook.sh/,
+      "source $HOME/.local/share/ghjk/hooks/hook.sh",
     );
   } else {
     throw new Error(`unsupported shell: ${shell}`);

@@ -1,0 +1,6 @@
+{
+    "tasks": {
+        // "test": "DOCKER_SOCK=/var/run/docker.sock deno test --unstable --allow-env=DOCKER_SOCK --allow-read=/var/run/docker.sock --allow-write=/var/run/docker.sock tests/*"
+        "test": "deno test --unstable --allow-run=docker --allow-read --allow-env tests/*"
+    }
+}

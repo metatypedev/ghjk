@@ -27,7 +27,7 @@ export function node({ version }: { version: string }) {
       };
     }
 
-    listAll(env: ListAllEnv) {
+    async listAll(env: ListAllEnv) {
       const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
       const metadata = await metadataRequest.json();
 
@@ -38,16 +38,14 @@ export function node({ version }: { version: string }) {
       return versions;
     }
 
-    download(env: DownloadEnv) {
-      /*
-    const infoRequest = await fetch(
-      `https://nodejs.org/dist/v21.1.0/node-v21.1.0-darwin-arm64.tar.gz`,
-    );
-    Deno.writeFile(
-      "node-v21.1.0-darwin-arm64.tar.gz",
-      infoRequest.body!,
-    );
-    */
+    async download(env: DownloadEnv) {
+      const infoRequest = await fetch(
+        `https://nodejs.org/dist/v21.1.0/node-v21.1.0-darwin-arm64.tar.gz`,
+      );
+      Deno.writeFile(
+        "node-v21.1.0-darwin-arm64.tar.gz",
+        infoRequest.body!,
+      );
     }
 
     async install(env: InstallEnv) {

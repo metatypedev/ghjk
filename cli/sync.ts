@@ -50,6 +50,7 @@ export class SyncCommand extends Command {
         // (beware of multiple versions of tools libs)
         // here, only showing what should happen after as an example
 
+        return;
         const nodeTool = node({ version: "v21.1.0" });
 
         // build dag

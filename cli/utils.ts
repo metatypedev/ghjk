@@ -1,33 +1,51 @@
 import { Err, Ok, Result } from "./deps.ts";
 
+export function dbg<T>(val: T) {
+  console.log("[dbg] ", val);
+  return val;
+}
+
 export async function runAndReturn(
   cmd: string[],
   cwd?: string,
   env: Record<string, string> = Deno.env.toObject(),
 ): Promise<Result<string, string>> {
-  const output = await new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-    env,
-  }).output();
+  try {
+    const output = await new Deno.Command(cmd[0], {
+      args: cmd.slice(1),
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+      env,
+    }).output();
 
-  return output.success
-    ? Ok(new TextDecoder().decode(output.stdout))
-    : Err(new TextDecoder().decode(output.stderr));
+    return output.success
+      ? Ok(new TextDecoder().decode(output.stdout))
+      : Err(new TextDecoder().decode(output.stderr));
+  } catch (err) {
+    return Err(err.toString());
+  }
 }
 
 export async function runOrExit(
   cmd: string[],
-  cwd?: string,
-  env: Record<string, string> = Deno.env.toObject(),
+  options: {
+    cwd?: string;
+    env?: Record<string, string>;
+    pipeInput?: string;
+  } = {},
 ) {
+  const { cwd, env, pipeInput } = {
+    ...options,
+    env: options.env ?? Deno.env.toObject(),
+  };
+  console.log(cmd);
   const p = new Deno.Command(cmd[0], {
     args: cmd.slice(1),
     cwd,
     stdout: "piped",
     stderr: "piped",
+    stdin: "piped",
     env,
   }).spawn();
 
@@ -35,10 +53,16 @@ export async function runOrExit(
   void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
   void p.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
 
+  if (pipeInput) {
+    const writer = p.stdin.getWriter();
+    await writer.write(new TextEncoder().encode(pipeInput));
+    await writer.close();
+  }
   const { code, success } = await p.status;
   if (!success) {
     Deno.exit(code);
   }
+  //await p.stdin.close();
 }
 
 function home_dir(): string | null {
