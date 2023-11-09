@@ -1,6 +1,6 @@
 # ghjk
 
-ghjk is a programmable runtime manager.
+ghjk (jk) is a programmable runtime manager.
 
 ## Features
 
