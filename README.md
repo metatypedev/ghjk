@@ -73,3 +73,9 @@ and looks as follows (abstracting away some implementation details):
 - pnpm
 - mold({ if: Deno.build.os === "Macos" })
 - hash verifiable dependencies (timestamp)
+
+## design considerations
+
+- keep interface with plugins KISS, open to consumption by others
+- `ghjk.ts` scripts are executed in a secure sandbox and the plugins it declares
+   are each run in a separate worker and only given access to relevant dirs

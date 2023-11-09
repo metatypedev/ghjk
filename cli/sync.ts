@@ -1,5 +1,6 @@
-import { node } from "../tools/node.ts";
-import { Command, dirname, exists, resolve } from "./deps.ts";
+import { DenoWorkerPlugManifestX, GhjkCtx } from "../core/mod.ts";
+import { DenoWorkerPlug } from "../core/worker.ts";
+import { Command, dirname, exists, resolve } from "../deps/cli.ts";
 import { dirs } from "./utils.ts";
 
 async function findConfig(path: string): Promise<string | null> {
@@ -30,7 +31,9 @@ async function writeLoader(shim: string, env: Record<string, string>) {
 }
 
 export class SyncCommand extends Command {
-  constructor() {
+  constructor(
+    public cx: GhjkCtx,
+  ) {
     super();
     this
       .description("Syncs the runtime.")
@@ -45,12 +48,23 @@ export class SyncCommand extends Command {
         const shim = shimFromConfig(config);
         console.log(shim);
 
+        for (const [name, manifest] of cx.plugs) {
+          if ("moduleSpecifier" in manifest) {
+            const plug = new DenoWorkerPlug(
+              manifest as DenoWorkerPlugManifestX,
+            );
+            const versions = await plug.listAll({});
+            console.log(name, { versions });
+            plug.terminate();
+          }
+        }
         // in the ghjk.ts the user will have declared some tools and tasks
         // we need to collect them through the `ghjk` object from main
         // (beware of multiple versions of tools libs)
         // here, only showing what should happen after as an example
 
         return;
+        /*
         const nodeTool = node({ version: "v21.1.0" });
 
         // build dag
@@ -80,7 +94,7 @@ export class SyncCommand extends Command {
 
         // write shim if config changes or does not exists
         const env = await nodeTool.execEnv({ ASDF_INSTALL_PATH } as any);
-        await writeLoader(shim, env);
+        await writeLoader(shim, env);*/
       });
   }
 }

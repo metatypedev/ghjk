@@ -4,11 +4,11 @@ import {
   InstallEnv,
   ListAllEnv,
   ListBinPathsEnv,
-  Tool,
-} from "../cli/core/tools.ts";
+  Plug,
+} from "../plug.ts";
 
 export function rust({ version }: { version: string }) {
-  return new class extends Tool {
+  return new class extends Plug {
     name = "rust";
     dependencies = [];
 

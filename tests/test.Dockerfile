@@ -5,9 +5,8 @@ ENV SHELL=/bin/bash
 WORKDIR /ghjk
 
 COPY deno.lock ./
-COPY tests/dev_deps.ts ./tests/
-COPY cli/deps.ts ./cli/
-RUN deno cache cli/deps.ts tests/dev_deps.ts
+COPY deps/* ./deps/
+RUN deno cache deps/*
 COPY . ./
 RUN deno run -A /ghjk/install.ts
 

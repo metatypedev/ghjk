@@ -14,5 +14,6 @@ await run();
 */
 
 export { ghjk } from "./mod.ts";
+import node from "./plugs/node.ts";
 
-console.log("config");
+node({});

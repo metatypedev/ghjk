@@ -1,4 +1,4 @@
-import { Err, Ok, Result } from "./deps.ts";
+import { Err, Ok, Result } from "../deps/cli.ts";
 
 export function dbg<T>(val: T) {
   console.log("[dbg] ", val);
@@ -56,13 +56,13 @@ export async function runOrExit(
   if (pipeInput) {
     const writer = p.stdin.getWriter();
     await writer.write(new TextEncoder().encode(pipeInput));
-    await writer.close();
+    writer.releaseLock();
   }
+  await p.stdin.close();
   const { code, success } = await p.status;
   if (!success) {
     Deno.exit(code);
   }
-  //await p.stdin.close();
 }
 
 function home_dir(): string | null {

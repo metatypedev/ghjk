@@ -1,14 +1,13 @@
 import { runOrExit } from "../cli/utils.ts";
-import { node } from "../tools/node.ts";
+// import node from "../plugs/node.ts";
 
 type TestCase = {
   name: string;
   imports: string;
-  confFn: () => Promise<void>;
+  confFn: string | (() => Promise<void>);
   envs?: Record<string, string>;
   epoint: string;
 };
-
 
 async function dockerTest(cases: TestCase[]) {
   // const socket = Deno.env.get("DOCKER_SOCK") ?? "/var/run/docker.sock";
@@ -29,7 +28,7 @@ async function dockerTest(cases: TestCase[]) {
         ...defaultEnvs,
         ...testEnvs,
       };
-      const configFile = `export { ghjk } from "/ghjk/cli/mod.ts";
+      const configFile = `export { ghjk } from "/ghjk/mod.ts";
 ${imports.replaceAll("$ghjk", "/ghjk/")}
 
 await (${confFn.toString()})()`;
@@ -69,17 +68,16 @@ await (${confFn.toString()})()`;
 
 await dockerTest([{
   name: "a",
-  imports: `import { node } from "$ghjk/tools/node.ts"`,
-  confFn: async () => {
-    // node({ version: "lts" });
-  },
+  imports: `import node from "$ghjk/plugs/node.ts"`,
+  confFn: `async () => {
+    node({ version: "lts" });
+  }`,
   epoint: `echo yes`,
-},{
+}, {
   name: "b",
-  imports: `import { node } from "$ghjk/tools/node.ts"`,
-  confFn: async () => {
+  imports: `import { node } from "$ghjk/plugs/node.ts"`,
+  confFn: `async () => {
     // node({ version: "lts" });
-  },
+  }`,
   epoint: `echo yes`,
-},
-]);
+}]);

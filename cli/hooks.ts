@@ -1,5 +1,5 @@
-import { basename, dirname, resolve } from "../deps.ts";
-import { dirs, runAndReturn } from "../utils.ts";
+import { basename, dirname, resolve } from "../deps/cli.ts";
+import { dirs, runAndReturn } from "./utils.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const vfs = {
@@ -9,6 +9,7 @@ console.log = (...args) => {
   log("[ghjk.ts]", ...args);
 };
 const mod = await import(Deno.args[0]);
+console.log = log;
 mod.ghjk.runCli(Deno.args.slice(1));
     `,
   "hooks/hook.sh": `
