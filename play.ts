@@ -1,5 +1,11 @@
-import { runOrExit } from "./cli/utils.ts";
+import { spawn } from "./cli/utils.ts";
 
-await runOrExit(["docker", "buildx", "build", "-t", "test", "-"], {
+await spawn(["tar", "--help"], {
   pipeInput: "RUN echo heyya",
 });
+
+const b = () => {
+  console.log("calling b");
+  return "b";
+};
+const a = "a" ?? b();

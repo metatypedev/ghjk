@@ -1,4 +1,4 @@
-import { basename, dirname, resolve } from "../deps/cli.ts";
+import { std_path } from "../deps/cli.ts";
 import { dirs, runAndReturn } from "./utils.ts";
 
 // null means it should be removed (for cleaning up old versions)
@@ -111,18 +111,18 @@ async function detectShell(): Promise<string> {
       return envShell;
     })
     .trimEnd();
-  return basename(path, ".exe").toLowerCase();
+  return std_path.basename(path, ".exe").toLowerCase();
 }
 
 async function unpackVFS(baseDir: string): Promise<void> {
   await Deno.mkdir(baseDir, { recursive: true });
 
   for (const [subpath, content] of Object.entries(vfs)) {
-    const path = resolve(baseDir, subpath);
+    const path = std_path.resolve(baseDir, subpath);
     if (content === null) {
       await Deno.remove(path);
     } else {
-      await Deno.mkdir(dirname(path), { recursive: true });
+      await Deno.mkdir(std_path.dirname(path), { recursive: true });
       await Deno.writeTextFile(path, content.trim());
     }
   }
@@ -135,7 +135,7 @@ async function filterAddFile(
 ) {
   const file = await Deno.readTextFile(path).catch(async (err) => {
     if (err instanceof Deno.errors.NotFound) {
-      await Deno.mkdir(dirname(path), { recursive: true });
+      await Deno.mkdir(std_path.dirname(path), { recursive: true });
       return "";
     }
     throw err;
@@ -165,13 +165,13 @@ export async function install() {
 
   if (shell === "fish") {
     await filterAddFile(
-      resolve(homeDir, ".config/fish/config.fish"),
+      std_path.resolve(homeDir, ".config/fish/config.fish"),
       /\.local\/share\/ghjk\/hooks\/hook.fish/,
       "source $HOME/.local/share/ghjk/hooks/hook.fish",
     );
   } else if (shell === "bash") {
     await filterAddFile(
-      resolve(homeDir, ".bashrc"),
+      std_path.resolve(homeDir, ".bashrc"),
       /\.local\/share\/ghjk\/hooks\/hook.sh/,
       "source $HOME/.local/share/ghjk/hooks/hook.sh",
     );

@@ -1,29 +1,34 @@
+import { Command, fs, std_path } from "../deps/cli.ts";
+import logger from "../core/logger.ts";
 import { DenoWorkerPlugManifestX, GhjkCtx } from "../core/mod.ts";
 import { DenoWorkerPlug } from "../core/worker.ts";
-import { Command, dirname, exists, resolve } from "../deps/cli.ts";
-import { dirs } from "./utils.ts";
+import { AVAIL_CONCURRENCY, dbg, dirs } from "./utils.ts";
 
 async function findConfig(path: string): Promise<string | null> {
   let current = path;
   while (current !== "/") {
     const location = `${path}/ghjk.ts`;
-    if (await exists(location)) {
+    if (await fs.exists(location)) {
       return location;
     }
-    current = dirname(current);
+    current = std_path.dirname(current);
   }
   return null;
 }
 
-function shimFromConfig(config: string): string {
+function envDirFromConfig(config: string): string {
   const { shareDir } = dirs();
-  return resolve(shareDir, "shims", dirname(config).replaceAll("/", "."));
+  return std_path.resolve(
+    shareDir,
+    "envs",
+    std_path.dirname(config).replaceAll("/", "."),
+  );
 }
 
-async function writeLoader(shim: string, env: Record<string, string>) {
-  await Deno.mkdir(shim, { recursive: true });
+async function writeLoader(envDir: string, env: Record<string, string>) {
+  await Deno.mkdir(envDir, { recursive: true });
   await Deno.writeTextFile(
-    `${shim}/loader.fish`,
+    `${envDir}/loader.fish`,
     Object.entries(env).map(([k, v]) =>
       `set --global --append GHJK_CLEANUP "set --global --export ${k} '$k';"; set --global --export ${k} '${v}'`
     ).join("\n"),
@@ -45,56 +50,108 @@ export class SyncCommand extends Command {
           return;
         }
 
-        const shim = shimFromConfig(config);
-        console.log(shim);
+        const envDir = envDirFromConfig(config);
+        logger().debug({ envDir });
 
-        for (const [name, manifest] of cx.plugs) {
-          if ("moduleSpecifier" in manifest) {
+        /* for (const [name, { ty, manifest }] of cx.plugs) {
+          if (ty == "denoWorker") {
             const plug = new DenoWorkerPlug(
               manifest as DenoWorkerPlugManifestX,
             );
             const versions = await plug.listAll({});
             console.log(name, { versions });
-            plug.terminate();
+          } else {
+            throw Error(
+              `unsupported plugin type "${ty}": ${JSON.stringify(manifest)}`,
+            );
           }
-        }
+        } */
         // in the ghjk.ts the user will have declared some tools and tasks
         // we need to collect them through the `ghjk` object from main
         // (beware of multiple versions of tools libs)
         // here, only showing what should happen after as an example
 
-        return;
-        /*
-        const nodeTool = node({ version: "v21.1.0" });
-
-        // build dag
-
-        // link shims
-        const ASDF_INSTALL_VERSION = "v21.1.0";
-        const ASDF_INSTALL_PATH = resolve(shim, "node", ASDF_INSTALL_VERSION);
-        await Deno.mkdir(ASDF_INSTALL_PATH, { recursive: true });
-
-        await nodeTool.install(
-          { ASDF_INSTALL_VERSION, ASDF_INSTALL_PATH } as any,
-        );
-
-        for (
-          const [bin, link] of Object.entries(
-            await nodeTool.listBinPaths({} as any),
-          )
-        ) {
-          const linkPath = `${shim}/${link}`;
-          await Deno.remove(linkPath, { recursive: true });
-          await Deno.symlink(
-            `${ASDF_INSTALL_PATH}/${bin}`,
-            linkPath,
-            { type: "file" },
+        let env = {};
+        for (const inst of cx.installs) {
+          const regPlug = cx.plugs.get(inst.plugName);
+          if (!regPlug) {
+            throw Error(
+              `unable to find pluign "${inst.plugName}" specified by install ${
+                JSON.stringify(inst)
+              }`,
+            );
+          }
+          const { ty: plugType, manifest } = regPlug;
+          let plug;
+          if (plugType == "denoWorker") {
+            plug = new DenoWorkerPlug(
+              manifest as DenoWorkerPlugManifestX,
+            );
+          } else {
+            throw Error(
+              `unsupported plugin type "${plugType}": ${
+                JSON.stringify(manifest)
+              }`,
+            );
+          }
+          const installVersion = inst.version ?? await plug.latestStable({});
+          const installPath = std_path.resolve(
+            envDir,
+            "installs",
+            plug.name,
+            installVersion,
           );
+          const downloadPath = std_path.resolve(
+            envDir,
+            "downloads",
+            plug.name,
+            installVersion,
+          );
+          await Promise.allSettled(
+            [installPath, downloadPath].map((path) =>
+              Deno.mkdir(path, { recursive: true })
+            ),
+          );
+          // logger().info(`downloading ${inst.plugName}:${installVersion}`);
+          // await plug.download({
+          //   ASDF_INSTALL_PATH: installPath,
+          //   ASDF_INSTALL_TYPE: "version",
+          //   ASDF_INSTALL_VERSION: installVersion,
+          //   ASDF_DOWNLOAD_PATH: downloadPath,
+          // });
+          logger().info(`installing ${inst.plugName}:${installVersion}`);
+          await plug.install({
+            ASDF_INSTALL_PATH: installPath,
+            ASDF_INSTALL_TYPE: "version",
+            ASDF_INSTALL_VERSION: installVersion,
+            ASDF_CONCURRENCY: AVAIL_CONCURRENCY,
+            ASDF_DOWNLOAD_PATH: downloadPath,
+          });
+          for (
+            const bin of dbg(
+              await plug.listBinPaths({
+                ASDF_INSTALL_PATH: installPath,
+                ASDF_INSTALL_TYPE: "version",
+                ASDF_INSTALL_VERSION: installVersion,
+              }),
+            )
+          ) {
+            const binPath = std_path.resolve(installPath, bin);
+            const binName = std_path.basename(binPath); // TODO: aliases
+            const shimPath = std_path.resolve(envDir, "shims", binName);
+            await Deno.remove(shimPath);
+            await Deno.symlink(binPath, shimPath, { type: "file" });
+          }
+          env = {
+            ...env,
+            ...await plug.execEnv({
+              ASDF_INSTALL_PATH: installPath,
+              ASDF_INSTALL_TYPE: "version",
+              ASDF_INSTALL_VERSION: installVersion,
+            }),
+          };
         }
-
-        // write shim if config changes or does not exists
-        const env = await nodeTool.execEnv({ ASDF_INSTALL_PATH } as any);
-        await writeLoader(shim, env);*/
+        await writeLoader(envDir, env);
       });
   }
 }

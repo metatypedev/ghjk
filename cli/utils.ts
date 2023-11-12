@@ -1,14 +1,15 @@
 import { Err, Ok, Result } from "../deps/cli.ts";
+import logger from "../core/logger.ts";
 
 export function dbg<T>(val: T) {
-  console.log("[dbg] ", val);
+  logger().debug("inline", val);
   return val;
 }
 
 export async function runAndReturn(
   cmd: string[],
   cwd?: string,
-  env: Record<string, string> = Deno.env.toObject(),
+  env: Record<string, string> = {},
 ): Promise<Result<string, string>> {
   try {
     const output = await new Deno.Command(cmd[0], {
@@ -27,7 +28,7 @@ export async function runAndReturn(
   }
 }
 
-export async function runOrExit(
+export async function spawn(
   cmd: string[],
   options: {
     cwd?: string;
@@ -37,9 +38,8 @@ export async function runOrExit(
 ) {
   const { cwd, env, pipeInput } = {
     ...options,
-    env: options.env ?? Deno.env.toObject(),
   };
-  console.log(cmd);
+  logger().debug("spawning", cmd);
   const p = new Deno.Command(cmd[0], {
     args: cmd.slice(1),
     cwd,
@@ -49,9 +49,12 @@ export async function runOrExit(
     env,
   }).spawn();
 
-  // keep pipe asynchronous till the command exists
-  void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
-  void p.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
+  if (self.name) {
+  } else {
+    // keep pipe asynchronous till the command exists
+    void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
+    void p.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
+  }
 
   if (pipeInput) {
     const writer = p.stdin.getWriter();
@@ -61,7 +64,7 @@ export async function runOrExit(
   await p.stdin.close();
   const { code, success } = await p.status;
   if (!success) {
-    Deno.exit(code);
+    throw Error(`child failed with code ${code}`);
   }
 }
 
@@ -83,4 +86,12 @@ export function dirs() {
     throw new Error("cannot find home dir");
   }
   return { homeDir: home, shareDir: `${home}/.local/share/ghjk` };
+}
+
+export const AVAIL_CONCURRENCY = Number.parseInt(
+  Deno.env.get("DENO_JOBS") ?? "1",
+);
+
+if (Number.isNaN(AVAIL_CONCURRENCY)) {
+  throw Error(`Value of DENO_JOBS is NAN: ${Deno.env.get("DENO_JOBS")}`);
 }

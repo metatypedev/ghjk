@@ -1,19 +1,31 @@
 export * from "./types.ts";
 import { semver } from "../deps/common.ts";
 import {
+  type DenoWorkerPlugManifest,
   type GhjkCtx,
   type InstallConfig,
-  type PlugManifest,
+  type PlugManifestX,
 } from "./types.ts";
 import validators from "./validators.ts";
 import logger from "./logger.ts";
 
+export const Ghjk = {
+  cwd: Deno.cwd,
+};
+
+export function registerDenoPlug(
+  cx: GhjkCtx,
+  manifestUnclean: DenoWorkerPlugManifest,
+) {
+  const manifest = validators.denoWorkerPlugManifest.parse(manifestUnclean);
+  registerPlug(cx, "denoWorker", manifest);
+}
 export function registerPlug(
   cx: GhjkCtx,
-  manifestUnclean: PlugManifest,
+  ty: "denoWorker",
+  manifest: PlugManifestX,
 ) {
-  const manifest = validators.plugManifestBase.parse(manifestUnclean);
-  const conflict = cx.plugs.get(manifest.name);
+  const conflict = cx.plugs.get(manifest.name)?.manifest;
   if (conflict) {
     if (
       conflict.conflictResolution == "override" &&
@@ -34,7 +46,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, manifest);
+      cx.plugs.set(manifest.name, { ty, manifest });
     } else if (
       semver.compare(manifest.version, conflict.version) == 0
     ) {
@@ -49,7 +61,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, manifest);
+      cx.plugs.set(manifest.name, { ty, manifest });
     } else {
       logger().debug("plug rejected due after defer", {
         retained: conflict,
@@ -58,7 +70,7 @@ export function registerPlug(
     }
   } else {
     logger().debug("plug registered", manifest);
-    cx.plugs.set(manifest.name, manifest);
+    cx.plugs.set(manifest.name, { ty, manifest });
   }
 }
 

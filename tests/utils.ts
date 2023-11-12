@@ -1,4 +1,4 @@
-import { runOrExit } from "../cli/utils.ts";
+import { spawn } from "../cli/utils.ts";
 // import node from "../plugs/node.ts";
 
 type TestCase = {
@@ -37,7 +37,7 @@ await (${confFn.toString()})()`;
         templateStrings.addConfig,
         configFile,
       );
-      await runOrExit([
+      await spawn([
         ...dockerCmd,
         "buildx",
         "build",
@@ -46,7 +46,7 @@ await (${confFn.toString()})()`;
         "-f-",
         ".",
       ], { env, pipeInput: dFile });
-      await runOrExit([
+      await spawn([
         ...dockerCmd,
         "run",
         "--rm",
@@ -57,7 +57,7 @@ await (${confFn.toString()})()`;
         tag,
         ...epoint.split(/\s/),
       ], { env });
-      await runOrExit([
+      await spawn([
         ...dockerCmd,
         "rmi",
         tag,
@@ -71,13 +71,6 @@ await dockerTest([{
   imports: `import node from "$ghjk/plugs/node.ts"`,
   confFn: `async () => {
     node({ version: "lts" });
-  }`,
-  epoint: `echo yes`,
-}, {
-  name: "b",
-  imports: `import { node } from "$ghjk/plugs/node.ts"`,
-  confFn: `async () => {
-    // node({ version: "lts" });
   }`,
   epoint: `echo yes`,
 }]);

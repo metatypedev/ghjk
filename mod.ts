@@ -45,10 +45,6 @@ log.setup({
       level: "DEBUG",
       handlers: ["console"],
     },
-    plug: {
-      level: "DEBUG",
-      handlers: ["console"],
-    },
   },
 });
 

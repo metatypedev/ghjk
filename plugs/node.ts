@@ -2,15 +2,17 @@ import {
   addInstallGlobal,
   denoWorkerPlug,
   DownloadEnv,
-  ExecPathEnv,
+  ExecEnvEnv,
   type InstallConfigBase,
   InstallEnv,
   ListAllEnv,
   ListBinPathsEnv,
+  logger,
   Plug,
-  registerPlugGlobal,
+  registerDenoPlugGlobal,
 } from "../plug.ts";
-import { runOrExit } from "../cli/utils.ts";
+import { spawn } from "../cli/utils.ts";
+import { std_path } from "../deps/cli.ts";
 
 const manifest = {
   name: "node",
@@ -23,18 +25,18 @@ denoWorkerPlug(
     name = "node";
     dependencies = [];
 
-    execEnv(env: ExecPathEnv) {
+    execEnv(env: ExecEnvEnv) {
       return {
         NODE_PATH: env.ASDF_INSTALL_PATH,
       };
     }
 
     listBinPaths(env: ListBinPathsEnv) {
-      return {
-        "bin/node": "node",
-        "bin/npm": "npm",
-        "bin/npx": "npx",
-      };
+      return [
+        "bin/node",
+        "bin/npm",
+        "bin/npx",
+      ];
     }
 
     async listAll(env: ListAllEnv) {
@@ -49,18 +51,35 @@ denoWorkerPlug(
 
     async download(env: DownloadEnv) {
       // TODO: download file
-      const infoRequest = await fetch(
+      const resp = await fetch(
         `https://nodejs.org/dist/v21.1.0/node-v21.1.0-darwin-arm64.tar.gz`,
       );
-      Deno.writeFile(
-        "node-v21.1.0-darwin-arm64.tar.gz",
-        infoRequest.body!,
+      const dest = await Deno.open(
+        std_path.resolve(
+          env.ASDF_DOWNLOAD_PATH,
+          "node-v21.1.0-darwin-arm64.tar.gz",
+        ),
+        { create: true, truncate: true, write: true },
       );
+      try {
+        await resp.body!.pipeTo(dest.writable);
+      } finally {
+        dest.close();
+      }
     }
 
     async install(env: InstallEnv) {
       await Deno.remove(env.ASDF_INSTALL_PATH, { recursive: true });
-      await runOrExit(["tar", "-xzf", "node-v21.1.0-darwin-arm64.tar.gz"]);
+      await spawn(["ls", env.ASDF_DOWNLOAD_PATH]);
+      await spawn([
+        "tar",
+        "xf",
+        std_path.resolve(
+          env.ASDF_DOWNLOAD_PATH,
+          "node-v21.1.0-darwin-arm64.tar.gz",
+        ),
+        `--directory=${std_path.resolve(env.ASDF_INSTALL_PATH)}`,
+      ]);
       await Deno.rename(
         "node-v21.1.0-darwin-arm64",
         env.ASDF_INSTALL_PATH,
@@ -69,7 +88,7 @@ denoWorkerPlug(
   }(),
 );
 
-registerPlugGlobal(manifest);
+registerDenoPlugGlobal(manifest);
 
 export default function node({ version }: InstallConfigBase = {}) {
   addInstallGlobal({

@@ -1,41 +1,55 @@
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
+import { semver } from "../deps/common.ts";
 import logger from "./logger.ts";
 import {
   type DenoWorkerPlugManifestX,
   type DownloadEnv,
-  type ExecPathEnv,
+  type ExecEnvEnv,
   type InstallEnv,
   type ListAllEnv,
   type ListBinPathsEnv,
   Plug,
 } from "./types.ts";
 
-type WorkerReq =
-  & {
-    ty: string;
-    id: string;
-  }
-  & ({
-    ty: "listAll";
-    arg: ListAllEnv;
-  } | {
-    ty: "download";
-  } | {
-    ty: "install";
-  });
+type WorkerReq = {
+  ty: "listAll";
+  arg: ListAllEnv;
+} | {
+  ty: "latestStable";
+  arg: ListAllEnv;
+} | {
+  ty: "execEnv";
+  arg: ExecEnvEnv;
+} | {
+  ty: "download";
+  arg: DownloadEnv;
+} | {
+  ty: "install";
+  arg: InstallEnv;
+} | {
+  ty: "listBinPaths";
+  arg: ListBinPathsEnv;
+};
 
-type WorkerResp =
-  & {
-    id: string;
-  }
-  & ({
-    ty: "listAll";
-    payload: string[];
-  } | {
-    ty: "download";
-  });
+type WorkerResp = {
+  ty: "listAll";
+  payload: string[];
+} | {
+  ty: "latestStable";
+  payload: string;
+} | {
+  ty: "listBinPaths";
+  payload: string[];
+} | {
+  ty: "execEnv";
+  payload: Record<string, string>;
+} | {
+  ty: "download";
+} | {
+  ty: "install";
+};
 
 /// Make sure to call this before any `await` point or your
 /// plug might miss messages
@@ -50,10 +64,35 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
       let res: WorkerResp;
       if (req.ty == "listAll") {
         res = {
-          ty: "listAll",
-          id: req.id,
+          ty: req.ty,
+          // id: req.id,
           payload: await plug.listAll(req.arg),
         };
+      } else if (req.ty === "latestStable") {
+        res = {
+          ty: req.ty,
+          payload: await plug.latestStable(req.arg),
+        };
+      } else if (req.ty === "execEnv") {
+        res = {
+          ty: req.ty,
+          payload: await plug.execEnv(req.arg),
+        };
+      } else if (req.ty === "listBinPaths") {
+        res = {
+          ty: req.ty,
+          payload: await plug.listBinPaths(req.arg),
+        };
+      } else if (req.ty === "download") {
+        await plug.download(req.arg),
+          res = {
+            ty: req.ty,
+          };
+      } else if (req.ty === "install") {
+        await plug.install(req.arg),
+          res = {
+            ty: req.ty,
+          };
       } else {
         logger().error("unrecognized worker request type", req);
         throw Error("unrecognized worker request type");
@@ -62,69 +101,117 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
     };
   }
 }
+// type MethodKeys<T> = {
+//   [P in keyof T]-?: T[P] extends Function ? P : never;
+// }[keyof T];
 
 export class DenoWorkerPlug extends Plug {
   name: string;
   dependencies: string[];
-  worker: Worker;
-  eventListenrs: Map<string, (res: WorkerResp) => void> = new Map();
+
   constructor(public manifest: DenoWorkerPlugManifestX) {
     super();
     this.name = manifest.name;
     this.dependencies = []; // TODO
-    this.worker = new Worker(manifest.moduleSpecifier, {
-      name: `${manifest.name}:${manifest.version}`,
+  }
+
+  /// This creates a new worker on every call
+  async call(
+    req: WorkerReq,
+  ): Promise<WorkerResp> {
+    const worker = new Worker(this.manifest.moduleSpecifier, {
+      name: `${this.manifest.name}:${semver.format(this.manifest.version)}`,
       type: "module",
     });
-    this.worker.onmessage = (evt: MessageEvent<WorkerResp>) => {
-      const res = evt.data;
-      if (!res.id) {
-        logger().error("invalid worker response", res);
-        throw Error("unrecognized worker request type");
-      }
-      const listener = this.eventListenrs.get(res.id);
-      if (listener) {
-        listener(res);
-      } else {
-        logger().error("worker response has no listeners", res);
-        throw Error("recieved worker response has no listeners");
-      }
-    };
+    const promise = new Promise<WorkerResp>((resolve, reject) => {
+      worker.onmessage = (evt: MessageEvent<WorkerResp>) => {
+        const res = evt.data;
+        resolve(res);
+      };
+      worker.onmessageerror = (evt) => {
+        reject(evt.data);
+      };
+      worker.onerror = (err) => {
+        reject(err);
+      };
+    });
+    worker.postMessage(req);
+    const resp = await promise;
+    worker.terminate();
+    return resp;
   }
-  terminate() {
-    this.worker.terminate();
-  }
+
   async listAll(env: ListAllEnv): Promise<string[]> {
-    const id = crypto.randomUUID();
     const req: WorkerReq = {
       ty: "listAll",
-      id,
+      // id: crypto.randomUUID(),
       arg: env,
     };
-    const res = await new Promise<WorkerResp>((resolve) => {
-      this.eventListenrs.set(id, (res) => resolve(res));
-      this.worker.postMessage(req);
-    });
-    this.eventListenrs.delete(id);
+    const res = await this.call(req);
     if (res.ty == "listAll") {
       return res.payload;
     }
     throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  execEnv(
-    env: ExecPathEnv,
-  ): Record<string, string> | Promise<Record<string, string>> {
-    throw new Error("Method not implemented.");
+
+  async latestStable(env: ListAllEnv): Promise<string> {
+    const req: WorkerReq = {
+      ty: "latestStable",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "latestStable") {
+      return res.payload;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  listBinPaths(
+
+  async execEnv(
+    env: ExecEnvEnv,
+  ): Promise<Record<string, string>> {
+    const req: WorkerReq = {
+      ty: "execEnv",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "execEnv") {
+      return res.payload;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+  }
+  async listBinPaths(
     env: ListBinPathsEnv,
-  ): Record<string, string> | Promise<Record<string, string>> {
-    throw new Error("Method not implemented.");
+  ): Promise<string[]> {
+    const req: WorkerReq = {
+      ty: "listBinPaths",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "listBinPaths") {
+      return res.payload;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  download(env: DownloadEnv): void | Promise<void> {
-    throw new Error("Method not implemented.");
+  async download(env: DownloadEnv): Promise<void> {
+    const req: WorkerReq = {
+      ty: "download",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "download") {
+      return;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  install(env: InstallEnv): void | Promise<void> {
-    throw new Error("Method not implemented.");
+  async install(env: InstallEnv): Promise<void> {
+    const req: WorkerReq = {
+      ty: "install",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "install") {
+      return;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 }

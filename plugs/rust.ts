@@ -1,6 +1,6 @@
 import {
   DownloadEnv,
-  ExecPathEnv,
+  ExecEnvEnv,
   InstallEnv,
   ListAllEnv,
   ListBinPathsEnv,
@@ -12,7 +12,7 @@ export function rust({ version }: { version: string }) {
     name = "rust";
     dependencies = [];
 
-    execEnv(env: ExecPathEnv) {
+    execEnv(env: ExecEnvEnv) {
       throw new Error("Method not implemented.");
       return {};
     }

@@ -1,5 +1,7 @@
 import { zod } from "../deps/common.ts";
 import validators from "./validators.ts";
+import logger from "./logger.ts";
+import { std_path } from "../deps/cli.ts";
 
 // Describes the plugin itself
 export type PlugManifestBase = zod.input<typeof validators.plugManifestBase>;
@@ -18,7 +20,11 @@ export type DenoWorkerPlugManifestX = zod.infer<
 // This is the transformed version of PlugManifest, ready for consumption
 export type PlugManifestX = PlugManifestBaseX | DenoWorkerPlugManifestX;
 
-export type RegisteredPlugs = Map<string, PlugManifestX>;
+type RegisteredPlug = {
+  ty: "denoWorker";
+  manifest: PlugManifestX;
+};
+export type RegisteredPlugs = Map<string, RegisteredPlug>;
 
 export interface InstallConfigBase {
   version?: string;
@@ -38,15 +44,45 @@ export abstract class Plug {
   abstract name: string;
   abstract dependencies: string[];
 
-  abstract execEnv(
-    env: ExecPathEnv,
-  ): Promise<Record<string, string>> | Record<string, string>;
+  execEnv(
+    env: ExecEnvEnv,
+  ): Promise<Record<string, string>> | Record<string, string> {
+    return {};
+  }
 
-  abstract listBinPaths(
+  listBinPaths(
     env: ListBinPathsEnv,
-  ): Promise<Record<string, string>> | Record<string, string>;
+  ): Promise<string[]> | string[] {
+    return [std_path.resolve(env.ASDF_INSTALL_PATH, "bin")];
+    /*
+    const defaultBinPath = std_path.resolve(env.ASDF_INSTALL_PATH, "bin");
+    const dirsToCheck = [defaultBinPath];
+    while (dirsToCheck.length > 0) {
+      const dirPath = dirsToCheck.pop()!;
+      for await (const { isFile, name } of Deno.readDir(dirPath)) {
+        const path = std_path.resolve(dirPath, name);
+        if (!isFile) {
+          dirsToCheck.push(path);
+          continue;
+        }
+        Deno.
+      }
+    } */
+  }
 
   abstract listAll(env: ListAllEnv): Promise<string[]> | string[];
+  latestStable(env: ListAllEnv): Promise<string> | string {
+    return (async () => {
+      logger().warning(
+        `using default implementation of latestStable for plug ${this.name}`,
+      );
+      const allVers = await this.listAll(env);
+      if (allVers.length == 0) {
+        throw Error("no versions found");
+      }
+      return allVers[allVers.length - 1];
+    })();
+  }
 
   abstract download(env: DownloadEnv): Promise<void> | void;
 
@@ -77,7 +113,7 @@ export interface ListAllEnv {
 export interface ListBinPathsEnv extends BinDefaultEnv {
 }
 
-export interface ExecPathEnv extends BinDefaultEnv {
+export interface ExecEnvEnv extends BinDefaultEnv {
 }
 
 export interface DownloadEnv extends BinDefaultEnv {
