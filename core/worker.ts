@@ -120,7 +120,7 @@ export class DenoWorkerPlug extends Plug {
     req: WorkerReq,
   ): Promise<WorkerResp> {
     const worker = new Worker(this.manifest.moduleSpecifier, {
-      name: `${this.manifest.name}:${semver.format(this.manifest.version)}`,
+      name: `${this.manifest.name}@${semver.format(this.manifest.version)}`,
       type: "module",
     });
     const promise = new Promise<WorkerResp>((resolve, reject) => {

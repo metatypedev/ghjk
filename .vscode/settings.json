@@ -16,5 +16,8 @@
   "deno.codeLens.referencesAllFunctions": true,
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
-  }
+  },
+  "cSpell.words": [
+    "ghjk"
+  ]
 }

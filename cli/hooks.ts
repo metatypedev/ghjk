@@ -25,31 +25,35 @@ ghjk_hook() {
         eval $GHJK_CLEANUP
         unset GHJK_CLEANUP
     fi
-    current_dir=$PWD
-    while [ "$current_dir" != "/" ]; do
-        if [ -e "$current_dir/ghjk.ts" ]; then
-            shim="$HOME/.local/share/ghjk/shims/$(echo "$current_dir" | tr '/' '.')"
-            if [ -d "$shim" ]; then
-                PATH="$shim:$(echo "$PATH" | grep -v "^$HOME\/\.local\/share\/ghjk\/shim")"
-                source "$shim/loader.fish"
-                if [ "$shim/loader.fish" -ot "$current_dir/ghjk.ts" ]; then
+    cur_dir=$PWD
+    while [ "$cur_dir" != "/" ]; do
+        if [ -e "$cur_dir/ghjk.ts" ]; then
+            envDir="$HOME/.local/share/ghjk/envs/$(echo "$cur_dir" | tr '/' '.')"
+            if [ -d "$envDir" ]; then
+                PATH="$envDir/shims:$(echo "$PATH" | tr ':' '\n' | grep -vE "^$HOME/\.local/share/ghjk/envs" | tr '\n' ':')"
+                PATH="$\{PATH%:\}"
+                source "$envDir/loader.sh"
+                if [ "$envDir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
                     echo -e "\e[38;2;255;69;0m[ghjk] Detected changes, please sync...\e[0m"
                 fi
             else
                 echo -e "\e[38;2;255;69;0m[ghjk] Uninstalled runtime found, please sync...\e[0m"
-                echo "$shim"
+                echo "$envDir"
             fi
-            alias ghjk="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $current_dir/ghjk.ts"
+            alias ghjk="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         fi
-        cur_dir="$(dirname "$current_dir")"
+        cur_dir="$(dirname "$cur_dir")"
     done
-    alias ghjk "echo 'No ghjk.ts config found.'"
+    if [[ $PATH =~ ^$HOME\/\.local\/share\/ghjk\/envs ]]; then
+        PATH=$(echo "$PATH" | tr ':' '\n' | grep -vE "^$HOME/\.local/share/ghjk/envs" | tr '\n' ':')
+    fi
+    alias ghjk="echo 'No ghjk.ts config found.'"
 }
 
 trap 'ghjk_hook' DEBUG
 
-set_again() {
+set_hook_flag() {
     ghjk_already_run=false
 }
 
@@ -57,7 +61,7 @@ if [[ -n "$PROMPT_COMMAND" ]]; then
     PROMPT_COMMAND+=";"
 fi
 
-PROMPT_COMMAND+="set_again;"
+PROMPT_COMMAND+="set_hook_flag;"
 `,
   "hooks/hook.fish": `
 function ghjk_hook --on-variable PWD
@@ -65,14 +69,14 @@ function ghjk_hook --on-variable PWD
         eval $GHJK_CLEANUP
         set --erase GHJK_CLEANUP
     end
-    set --local current_dir $PWD
-    while test $current_dir != "/"
-        if test -e $current_dir/ghjk.ts
-            set --local shim $HOME/.local/share/ghjk/shims/$(string replace --all / . $current_dir)
-            if test -d $shim
-                set --global PATH $shim $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/shim" $PATH)
-                source $shim/loader.fish
-                if test $shim/loader.fish -ot $current_dir/ghjk.ts
+    set --local cur_dir $PWD
+    while test $cur_dir != "/"
+        if test -e $cur_dir/ghjk.ts
+            set --local envDir $HOME/.local/share/ghjk/envs/$(string replace --all / . $cur_dir)
+            if test -d $envDir
+                set --global PATH $envDir/shims $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH)
+                source $envDir/loader.fish
+                if test $envDir/loader.fish -ot $cur_dir/ghjk.ts
                     set_color FF4500
                     echo "[ghjk] Detected changes, please sync..."
                     set_color normal
@@ -80,13 +84,16 @@ function ghjk_hook --on-variable PWD
             else
                 set_color FF4500
                 echo "[ghjk] Uninstalled runtime found, please sync..."
-                echo $shim
+                echo $envDir
                 set_color normal
             end
-            alias ghjk "deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $current_dir/ghjk.ts"
+            alias ghjk "deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         end
-        set current_dir (dirname $current_dir)
+        set cur_dir (dirname $cur_dir)
+    end
+    if string match -q --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH
+      set --global PATH $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH)
     end
     alias ghjk "echo 'No ghjk.ts config found.'"
 end

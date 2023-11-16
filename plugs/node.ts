@@ -10,9 +10,11 @@ import {
   logger,
   Plug,
   registerDenoPlugGlobal,
+  std_fs,
+  std_path,
+  std_url,
 } from "../plug.ts";
 import { spawn } from "../cli/utils.ts";
-import { std_path } from "../deps/cli.ts";
 
 const manifest = {
   name: "node",
@@ -51,37 +53,45 @@ denoWorkerPlug(
 
     async download(env: DownloadEnv) {
       // TODO: download file
-      const resp = await fetch(
-        `https://nodejs.org/dist/v21.1.0/node-v21.1.0-darwin-arm64.tar.gz`,
+      const url =
+        `https://nodejs.org/dist/v21.1.0/node-v21.1.0-darwin-arm64.tar.gz`;
+      const fileName = std_url.basename(url);
+
+      const tmpFilePath = std_path.resolve(
+        env.tmpDirPath,
+        fileName,
       );
+
+      const resp = await fetch(url);
       const dest = await Deno.open(
-        std_path.resolve(
-          env.ASDF_DOWNLOAD_PATH,
-          "node-v21.1.0-darwin-arm64.tar.gz",
-        ),
+        tmpFilePath,
         { create: true, truncate: true, write: true },
       );
-      try {
-        await resp.body!.pipeTo(dest.writable);
-      } finally {
-        dest.close();
-      }
+      await resp.body!.pipeTo(dest.writable, { preventClose: false });
+      await Deno.copyFile(
+        tmpFilePath,
+        std_path.resolve(env.ASDF_DOWNLOAD_PATH, fileName),
+      );
     }
 
     async install(env: InstallEnv) {
-      await Deno.remove(env.ASDF_INSTALL_PATH, { recursive: true });
-      await spawn(["ls", env.ASDF_DOWNLOAD_PATH]);
+      const fileName = "node-v21.1.0-darwin-arm64.tar.gz";
       await spawn([
         "tar",
         "xf",
         std_path.resolve(
           env.ASDF_DOWNLOAD_PATH,
-          "node-v21.1.0-darwin-arm64.tar.gz",
+          fileName,
         ),
-        `--directory=${std_path.resolve(env.ASDF_INSTALL_PATH)}`,
+        `--directory=${env.tmpDirPath}`,
       ]);
-      await Deno.rename(
-        "node-v21.1.0-darwin-arm64",
+      await Deno.remove(env.ASDF_INSTALL_PATH, { recursive: true });
+      // FIXME: use Deno.rename when https://github.com/denoland/deno/pull/19879 is merged
+      await std_fs.copy(
+        std_path.resolve(
+          env.tmpDirPath,
+          fileName.replace(/\.tar\.gz$/, ""),
+        ),
         env.ASDF_INSTALL_PATH,
       );
     }

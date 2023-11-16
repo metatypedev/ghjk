@@ -118,9 +118,11 @@ export interface ExecEnvEnv extends BinDefaultEnv {
 
 export interface DownloadEnv extends BinDefaultEnv {
   ASDF_DOWNLOAD_PATH: string;
+  tmpDirPath: string;
 }
 
 export interface InstallEnv extends BinDefaultEnv {
   ASDF_CONCURRENCY: number;
   ASDF_DOWNLOAD_PATH: string;
+  tmpDirPath: string;
 }

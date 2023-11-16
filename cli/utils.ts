@@ -50,6 +50,20 @@ export async function spawn(
   }).spawn();
 
   if (self.name) {
+    p.stdout.pipeTo(
+      new WritableStream({
+        write(chunk) {
+          console.log(new TextDecoder().decode(chunk));
+        },
+      }),
+    );
+    p.stderr.pipeTo(
+      new WritableStream({
+        write(chunk) {
+          console.error(new TextDecoder().decode(chunk));
+        },
+      }),
+    );
   } else {
     // keep pipe asynchronous till the command exists
     void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });

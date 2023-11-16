@@ -8,6 +8,7 @@ import {
 import { log } from "./deps/plug.ts";
 
 export * from "./core/mod.ts";
+export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
 export { denoWorkerPlug } from "./core/worker.ts";
 export type * from "./core/mod.ts";
