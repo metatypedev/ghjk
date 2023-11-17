@@ -6,26 +6,37 @@ export function dbg<T>(val: T) {
   return val;
 }
 
+export class ChildError extends Error {
+  constructor(
+    public code: number,
+    public output: string,
+  ) {
+    super(`ChildError - ${code} - ${output}`);
+  }
+}
+
 export async function runAndReturn(
   cmd: string[],
-  cwd?: string,
-  env: Record<string, string> = {},
-): Promise<Result<string, string>> {
-  try {
-    const output = await new Deno.Command(cmd[0], {
-      args: cmd.slice(1),
-      cwd,
-      stdout: "piped",
-      stderr: "piped",
-      env,
-    }).output();
+  options: {
+    cwd?: string;
+    env?: Record<string, string>;
+  } = {},
+): Promise<string> {
+  const { cwd, env } = {
+    ...options,
+  };
+  const output = await new Deno.Command(cmd[0], {
+    args: cmd.slice(1),
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+    env,
+  }).output();
 
-    return output.success
-      ? Ok(new TextDecoder().decode(output.stdout))
-      : Err(new TextDecoder().decode(output.stderr));
-  } catch (err) {
-    return Err(err.toString());
+  if (output.success) {
+    return new TextDecoder().decode(output.stdout);
   }
+  throw new ChildError(output.code, new TextDecoder().decode(output.stderr));
 }
 
 export async function spawn(
@@ -40,24 +51,28 @@ export async function spawn(
     ...options,
   };
   logger().debug("spawning", cmd);
-  const p = new Deno.Command(cmd[0], {
+  const child = new Deno.Command(cmd[0], {
     args: cmd.slice(1),
     cwd,
     stdout: "piped",
     stderr: "piped",
-    stdin: "piped",
+    ...(pipeInput
+      ? {
+        stdin: "piped",
+      }
+      : {}),
     env,
   }).spawn();
 
   if (self.name) {
-    p.stdout.pipeTo(
+    child.stdout.pipeTo(
       new WritableStream({
         write(chunk) {
           console.log(new TextDecoder().decode(chunk));
         },
       }),
     );
-    p.stderr.pipeTo(
+    child.stderr.pipeTo(
       new WritableStream({
         write(chunk) {
           console.error(new TextDecoder().decode(chunk));
@@ -66,17 +81,17 @@ export async function spawn(
     );
   } else {
     // keep pipe asynchronous till the command exists
-    void p.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
-    void p.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
+    void child.stdout.pipeTo(Deno.stdout.writable, { preventClose: true });
+    void child.stderr.pipeTo(Deno.stderr.writable, { preventClose: true });
   }
 
   if (pipeInput) {
-    const writer = p.stdin.getWriter();
+    const writer = child.stdin.getWriter();
     await writer.write(new TextEncoder().encode(pipeInput));
     writer.releaseLock();
+    await child.stdin.close();
   }
-  await p.stdin.close();
-  const { code, success } = await p.status;
+  const { code, success } = await child.status;
   if (!success) {
     throw Error(`child failed with code ${code}`);
   }

@@ -6,14 +6,14 @@ type TestCase = {
   imports: string;
   confFn: string | (() => Promise<void>);
   envs?: Record<string, string>;
-  epoint: string;
+  ePoint: string;
 };
 
 async function dockerTest(cases: TestCase[]) {
   // const socket = Deno.env.get("DOCKER_SOCK") ?? "/var/run/docker.sock";
   // const docker = new Docker(socket);
   const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
-  const dfileTemplate = await Deno.readTextFile(
+  const dFileTemplate = await Deno.readTextFile(
     import.meta.resolve("./test.Dockerfile").slice(6),
   );
   const templateStrings = {
@@ -21,7 +21,7 @@ async function dockerTest(cases: TestCase[]) {
   };
   const defaultEnvs: Record<string, string> = {};
 
-  for (const { name, envs: testEnvs, confFn, epoint, imports } of cases) {
+  for (const { name, envs: testEnvs, confFn, ePoint, imports } of cases) {
     Deno.test(`dockerTest - ${name}`, async () => {
       const tag = `ghjk_test_${name}`;
       const env = {
@@ -33,7 +33,7 @@ ${imports.replaceAll("$ghjk", "/ghjk/")}
 
 await (${confFn.toString()})()`;
 
-      const dFile = dfileTemplate.replaceAll(
+      const dFile = dFileTemplate.replaceAll(
         templateStrings.addConfig,
         configFile,
       );
@@ -55,7 +55,10 @@ await (${confFn.toString()})()`;
         ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
           .flat(),
         tag,
-        ...epoint.split(/\s/),
+        "bash",
+        "-c",
+        "-i",
+        ...ePoint.split(/\s/),
       ], { env });
       await spawn([
         ...dockerCmd,
@@ -72,5 +75,5 @@ await dockerTest([{
   confFn: `async () => {
     node({ version: "lts" });
   }`,
-  epoint: `echo yes`,
+  ePoint: `node --version`,
 }]);

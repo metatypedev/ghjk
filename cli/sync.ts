@@ -100,13 +100,13 @@ export class SyncCommand extends Command {
           const installPath = std_path.resolve(
             envDir,
             "installs",
-            plug.name,
+            plug.manifest.name,
             installVersion,
           );
           const downloadPath = std_path.resolve(
             envDir,
             "downloads",
-            plug.name,
+            plug.manifest.name,
             installVersion,
           );
           logger().debug("creating dirs", { installPath, downloadPath });
@@ -116,7 +116,7 @@ export class SyncCommand extends Command {
               Deno.mkdir(downloadPath, { recursive: true }),
             ],
           );
-          if (false) {
+          {
             logger().info(`downloading ${inst.plugName}:${installVersion}`);
             const tmpDirPath = await Deno.makeTempDir({
               prefix: `ghjk_download_${inst.plugName}@${installVersion}_`,

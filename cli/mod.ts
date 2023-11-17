@@ -6,7 +6,10 @@ import { OutdatedCommand } from "./outdated.ts";
 import { CleanupCommand } from "./cleanup.ts";
 import { type GhjkCtx } from "../core/mod.ts";
 
-export function runCli(args: string[], cx: GhjkCtx): Promise<CommandResult> {
+export function runCli(
+  args: string[],
+  cx: GhjkCtx,
+): Promise<CommandResult> {
   return new Command()
     .name("ghjk")
     .version("0.1.0")

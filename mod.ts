@@ -1,16 +1,21 @@
 //! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
-//! avoid importing elsewhere at it has side-ffects.
+//! avoid importing elsewhere at it has side-effects.
 
 import { log } from "./deps/common.ts";
 
-import { type GhjkCtx } from "./core/mod.ts";
+import { type GhjkConfig } from "./core/mod.ts";
 // this is only a shortcut for the cli
 import { runCli } from "./cli/mod.ts";
 import logger from "./core/logger.ts";
+import { GhjkSecureConfig } from "./plug.ts";
 
+// we need to use global variables to allow
+// plugins to access the config object.
+// module imports wouldn't work as plugins might
+// import a different version.
 declare global {
   interface Window {
-    ghjk: GhjkCtx;
+    ghjk: GhjkConfig;
   }
 }
 
@@ -48,9 +53,17 @@ log.setup({
   },
 });
 
-export const ghjk = {
-  runCli: (args: string[]) => runCli(args, self.ghjk),
+// freeze the object to prevent malicious tampering of the secureConfig
+export const ghjk = Object.freeze({
+  runCli: Object.freeze(
+    (args: string[], secureConfig: GhjkSecureConfig | undefined) => {
+      runCli(args, {
+        ...self.ghjk,
+        ...(secureConfig ?? { allowedPluginDeps: [] }),
+      });
+    },
+  ),
   cx: self.ghjk,
-};
+});
 
 export { logger };

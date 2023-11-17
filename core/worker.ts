@@ -1,7 +1,6 @@
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
-import { semver } from "../deps/common.ts";
 import logger from "./logger.ts";
 import {
   type DenoWorkerPlugManifestX,
@@ -106,13 +105,10 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
 // }[keyof T];
 
 export class DenoWorkerPlug extends Plug {
-  name: string;
-  dependencies: string[];
-
-  constructor(public manifest: DenoWorkerPlugManifestX) {
+  constructor(
+    public manifest: DenoWorkerPlugManifestX,
+  ) {
     super();
-    this.name = manifest.name;
-    this.dependencies = []; // TODO
   }
 
   /// This creates a new worker on every call
@@ -120,7 +116,7 @@ export class DenoWorkerPlug extends Plug {
     req: WorkerReq,
   ): Promise<WorkerResp> {
     const worker = new Worker(this.manifest.moduleSpecifier, {
-      name: `${this.manifest.name}@${semver.format(this.manifest.version)}`,
+      name: `${this.manifest.name}@${this.manifest.version}`,
       type: "module",
     });
     const promise = new Promise<WorkerResp>((resolve, reject) => {

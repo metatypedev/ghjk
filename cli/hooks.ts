@@ -1,8 +1,9 @@
 import { std_path } from "../deps/cli.ts";
-import { dirs, runAndReturn } from "./utils.ts";
+import { ChildError, dirs, runAndReturn } from "./utils.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const vfs = {
+  // the script executed when users use the ghjk command
   "hooks/entrypoint.ts": `
 const log = console.log;
 console.log = (...args) => {
@@ -10,8 +11,10 @@ console.log = (...args) => {
 };
 const mod = await import(Deno.args[0]);
 console.log = log;
-mod.ghjk.runCli(Deno.args.slice(1));
+mod.ghjk.runCli(Deno.args.slice(1), mod.options);
     `,
+
+  // the hook run before every prompt draw in bash
   "hooks/hook.sh": `
 ghjk_already_run=false
 
@@ -63,6 +66,8 @@ fi
 
 PROMPT_COMMAND+="set_hook_flag;"
 `,
+
+  // the hook run before every prompt draw in fish
   "hooks/hook.fish": `
 function ghjk_hook --on-variable PWD
     if set --query GHJK_CLEANUP
@@ -102,23 +107,24 @@ ghjk_hook
 };
 
 async function detectShell(): Promise<string> {
-  const parent = await runAndReturn([
-    "ps",
-    "-p",
-    String(Deno.ppid),
-    "-o",
-    "comm=",
-  ]);
-  const path = parent
-    .unwrapOrElse((e) => {
-      const envShell = Deno.env.get("SHELL");
-      if (!envShell) {
-        throw new Error(`cannot get parent process name: ${e}`);
-      }
-      return envShell;
-    })
-    .trimEnd();
-  return std_path.basename(path, ".exe").toLowerCase();
+  let path;
+
+  try {
+    path = await runAndReturn([
+      "ps",
+      "-p",
+      String(Deno.ppid),
+      "-o",
+      "comm=",
+    ]);
+  } catch (err) {
+    const envShell = Deno.env.get("SHELL");
+    if (!envShell) {
+      throw new Error(`cannot get parent process name: ${err}`);
+    }
+    path = envShell;
+  }
+  return std_path.basename(path, ".exe").toLowerCase().trim();
 }
 
 async function unpackVFS(baseDir: string): Promise<void> {
@@ -169,7 +175,6 @@ export async function install() {
   const { homeDir, shareDir } = dirs();
   await unpackVFS(shareDir);
   const shell = await detectShell();
-
   if (shell === "fish") {
     await filterAddFile(
       std_path.resolve(homeDir, ".config/fish/config.fish"),

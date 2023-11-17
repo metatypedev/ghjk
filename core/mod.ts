@@ -1,8 +1,9 @@
 export * from "./types.ts";
 import { semver } from "../deps/common.ts";
 import {
+  type AmbientAccessPlugManifest,
   type DenoWorkerPlugManifest,
-  type GhjkCtx,
+  type GhjkConfig,
   type InstallConfig,
   type PlugManifestX,
 } from "./types.ts";
@@ -14,15 +15,24 @@ export const Ghjk = {
 };
 
 export function registerDenoPlug(
-  cx: GhjkCtx,
+  cx: GhjkConfig,
   manifestUnclean: DenoWorkerPlugManifest,
 ) {
   const manifest = validators.denoWorkerPlugManifest.parse(manifestUnclean);
   registerPlug(cx, "denoWorker", manifest);
 }
+
+export function registerAmbientPlug(
+  cx: GhjkConfig,
+  manifestUnclean: AmbientAccessPlugManifest,
+) {
+  const manifest = validators.ambientAccessPlugManifest.parse(manifestUnclean);
+  registerPlug(cx, "ambientAccess", manifest);
+}
+
 export function registerPlug(
-  cx: GhjkCtx,
-  ty: "denoWorker",
+  cx: GhjkConfig,
+  ty: "denoWorker" | "ambientAccess",
   manifest: PlugManifestX,
 ) {
   const conflict = cx.plugs.get(manifest.name)?.manifest;
@@ -48,14 +58,20 @@ export function registerPlug(
       });
       cx.plugs.set(manifest.name, { ty, manifest });
     } else if (
-      semver.compare(manifest.version, conflict.version) == 0
+      semver.compare(
+        semver.parse(manifest.version),
+        semver.parse(conflict.version),
+      ) == 0
     ) {
       throw Error(
         `Two instances of the plug "${manifest.name}" found with an identical version` +
-          `and bothboth set to "deferToNewer" conflictResolution.`,
+          `and both set to "deferToNewer" conflictResolution.`,
       );
     } else if (
-      semver.compare(manifest.version, conflict.version) > 0
+      semver.compare(
+        semver.parse(manifest.version),
+        semver.parse(conflict.version),
+      ) > 0
     ) {
       logger().debug("plug replaced after version defer", {
         new: manifest,
@@ -75,7 +91,7 @@ export function registerPlug(
 }
 
 export function addInstall(
-  cx: GhjkCtx,
+  cx: GhjkConfig,
   config: InstallConfig,
 ) {
   if (!cx.plugs.has(config.plugName)) {

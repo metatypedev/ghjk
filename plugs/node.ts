@@ -24,8 +24,7 @@ const manifest = {
 
 denoWorkerPlug(
   new class extends Plug {
-    name = "node";
-    dependencies = [];
+    manifest = manifest;
 
     execEnv(env: ExecEnvEnv) {
       return {

@@ -10,18 +10,32 @@ export type DenoWorkerPlugManifest = zod.input<
   typeof validators.denoWorkerPlugManifest
 >;
 
-// Describes the plugin itself
-export type PlugManifest = PlugManifestBase | DenoWorkerPlugManifest;
+export type AmbientAccessPlugManifest = zod.input<
+  typeof validators.ambientAccessPlugManifest
+>;
 
+// Describes the plugin itself
+export type PlugManifest =
+  | PlugManifestBase
+  | DenoWorkerPlugManifest
+  | AmbientAccessPlugManifest;
+
+export type PlugDep = zod.infer<typeof validators.plugDep>;
 export type PlugManifestBaseX = zod.infer<typeof validators.plugManifestBase>;
 export type DenoWorkerPlugManifestX = zod.infer<
   typeof validators.denoWorkerPlugManifest
 >;
+export type AmbientAccessPlugManifestX = zod.infer<
+  typeof validators.ambientAccessPlugManifest
+>;
 // This is the transformed version of PlugManifest, ready for consumption
-export type PlugManifestX = PlugManifestBaseX | DenoWorkerPlugManifestX;
+export type PlugManifestX =
+  | PlugManifestBaseX
+  | DenoWorkerPlugManifestX
+  | AmbientAccessPlugManifestX;
 
 type RegisteredPlug = {
-  ty: "denoWorker";
+  ty: "denoWorker" | "ambientAccess";
   manifest: PlugManifestX;
 };
 export type RegisteredPlugs = Map<string, RegisteredPlug>;
@@ -35,17 +49,25 @@ export type InstallConfig = InstallConfigBase & {
   plugName: string;
 };
 
-export interface GhjkCtx {
+export interface GhjkConfig {
   plugs: RegisteredPlugs;
   installs: InstallConfig[];
 }
 
+/// This is a secure sections of the config intended to be direct exports
+/// from the config script instead of the global variable approach the
+/// main [`GhjkConfig`] can take.
+export interface GhjkSecureConfig {
+  allowedPluginDeps: PlugDep[];
+}
+
+export type GhjkCtx = GhjkConfig & GhjkSecureConfig;
+
 export abstract class Plug {
-  abstract name: string;
-  abstract dependencies: string[];
+  abstract manifest: PlugManifest;
 
   execEnv(
-    env: ExecEnvEnv,
+    _env: ExecEnvEnv,
   ): Promise<Record<string, string>> | Record<string, string> {
     return {};
   }
@@ -54,27 +76,12 @@ export abstract class Plug {
     env: ListBinPathsEnv,
   ): Promise<string[]> | string[] {
     return [std_path.resolve(env.ASDF_INSTALL_PATH, "bin")];
-    /*
-    const defaultBinPath = std_path.resolve(env.ASDF_INSTALL_PATH, "bin");
-    const dirsToCheck = [defaultBinPath];
-    while (dirsToCheck.length > 0) {
-      const dirPath = dirsToCheck.pop()!;
-      for await (const { isFile, name } of Deno.readDir(dirPath)) {
-        const path = std_path.resolve(dirPath, name);
-        if (!isFile) {
-          dirsToCheck.push(path);
-          continue;
-        }
-        Deno.
-      }
-    } */
   }
 
-  abstract listAll(env: ListAllEnv): Promise<string[]> | string[];
   latestStable(env: ListAllEnv): Promise<string> | string {
     return (async () => {
       logger().warning(
-        `using default implementation of latestStable for plug ${this.name}`,
+        `using default implementation of latestStable for plug ${this.manifest.name}`,
       );
       const allVers = await this.listAll(env);
       if (allVers.length == 0) {
@@ -83,6 +90,8 @@ export abstract class Plug {
       return allVers[allVers.length - 1];
     })();
   }
+
+  abstract listAll(env: ListAllEnv): Promise<string[]> | string[];
 
   abstract download(env: DownloadEnv): Promise<void> | void;
 

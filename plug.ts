@@ -1,8 +1,10 @@
 import {
   addInstall,
+  type AmbientAccessPlugManifest,
   type DenoWorkerPlugManifest,
-  type GhjkCtx,
+  type GhjkConfig,
   type InstallConfig,
+  registerAmbientPlug,
   registerDenoPlug,
 } from "./core/mod.ts";
 import { log } from "./deps/plug.ts";
@@ -35,15 +37,15 @@ log.setup({
   loggers: {
     // configure default logger available via short-hand methods above.
     default: {
-      level: "DEBUG",
+      level: "INFO",
       handlers: ["console"],
     },
     ghjk: {
-      level: "DEBUG",
+      level: "INFO",
       handlers: ["console"],
     },
     [self.name]: {
-      level: "DEBUG",
+      level: "INFO",
       handlers: ["console"],
     },
   },
@@ -51,23 +53,33 @@ log.setup({
 
 declare global {
   interface Window {
-    ghjk: GhjkCtx;
+    // this is null except when from from `ghjk.ts`
+    // i.e. a deno worker plug context won't have it avail
+    ghjk: GhjkConfig;
   }
 }
 
 export function registerDenoPlugGlobal(
   manifestUnclean: DenoWorkerPlugManifest,
 ) {
-  // make sure we're not running in a Worker first
-  if (!self.name) {
+  if (self.ghjk) {
+    if (self.name) throw new Error("impossible");
     registerDenoPlug(self.ghjk, manifestUnclean);
+  }
+}
+
+export function registerAmbientPlugGlobal(
+  manifestUnclean: AmbientAccessPlugManifest,
+) {
+  if (self.ghjk) {
+    registerAmbientPlug(self.ghjk, manifestUnclean);
   }
 }
 
 export function addInstallGlobal(
   config: InstallConfig,
 ) {
-  if (!self.name) {
+  if (self.ghjk) {
     addInstall(self.ghjk, config);
   }
 }
