@@ -36,6 +36,7 @@ const ambientAccessPlugManifest = plugManifestBase.merge(
         message: "invalid RegExp flags",
       },
     ),
+    // TODO: custom shell shims
   }),
 );
 

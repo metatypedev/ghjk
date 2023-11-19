@@ -74,6 +74,7 @@ and looks as follows (abstracting away some implementation details):
 - mold({ if: Deno.build.os === "Macos" })
 - hash verifiable dependencies (timestamp)
 - hide the `Deno` object in an abstraction
+- support windows
 
 ## design considerations
 

@@ -8,6 +8,7 @@ import { type GhjkConfig } from "./core/mod.ts";
 import { runCli } from "./cli/mod.ts";
 import logger from "./core/logger.ts";
 import { GhjkSecureConfig } from "./plug.ts";
+import * as std_plugs from "./std.ts";
 
 // we need to use global variables to allow
 // plugins to access the config object.
@@ -53,16 +54,34 @@ log.setup({
   },
 });
 
+function runCliShim(
+  args: string[],
+  secureConfig: GhjkSecureConfig | undefined,
+) {
+  let allowedDeps;
+  if (secureConfig?.allowedPluginDeps) {
+    allowedDeps = new Map();
+    for (const depId of secureConfig.allowedPluginDeps) {
+      const regPlug = std_plugs.map.get(depId.id);
+      if (!regPlug) {
+        throw Error(
+          `unrecognized dep "${depId.id}" found in "allowedPluginDeps"`,
+        );
+      }
+      allowedDeps.set(depId.id, regPlug);
+    }
+  } else {
+    allowedDeps = new Map(std_plugs.map.entries());
+  }
+  runCli(args, {
+    ...self.ghjk,
+    allowedDeps,
+  });
+}
+
 // freeze the object to prevent malicious tampering of the secureConfig
 export const ghjk = Object.freeze({
-  runCli: Object.freeze(
-    (args: string[], secureConfig: GhjkSecureConfig | undefined) => {
-      runCli(args, {
-        ...self.ghjk,
-        ...(secureConfig ?? { allowedPluginDeps: [] }),
-      });
-    },
-  ),
+  runCli: Object.freeze(runCliShim),
   cx: self.ghjk,
 });
 

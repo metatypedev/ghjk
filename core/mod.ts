@@ -1,11 +1,11 @@
 export * from "./types.ts";
 import { semver } from "../deps/common.ts";
-import {
-  type AmbientAccessPlugManifest,
-  type DenoWorkerPlugManifest,
-  type GhjkConfig,
-  type InstallConfig,
-  type PlugManifestX,
+import type {
+  AmbientAccessPlugManifest,
+  DenoWorkerPlugManifest,
+  GhjkConfig,
+  InstallConfig,
+  RegisteredPlug,
 } from "./types.ts";
 import validators from "./validators.ts";
 import logger from "./logger.ts";
@@ -14,12 +14,15 @@ export const Ghjk = {
   cwd: Deno.cwd,
 };
 
+export function getInstallId(install: InstallConfig) {
+  return install.plugName;
+}
 export function registerDenoPlug(
   cx: GhjkConfig,
   manifestUnclean: DenoWorkerPlugManifest,
 ) {
   const manifest = validators.denoWorkerPlugManifest.parse(manifestUnclean);
-  registerPlug(cx, "denoWorker", manifest);
+  registerPlug(cx, { ty: "denoWorker", manifest });
 }
 
 export function registerAmbientPlug(
@@ -27,14 +30,14 @@ export function registerAmbientPlug(
   manifestUnclean: AmbientAccessPlugManifest,
 ) {
   const manifest = validators.ambientAccessPlugManifest.parse(manifestUnclean);
-  registerPlug(cx, "ambientAccess", manifest);
+  registerPlug(cx, { ty: "ambientAccess", manifest });
 }
 
 export function registerPlug(
   cx: GhjkConfig,
-  ty: "denoWorker" | "ambientAccess",
-  manifest: PlugManifestX,
+  plug: RegisteredPlug,
 ) {
+  const { manifest } = plug;
   const conflict = cx.plugs.get(manifest.name)?.manifest;
   if (conflict) {
     if (
@@ -56,7 +59,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, { ty, manifest });
+      cx.plugs.set(manifest.name, plug);
     } else if (
       semver.compare(
         semver.parse(manifest.version),
@@ -77,7 +80,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, { ty, manifest });
+      cx.plugs.set(manifest.name, plug);
     } else {
       logger().debug("plug rejected due after defer", {
         retained: conflict,
@@ -86,7 +89,7 @@ export function registerPlug(
     }
   } else {
     logger().debug("plug registered", manifest);
-    cx.plugs.set(manifest.name, { ty, manifest });
+    cx.plugs.set(manifest.name, plug);
   }
 }
 

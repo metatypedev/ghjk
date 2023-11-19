@@ -1,9 +1,9 @@
 import {
-  DownloadEnv,
-  ExecEnvEnv,
-  InstallEnv,
+  DownloadArgs,
+  ExecEnvArgs,
+  InstallArgs,
   ListAllEnv,
-  ListBinPathsEnv,
+  ListBinPathsArgs,
   Plug,
 } from "../plug.ts";
 
@@ -12,12 +12,12 @@ export function jco() {
     name = "jco";
     dependencies = ["node"];
 
-    execEnv(env: ExecEnvEnv) {
+    execEnv(env: ExecEnvArgs) {
       throw new Error("Method not implemented.");
       return {};
     }
 
-    listBinPaths(env: ListBinPathsEnv) {
+    listBinPaths(env: ListBinPathsArgs) {
       throw new Error("Method not implemented.");
       return {};
     }
@@ -34,11 +34,11 @@ export function jco() {
       return versions;
     }
 
-    download(env: DownloadEnv) {
+    download(env: DownloadArgs) {
       throw new Error("Method not implemented.");
     }
 
-    install(env: InstallEnv) {
+    install(env: InstallArgs) {
       /*
       npm install -g @bytecodealliance/jco
       or

@@ -4,13 +4,41 @@
 import logger from "./logger.ts";
 import {
   type DenoWorkerPlugManifestX,
-  type DownloadEnv,
-  type ExecEnvEnv,
-  type InstallEnv,
+  type DownloadArgs,
+  type ExecEnvArgs,
+  type InstallArgs,
   type ListAllEnv,
-  type ListBinPathsEnv,
+  type ListBinPathsArgs,
   Plug,
 } from "./types.ts";
+
+import { spawn, type SpawnOptions } from "./utils.ts";
+export function isWorker() {
+  return !!self.name;
+}
+
+export function workerSpawn(
+  cmd: string[],
+  options: Omit<SpawnOptions, "pipeOut" | "pipeErr"> = {},
+) {
+  const outDecoder = new TextDecoderStream();
+  const errDecoder = new TextDecoderStream();
+  outDecoder.readable.pipeTo(
+    new WritableStream({
+      write: console.log,
+    }),
+  );
+  errDecoder.readable.pipeTo(
+    new WritableStream({
+      write: console.error,
+    }),
+  );
+  return spawn(cmd, {
+    ...options,
+    pipeOut: outDecoder.writable,
+    pipeErr: errDecoder.writable,
+  });
+}
 
 type WorkerReq = {
   ty: "listAll";
@@ -20,16 +48,16 @@ type WorkerReq = {
   arg: ListAllEnv;
 } | {
   ty: "execEnv";
-  arg: ExecEnvEnv;
+  arg: ExecEnvArgs;
 } | {
   ty: "download";
-  arg: DownloadEnv;
+  arg: DownloadArgs;
 } | {
   ty: "install";
-  arg: InstallEnv;
+  arg: InstallArgs;
 } | {
   ty: "listBinPaths";
-  arg: ListBinPathsEnv;
+  arg: ListBinPathsArgs;
 };
 
 type WorkerResp = {
@@ -163,7 +191,7 @@ export class DenoWorkerPlug extends Plug {
   }
 
   async execEnv(
-    env: ExecEnvEnv,
+    env: ExecEnvArgs,
   ): Promise<Record<string, string>> {
     const req: WorkerReq = {
       ty: "execEnv",
@@ -176,7 +204,7 @@ export class DenoWorkerPlug extends Plug {
     throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
   async listBinPaths(
-    env: ListBinPathsEnv,
+    env: ListBinPathsArgs,
   ): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listBinPaths",
@@ -188,7 +216,7 @@ export class DenoWorkerPlug extends Plug {
     }
     throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async download(env: DownloadEnv): Promise<void> {
+  async download(env: DownloadArgs): Promise<void> {
     const req: WorkerReq = {
       ty: "download",
       arg: env,
@@ -199,7 +227,7 @@ export class DenoWorkerPlug extends Plug {
     }
     throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async install(env: InstallEnv): Promise<void> {
+  async install(env: InstallArgs): Promise<void> {
     const req: WorkerReq = {
       ty: "install",
       arg: env,

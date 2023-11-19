@@ -1,4 +1,4 @@
-import { spawn } from "../cli/utils.ts";
+import { spawn } from "../core/utils.ts";
 // import node from "../plugs/node.ts";
 
 type TestCase = {
@@ -73,7 +73,7 @@ await dockerTest([{
   name: "a",
   imports: `import node from "$ghjk/plugs/node.ts"`,
   confFn: `async () => {
-    node({ version: "lts" });
+    node({ });
   }`,
   ePoint: `node --version`,
 }]);

@@ -34,10 +34,14 @@ export type PlugManifestX =
   | DenoWorkerPlugManifestX
   | AmbientAccessPlugManifestX;
 
-type RegisteredPlug = {
-  ty: "denoWorker" | "ambientAccess";
-  manifest: PlugManifestX;
+export type RegisteredPlug = {
+  ty: "ambientAccess";
+  manifest: AmbientAccessPlugManifestX;
+} | {
+  ty: "denoWorker";
+  manifest: DenoWorkerPlugManifestX;
 };
+
 export type RegisteredPlugs = Map<string, RegisteredPlug>;
 
 export interface InstallConfigBase {
@@ -50,6 +54,7 @@ export type InstallConfig = InstallConfigBase & {
 };
 
 export interface GhjkConfig {
+  /// Plugs explicitly added by the user
   plugs: RegisteredPlugs;
   installs: InstallConfig[];
 }
@@ -58,24 +63,27 @@ export interface GhjkConfig {
 /// from the config script instead of the global variable approach the
 /// main [`GhjkConfig`] can take.
 export interface GhjkSecureConfig {
-  allowedPluginDeps: PlugDep[];
+  allowedPluginDeps?: PlugDep[];
 }
 
-export type GhjkCtx = GhjkConfig & GhjkSecureConfig;
+export type GhjkCtx = GhjkConfig & {
+  /// Standard plugs allowed to be use as deps by other plugs
+  allowedDeps: RegisteredPlugs;
+};
 
 export abstract class Plug {
   abstract manifest: PlugManifest;
 
   execEnv(
-    _env: ExecEnvEnv,
+    _env: ExecEnvArgs,
   ): Promise<Record<string, string>> | Record<string, string> {
     return {};
   }
 
   listBinPaths(
-    env: ListBinPathsEnv,
+    env: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
-    return [std_path.resolve(env.ASDF_INSTALL_PATH, "bin")];
+    return [std_path.resolve(env.installPath, "bin")];
   }
 
   latestStable(env: ListAllEnv): Promise<string> | string {
@@ -93,9 +101,9 @@ export abstract class Plug {
 
   abstract listAll(env: ListAllEnv): Promise<string[]> | string[];
 
-  abstract download(env: DownloadEnv): Promise<void> | void;
+  abstract download(env: DownloadArgs): Promise<void> | void;
 
-  abstract install(env: InstallEnv): Promise<void> | void;
+  abstract install(env: InstallArgs): Promise<void> | void;
 }
 
 interface ASDF_CONFIG_EXAMPLE {
@@ -110,28 +118,38 @@ interface ASDF_CONFIG_EXAMPLE {
   ASDF_PLUGIN_POST_REF: string; //	updated git-ref of the plugin repo
   ASDF_CMD_FILE: string; // resolves to the full path of the file being sourced
 }
-export interface BinDefaultEnv {
-  ASDF_INSTALL_TYPE: "version" | "ref";
-  ASDF_INSTALL_VERSION: string;
-  ASDF_INSTALL_PATH: string;
+
+export type DepShims = Record<
+  string,
+  Record<string, string>
+>;
+
+export type PlatformInfo = Omit<typeof Deno.build, "target">;
+
+export interface PlugArgsBase {
+  // installType: "version" | "ref";
+  installVersion: string;
+  installPath: string;
+  depShims: DepShims;
+  platform: PlatformInfo;
 }
 
 export interface ListAllEnv {
 }
 
-export interface ListBinPathsEnv extends BinDefaultEnv {
+export interface ListBinPathsArgs extends PlugArgsBase {
 }
 
-export interface ExecEnvEnv extends BinDefaultEnv {
+export interface ExecEnvArgs extends PlugArgsBase {
 }
 
-export interface DownloadEnv extends BinDefaultEnv {
-  ASDF_DOWNLOAD_PATH: string;
+export interface DownloadArgs extends PlugArgsBase {
+  downloadPath: string;
   tmpDirPath: string;
 }
 
-export interface InstallEnv extends BinDefaultEnv {
-  ASDF_CONCURRENCY: number;
-  ASDF_DOWNLOAD_PATH: string;
+export interface InstallArgs extends PlugArgsBase {
+  availConcurrency: number;
+  downloadPath: string;
   tmpDirPath: string;
 }

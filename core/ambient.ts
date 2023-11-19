@@ -1,12 +1,12 @@
 import {
   type AmbientAccessPlugManifest,
-  type DownloadEnv,
-  type InstallEnv,
+  type DownloadArgs,
+  type InstallArgs,
   type ListAllEnv,
-  type ListBinPathsEnv,
+  type ListBinPathsArgs,
   Plug,
 } from "./types.ts";
-import { ChildError, runAndReturn } from "../cli/utils.ts";
+import { ChildError, runAndReturn } from "./utils.ts";
 
 export class AmbientAccessPlug extends Plug {
   constructor(public manifest: AmbientAccessPlugManifest) {
@@ -17,7 +17,7 @@ export class AmbientAccessPlug extends Plug {
       );
     }
   }
-  async listAll(_env: ListAllEnv): Promise<string[]> {
+  async latestStable(_env: ListAllEnv): Promise<string> {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
@@ -46,19 +46,24 @@ export class AmbientAccessPlug extends Plug {
         `error trying extract version for "${this.manifest.name}@${this.manifest.version}" using regex ${extractionRegex} from output: ${versionOut}`,
       );
     }
-    return [matches[0]];
+
+    return matches[0];
+  }
+
+  async listAll(env: ListAllEnv): Promise<string[]> {
+    return [await this.latestStable(env)];
   }
 
   async listBinPaths(
-    _env: ListBinPathsEnv,
+    _env: ListBinPathsArgs,
   ): Promise<string[]> {
     return [await this.pathToExec()];
   }
 
-  download(_env: DownloadEnv): void | Promise<void> {
+  download(_env: DownloadArgs): void | Promise<void> {
     // no op
   }
-  install(_env: InstallEnv): void | Promise<void> {
+  install(_env: InstallArgs): void | Promise<void> {
     // no op
   }
   async pathToExec(): Promise<string> {

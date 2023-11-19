@@ -1,9 +1,9 @@
 import {
-  DownloadEnv,
-  ExecEnvEnv,
-  InstallEnv,
+  DownloadArgs,
+  ExecEnvArgs,
+  InstallArgs,
   ListAllEnv,
-  ListBinPathsEnv,
+  ListBinPathsArgs,
   Plug,
 } from "../plug.ts";
 
@@ -12,12 +12,12 @@ export function rust({ version }: { version: string }) {
     name = "rust";
     dependencies = [];
 
-    execEnv(env: ExecEnvEnv) {
+    execEnv(env: ExecEnvArgs) {
       throw new Error("Method not implemented.");
       return {};
     }
 
-    listBinPaths(env: ListBinPathsEnv) {
+    listBinPaths(env: ListBinPathsArgs) {
       throw new Error("Method not implemented.");
       return {};
     }
@@ -27,11 +27,11 @@ export function rust({ version }: { version: string }) {
       return [];
     }
 
-    download(env: DownloadEnv) {
+    download(env: DownloadArgs) {
       throw new Error("Method not implemented.");
     }
 
-    install(env: InstallEnv) {
+    install(env: InstallArgs) {
       throw new Error("Method not implemented.");
     }
   }();

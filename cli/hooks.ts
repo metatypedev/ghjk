@@ -1,5 +1,6 @@
 import { std_path } from "../deps/cli.ts";
-import { ChildError, dirs, runAndReturn } from "./utils.ts";
+import { dirs } from "./utils.ts";
+import { runAndReturn } from "../core/utils.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const vfs = {
