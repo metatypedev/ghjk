@@ -83,7 +83,25 @@ export abstract class Plug {
   listBinPaths(
     env: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
-    return [std_path.resolve(env.installPath, "bin")];
+    return [
+      std_path.joinGlobs([std_path.resolve(env.installPath, "bin"), "*"]),
+    ];
+  }
+
+  listLibPaths(
+    env: ListBinPathsArgs,
+  ): Promise<string[]> | string[] {
+    return [
+      std_path.joinGlobs([std_path.resolve(env.installPath, "lib"), "*"]),
+    ];
+  }
+
+  listIncludePaths(
+    env: ListBinPathsArgs,
+  ): Promise<string[]> | string[] {
+    return [
+      std_path.joinGlobs([std_path.resolve(env.installPath, "include"), "*"]),
+    ];
   }
 
   latestStable(env: ListAllEnv): Promise<string> | string {
@@ -135,6 +153,7 @@ export interface PlugArgsBase {
 }
 
 export interface ListAllEnv {
+  depShims: DepShims;
 }
 
 export interface ListBinPathsArgs extends PlugArgsBase {

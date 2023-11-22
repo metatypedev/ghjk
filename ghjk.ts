@@ -15,5 +15,8 @@ await run();
 
 export { ghjk } from "./mod.ts";
 import node from "./plugs/node.ts";
+import wasmedge from "./plugs/wasmedge.ts";
 
 node({});
+
+wasmedge({});

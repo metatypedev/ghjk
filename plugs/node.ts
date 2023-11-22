@@ -54,33 +54,19 @@ denoWorkerPlug(
       };
     }
 
-    listBinPaths(_args: ListBinPathsArgs) {
-      return [
-        "bin/node",
-        "bin/npm",
-        "bin/npx",
-      ];
-    }
-
-    async latestStable(_args: ListAllEnv): Promise<string> {
-      const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
-      const metadata = await metadataRequest.json();
-
-      if (!Array.isArray(metadata)) {
-        throw Error("invalid data received from index");
-      }
-      return metadata.find((ver) => ver.lts).version;
+    listLibPaths(env: ListBinPathsArgs): string[] {
+      return [];
     }
 
     async listAll(_env: ListAllEnv) {
       const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
-      const metadata = await metadataRequest.json();
+      const metadata = await metadataRequest.json() as { version: string }[];
 
-      const versions = metadata.map((v: any) => v.version);
-      versions.sort();
-
-      logger().debug(versions);
-      return versions;
+      const versions = metadata.map((v) => v.version);
+      // sort them numerically to make sure version 0.10.0 comes after 0.2.9
+      return versions.sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true })
+      );
     }
 
     async download(args: DownloadArgs) {

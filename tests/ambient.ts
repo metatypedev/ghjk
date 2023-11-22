@@ -3,6 +3,7 @@ import { AmbientAccessPlug } from "../core/ambient.ts";
 import { type AmbientAccessPlugManifest } from "../core/types.ts";
 
 import * as tar from "../plugs/tar.ts";
+import * as git from "../plugs/git.ts";
 
 const manifests = [
   {
@@ -14,11 +15,13 @@ const manifests = [
     versionExtractRegexFlags: "",
   },
   tar.manifest,
+  git.manifest,
 ];
 for (const manifest of manifests) {
   Deno.test(`ambient access ${manifest.name}`, async () => {
     const plug = new AmbientAccessPlug(manifest as AmbientAccessPlugManifest);
-    const versions = await plug.listAll({});
+    const versions = await plug.listAll({ depShims: {} });
+    console.log(versions);
     std_assert.assertEquals(versions.length, 1);
   });
 }

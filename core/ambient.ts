@@ -6,7 +6,7 @@ import {
   type ListBinPathsArgs,
   Plug,
 } from "./types.ts";
-import { ChildError, runAndReturn } from "./utils.ts";
+import { ChildError, spawnOutput } from "./utils.ts";
 
 export class AmbientAccessPlug extends Plug {
   constructor(public manifest: AmbientAccessPlugManifest) {
@@ -21,7 +21,7 @@ export class AmbientAccessPlug extends Plug {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
-      versionOut = await runAndReturn([
+      versionOut = await spawnOutput([
         execPath,
         this.manifest.versionExtractFlag,
       ]);
@@ -68,7 +68,7 @@ export class AmbientAccessPlug extends Plug {
   }
   async pathToExec(): Promise<string> {
     try {
-      const output = await runAndReturn(["which", this.manifest.execName]);
+      const output = await spawnOutput(["which", this.manifest.execName]);
       return output.trim();
     } catch (err) {
       if (err instanceof ChildError) {

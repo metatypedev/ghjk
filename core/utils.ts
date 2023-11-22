@@ -13,34 +13,6 @@ export class ChildError extends Error {
   }
 }
 
-export async function runAndReturn(
-  cmd: string[],
-  options: {
-    cwd?: string;
-    env?: Record<string, string>;
-  } = {},
-): Promise<string> {
-  const { cwd, env } = {
-    ...options,
-  };
-  const output = await new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-    env,
-  }).output();
-
-  if (output.success) {
-    return new TextDecoder().decode(output.stdout);
-  }
-  throw new ChildError(
-    output.code,
-    new TextDecoder().decode(output.stdout) + "\n" +
-      new TextDecoder().decode(output.stderr),
-  );
-}
-
 export type SpawnOptions = {
   cwd?: string;
   env?: Record<string, string>;
@@ -88,4 +60,29 @@ export async function spawn(
   if (!success) {
     throw Error(`child failed with code ${code}`);
   }
+}
+
+export async function spawnOutput(
+  cmd: string[],
+  options: Omit<SpawnOptions, "pipeOut" | "pipeErr"> = {},
+): Promise<string> {
+  const { cwd, env } = {
+    ...options,
+  };
+  const output = await new Deno.Command(cmd[0], {
+    args: cmd.slice(1),
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+    env,
+  }).output();
+
+  if (output.success) {
+    return new TextDecoder().decode(output.stdout);
+  }
+  throw new ChildError(
+    output.code,
+    new TextDecoder().decode(output.stdout) + "\n" +
+      new TextDecoder().decode(output.stderr),
+  );
 }

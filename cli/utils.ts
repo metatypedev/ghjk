@@ -1,5 +1,3 @@
-import { Err, Ok, Result } from "../deps/cli.ts";
-
 function home_dir(): string | null {
   switch (Deno.build.os) {
     case "linux":

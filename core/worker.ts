@@ -58,6 +58,12 @@ type WorkerReq = {
 } | {
   ty: "listBinPaths";
   arg: ListBinPathsArgs;
+} | {
+  ty: "listLibPaths";
+  arg: ListBinPathsArgs;
+} | {
+  ty: "listIncludePaths";
+  arg: ListBinPathsArgs;
 };
 
 type WorkerResp = {
@@ -68,6 +74,12 @@ type WorkerResp = {
   payload: string;
 } | {
   ty: "listBinPaths";
+  payload: string[];
+} | {
+  ty: "listLibPaths";
+  payload: string[];
+} | {
+  ty: "listIncludePaths";
   payload: string[];
 } | {
   ty: "execEnv";
@@ -109,6 +121,16 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
         res = {
           ty: req.ty,
           payload: await plug.listBinPaths(req.arg),
+        };
+      } else if (req.ty === "listLibPaths") {
+        res = {
+          ty: req.ty,
+          payload: await plug.listLibPaths(req.arg),
+        };
+      } else if (req.ty === "listIncludePaths") {
+        res = {
+          ty: req.ty,
+          payload: await plug.listIncludePaths(req.arg),
         };
       } else if (req.ty === "download") {
         await plug.download(req.arg),
@@ -216,6 +238,35 @@ export class DenoWorkerPlug extends Plug {
     }
     throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
+
+  async listLibPaths(
+    env: ListBinPathsArgs,
+  ): Promise<string[]> {
+    const req: WorkerReq = {
+      ty: "listLibPaths",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "listLibPaths") {
+      return res.payload;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+  }
+
+  async listIncludePaths(
+    env: ListBinPathsArgs,
+  ): Promise<string[]> {
+    const req: WorkerReq = {
+      ty: "listIncludePaths",
+      arg: env,
+    };
+    const res = await this.call(req);
+    if (res.ty == "listIncludePaths") {
+      return res.payload;
+    }
+    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+  }
+
   async download(env: DownloadArgs): Promise<void> {
     const req: WorkerReq = {
       ty: "download",

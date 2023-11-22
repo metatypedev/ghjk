@@ -116,8 +116,10 @@ export async function sync(cx: GhjkCtx) {
           `artifacts not found for plug dep "${depInstallId}" when installing "${installId}"`,
         );
       }
-      const depShimDir = std_path.resolve(depShimsRootPath, installId);
+      const depShimDir = std_path.resolve(depShimsRootPath, depInstallId);
       await Deno.mkdir(depShimDir);
+      // TODO: expose LD_LIBRARY from deps
+
       const { binPaths, installPath } = depArtifacts;
       depShims[depId.id] = await shimLinkPaths(
         binPaths,
@@ -147,12 +149,40 @@ export async function sync(cx: GhjkCtx) {
       }
     }
   }
-  // create shims for the environment
+
   const shimDir = std_path.resolve(envDir, "shims");
-  await Deno.mkdir(shimDir, { recursive: true });
+  if (await std_fs.exists(shimDir)) {
+    await Deno.remove(shimDir, { recursive: true });
+  }
+  // create shims for the environment
+  await Promise.allSettled([
+    Deno.mkdir(std_path.resolve(shimDir, "bin"), { recursive: true }),
+    Deno.mkdir(std_path.resolve(shimDir, "lib"), { recursive: true }),
+    Deno.mkdir(std_path.resolve(shimDir, "include"), { recursive: true }),
+  ]);
+  // FIXME: detect conflicts
   for (const instId of installs.user) {
-    const { binPaths, installPath } = artifacts.get(instId)!;
-    void await shimLinkPaths(binPaths, installPath, shimDir);
+    const { binPaths, libPaths, includePaths, installPath } = artifacts.get(
+      instId,
+    )!;
+    // bin shims
+    void await shimLinkPaths(
+      binPaths,
+      installPath,
+      std_path.resolve(shimDir, "bin"),
+    );
+    // lib shims
+    void await shimLinkPaths(
+      libPaths,
+      installPath,
+      std_path.resolve(shimDir, "lib"),
+    );
+    // include shims
+    void await shimLinkPaths(
+      includePaths,
+      installPath,
+      std_path.resolve(shimDir, "include"),
+    );
   }
 
   // write loader for the env vars mandated by the installs
@@ -266,17 +296,33 @@ function buildInstallGraph(cx: GhjkCtx) {
 }
 
 async function shimLinkPaths(
-  binPaths: string[],
+  targetPaths: string[],
   installPath: string,
   shimDir: string,
 ) {
   const shims: Record<string, string> = {};
-  for (
-    const bin of binPaths
-  ) {
-    const binPath = std_path.resolve(installPath, bin);
-    const binName = std_path.basename(binPath); // TODO: aliases
-    const shimPath = std_path.resolve(shimDir, binName);
+  const foundTargetPaths = [...targetPaths];
+  while (foundTargetPaths.length > 0) {
+    const file = foundTargetPaths.pop()!;
+    if (std_path.isGlob(file)) {
+      const glob = file.startsWith("/")
+        ? file
+        : std_path.joinGlobs([installPath, file], { extended: true });
+      console.log({ file, glob });
+      for await (const entry of std_fs.expandGlob(glob)) {
+        foundTargetPaths.push(entry.path);
+      }
+      continue;
+    }
+    const filePath = std_path.resolve(installPath, file);
+    const fileName = std_path.basename(filePath); // TODO: aliases
+    const shimPath = std_path.resolve(shimDir, fileName);
+
+    if (shims[fileName]) {
+      throw Error(
+        `duplicate shim found when adding shim for file "${fileName}"`,
+      );
+    }
     try {
       await Deno.remove(shimPath);
     } catch (error) {
@@ -284,8 +330,8 @@ async function shimLinkPaths(
         throw error;
       }
     }
-    await Deno.symlink(binPath, shimPath, { type: "file" });
-    shims[binName] = shimPath;
+    await Deno.symlink(filePath, shimPath, { type: "file" });
+    shims[fileName] = shimPath;
   }
   return shims;
 }
@@ -314,7 +360,9 @@ async function doInstall(
       `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
     );
   }
-  const installVersion = inst.version ?? await plug.latestStable({});
+  const installVersion = inst.version ?? await plug.latestStable({
+    depShims,
+  });
   const installPath = std_path.resolve(
     envDir,
     "installs",
@@ -362,8 +410,14 @@ async function doInstall(
   const binPaths = await plug.listBinPaths({
     ...baseArgs,
   });
+  const libPaths = await plug.listLibPaths({
+    ...baseArgs,
+  });
+  const includePaths = await plug.listIncludePaths({
+    ...baseArgs,
+  });
   const env = await plug.execEnv({
     ...baseArgs,
   });
-  return { env, binPaths, installPath, downloadPath };
+  return { env, binPaths, libPaths, includePaths, installPath, downloadPath };
 }

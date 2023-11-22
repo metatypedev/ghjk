@@ -15,6 +15,7 @@ import { isWorker } from "./core/worker.ts";
 import logger from "./core/logger.ts";
 
 export * from "./core/mod.ts";
+export * from "./core/utils.ts";
 export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
 export { denoWorkerPlug, isWorker, workerSpawn } from "./core/worker.ts";

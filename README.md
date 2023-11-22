@@ -68,10 +68,13 @@ and looks as follows (abstracting away some implementation details):
 
 - multiple version of the same package (e.g. rust stable and rust nighted)
 - wasmedge
+- jco
 - python with virtual env dir
 - poetry
 - pnpm
 - mold({ if: Deno.build.os === "Macos" })
+- wasm-tools
+- cargo-insta
 - hash verifiable dependencies (timestamp)
 - hide the `Deno` object in an abstraction
 - support windows

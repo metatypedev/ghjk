@@ -73,12 +73,6 @@ repos:
           - ts
           - tsx
         files: ^website/
-      # - id: version
-      #   name: "Lock versions"
-      #   always_run: true
-      #   language: system
-      #   entry: bash -c 'deno run -A dev/lock.ts --check'
-      #   pass_filenames: false
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.4
     hooks:
