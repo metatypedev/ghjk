@@ -99,11 +99,11 @@ export function depBinShimPath(
 ) {
   const shimPaths = depShims[dep.id];
   if (!shimPaths) {
-    throw Error(`unable to find shims for dep ${dep.id}`);
+    throw new Error(`unable to find shims for dep ${dep.id}`);
   }
   const path = shimPaths[binName];
   if (!path) {
-    throw Error(
+    throw new Error(
       `unable to find shim path for bin "${binName}" of dep ${dep.id}`,
     );
   }
@@ -114,8 +114,16 @@ export function depBinShimPath(
 export async function downloadFile(
   env: DownloadArgs,
   url: string,
-  fileName = std_url.basename(url),
+  options: {
+    fileName?: string;
+    mode?: number;
+  } = {},
 ) {
+  const { fileName, mode } = {
+    fileName: std_url.basename(url),
+    mode: 0o666,
+    ...options,
+  };
   const fileDwnPath = std_path.resolve(env.downloadPath, fileName);
   if (await std_fs.exists(fileDwnPath)) {
     logger().debug(`file ${fileName} already downloaded, skipping`);
@@ -127,9 +135,25 @@ export async function downloadFile(
   );
 
   const resp = await fetch(url);
+
+  if (!resp.ok) {
+    throw new Error(
+      `${resp.status}: ${resp.statusText} downloading file at ${url}`,
+    );
+  }
+  const length = resp.headers.get("content-length");
+  logger().debug(
+    `downloading file: `,
+    {
+      fileSize: length ? Number(length) / 1024 : "N/A",
+      url,
+      to: fileDwnPath,
+    },
+  );
+
   const dest = await Deno.open(
     tmpFilePath,
-    { create: true, truncate: true, write: true },
+    { create: true, truncate: true, write: true, mode },
   );
   await resp.body!.pipeTo(dest.writable, { preventClose: false });
   await std_fs.ensureDir(env.downloadPath);

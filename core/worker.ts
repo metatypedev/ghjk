@@ -98,7 +98,7 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
       const req = msg.data;
       if (!req.ty) {
         logger().error("invalid worker request", req);
-        throw Error("unrecognized worker request type");
+        throw new Error("unrecognized worker request type");
       }
       let res: WorkerResp;
       if (req.ty == "listAll") {
@@ -144,7 +144,7 @@ export function denoWorkerPlug<P extends Plug>(plug: P) {
           };
       } else {
         logger().error("unrecognized worker request type", req);
-        throw Error("unrecognized worker request type");
+        throw new Error("unrecognized worker request type");
       }
       self.postMessage(res);
     };
@@ -197,7 +197,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "listAll") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
   async latestStable(env: ListAllEnv): Promise<string> {
@@ -209,7 +209,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "latestStable") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
   async execEnv(
@@ -223,7 +223,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "execEnv") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
   async listBinPaths(
     env: ListBinPathsArgs,
@@ -236,7 +236,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "listBinPaths") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
   async listLibPaths(
@@ -250,7 +250,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "listLibPaths") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
   async listIncludePaths(
@@ -264,7 +264,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "listIncludePaths") {
       return res.payload;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
   async download(env: DownloadArgs): Promise<void> {
@@ -276,7 +276,7 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "download") {
       return;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
   async install(env: InstallArgs): Promise<void> {
     const req: WorkerReq = {
@@ -287,6 +287,6 @@ export class DenoWorkerPlug extends Plug {
     if (res.ty == "install") {
       return;
     }
-    throw Error(`unexpected response from worker ${JSON.stringify(res)}`);
+    throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 }

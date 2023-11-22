@@ -1,4 +1,4 @@
-import { Command, std_fs, std_path } from "../deps/cli.ts";
+import { Command, std_fs, std_path, zod } from "../deps/cli.ts";
 import logger from "../core/logger.ts";
 import {
   type AmbientAccessPlugManifestX,
@@ -9,6 +9,7 @@ import {
   type InstallConfig,
   type PlugArgsBase,
   type RegisteredPlug,
+  validators,
 } from "../core/mod.ts";
 import { DenoWorkerPlug } from "../core/worker.ts";
 import { AVAIL_CONCURRENCY, dirs } from "./utils.ts";
@@ -65,9 +66,10 @@ export class SyncCommand extends Command {
 
 export async function sync(cx: GhjkCtx) {
   const config = await findConfig(Deno.cwd());
+  logger().debug(config);
   console.log(config);
   if (!config) {
-    console.log("ghjk did not find any `ghjk.ts` config.");
+    logger().error("ghjk did not find any `ghjk.ts` config.");
     return;
   }
 
@@ -82,7 +84,7 @@ export async function sync(cx: GhjkCtx) {
             const versions = await plug.listAll({});
             console.log(name, { versions });
           } else {
-            throw Error(
+            throw new Error(
               `unsupported plugin type "${ty}": ${JSON.stringify(manifest)}`,
             );
           }
@@ -112,7 +114,7 @@ export async function sync(cx: GhjkCtx) {
       const depInstallId = getInstallId(depInstall);
       const depArtifacts = artifacts.get(depInstallId);
       if (!depArtifacts) {
-        throw Error(
+        throw new Error(
           `artifacts not found for plug dep "${depInstallId}" when installing "${installId}"`,
         );
       }
@@ -191,7 +193,7 @@ export async function sync(cx: GhjkCtx) {
     for (const [key, val] of Object.entries(item.env)) {
       const conflict = env[key];
       if (conflict) {
-        throw Error(
+        throw new Error(
           `duplicate env var found ${key} from installs ${instId} & ${
             conflict[1]
           }`,
@@ -223,7 +225,7 @@ function buildInstallGraph(cx: GhjkCtx) {
     const instId = getInstallId(inst);
     // FIXME: better support for multi installs
     if (installs.user.has(instId)) {
-      throw Error(`duplicate install found by plugin ${inst.plugName}`);
+      throw new Error(`duplicate install found by plugin ${inst.plugName}`);
     }
     installs.user.add(instId);
     foundInstalls.push(inst);
@@ -234,7 +236,7 @@ function buildInstallGraph(cx: GhjkCtx) {
     const regPlug = cx.plugs.get(inst.plugName) ??
       cx.allowedDeps.get(inst.plugName);
     if (!regPlug) {
-      throw Error(
+      throw new Error(
         `unable to find plugin "${inst.plugName}" specified by install ${
           JSON.stringify(inst)
         }`,
@@ -259,7 +261,7 @@ function buildInstallGraph(cx: GhjkCtx) {
       for (const depId of manifest.deps) {
         const depPlug = cx.allowedDeps.get(depId.id);
         if (!depPlug) {
-          throw Error(
+          throw new Error(
             `unrecognized dependency "${depId.id}" specified by plug "${manifest.name}"`,
           );
         }
@@ -272,7 +274,7 @@ function buildInstallGraph(cx: GhjkCtx) {
         {
           const thisDeps = installs.revDepEdges.get(installId);
           if (thisDeps && thisDeps.includes(depInstallId)) {
-            throw Error(
+            throw new Error(
               `cyclic dependency detected between "${installId}" and  "${depInstallId}"`,
             );
           }
@@ -308,7 +310,6 @@ async function shimLinkPaths(
       const glob = file.startsWith("/")
         ? file
         : std_path.joinGlobs([installPath, file], { extended: true });
-      console.log({ file, glob });
       for await (const entry of std_fs.expandGlob(glob)) {
         foundTargetPaths.push(entry.path);
       }
@@ -319,7 +320,7 @@ async function shimLinkPaths(
     const shimPath = std_path.resolve(shimDir, fileName);
 
     if (shims[fileName]) {
-      throw Error(
+      throw new Error(
         `duplicate shim found when adding shim for file "${fileName}"`,
       );
     }
@@ -356,13 +357,15 @@ async function doInstall(
       manifest as AmbientAccessPlugManifestX,
     );
   } else {
-    throw Error(
+    throw new Error(
       `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
     );
   }
-  const installVersion = inst.version ?? await plug.latestStable({
-    depShims,
-  });
+  const installVersion = validators.string.parse(
+    inst.version ?? await plug.latestStable({
+      depShims,
+    }),
+  );
   const installPath = std_path.resolve(
     envDir,
     "installs",
@@ -407,17 +410,25 @@ async function doInstall(
     });
     void Deno.remove(tmpDirPath, { recursive: true });
   }
-  const binPaths = await plug.listBinPaths({
-    ...baseArgs,
-  });
-  const libPaths = await plug.listLibPaths({
-    ...baseArgs,
-  });
-  const includePaths = await plug.listIncludePaths({
-    ...baseArgs,
-  });
-  const env = await plug.execEnv({
-    ...baseArgs,
-  });
+  const binPaths = validators.stringArray.parse(
+    await plug.listBinPaths({
+      ...baseArgs,
+    }),
+  );
+  const libPaths = validators.stringArray.parse(
+    await plug.listLibPaths({
+      ...baseArgs,
+    }),
+  );
+  const includePaths = validators.stringArray.parse(
+    await plug.listIncludePaths({
+      ...baseArgs,
+    }),
+  );
+  const env = zod.record(zod.string()).parse(
+    await plug.execEnv({
+      ...baseArgs,
+    }),
+  );
   return { env, binPaths, libPaths, includePaths, installPath, downloadPath };
 }

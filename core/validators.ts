@@ -45,4 +45,6 @@ export default {
   plugManifestBase,
   denoWorkerPlugManifest,
   ambientAccessPlugManifest,
+  string: zod.string(),
+  stringArray: zod.string().min(1).array(),
 };

@@ -70,10 +70,24 @@ await (${confFn.toString()})()`;
 }
 
 await dockerTest([{
-  name: "a",
+  name: "pnpm",
+  imports: `import pnpm from "$ghjk/plugs/pnpm.ts"`,
+  confFn: `async () => {
+    pnpm({ });
+  }`,
+  ePoint: ` --version`,
+}, {
+  name: "wasmedge",
+  imports: `import wasmedge from "$ghjk/plugs/wasmedge.ts"`,
+  confFn: `async () => {
+    wasmedge({ });
+  }`,
+  ePoint: `wasmedge --version`,
+}, {
+  name: "node",
   imports: `import node from "$ghjk/plugs/node.ts"`,
   confFn: `async () => {
     node({ });
   }`,
-  ePoint: `node --version`,
+  ePoint: ` --version`,
 }]);

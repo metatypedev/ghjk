@@ -1,7 +1,7 @@
 {
     "tasks": {
         // "test": "DOCKER_SOCK=/var/run/docker.sock deno test --unstable --allow-env=DOCKER_SOCK --allow-read=/var/run/docker.sock --allow-write=/var/run/docker.sock tests/*"
-        "test": "deno test --fail-fast --parallel --unstable --allow-run=docker,which,ls,tar --allow-read --allow-env tests/*",
+        "test": "deno test --fail-fast --parallel --unstable --allow-run=docker,which,ls,tar,git --allow-read --allow-env tests/*",
         "cache": "deno cache deps/*"
     }
 }

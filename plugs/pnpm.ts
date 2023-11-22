@@ -1,38 +1,28 @@
 import {
   addInstallGlobal,
   denoWorkerPlug,
-  depBinShimPath,
   DownloadArgs,
   downloadFile,
   ExecEnvArgs,
   InstallArgs,
   type InstallConfigBase,
   ListAllEnv,
-  ListBinPathsArgs,
-  logger,
   type PlatformInfo,
   Plug,
   registerDenoPlugGlobal,
   removeFile,
-  spawnOutput,
   std_fs,
   std_path,
   std_url,
-  workerSpawn,
 } from "../plug.ts";
-import * as std_plugs from "../std.ts";
 
 const manifest = {
-  name: "node",
+  name: "pnpm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
-    std_plugs.tar_aa,
-  ],
 };
 
-// FIXME: improve multi platform support story
-const supportedOs = ["linux", "darwin"];
+const supportedOs = ["linux", "darwin", "win"];
 if (!supportedOs.includes(Deno.build.os)) {
   throw new Error(`unsupported os: ${Deno.build.os}`);
 }
@@ -56,25 +46,32 @@ denoWorkerPlug(
       };
     }
 
-    // we wan't to avoid adding libraries found by default at /lib
-    // to PATHs as they're just node_module sources
-    listLibPaths(env: ListBinPathsArgs): string[] {
-      return [];
-    }
-
     async listAll(_env: ListAllEnv) {
-      const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
-      const metadata = await metadataRequest.json() as { version: string }[];
-
-      const versions = metadata.map((v) => v.version);
-      // sort them numerically to make sure version 0.10.0 comes after 0.2.9
-      return versions.sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true })
+      const metadataRequest = await fetch(
+        `https://registry.npmjs.org/@pnpm/exe`,
+        {
+          headers: {
+            // use abbreviated registry info which's still 500kb unzipped
+            "Accept": "application/vnd.npm.install-v1+json",
+          },
+        },
       );
+      const metadata = await metadataRequest.json() as {
+        versions: Record<string, unknown>;
+      };
+
+      const versions = Object.keys(metadata.versions);
+      return versions;
     }
 
     async download(args: DownloadArgs) {
-      await downloadFile(args, artifactUrl(args.installVersion, args.platform));
+      await downloadFile(
+        args,
+        artifactUrl(args.installVersion, args.platform),
+        {
+          mode: 0o700,
+        },
+      );
     }
 
     async install(args: InstallArgs) {
@@ -82,29 +79,25 @@ denoWorkerPlug(
         artifactUrl(args.installVersion, args.platform),
       );
       const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-      await workerSpawn([
-        depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
-        "xf",
-        fileDwnPath,
-        `--directory=${args.tmpDirPath}`,
-      ]);
 
       if (await std_fs.exists(args.installPath)) {
         await removeFile(args.installPath, { recursive: true });
       }
 
+      await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
       await std_fs.copy(
+        fileDwnPath,
         std_path.resolve(
-          args.tmpDirPath,
-          std_path.basename(fileDwnPath, ".tar.xz"),
+          args.installPath,
+          "bin",
+          args.platform.os == "windows" ? "pnpm.exe" : "pnpm",
         ),
-        args.installPath,
       );
     }
   }(),
 );
 
-// node distribute archives that contain the binary, ecma source for npm/npmx/corepack, include source files and more
+// pnpm distribute an executable directly
 function artifactUrl(installVersion: string, platform: PlatformInfo) {
   let arch;
   let os;
@@ -120,14 +113,16 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
   }
   switch (platform.os) {
     case "linux":
-      os = "linux";
+      os = "linuxstatic";
       break;
     case "darwin":
-      os = "darwin";
+      os = "macos";
       break;
+    case "windows":
+      os = "win";
+      return `https://github.com/pnpm/pnpm/releases/download/v${installVersion}/pnpm-${os}-${arch}.exe`;
     default:
       throw new Error(`unsupported os: ${platform.arch}`);
   }
-  return `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.tar.xz`;
-  // NOTE: we use xz archives which are smaller than gz archives
+  return `https://github.com/pnpm/pnpm/releases/download/v${installVersion}/pnpm-${os}-${arch}`;
 }

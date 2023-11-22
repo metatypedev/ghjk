@@ -58,7 +58,7 @@ export async function spawn(
   }
   const { code, success } = await child.status;
   if (!success) {
-    throw Error(`child failed with code ${code}`);
+    throw new Error(`child failed with code ${code}`);
   }
 }
 

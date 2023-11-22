@@ -64,7 +64,7 @@ function runCliShim(
     for (const depId of secureConfig.allowedPluginDeps) {
       const regPlug = std_plugs.map.get(depId.id);
       if (!regPlug) {
-        throw Error(
+        throw new Error(
           `unrecognized dep "${depId.id}" found in "allowedPluginDeps"`,
         );
       }

@@ -1,4 +1,5 @@
 export * from "./types.ts";
+export { default as validators } from "./validators.ts";
 import { semver } from "../deps/common.ts";
 import type {
   AmbientAccessPlugManifest,
@@ -44,7 +45,7 @@ export function registerPlug(
       conflict.conflictResolution == "override" &&
       manifest.conflictResolution == "override"
     ) {
-      throw Error(
+      throw new Error(
         `Two instances of plugin "${manifest.name}" found with ` +
           `both set to "${manifest.conflictResolution}" conflictResolution"`,
       );
@@ -66,7 +67,7 @@ export function registerPlug(
         semver.parse(conflict.version),
       ) == 0
     ) {
-      throw Error(
+      throw new Error(
         `Two instances of the plug "${manifest.name}" found with an identical version` +
           `and both set to "deferToNewer" conflictResolution.`,
       );
@@ -98,7 +99,7 @@ export function addInstall(
   config: InstallConfig,
 ) {
   if (!cx.plugs.has(config.plugName)) {
-    throw Error(
+    throw new Error(
       `unrecognized plug "${config.plugName}" specified by install ${
         JSON.stringify(config)
       }`,

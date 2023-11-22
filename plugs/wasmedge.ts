@@ -30,12 +30,14 @@ const manifest = {
   ],
 };
 
-// FIXME: improve multi platform support story
-if (Deno.build.os != "darwin" && Deno.build.os != "linux") {
-  throw Error(`unsupported os: ${Deno.build.os}`);
+const supportedOs = ["linux", "darwin"];
+if (!supportedOs.includes(Deno.build.os)) {
+  throw new Error(`unsupported os: ${Deno.build.os}`);
 }
 
 registerDenoPlugGlobal(manifest);
+
+// TODO: wasmedge extension and plugin support
 /*
 const supportedExtensions = ["tensorflow" as const, "image" as const];
 
@@ -131,7 +133,7 @@ denoWorkerPlug(
           std_fs.expandGlob(std_path.joinGlobs([args.tmpDirPath, "*"])),
         );
       if (dirs.length != 1 || !dirs[0].isDirectory) {
-        throw Error("unexpected archive contents");
+        throw new Error("unexpected archive contents");
       }
       await std_fs.copy(
         dirs[0].path,
@@ -152,7 +154,7 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
         arch = "arm64";
         break;
       default:
-        throw Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported arch: ${platform.arch}`);
     }
     return `${repoAddress}/releases/download/${installVersion}/WasmEdge-${installVersion}-${platform.os}_${arch}.tar.gz`;
   } else if (platform.os == "linux") {
@@ -168,11 +170,11 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
         arch = "aarch64"; // NOTE: arch is different from darwin releases
         break;
       default:
-        throw Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported arch: ${platform.arch}`);
     }
     // NOTE: xz archives are available for linux downloads
     return `${repoAddress}/releases/download/${installVersion}/WasmEdge-${installVersion}-${os}_${arch}.tar.xz`;
   } else {
-    throw Error(`unsupported os: ${platform.os}`);
+    throw new Error(`unsupported os: ${platform.os}`);
   }
 }

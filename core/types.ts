@@ -111,7 +111,7 @@ export abstract class Plug {
       );
       const allVers = await this.listAll(env);
       if (allVers.length == 0) {
-        throw Error("no versions found");
+        throw new Error("no versions found");
       }
       return allVers[allVers.length - 1];
     })();

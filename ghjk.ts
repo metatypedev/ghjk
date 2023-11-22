@@ -16,7 +16,8 @@ await run();
 export { ghjk } from "./mod.ts";
 import node from "./plugs/node.ts";
 import wasmedge from "./plugs/wasmedge.ts";
+import pnpm from "./plugs/pnpm.ts";
 
-node({});
-
-wasmedge({});
+// node({});
+// wasmedge({});
+pnpm({});

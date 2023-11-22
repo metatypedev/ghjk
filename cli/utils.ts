@@ -23,5 +23,5 @@ export const AVAIL_CONCURRENCY = Number.parseInt(
 );
 
 if (Number.isNaN(AVAIL_CONCURRENCY)) {
-  throw Error(`Value of DENO_JOBS is NAN: ${Deno.env.get("DENO_JOBS")}`);
+  throw new Error(`Value of DENO_JOBS is NAN: ${Deno.env.get("DENO_JOBS")}`);
 }
