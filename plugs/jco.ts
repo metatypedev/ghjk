@@ -4,11 +4,11 @@ import {
   InstallArgs,
   ListAllEnv,
   ListBinPathsArgs,
-  Plug,
+  PlugBase,
 } from "../plug.ts";
 
 export function jco() {
-  return new class extends Plug {
+  return new class extends PlugBase {
     name = "jco";
     dependencies = ["node"];
 

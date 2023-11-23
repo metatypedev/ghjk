@@ -1,15 +1,15 @@
 import {
   addInstallGlobal,
-  denoWorkerPlug,
   depBinShimPath,
   DownloadArgs,
   downloadFile,
   ExecEnvArgs,
+  initDenoWorkerPlug,
   InstallArgs,
   type InstallConfigBase,
   ListAllEnv,
   type PlatformInfo,
-  Plug,
+  PlugBase,
   registerDenoPlugGlobal,
   removeFile,
   spawnOutput,
@@ -30,12 +30,7 @@ const manifest = {
   ],
 };
 
-const supportedOs = ["linux", "darwin"];
-if (!supportedOs.includes(Deno.build.os)) {
-  throw new Error(`unsupported os: ${Deno.build.os}`);
-}
-
-registerDenoPlugGlobal(manifest);
+registerDenoPlugGlobal(manifest, () => new Plug());
 
 // TODO: wasmedge extension and plugin support
 /*
@@ -60,7 +55,7 @@ const supportedPlugins = [
   "wasmedge_bpf" as const,
 ];
  */
-export default function wasmedge(config: InstallConfigBase = {}) {
+export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
     plugName: manifest.name,
     ...config,
@@ -68,80 +63,77 @@ export default function wasmedge(config: InstallConfigBase = {}) {
 }
 
 const repoAddress = "https://github.com/WasmEdge/WasmEdge";
+export class Plug extends PlugBase {
+  manifest = manifest;
 
-denoWorkerPlug(
-  new class extends Plug {
-    manifest = manifest;
+  execEnv(args: ExecEnvArgs) {
+    return {
+      WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
+    };
+  }
 
-    execEnv(args: ExecEnvArgs) {
-      return {
-        WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
-      };
+  listLibPaths(): string[] {
+    return ["lib*/*"];
+  }
+
+  async listAll(args: ListAllEnv) {
+    const fullOut = await spawnOutput([
+      depBinShimPath(std_plugs.git_aa, "git", args.depShims),
+      "ls-remote",
+      "--refs",
+      "--tags",
+      repoAddress,
+    ]);
+
+    return fullOut
+      .split("\n")
+      .filter((str) => str.length > 0)
+      .map((line) => line.split("/")[2])
+      // filter out tags that aren't wasmedge versions
+      .filter((str) => str.match(/^\d+\.\d+\.\d+/))
+      // append X to versions with weird strings like 0.10.1-rc or 0.10.1-alpha
+      // to make sure they get sorted before the clean releases
+      .map((ver) => ver.match(/-/) ? ver : `${ver}X`)
+      // sort them numerically to make sure version 0.10.0 comes after 0.2.9
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      // get rid of the X we appended
+      .map((ver) => ver.replace(/X$/, ""));
+  }
+
+  async download(args: DownloadArgs) {
+    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  }
+
+  async install(args: InstallArgs) {
+    const fileName = std_url.basename(
+      downloadUrl(args.installVersion, args.platform),
+    );
+    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
+    await workerSpawn([
+      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      "xf",
+      fileDwnPath,
+      `--directory=${args.tmpDirPath}`,
+    ]);
+
+    if (await std_fs.exists(args.installPath)) {
+      await removeFile(args.installPath, { recursive: true });
     }
 
-    listLibPaths(): string[] {
-      return ["lib*/*"];
-    }
-
-    async listAll(args: ListAllEnv) {
-      const fullOut = await spawnOutput([
-        depBinShimPath(std_plugs.git_aa, "git", args.depShims),
-        "ls-remote",
-        "--refs",
-        "--tags",
-        repoAddress,
-      ]);
-
-      return fullOut
-        .split("\n")
-        .filter((str) => str.length > 0)
-        .map((line) => line.split("/")[2])
-        // filter out tags that aren't wasmedge versions
-        .filter((str) => str.match(/^\d+\.\d+\.\d+/))
-        // append X to versions with weird strings like 0.10.1-rc or 0.10.1-alpha
-        // to make sure they get sorted before the clean releases
-        .map((ver) => ver.match(/-/) ? ver : `${ver}X`)
-        // sort them numerically to make sure version 0.10.0 comes after 0.2.9
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-        // get rid of the X we appended
-        .map((ver) => ver.replace(/X$/, ""));
-    }
-
-    async download(args: DownloadArgs) {
-      await downloadFile(args, downloadUrl(args.installVersion, args.platform));
-    }
-
-    async install(args: InstallArgs) {
-      const fileName = std_url.basename(
-        downloadUrl(args.installVersion, args.platform),
+    const dirs = await Array
+      .fromAsync(
+        std_fs.expandGlob(std_path.joinGlobs([args.tmpDirPath, "*"])),
       );
-      const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-
-      await workerSpawn([
-        depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
-        "xf",
-        fileDwnPath,
-        `--directory=${args.tmpDirPath}`,
-      ]);
-
-      if (await std_fs.exists(args.installPath)) {
-        await removeFile(args.installPath, { recursive: true });
-      }
-
-      const dirs = await Array
-        .fromAsync(
-          std_fs.expandGlob(std_path.joinGlobs([args.tmpDirPath, "*"])),
-        );
-      if (dirs.length != 1 || !dirs[0].isDirectory) {
-        throw new Error("unexpected archive contents");
-      }
-      await std_fs.copy(
-        dirs[0].path,
-        args.installPath,
-      );
+    if (dirs.length != 1 || !dirs[0].isDirectory) {
+      throw new Error("unexpected archive contents");
     }
-  }(),
-);
+    await std_fs.copy(
+      dirs[0].path,
+      args.installPath,
+    );
+  }
+}
 
 function downloadUrl(installVersion: string, platform: PlatformInfo) {
   if (platform.os == "darwin") {

@@ -66,12 +66,11 @@ export class SyncCommand extends Command {
 
 export async function sync(cx: GhjkCtx) {
   const config = await findConfig(Deno.cwd());
-  logger().debug(config);
-  console.log(config);
   if (!config) {
     logger().error("ghjk did not find any `ghjk.ts` config.");
     return;
   }
+  logger().debug("syncnig", config);
 
   const envDir = envDirFromConfig(config);
   logger().debug({ envDir });

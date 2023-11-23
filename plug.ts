@@ -6,19 +6,20 @@ import {
   type DownloadArgs,
   type GhjkConfig,
   type InstallConfig,
+  type PlugBase,
   type PlugDep,
   registerAmbientPlug,
   registerDenoPlug,
 } from "./core/mod.ts";
 import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
-import { isWorker } from "./core/worker.ts";
+import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
 import logger from "./core/logger.ts";
 
 export * from "./core/mod.ts";
 export * from "./core/utils.ts";
 export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
-export { denoWorkerPlug, isWorker, workerSpawn } from "./core/worker.ts";
+export { initDenoWorkerPlug, isWorker, workerSpawn } from "./core/worker.ts";
 export type * from "./core/mod.ts";
 
 if (isWorker()) {
@@ -42,7 +43,6 @@ if (isWorker()) {
     },
 
     loggers: {
-      // configure default logger available via short-hand methods above.
       default: {
         level: "DEBUG",
         handlers: ["console"],
@@ -67,12 +67,15 @@ declare global {
   }
 }
 
-export function registerDenoPlugGlobal(
+export function registerDenoPlugGlobal<P extends PlugBase>(
   manifestUnclean: DenoWorkerPlugManifest,
+  plugInit: () => P,
 ) {
   if (self.ghjk) {
-    if (isWorker()) throw new Error("impossible");
+    if (isWorker()) throw new Error("literally impossible!");
     registerDenoPlug(self.ghjk, manifestUnclean);
+  } else {
+    initDenoWorkerPlug(plugInit);
   }
 }
 

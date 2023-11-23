@@ -1,5 +1,34 @@
 import { spawn } from "../core/utils.ts";
-// import node from "../plugs/node.ts";
+import { log } from "../deps/dev.ts";
+
+log.setup({
+  handlers: {
+    console: new log.handlers.ConsoleHandler("DEBUG", {
+      formatter: (lr) => {
+        let msg = `[${lr.levelName} ${lr.loggerName}] ${lr.msg}`;
+
+        lr.args.forEach((arg, _index) => {
+          msg += `, ${JSON.stringify(arg)}`;
+        });
+
+        return msg;
+      },
+      // formatter: "[{loggerName}] - {levelName} {msg}",
+    }),
+  },
+
+  loggers: {
+    // configure default logger available via short-hand methods above.
+    default: {
+      level: "DEBUG",
+      handlers: ["console"],
+    },
+    ghjk: {
+      level: "DEBUG",
+      handlers: ["console"],
+    },
+  },
+});
 
 type TestCase = {
   name: string;
@@ -50,15 +79,13 @@ await (${confFn.toString()})()`;
         ...dockerCmd,
         "run",
         "--rm",
-        "-v",
-        ".:/ghjk:ro",
         ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
           .flat(),
         tag,
         "bash",
         "-c",
         "-i",
-        ...ePoint.split(/\s/),
+        ePoint,
       ], { env });
       await spawn([
         ...dockerCmd,
@@ -69,25 +96,51 @@ await (${confFn.toString()})()`;
   }
 }
 
-await dockerTest([{
-  name: "pnpm",
-  imports: `import pnpm from "$ghjk/plugs/pnpm.ts"`,
-  confFn: `async () => {
-    pnpm({ });
+// order tests by download size to make failed runs less expensive
+await dockerTest([
+  // 7 megs
+  {
+    name: "cargo-binstall",
+    imports: `import plug from "$ghjk/plugs/cargo-binstall.ts"`,
+    confFn: `async () => {
+    plug({ });
   }`,
-  ePoint: ` --version`,
-}, {
-  name: "wasmedge",
-  imports: `import wasmedge from "$ghjk/plugs/wasmedge.ts"`,
-  confFn: `async () => {
-    wasmedge({ });
+    ePoint: `cargo-binstall -V`,
+  },
+  // 7 megs
+  {
+    name: "wasm-tools",
+    imports: `import plug from "$ghjk/plugs/wasm-tools.ts"`,
+    confFn: `async () => {
+    plug({ });
   }`,
-  ePoint: `wasmedge --version`,
-}, {
-  name: "node",
-  imports: `import node from "$ghjk/plugs/node.ts"`,
-  confFn: `async () => {
-    node({ });
+    ePoint: `wasm-tools -V`,
+  },
+  // 16 megs
+  {
+    name: "wasmedge",
+    imports: `import plug from "$ghjk/plugs/wasmedge.ts"`,
+    confFn: `async () => {
+    plug({ });
   }`,
-  ePoint: ` --version`,
-}]);
+    ePoint: `wasmedge --version`,
+  },
+  // 56 megs
+  {
+    name: "pnpm",
+    imports: `import plug from "$ghjk/plugs/pnpm.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `pnpm --version`,
+  },
+  // 25 megs
+  {
+    name: "node",
+    imports: `import plug from "$ghjk/plugs/node.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `node --version`,
+  },
+]);

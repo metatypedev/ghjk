@@ -1,7 +1,7 @@
 //! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
 //! avoid importing elsewhere at it has side-effects.
 
-import { log } from "./deps/common.ts";
+import "./setup_globals.ts";
 
 import { type GhjkConfig } from "./core/mod.ts";
 // this is only a shortcut for the cli
@@ -19,40 +19,6 @@ declare global {
     ghjk: GhjkConfig;
   }
 }
-
-self.ghjk = {
-  plugs: new Map(),
-  installs: [],
-};
-
-log.setup({
-  handlers: {
-    console: new log.handlers.ConsoleHandler("DEBUG", {
-      formatter: (lr) => {
-        let msg = `[${lr.levelName} ${lr.loggerName}] ${lr.msg}`;
-
-        lr.args.forEach((arg, _index) => {
-          msg += `, ${JSON.stringify(arg)}`;
-        });
-
-        return msg;
-      },
-      // formatter: "[{loggerName}] - {levelName} {msg}",
-    }),
-  },
-
-  loggers: {
-    // configure default logger available via short-hand methods above.
-    default: {
-      level: "DEBUG",
-      handlers: ["console"],
-    },
-    ghjk: {
-      level: "DEBUG",
-      handlers: ["console"],
-    },
-  },
-});
 
 function runCliShim(
   args: string[],

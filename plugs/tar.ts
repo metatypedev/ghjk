@@ -14,7 +14,7 @@ export const manifest: AmbientAccessPlugManifest = {
 };
 
 registerAmbientPlugGlobal(manifest);
-export default function tar() {
+export default function install() {
   addInstallGlobal({
     plugName: manifest.name,
   });

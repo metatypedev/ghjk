@@ -71,7 +71,7 @@ export type GhjkCtx = GhjkConfig & {
   allowedDeps: RegisteredPlugs;
 };
 
-export abstract class Plug {
+export abstract class PlugBase {
   abstract manifest: PlugManifest;
 
   execEnv(

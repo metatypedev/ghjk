@@ -1,6 +1,5 @@
 import {
   addInstallGlobal,
-  denoWorkerPlug,
   depBinShimPath,
   DownloadArgs,
   downloadFile,
@@ -9,12 +8,10 @@ import {
   type InstallConfigBase,
   ListAllEnv,
   ListBinPathsArgs,
-  logger,
   type PlatformInfo,
-  Plug,
+  PlugBase,
   registerDenoPlugGlobal,
   removeFile,
-  spawnOutput,
   std_fs,
   std_path,
   std_url,
@@ -22,7 +19,8 @@ import {
 } from "../plug.ts";
 import * as std_plugs from "../std.ts";
 
-const manifest = {
+// TODO: sanity check exports of all plugs
+export const manifest = {
   name: "node",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
@@ -31,78 +29,71 @@ const manifest = {
   ],
 };
 
+registerDenoPlugGlobal(manifest, () => new Plug());
+
 // FIXME: improve multi platform support story
-const supportedOs = ["linux", "darwin"];
-if (!supportedOs.includes(Deno.build.os)) {
-  throw new Error(`unsupported os: ${Deno.build.os}`);
-}
-
-registerDenoPlugGlobal(manifest);
-
-export default function node({ version }: InstallConfigBase = {}) {
+export default function install({ version }: InstallConfigBase = {}) {
   addInstallGlobal({
     plugName: manifest.name,
     version,
   });
 }
 
-denoWorkerPlug(
-  new class extends Plug {
-    manifest = manifest;
+export class Plug extends PlugBase {
+  manifest = manifest;
 
-    execEnv(args: ExecEnvArgs) {
-      return {
-        NODE_PATH: args.installPath,
-      };
+  execEnv(args: ExecEnvArgs) {
+    return {
+      NODE_PATH: args.installPath,
+    };
+  }
+
+  // we wan't to avoid adding libraries found by default at /lib
+  // to PATHs as they're just node_module sources
+  listLibPaths(env: ListBinPathsArgs): string[] {
+    return [];
+  }
+
+  async listAll(_env: ListAllEnv) {
+    const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
+    const metadata = await metadataRequest.json() as { version: string }[];
+
+    const versions = metadata.map((v) => v.version);
+    // sort them numerically to make sure version 0.10.0 comes after 0.2.9
+    return versions.sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+  }
+
+  async download(args: DownloadArgs) {
+    await downloadFile(args, artifactUrl(args.installVersion, args.platform));
+  }
+
+  async install(args: InstallArgs) {
+    const fileName = std_url.basename(
+      artifactUrl(args.installVersion, args.platform),
+    );
+    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+    await workerSpawn([
+      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      "xf",
+      fileDwnPath,
+      `--directory=${args.tmpDirPath}`,
+    ]);
+
+    if (await std_fs.exists(args.installPath)) {
+      await removeFile(args.installPath, { recursive: true });
     }
 
-    // we wan't to avoid adding libraries found by default at /lib
-    // to PATHs as they're just node_module sources
-    listLibPaths(env: ListBinPathsArgs): string[] {
-      return [];
-    }
-
-    async listAll(_env: ListAllEnv) {
-      const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
-      const metadata = await metadataRequest.json() as { version: string }[];
-
-      const versions = metadata.map((v) => v.version);
-      // sort them numerically to make sure version 0.10.0 comes after 0.2.9
-      return versions.sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true })
-      );
-    }
-
-    async download(args: DownloadArgs) {
-      await downloadFile(args, artifactUrl(args.installVersion, args.platform));
-    }
-
-    async install(args: InstallArgs) {
-      const fileName = std_url.basename(
-        artifactUrl(args.installVersion, args.platform),
-      );
-      const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-      await workerSpawn([
-        depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
-        "xf",
-        fileDwnPath,
-        `--directory=${args.tmpDirPath}`,
-      ]);
-
-      if (await std_fs.exists(args.installPath)) {
-        await removeFile(args.installPath, { recursive: true });
-      }
-
-      await std_fs.copy(
-        std_path.resolve(
-          args.tmpDirPath,
-          std_path.basename(fileDwnPath, ".tar.xz"),
-        ),
-        args.installPath,
-      );
-    }
-  }(),
-);
+    await std_fs.copy(
+      std_path.resolve(
+        args.tmpDirPath,
+        std_path.basename(fileDwnPath, ".tar.xz"),
+      ),
+      args.installPath,
+    );
+  }
+}
 
 // node distribute archives that contain the binary, ecma source for npm/npmx/corepack, include source files and more
 function artifactUrl(installVersion: string, platform: PlatformInfo) {

@@ -1,14 +1,12 @@
 import {
   addInstallGlobal,
-  denoWorkerPlug,
   DownloadArgs,
   downloadFile,
-  ExecEnvArgs,
   InstallArgs,
   type InstallConfigBase,
   ListAllEnv,
   type PlatformInfo,
-  Plug,
+  PlugBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
@@ -21,81 +19,67 @@ const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
+registerDenoPlugGlobal(manifest, () => new Plug());
 
-const supportedOs = ["linux", "darwin", "win"];
-if (!supportedOs.includes(Deno.build.os)) {
-  throw new Error(`unsupported os: ${Deno.build.os}`);
-}
-
-registerDenoPlugGlobal(manifest);
-
-export default function node({ version }: InstallConfigBase = {}) {
+export default function install({ version }: InstallConfigBase = {}) {
   addInstallGlobal({
     plugName: manifest.name,
     version,
   });
 }
 
-denoWorkerPlug(
-  new class extends Plug {
-    manifest = manifest;
+class Plug extends PlugBase {
+  manifest = manifest;
 
-    execEnv(args: ExecEnvArgs) {
-      return {
-        NODE_PATH: args.installPath,
-      };
-    }
-
-    async listAll(_env: ListAllEnv) {
-      const metadataRequest = await fetch(
-        `https://registry.npmjs.org/@pnpm/exe`,
-        {
-          headers: {
-            // use abbreviated registry info which's still 500kb unzipped
-            "Accept": "application/vnd.npm.install-v1+json",
-          },
+  async listAll(_env: ListAllEnv) {
+    const metadataRequest = await fetch(
+      `https://registry.npmjs.org/@pnpm/exe`,
+      {
+        headers: {
+          // use abbreviated registry info which's still 500kb unzipped
+          "Accept": "application/vnd.npm.install-v1+json",
         },
-      );
-      const metadata = await metadataRequest.json() as {
-        versions: Record<string, unknown>;
-      };
+      },
+    );
+    const metadata = await metadataRequest.json() as {
+      versions: Record<string, unknown>;
+    };
 
-      const versions = Object.keys(metadata.versions);
-      return versions;
+    const versions = Object.keys(metadata.versions);
+    return versions;
+  }
+
+  async download(args: DownloadArgs) {
+    await downloadFile(
+      args,
+      artifactUrl(args.installVersion, args.platform),
+      {
+        mode: 0o700,
+      },
+    );
+  }
+
+  async install(args: InstallArgs) {
+    const fileName = std_url.basename(
+      artifactUrl(args.installVersion, args.platform),
+    );
+    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
+    if (await std_fs.exists(args.installPath)) {
+      await removeFile(args.installPath, { recursive: true });
     }
 
-    async download(args: DownloadArgs) {
-      await downloadFile(
-        args,
-        artifactUrl(args.installVersion, args.platform),
-        {
-          mode: 0o700,
-        },
-      );
-    }
-
-    async install(args: InstallArgs) {
-      const fileName = std_url.basename(
-        artifactUrl(args.installVersion, args.platform),
-      );
-      const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-
-      if (await std_fs.exists(args.installPath)) {
-        await removeFile(args.installPath, { recursive: true });
-      }
-
-      await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
-      await std_fs.copy(
-        fileDwnPath,
-        std_path.resolve(
-          args.installPath,
-          "bin",
-          args.platform.os == "windows" ? "pnpm.exe" : "pnpm",
-        ),
-      );
-    }
-  }(),
-);
+    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
+    await std_fs.copy(
+      fileDwnPath,
+      std_path.resolve(
+        args.installPath,
+        "bin",
+        args.platform.os == "windows" ? "pnpm.exe" : "pnpm",
+      ),
+    );
+  }
+}
 
 // pnpm distribute an executable directly
 function artifactUrl(installVersion: string, platform: PlatformInfo) {

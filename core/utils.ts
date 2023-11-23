@@ -17,10 +17,11 @@ export type SpawnOptions = {
   cwd?: string;
   env?: Record<string, string>;
   pipeInput?: string;
-  pipeOut?: WritableStream<Uint8Array>;
-  pipeErr?: WritableStream<Uint8Array>;
+  // pipeOut?: WritableStream<Uint8Array>;
+  // pipeErr?: WritableStream<Uint8Array>;
 };
 
+// FIXME: pita function responsible for test flakiness
 export async function spawn(
   cmd: string[],
   options: SpawnOptions = {},
@@ -32,8 +33,8 @@ export async function spawn(
   const child = new Deno.Command(cmd[0], {
     args: cmd.slice(1),
     cwd,
-    stdout: "piped",
-    stderr: "piped",
+    // stdout: "piped",
+    // stderr: "piped",
     ...(pipeInput
       ? {
         stdin: "piped",
@@ -43,12 +44,12 @@ export async function spawn(
   }).spawn();
 
   // keep pipe asynchronous till the command exists
-  void child.stdout.pipeTo(options.pipeOut ?? Deno.stdout.writable, {
-    preventClose: true,
-  });
-  void child.stderr.pipeTo(options.pipeErr ?? Deno.stderr.writable, {
-    preventClose: true,
-  });
+  // void child.stdout.pipeTo(options.pipeOut ?? Deno.stdout.writable, {
+  //   preventClose: true,
+  // });
+  // void child.stderr.pipeTo(options.pipeErr ?? Deno.stderr.writable, {
+  //   preventClose: true,
+  // });
 
   if (pipeInput) {
     const writer = child.stdin.getWriter();

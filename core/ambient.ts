@@ -4,11 +4,11 @@ import {
   type InstallArgs,
   type ListAllEnv,
   type ListBinPathsArgs,
-  Plug,
+  PlugBase,
 } from "./types.ts";
 import { ChildError, spawnOutput } from "./utils.ts";
 
-export class AmbientAccessPlug extends Plug {
+export class AmbientAccessPlug extends PlugBase {
   constructor(public manifest: AmbientAccessPlugManifest) {
     super();
     if (manifest.deps && manifest.deps.length > 0) {

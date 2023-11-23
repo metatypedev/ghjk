@@ -15,9 +15,13 @@ await run();
 
 export { ghjk } from "./mod.ts";
 import node from "./plugs/node.ts";
-import wasmedge from "./plugs/wasmedge.ts";
+import install from "./plugs/wasmedge.ts";
 import pnpm from "./plugs/pnpm.ts";
+import cargo_binstall from "./plugs/cargo-binstall.ts";
+import wasm_tools from "./plugs/wasm-tools.ts";
 
 // node({});
 // wasmedge({});
-pnpm({});
+// pnpm({});
+// cargo_binstall({});
+wasm_tools({});
