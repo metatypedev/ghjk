@@ -66,7 +66,7 @@ and looks as follows (abstracting away some implementation details):
 
 ## todo
 
-- multiple version of the same package (e.g. rust stable and rust nighted)
+- multiple version of the same package (e.g. rust stable and rust nightly)
 - wasmedge
 - python with virtual env dir
 - poetry
