@@ -19,9 +19,13 @@ import install from "./plugs/wasmedge.ts";
 import pnpm from "./plugs/pnpm.ts";
 import cargo_binstall from "./plugs/cargo-binstall.ts";
 import wasm_tools from "./plugs/wasm-tools.ts";
+import wasm_opt from "./plugs/wasm-opt.ts";
+import cargo_insta from "./plugs/cargo-insta.ts";
 
 // node({});
 // wasmedge({});
 // pnpm({});
 // cargo_binstall({});
-wasm_tools({});
+// wasm_tools({});
+wasm_opt({});
+cargo_insta({});

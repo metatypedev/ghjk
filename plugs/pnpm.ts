@@ -15,7 +15,7 @@ import {
 } from "../plug.ts";
 
 const manifest = {
-  name: "pnpm",
+  name: "pnpm@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };

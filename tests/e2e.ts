@@ -109,6 +109,15 @@ await dockerTest([
   },
   // 7 megs
   {
+    name: "cargo-insta",
+    imports: `import plug from "$ghjk/plugs/cargo-insta.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `cargo-insta -V`,
+  },
+  // 13 megs
+  {
     name: "wasm-tools",
     imports: `import plug from "$ghjk/plugs/wasm-tools.ts"`,
     confFn: `async () => {
@@ -124,6 +133,15 @@ await dockerTest([
     plug({ });
   }`,
     ePoint: `wasmedge --version`,
+  },
+  // 22 megs
+  {
+    name: "wasm-opt",
+    imports: `import plug from "$ghjk/plugs/wasm-opt.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `wasm-opt --version`,
   },
   // 56 megs
   {

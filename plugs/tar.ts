@@ -5,7 +5,7 @@ import {
 } from "../plug.ts";
 
 export const manifest: AmbientAccessPlugManifest = {
-  name: "tar_aa",
+  name: "tar@aa",
   version: "0.1.0",
   execName: "tar",
   versionExtractFlag: "--version",

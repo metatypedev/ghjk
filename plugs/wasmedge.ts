@@ -21,7 +21,7 @@ import {
 import * as std_plugs from "../std.ts";
 
 const manifest = {
-  name: "wasmedge",
+  name: "wasmedge@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [

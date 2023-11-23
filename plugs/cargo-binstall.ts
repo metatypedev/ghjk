@@ -19,11 +19,11 @@ import {
 // import * as std_plugs from "../std.ts";
 
 const tar_aa_id = {
-  id: "tar_aa",
+  id: "tar@aa",
 };
 
 export const manifest = {
-  name: "cargo-binstall",
+  name: "cargo-binstall@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [tar_aa_id],

@@ -21,7 +21,7 @@ import * as std_plugs from "../std.ts";
 
 // TODO: sanity check exports of all plugs
 export const manifest = {
-  name: "node",
+  name: "node@org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [

@@ -5,7 +5,7 @@ import {
 } from "../plug.ts";
 
 export const manifest: AmbientAccessPlugManifest = {
-  name: "git_aa",
+  name: "git@aa",
   version: "0.1.0",
   execName: "git",
   versionExtractFlag: "--version",

@@ -15,7 +15,7 @@ import {
 import * as std_plugs from "../std.ts";
 
 const manifest = {
-  name: "wasm-tools@cbinst",
+  name: "wasm-opt@cbinst",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
@@ -37,7 +37,7 @@ export class Plug extends PlugBase {
 
   async listAll() {
     const metadataRequest = await fetch(
-      `https://index.crates.io/wa/sm/wasm-tools`,
+      `https://index.crates.io/wa/sm/wasm-opt`,
     );
     const metadataText = await metadataRequest.text();
     const versions = metadataText
@@ -52,7 +52,7 @@ export class Plug extends PlugBase {
   }
 
   async download(args: DownloadArgs) {
-    const fileName = "wasm-tools";
+    const fileName = "wasm-opt";
     if (
       await std_fs.exists(std_path.resolve(args.downloadPath, fileName))
     ) {
@@ -63,7 +63,7 @@ export class Plug extends PlugBase {
     }
     await workerSpawn([
       depBinShimPath(std_plugs.cbin_deno, "cargo-binstall", args.depShims),
-      "wasm-tools",
+      "wasm-opt",
       `--version`,
       args.installVersion,
       `--install-path`,
