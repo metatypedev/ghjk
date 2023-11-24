@@ -23,6 +23,7 @@ export * from "./core/utils.ts";
 export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
 export { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
+export * as asdf from "./core/asdf.ts";
 export type * from "./core/mod.ts";
 
 if (isWorker()) {

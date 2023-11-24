@@ -16,13 +16,15 @@ import {
 import * as std_plugs from "../std.ts";
 import { std_fs, std_path } from "../deps/common.ts";
 
+export const manifest = {
+  name: "asdf@asdf",
+  version: "0.1.0",
+  moduleSpecifier: import.meta.url,
+  deps: [std_plugs.tar_aa, std_plugs.git_aa],
+};
+
 export class AsdfPlug extends PlugBase {
-  manifest = {
-    name: "asdf@asdf",
-    version: "0.1.0",
-    moduleSpecifier: import.meta.url,
-    deps: [std_plugs.tar_aa, std_plugs.git_aa],
-  };
+  manifest = manifest;
   constructor(
     public pluginDir: string,
     public config: AsdfInstallConfigX,
