@@ -59,4 +59,3 @@ export const node_org = Object.freeze({
 export const pnpm_ghrel = Object.freeze({
   id: man_pnpm_ghrel.name,
 } as PlugDep);
-
