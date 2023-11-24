@@ -100,11 +100,11 @@ PROMPT_COMMAND+="set_hook_flag;"
   // the hook run before every prompt draw in fish
   "hooks/hook.fish": `
 function clean_up_paths
-    set --global --path PATH $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH)
-    set --global --path LIBRARY_PATH $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $LIBRARY_PATH)
-    set --global --path ${LD_LIBRARY_ENV} $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $${LD_LIBRARY_ENV})
-    set --global --path C_INCLUDE_PATH $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $C_INCLUDE_PATH)
-    set --global --path CPLUS_INCLUDE_PATH $(string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $CPLUS_INCLUDE_PATH)
+    set --global --path PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH)
+    set --global --path LIBRARY_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $LIBRARY_PATH)
+    set --global --path ${LD_LIBRARY_ENV} (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $${LD_LIBRARY_ENV})
+    set --global --path C_INCLUDE_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $C_INCLUDE_PATH)
+    set --global --path CPLUS_INCLUDE_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $CPLUS_INCLUDE_PATH)
 end
 
 function ghjk_hook --on-variable PWD
@@ -115,7 +115,7 @@ function ghjk_hook --on-variable PWD
     set --local cur_dir $PWD
     while test $cur_dir != "/"
         if test -e $cur_dir/ghjk.ts
-            set --local envDir $HOME/.local/share/ghjk/envs/$(string replace --all / . $cur_dir)
+            set --local envDir $HOME/.local/share/ghjk/envs/(string replace --all / . $cur_dir)
             if test -d $envDir
                 clean_up_paths
 

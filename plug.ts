@@ -95,6 +95,18 @@ export function addInstallGlobal(
   }
 }
 
+export function pathWithDepShims(
+  depShims: DepShims,
+) {
+  const set = new Set();
+  for (const [_, bins] of Object.entries(depShims)) {
+    for (const [_, binPath] of Object.entries(bins)) {
+      set.add(std_path.dirname(binPath));
+    }
+  }
+  return `${[...set.keys()].join(":")}:${Deno.env.get("PATH")}`;
+}
+
 export function depBinShimPath(
   dep: PlugDep,
   binName: string,

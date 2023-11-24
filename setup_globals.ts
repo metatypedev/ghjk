@@ -16,9 +16,10 @@ log.setup({
   handlers: {
     console: new log.handlers.ConsoleHandler("NOTSET", {
       formatter: (lr) => {
-        let msg = `[${lr.levelName}${
-          lr.loggerName ? " " + lr.loggerName : ""
-        }] ${lr.msg}`;
+        const loggerName = lr.loggerName == "default"
+          ? " " + lr.loggerName
+          : "";
+        let msg = `[${lr.levelName}${loggerName}] ${lr.msg}`;
 
         lr.args.forEach((arg, _index) => {
           msg += `, ${JSON.stringify(arg)}`;

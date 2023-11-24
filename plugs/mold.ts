@@ -3,7 +3,6 @@ import {
   depBinShimPath,
   DownloadArgs,
   downloadFile,
-  ExecEnvArgs,
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
@@ -18,7 +17,7 @@ import {
 import * as std_plugs from "../std.ts";
 
 const manifest = {
-  name: "wasmedge@ghrel",
+  name: "mold@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
@@ -28,29 +27,6 @@ const manifest = {
 
 registerDenoPlugGlobal(manifest, () => new Plug());
 
-// TODO: wasmedge extension and plugin support
-/*
-const supportedExtensions = ["tensorflow" as const, "image" as const];
-
-type DeArray<A> = A extends Array<infer T> ? T : A;
-
-type SupportedExtensions = DeArray<typeof supportedExtensions>;
-
-const supportedPlugins = [
-  "wasi_nn-openvino" as const,
-  "wasi_crypto" as const,
-  "wasi_nn-pytorch" as const,
-  "wasi_nn-tensorflowlite" as const,
-  "wasi_nn-ggml" as const,
-  "wasi_nn-ggml-cuda" as const,
-  "wasi_nn-ggml-cuda" as const,
-  "wasmedge_tensorflow" as const,
-  "wasmedge_tensorflowlite" as const,
-  "wasmedge_image" as const,
-  "wasmedge_rustls" as const,
-  "wasmedge_bpf" as const,
-];
- */
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
     plugName: manifest.name,
@@ -58,22 +34,12 @@ export default function install(config: InstallConfigBase = {}) {
   });
 }
 
-const repoOwner = "WasmEdge";
-const repoName = "WasmEdge";
+const repoOwner = "rui314";
+const repoName = "mold";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
 export class Plug extends PlugBase {
   manifest = manifest;
-
-  execEnv(args: ExecEnvArgs) {
-    return {
-      WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
-    };
-  }
-
-  listLibPaths(): string[] {
-    return ["lib*/*"];
-  }
 
   async latestStable(): Promise<string> {
     const metadataRequest = await fetch(
@@ -88,7 +54,6 @@ export class Plug extends PlugBase {
   }
 
   async listAll() {
-    // NOTE: this downloads a 1+ meg json
     const metadataRequest = await fetch(
       `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
     );
@@ -140,35 +105,21 @@ export class Plug extends PlugBase {
 }
 
 function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  if (platform.os == "darwin") {
+  if (platform.os == "linux") {
+    const os = "linux";
     let arch;
     switch (platform.arch) {
       case "x86_64":
         arch = "x86_64";
         break;
       case "aarch64":
-        arch = "arm64";
+        arch = "aarch64";
         break;
       default:
         throw new Error(`unsupported arch: ${platform.arch}`);
     }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${platform.os}_${arch}.tar.gz`;
-  } else if (platform.os == "linux") {
-    // TODO: support for ubuntu/debian versions
-    // we'll need a way to expose that to plugs
-    const os = "manylinux2014";
-    let arch;
-    switch (platform.arch) {
-      case "x86_64":
-        arch = "x86_64";
-        break;
-      case "aarch64":
-        arch = "aarch64"; // NOTE: arch is different from darwin releases
-        break;
-      default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
-    }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${os}_${arch}.tar.gz`;
+    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
+      }-${arch}-${os}.tar.gz`;
   } else {
     throw new Error(`unsupported os: ${platform.os}`);
   }

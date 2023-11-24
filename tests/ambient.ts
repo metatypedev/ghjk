@@ -1,3 +1,4 @@
+import "./setup_globals.ts";
 import { std_assert } from "../deps/dev.ts";
 import { AmbientAccessPlug } from "../core/ambient.ts";
 import { type AmbientAccessPlugManifest } from "../core/types.ts";

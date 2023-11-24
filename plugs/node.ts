@@ -7,7 +7,6 @@ import {
   InstallArgs,
   type InstallConfigBase,
   ListAllEnv,
-  ListBinPathsArgs,
   type PlatformInfo,
   PlugBase,
   registerDenoPlugGlobal,
@@ -17,7 +16,11 @@ import {
   std_url,
   workerSpawn,
 } from "../plug.ts";
-import * as std_plugs from "../std.ts";
+// import * as std_plugs from "../std.ts";
+
+const tar_aa_id = {
+  id: "tar@aa",
+};
 
 // TODO: sanity check exports of all plugs
 export const manifest = {
@@ -25,7 +28,7 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.tar_aa,
+    tar_aa_id,
   ],
 };
 
@@ -50,7 +53,7 @@ export class Plug extends PlugBase {
 
   // we wan't to avoid adding libraries found by default at /lib
   // to PATHs as they're just node_module sources
-  listLibPaths(env: ListBinPathsArgs): string[] {
+  listLibPaths(): string[] {
     return [];
   }
 
@@ -75,7 +78,7 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await workerSpawn([
-      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      depBinShimPath(tar_aa_id, "tar", args.depShims),
       "xf",
       fileDwnPath,
       `--directory=${args.tmpDirPath}`,
@@ -88,7 +91,7 @@ export class Plug extends PlugBase {
     await std_fs.copy(
       std_path.resolve(
         args.tmpDirPath,
-        std_path.basename(fileDwnPath, ".tar.xz"),
+        std_path.basename(fileDwnPath, ".tar.gz"),
       ),
       args.installPath,
     );
@@ -119,6 +122,5 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported os: ${platform.arch}`);
   }
-  return `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.tar.xz`;
-  // NOTE: we use xz archives which are smaller than gz archives
+  return `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.tar.gz`;
 }

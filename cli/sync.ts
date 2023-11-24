@@ -129,7 +129,12 @@ export async function sync(cx: GhjkCtx) {
       );
     }
 
-    const thisArtifacts = await doInstall(envDir, inst, regPlug, depShims);
+    let thisArtifacts;
+    try {
+      thisArtifacts = await doInstall(envDir, inst, regPlug, depShims);
+    } catch (err) {
+      throw new Error(`error installing ${installId}`, { cause: err });
+    }
     artifacts.set(installId, thisArtifacts);
     void Deno.remove(depShimsRootPath, { recursive: true });
 

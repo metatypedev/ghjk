@@ -19,7 +19,7 @@ const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.cbin_deno,
+    std_plugs.cbin_ghrel,
   ],
 };
 
@@ -62,7 +62,7 @@ export class Plug extends PlugBase {
       return;
     }
     await workerSpawn([
-      depBinShimPath(std_plugs.cbin_deno, "cargo-binstall", args.depShims),
+      depBinShimPath(std_plugs.cbin_ghrel, "cargo-binstall", args.depShims),
       "wasm-opt",
       `--version`,
       args.installVersion,

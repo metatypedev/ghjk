@@ -65,25 +65,36 @@ export async function spawn(
 
 export async function spawnOutput(
   cmd: string[],
-  options: Omit<SpawnOptions, "pipeOut" | "pipeErr"> = {},
+  options: Omit<SpawnOptions, "pipeOut" | "pipeErr" | "pipeInput"> = {},
 ): Promise<string> {
   const { cwd, env } = {
     ...options,
   };
-  const output = await new Deno.Command(cmd[0], {
+  logger().debug("spawning", cmd);
+  const child = new Deno.Command(cmd[0], {
     args: cmd.slice(1),
     cwd,
     stdout: "piped",
     stderr: "piped",
+    // ...(pipeInput
+    //   ? {
+    //     stdin: "piped",
+    //   }
+    //   : {}),
     env,
-  }).output();
+  }).spawn();
 
-  if (output.success) {
-    return new TextDecoder().decode(output.stdout);
+  // if (pipeInput) {
+  //   const writer = child.stdin.getWriter();
+  //   await writer.write(new TextEncoder().encode(pipeInput));
+  //   writer.releaseLock();
+  //   await child.stdin.close();
+  // }
+  const { code, success, stdout, stderr } = await child.output();
+  if (!success) {
+    throw new Error(
+      `child failed with code ${code} - ${new TextDecoder().decode(stderr)}`,
+    );
   }
-  throw new ChildError(
-    output.code,
-    new TextDecoder().decode(output.stdout) + "\n" +
-      new TextDecoder().decode(output.stderr),
-  );
+  return new TextDecoder().decode(stdout);
 }

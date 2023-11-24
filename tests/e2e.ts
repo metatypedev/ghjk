@@ -1,34 +1,5 @@
+import "./setup_globals.ts";
 import { spawn } from "../core/utils.ts";
-import { log } from "../deps/dev.ts";
-
-log.setup({
-  handlers: {
-    console: new log.handlers.ConsoleHandler("DEBUG", {
-      formatter: (lr) => {
-        let msg = `[${lr.levelName} ${lr.loggerName}] ${lr.msg}`;
-
-        lr.args.forEach((arg, _index) => {
-          msg += `, ${JSON.stringify(arg)}`;
-        });
-
-        return msg;
-      },
-      // formatter: "[{loggerName}] - {levelName} {msg}",
-    }),
-  },
-
-  loggers: {
-    // configure default logger available via short-hand methods above.
-    default: {
-      level: "DEBUG",
-      handlers: ["console"],
-    },
-    ghjk: {
-      level: "DEBUG",
-      handlers: ["console"],
-    },
-  },
-});
 
 type TestCase = {
   name: string;
@@ -58,7 +29,7 @@ async function dockerTest(cases: TestCase[]) {
         ...testEnvs,
       };
       const configFile = `export { ghjk } from "/ghjk/mod.ts";
-${imports.replaceAll("$ghjk", "/ghjk/")}
+${imports.replaceAll("$ghjk", "/ghjk")}
 
 await (${confFn.toString()})()`;
 
@@ -70,8 +41,12 @@ await (${confFn.toString()})()`;
         ...dockerCmd,
         "buildx",
         "build",
-        "-t",
+        "--tag",
         tag,
+        "--network=host",
+        // add to images list
+        "--output",
+        "type=docker",
         "-f-",
         ".",
       ], { env, pipeInput: dFile });
@@ -100,6 +75,15 @@ await (${confFn.toString()})()`;
 await dockerTest([
   // 7 megs
   {
+    name: "act",
+    imports: `import plug from "$ghjk/plugs/act.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `act --version`,
+  },
+  // 7 megs
+  {
     name: "cargo-binstall",
     imports: `import plug from "$ghjk/plugs/cargo-binstall.ts"`,
     confFn: `async () => {
@@ -107,23 +91,14 @@ await dockerTest([
   }`,
     ePoint: `cargo-binstall -V`,
   },
-  // 7 megs
+  // 8 megs
   {
-    name: "cargo-insta",
-    imports: `import plug from "$ghjk/plugs/cargo-insta.ts"`,
+    name: "mold",
+    imports: `import plug from "$ghjk/plugs/mold.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
-    ePoint: `cargo-insta -V`,
-  },
-  // 13 megs
-  {
-    name: "wasm-tools",
-    imports: `import plug from "$ghjk/plugs/wasm-tools.ts"`,
-    confFn: `async () => {
-    plug({ });
-  }`,
-    ePoint: `wasm-tools -V`,
+    ePoint: `mold -V`,
   },
   // 16 megs
   {
@@ -134,7 +109,34 @@ await dockerTest([
   }`,
     ePoint: `wasmedge --version`,
   },
-  // 22 megs
+  // cargo binstall +7 megs
+  {
+    name: "cargo-insta",
+    imports: `import plug from "$ghjk/plugs/cargo-insta.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `cargo-insta -V`,
+  },
+  // cargo binsatll 13 megs
+  {
+    name: "wasm-tools",
+    imports: `import plug from "$ghjk/plugs/wasm-tools.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `wasm-tools -V`,
+  },
+  // 25 megs
+  {
+    name: "node",
+    imports: `import plug from "$ghjk/plugs/node.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `node --version`,
+  },
+  // cargo-binstall + 22 megs
   {
     name: "wasm-opt",
     imports: `import plug from "$ghjk/plugs/wasm-opt.ts"`,
@@ -152,13 +154,13 @@ await dockerTest([
   }`,
     ePoint: `pnpm --version`,
   },
-  // 25 megs
+  // pnpm + more megs
   {
-    name: "node",
-    imports: `import plug from "$ghjk/plugs/node.ts"`,
+    name: "jco",
+    imports: `import plug from "$ghjk/plugs/jco.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
-    ePoint: `node --version`,
+    ePoint: `jco --version`,
   },
 ]);

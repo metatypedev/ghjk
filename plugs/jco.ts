@@ -1,70 +1,114 @@
 import {
+  addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
-  ExecEnvArgs,
+  downloadFile,
   InstallArgs,
+  type InstallConfigBase,
   ListAllEnv,
-  ListBinPathsArgs,
+  pathWithDepShims,
+  type PlatformInfo,
   PlugBase,
+  registerDenoPlugGlobal,
+  removeFile,
+  std_fs,
+  std_path,
+  std_url,
+  workerSpawn,
 } from "../plug.ts";
+import node from "./node.ts";
+import * as std_plugs from "../std.ts";
 
-export function jco() {
-  return new class extends PlugBase {
-    name = "jco";
-    dependencies = ["node"];
+const manifest = {
+  name: "jco@npm",
+  version: "0.1.0",
+  moduleSpecifier: import.meta.url,
+  deps: [
+    std_plugs.tar_aa,
+    std_plugs.node_org,
+  ],
+};
+registerDenoPlugGlobal(manifest, () => new Plug());
 
-    execEnv(env: ExecEnvArgs) {
-      throw new Error("Method not implemented.");
-      return {};
+export default function install({ version }: InstallConfigBase = {}) {
+  addInstallGlobal({
+    plugName: manifest.name,
+    version,
+  });
+  // FIXME: conflict flags for install configs
+  node({});
+}
+
+class Plug extends PlugBase {
+  manifest = manifest;
+
+  async listAll(_env: ListAllEnv) {
+    const metadataRequest = await fetch(
+      `https://registry.npmjs.org/@bytecodealliance/jco`,
+      {
+        headers: {
+          // use abbreviated registry info which's still 500kb unzipped
+          "Accept": "application/vnd.npm.install-v1+json",
+        },
+      },
+    );
+    const metadata = await metadataRequest.json() as {
+      versions: Record<string, unknown>;
+    };
+
+    const versions = Object.keys(metadata.versions);
+    return versions;
+  }
+
+  async download(args: DownloadArgs) {
+    await downloadFile(
+      args,
+      artifactUrl(args.installVersion, args.platform),
+    );
+  }
+
+  async install(args: InstallArgs) {
+    const fileName = std_url.basename(
+      artifactUrl(args.installVersion, args.platform),
+    );
+    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
+    await workerSpawn([
+      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      "xf",
+      fileDwnPath,
+      `--directory=${args.tmpDirPath}`,
+    ]);
+
+    if (await std_fs.exists(args.installPath)) {
+      await removeFile(args.installPath, { recursive: true });
     }
 
-    listBinPaths(env: ListBinPathsArgs) {
-      throw new Error("Method not implemented.");
-      return {};
-    }
+    await std_fs.copy(
+      std_path.resolve(
+        args.tmpDirPath,
+        "package",
+      ),
+      args.installPath,
+    );
+    await workerSpawn([
+      depBinShimPath(std_plugs.node_org, "npm", args.depShims),
+      "install",
+      "--no-fund",
+    ], {
+      cwd: args.installPath,
+      env: {
+        PATH: pathWithDepShims(args.depShims),
+      },
+    });
+    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
+    await Deno.symlink(
+      std_path.resolve(args.installPath, "src", "jco.js"),
+      std_path.resolve(args.installPath, "bin", "jco"),
+    );
+  }
+}
 
-    listAll(env: ListAllEnv) {
-      const pkg = "@bytecodealliance/jco";
-      const metadataRequest = await fetch(`https://registry.npmjs.org/${pkg}`);
-      const metadata = await metadataRequest.json();
-
-      const versions = Object.keys(metadata.versions);
-      versions.sort();
-
-      console.log(versions);
-      return versions;
-    }
-
-    download(env: DownloadArgs) {
-      throw new Error("Method not implemented.");
-    }
-
-    install(env: InstallArgs) {
-      /*
-      npm install -g @bytecodealliance/jco
-      or
-
-PACKAGE=@bytecodealliance/jco
-PACKAGE_INTERNAL=jco
-BIN="jco"
-BIN_PATH="${ASDF_INSTALL_PATH}/src/jco.js"
-
-if [[ "${ASDF_INSTALL_TYPE:-version}" == 'ref' ]]; then
-    echo >&2 "⛔ This plugin does not support installing by ref."
-    exit 1
-fi
-
-TARBALL_URL="https://registry.npmjs.org/${PACKAGE}/-/${PACKAGE_INTERNAL}-${ASDF_INSTALL_VERSION}.tgz"
-echo "Downloading ${PACKAGE} v${ASDF_INSTALL_VERSION} from ${TARBALL_URL}"
-
-mkdir -p "${ASDF_INSTALL_PATH}"
-curl --silent --fail --show-error --location "${TARBALL_URL}" |
-    tar xzf - --strip-components=1 --no-same-owner -C "${ASDF_INSTALL_PATH}"
-
-chmod +x "${BIN_PATH}"
-mkdir -p "${ASDF_INSTALL_PATH}/bin"
-ln -sf "${BIN_PATH}" "${ASDF_INSTALL_PATH}/bin/${BIN}"
-      */
-      throw new Error("Method not implemented.");
-    }
-  }();
+function artifactUrl(installVersion: string, _platform: PlatformInfo) {
+  return `https://registry.npmjs.org/@bytecodealliance/jco/-/jco-${installVersion}.tgz`;
 }
