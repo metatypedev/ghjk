@@ -4,7 +4,7 @@ import {
   downloadFile,
   InstallArgs,
   type InstallConfigBase,
-  ListAllEnv,
+  ListAllArgs,
   type PlatformInfo,
   PlugBase,
   registerDenoPlugGlobal,
@@ -31,7 +31,7 @@ export default function install({ version }: InstallConfigBase = {}) {
 class Plug extends PlugBase {
   manifest = manifest;
 
-  async listAll(_env: ListAllEnv) {
+  async listAll(_env: ListAllArgs) {
     const metadataRequest = await fetch(
       `https://registry.npmjs.org/@pnpm/exe`,
       {

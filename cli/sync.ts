@@ -7,6 +7,7 @@ import {
   getInstallId,
   type GhjkCtx,
   type InstallConfig,
+  InstallConfigX,
   type PlugArgsBase,
   type RegisteredPlug,
   validators,
@@ -14,6 +15,7 @@ import {
 import { DenoWorkerPlug } from "../core/worker.ts";
 import { AVAIL_CONCURRENCY, dirs } from "./utils.ts";
 import { AmbientAccessPlug } from "../core/ambient.ts";
+import { AsdfPlug } from "../core/asdf.ts";
 
 async function findConfig(path: string): Promise<string | null> {
   let current = path;
@@ -346,20 +348,27 @@ type InstallArtifacts = DePromisify<ReturnType<typeof doInstall>>;
 
 async function doInstall(
   envDir: string,
-  inst: InstallConfig,
+  instUnclean: InstallConfig,
   regPlug: RegisteredPlug,
   depShims: DepShims,
 ) {
   const { ty: plugType, manifest } = regPlug;
   let plug;
+  let inst: InstallConfigX;
   if (plugType == "denoWorker") {
+    inst = validators.installConfig.parse(instUnclean);
     plug = new DenoWorkerPlug(
       manifest as DenoWorkerPlugManifestX,
     );
   } else if (plugType == "ambientAccess") {
+    inst = validators.installConfig.parse(instUnclean);
     plug = new AmbientAccessPlug(
       manifest as AmbientAccessPlugManifestX,
     );
+  } else if (plugType == "asdf") {
+    const asdfInst = validators.asdfInstallConfig.parse(instUnclean);
+    inst = asdfInst;
+    plug = await AsdfPlug.init(envDir, asdfInst, depShims);
   } else {
     throw new Error(
       `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
@@ -388,6 +397,7 @@ async function doInstall(
     installVersion: installVersion,
     depShims,
     platform: Deno.build,
+    config: inst,
   };
   {
     logger().info(`downloading ${inst.plugName}:${installVersion}`);

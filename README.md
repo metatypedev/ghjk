@@ -83,3 +83,4 @@ and looks as follows (abstracting away some implementation details):
   - [ ] untar
   - [ ] xz
   - [ ] git
+- [ ] Find a way to make copy ops atomic

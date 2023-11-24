@@ -10,16 +10,19 @@ import {
   type PlugDep,
   registerAmbientPlug,
   registerDenoPlug,
+  registerPlug,
+  validators,
 } from "./core/mod.ts";
 import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
 import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
+import * as asdf from "./core/asdf.ts";
 import logger from "./core/logger.ts";
 
 export * from "./core/mod.ts";
 export * from "./core/utils.ts";
 export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
-export { initDenoWorkerPlug, isWorker, workerSpawn } from "./core/worker.ts";
+export { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
 export type * from "./core/mod.ts";
 
 if (isWorker()) {
@@ -79,6 +82,15 @@ export function registerDenoPlugGlobal<P extends PlugBase>(
   }
 }
 
+export function registerAsdfPlug() {
+  if (self.ghjk) {
+    registerPlug(self.ghjk, {
+      ty: "asdf",
+      manifest: validators.plugManifestBase.parse(asdf.manifest),
+    });
+  }
+}
+
 export function registerAmbientPlugGlobal(
   manifestUnclean: AmbientAccessPlugManifest,
 ) {
@@ -93,36 +105,6 @@ export function addInstallGlobal(
   if (self.ghjk) {
     addInstall(self.ghjk, config);
   }
-}
-
-export function pathWithDepShims(
-  depShims: DepShims,
-) {
-  const set = new Set();
-  for (const [_, bins] of Object.entries(depShims)) {
-    for (const [_, binPath] of Object.entries(bins)) {
-      set.add(std_path.dirname(binPath));
-    }
-  }
-  return `${[...set.keys()].join(":")}:${Deno.env.get("PATH")}`;
-}
-
-export function depBinShimPath(
-  dep: PlugDep,
-  binName: string,
-  depShims: DepShims,
-) {
-  const shimPaths = depShims[dep.id];
-  if (!shimPaths) {
-    throw new Error(`unable to find shims for dep ${dep.id}`);
-  }
-  const path = shimPaths[binName];
-  if (!path) {
-    throw new Error(
-      `unable to find shim path for bin "${binName}" of dep ${dep.id}`,
-    );
-  }
-  return path;
 }
 
 /// This avoid re-downloading a file if it's already successfully downloaded before.

@@ -1,4 +1,6 @@
+import { std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
+import { DepShims, PlugDep } from "./types.ts";
 export function dbg<T>(val: T) {
   logger().debug("inline", val);
   return val;
@@ -97,4 +99,34 @@ export async function spawnOutput(
     );
   }
   return new TextDecoder().decode(stdout);
+}
+
+export function pathWithDepShims(
+  depShims: DepShims,
+) {
+  const set = new Set();
+  for (const [_, bins] of Object.entries(depShims)) {
+    for (const [_, binPath] of Object.entries(bins)) {
+      set.add(std_path.dirname(binPath));
+    }
+  }
+  return `${[...set.keys()].join(":")}:${Deno.env.get("PATH")}`;
+}
+
+export function depBinShimPath(
+  dep: PlugDep,
+  binName: string,
+  depShims: DepShims,
+) {
+  const shimPaths = depShims[dep.id];
+  if (!shimPaths) {
+    throw new Error(`unable to find shims for dep ${dep.id}`);
+  }
+  const path = shimPaths[binName];
+  if (!path) {
+    throw new Error(
+      `unable to find shim path for bin "${binName}" of dep ${dep.id}`,
+    );
+  }
+  return path;
 }

@@ -40,11 +40,37 @@ const ambientAccessPlugManifest = plugManifestBase.merge(
   }),
 );
 
+const installConfigBase = zod.object({
+  version: zod.string()
+    .nullish(),
+  conflictResolution: zod
+    .enum(["deferToNewer", "override"])
+    .nullish()
+    .default("deferToNewer"),
+}).passthrough();
+
+const installConfig = installConfigBase.merge(
+  zod.object({
+    plugName: zod.string().min(1),
+  }),
+);
+
+const asdfInstallConfig = installConfig.merge(
+  zod.object({
+    plugRepo: zod.string().url(),
+    installType: zod
+      .enum(["version", "ref"]),
+  }),
+);
+
 export default {
   plugDep,
   plugManifestBase,
   denoWorkerPlugManifest,
   ambientAccessPlugManifest,
   string: zod.string(),
+  installConfigBase,
+  installConfig,
+  asdfInstallConfig,
   stringArray: zod.string().min(1).array(),
 };

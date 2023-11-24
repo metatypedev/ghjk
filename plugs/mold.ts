@@ -9,10 +9,10 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
+  spawn,
   std_fs,
   std_path,
   std_url,
-  workerSpawn,
 } from "../plug.ts";
 import * as std_plugs from "../std.ts";
 
@@ -75,7 +75,7 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await workerSpawn([
+    await spawn([
       depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
       "xf",
       fileDwnPath,
@@ -118,8 +118,9 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
       default:
         throw new Error(`unsupported arch: ${platform.arch}`);
     }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
-      }-${arch}-${os}.tar.gz`;
+    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${
+      installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
+    }-${arch}-${os}.tar.gz`;
   } else {
     throw new Error(`unsupported os: ${platform.os}`);
   }

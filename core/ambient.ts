@@ -2,7 +2,7 @@ import {
   type AmbientAccessPlugManifest,
   type DownloadArgs,
   type InstallArgs,
-  type ListAllEnv,
+  type ListAllArgs,
   type ListBinPathsArgs,
   PlugBase,
 } from "./types.ts";
@@ -17,7 +17,7 @@ export class AmbientAccessPlug extends PlugBase {
       );
     }
   }
-  async latestStable(_env: ListAllEnv): Promise<string> {
+  async latestStable(_env: ListAllArgs): Promise<string> {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
@@ -50,7 +50,7 @@ export class AmbientAccessPlug extends PlugBase {
     return matches[0];
   }
 
-  async listAll(env: ListAllEnv): Promise<string[]> {
+  async listAll(env: ListAllArgs): Promise<string[]> {
     return [await this.latestStable(env)];
   }
 

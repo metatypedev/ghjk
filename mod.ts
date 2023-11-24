@@ -48,7 +48,6 @@ function runCliShim(
 // freeze the object to prevent malicious tampering of the secureConfig
 export const ghjk = Object.freeze({
   runCli: Object.freeze(runCliShim),
-  cx: self.ghjk,
 });
 
 export { logger };

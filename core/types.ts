@@ -40,18 +40,20 @@ export type RegisteredPlug = {
 } | {
   ty: "denoWorker";
   manifest: DenoWorkerPlugManifestX;
+} | {
+  ty: "asdf";
+  manifest: PlugManifestBaseX;
 };
 
 export type RegisteredPlugs = Map<string, RegisteredPlug>;
 
-export interface InstallConfigBase {
-  version?: string;
-}
+export type InstallConfigBase = zod.input<typeof validators.installConfigBase>;
 
 // Describes a single installation done by a specific plugin.
-export type InstallConfig = InstallConfigBase & {
-  plugName: string;
-};
+export type InstallConfig = zod.input<typeof validators.installConfig>;
+export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+export type AsdfInstallConfig = zod.input<typeof validators.asdfInstallConfig>;
+export type AsdfInstallConfigX = zod.infer<typeof validators.asdfInstallConfig>;
 
 export interface GhjkConfig {
   /// Plugs explicitly added by the user
@@ -75,41 +77,41 @@ export abstract class PlugBase {
   abstract manifest: PlugManifest;
 
   execEnv(
-    _env: ExecEnvArgs,
+    _args: ExecEnvArgs,
   ): Promise<Record<string, string>> | Record<string, string> {
     return {};
   }
 
   listBinPaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
     return [
-      std_path.joinGlobs([std_path.resolve(env.installPath, "bin"), "*"]),
+      std_path.joinGlobs([std_path.resolve(args.installPath, "bin"), "*"]),
     ];
   }
 
   listLibPaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
     return [
-      std_path.joinGlobs([std_path.resolve(env.installPath, "lib"), "*"]),
+      std_path.joinGlobs([std_path.resolve(args.installPath, "lib"), "*"]),
     ];
   }
 
   listIncludePaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
     return [
-      std_path.joinGlobs([std_path.resolve(env.installPath, "include"), "*"]),
+      std_path.joinGlobs([std_path.resolve(args.installPath, "include"), "*"]),
     ];
   }
 
-  latestStable(env: ListAllEnv): Promise<string> | string {
+  latestStable(args: ListAllArgs): Promise<string> | string {
     return (async () => {
       logger().warning(
         `using default implementation of latestStable for plug ${this.manifest.name}`,
       );
-      const allVers = await this.listAll(env);
+      const allVers = await this.listAll(args);
       if (allVers.length == 0) {
         throw new Error("no versions found");
       }
@@ -117,11 +119,11 @@ export abstract class PlugBase {
     })();
   }
 
-  abstract listAll(env: ListAllEnv): Promise<string[]> | string[];
+  abstract listAll(args: ListAllArgs): Promise<string[]> | string[];
 
-  abstract download(env: DownloadArgs): Promise<void> | void;
+  abstract download(args: DownloadArgs): Promise<void> | void;
 
-  abstract install(env: InstallArgs): Promise<void> | void;
+  abstract install(args: InstallArgs): Promise<void> | void;
 }
 
 interface ASDF_CONFIG_EXAMPLE {
@@ -150,9 +152,10 @@ export interface PlugArgsBase {
   installPath: string;
   depShims: DepShims;
   platform: PlatformInfo;
+  config: InstallConfigX;
 }
 
-export interface ListAllEnv {
+export interface ListAllArgs {
   depShims: DepShims;
 }
 

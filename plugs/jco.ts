@@ -5,16 +5,16 @@ import {
   downloadFile,
   InstallArgs,
   type InstallConfigBase,
-  ListAllEnv,
+  ListAllArgs,
   pathWithDepShims,
   type PlatformInfo,
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
+  spawn,
   std_fs,
   std_path,
   std_url,
-  workerSpawn,
 } from "../plug.ts";
 import node from "./node.ts";
 import * as std_plugs from "../std.ts";
@@ -42,7 +42,7 @@ export default function install({ version }: InstallConfigBase = {}) {
 class Plug extends PlugBase {
   manifest = manifest;
 
-  async listAll(_env: ListAllEnv) {
+  async listAll(_env: ListAllArgs) {
     const metadataRequest = await fetch(
       `https://registry.npmjs.org/@bytecodealliance/jco`,
       {
@@ -73,7 +73,7 @@ class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await workerSpawn([
+    await spawn([
       depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
       "xf",
       fileDwnPath,
@@ -91,7 +91,7 @@ class Plug extends PlugBase {
       ),
       args.installPath,
     );
-    await workerSpawn([
+    await spawn([
       depBinShimPath(std_plugs.node_org, "npm", args.depShims),
       "install",
       "--no-fund",

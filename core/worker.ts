@@ -7,45 +7,26 @@ import {
   type DownloadArgs,
   type ExecEnvArgs,
   type InstallArgs,
-  type ListAllEnv,
+  type ListAllArgs,
   type ListBinPathsArgs,
   PlugBase,
 } from "./types.ts";
 
-import { spawn, type SpawnOptions } from "./utils.ts";
 export function isWorker() {
   return !!self.name;
 }
 
-export function workerSpawn(
-  cmd: string[],
-  options: Omit<SpawnOptions, "pipeOut" | "pipeErr"> = {},
-) {
-  // const outDecoder = new TextDecoderStream();
-  // const errDecoder = new TextDecoderStream();
-  // outDecoder.readable.pipeTo(
-  //   new WritableStream({
-  //     write: console.log,
-  //   }),
-  // );
-  // errDecoder.readable.pipeTo(
-  //   new WritableStream({
-  //     write: console.error,
-  //   }),
-  // );
-  return spawn(cmd, {
-    ...options,
-    // pipeOut: outDecoder.writable,
-    // pipeErr: errDecoder.writable,
-  });
-}
-
 type WorkerReq = {
+  ty: "assert";
+  arg: {
+    moduleSpecifier: string;
+  };
+} | {
   ty: "listAll";
-  arg: ListAllEnv;
+  arg: ListAllArgs;
 } | {
   ty: "latestStable";
-  arg: ListAllEnv;
+  arg: ListAllArgs;
 } | {
   ty: "execEnv";
   arg: ExecEnvArgs;
@@ -67,6 +48,9 @@ type WorkerReq = {
 };
 
 type WorkerResp = {
+  ty: "assert";
+  // success
+} | {
   ty: "listAll";
   payload: string[];
 } | {
@@ -93,63 +77,83 @@ type WorkerResp = {
 /// Make sure to call this before any `await` point or your
 /// plug might miss messages
 export function initDenoWorkerPlug<P extends PlugBase>(plugInit: () => P) {
-  if (!isWorker()) {
-    throw new Error("expecteing to be running not running in Worker");
+  if (isWorker()) {
+    // let plugClass: (new () => PlugBase) | undefined;
+    // const plugInit = () => {
+    //   if (!plugClass) {
+    //     throw new Error("worker yet to be initialized");
+    //   }
+    //   return new plugClass();
+    // };
+    self.onmessage = async (msg: MessageEvent<WorkerReq>) => {
+      const req = msg.data;
+      if (!req.ty) {
+        logger().error("invalid worker request", req);
+        throw new Error("unrecognized worker request type");
+      }
+      let res: WorkerResp;
+      if (req.ty == "assert") {
+        throw new Error("not yet impl");
+        /* const { default: defExport } = await import(req.arg.moduleSpecifier);
+        if (typeof defExport != "function") {
+          throw new Error(
+            `default export of module ${req.arg.moduleSpecifier} is not a function`,
+          );
+        }
+        plugClass = defExport;
+        res = {
+          ty: req.ty,
+        }; */
+      } else if (req.ty == "listAll") {
+        res = {
+          ty: req.ty,
+          // id: req.id,
+          payload: await plugInit().listAll(req.arg),
+        };
+      } else if (req.ty === "latestStable") {
+        res = {
+          ty: req.ty,
+          payload: await plugInit().latestStable(req.arg),
+        };
+      } else if (req.ty === "execEnv") {
+        res = {
+          ty: req.ty,
+          payload: await plugInit().execEnv(req.arg),
+        };
+      } else if (req.ty === "listBinPaths") {
+        res = {
+          ty: req.ty,
+          payload: await plugInit().listBinPaths(req.arg),
+        };
+      } else if (req.ty === "listLibPaths") {
+        res = {
+          ty: req.ty,
+          payload: await plugInit().listLibPaths(req.arg),
+        };
+      } else if (req.ty === "listIncludePaths") {
+        res = {
+          ty: req.ty,
+          payload: await plugInit().listIncludePaths(req.arg),
+        };
+      } else if (req.ty === "download") {
+        await plugInit().download(req.arg),
+          res = {
+            ty: req.ty,
+          };
+      } else if (req.ty === "install") {
+        await plugInit().install(req.arg),
+          res = {
+            ty: req.ty,
+          };
+      } else {
+        logger().error("unrecognized worker request type", req);
+        throw new Error("unrecognized worker request type");
+      }
+      self.postMessage(res);
+    };
+  } else {
+    throw new Error("expecting to be running not running in Worker");
   }
-  self.onmessage = async (msg: MessageEvent<WorkerReq>) => {
-    const req = msg.data;
-    if (!req.ty) {
-      logger().error("invalid worker request", req);
-      throw new Error("unrecognized worker request type");
-    }
-    let res: WorkerResp;
-    if (req.ty == "listAll") {
-      res = {
-        ty: req.ty,
-        // id: req.id,
-        payload: await plugInit().listAll(req.arg),
-      };
-    } else if (req.ty === "latestStable") {
-      res = {
-        ty: req.ty,
-        payload: await plugInit().latestStable(req.arg),
-      };
-    } else if (req.ty === "execEnv") {
-      res = {
-        ty: req.ty,
-        payload: await plugInit().execEnv(req.arg),
-      };
-    } else if (req.ty === "listBinPaths") {
-      res = {
-        ty: req.ty,
-        payload: await plugInit().listBinPaths(req.arg),
-      };
-    } else if (req.ty === "listLibPaths") {
-      res = {
-        ty: req.ty,
-        payload: await plugInit().listLibPaths(req.arg),
-      };
-    } else if (req.ty === "listIncludePaths") {
-      res = {
-        ty: req.ty,
-        payload: await plugInit().listIncludePaths(req.arg),
-      };
-    } else if (req.ty === "download") {
-      await plugInit().download(req.arg),
-        res = {
-          ty: req.ty,
-        };
-    } else if (req.ty === "install") {
-      await plugInit().install(req.arg),
-        res = {
-          ty: req.ty,
-        };
-    } else {
-      logger().error("unrecognized worker request type", req);
-      throw new Error("unrecognized worker request type");
-    }
-    self.postMessage(res);
-  };
 }
 // type MethodKeys<T> = {
 //   [P in keyof T]-?: T[P] extends Function ? P : never;
@@ -188,7 +192,7 @@ export class DenoWorkerPlug extends PlugBase {
     return resp;
   }
 
-  async listAll(env: ListAllEnv): Promise<string[]> {
+  async listAll(env: ListAllArgs): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listAll",
       // id: crypto.randomUUID(),
@@ -201,7 +205,7 @@ export class DenoWorkerPlug extends PlugBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async latestStable(env: ListAllEnv): Promise<string> {
+  async latestStable(env: ListAllArgs): Promise<string> {
     const req: WorkerReq = {
       ty: "latestStable",
       arg: env,

@@ -9,10 +9,10 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
+  spawn,
   std_fs,
   std_path,
   std_url,
-  workerSpawn,
 } from "../plug.ts";
 // FIXME: find a better way to expose std_plug.plug_Id
 // that allows standard plugs to depend on each other
@@ -31,7 +31,7 @@ export const manifest = {
 
 registerDenoPlugGlobal(manifest, () => new Plug());
 
-export default function cargo_binstall(config: InstallConfigBase = {}) {
+export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
     plugName: manifest.name,
     ...config,
@@ -73,7 +73,7 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await workerSpawn([
+    await spawn([
       depBinShimPath(tar_aa_id, "tar", args.depShims),
       "xf",
       fileDwnPath,

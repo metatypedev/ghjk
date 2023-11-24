@@ -6,15 +6,15 @@ import {
   ExecEnvArgs,
   InstallArgs,
   type InstallConfigBase,
-  ListAllEnv,
+  ListAllArgs,
   type PlatformInfo,
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
+  spawn,
   std_fs,
   std_path,
   std_url,
-  workerSpawn,
 } from "../plug.ts";
 // import * as std_plugs from "../std.ts";
 
@@ -57,7 +57,7 @@ export class Plug extends PlugBase {
     return [];
   }
 
-  async listAll(_env: ListAllEnv) {
+  async listAll(_env: ListAllArgs) {
     const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
     const metadata = await metadataRequest.json() as { version: string }[];
 
@@ -77,7 +77,7 @@ export class Plug extends PlugBase {
       artifactUrl(args.installVersion, args.platform),
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await workerSpawn([
+    await spawn([
       depBinShimPath(tar_aa_id, "tar", args.depShims),
       "xf",
       fileDwnPath,

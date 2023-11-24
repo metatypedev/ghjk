@@ -8,9 +8,9 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
+  spawn,
   std_fs,
   std_path,
-  workerSpawn,
 } from "../plug.ts";
 import * as std_plugs from "../std.ts";
 
@@ -61,7 +61,7 @@ export class Plug extends PlugBase {
       );
       return;
     }
-    await workerSpawn([
+    await spawn([
       depBinShimPath(std_plugs.cbin_ghrel, "cargo-binstall", args.depShims),
       "wasm-opt",
       `--version`,

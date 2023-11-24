@@ -18,6 +18,7 @@ export const Ghjk = {
 export function getInstallId(install: InstallConfig) {
   return install.plugName;
 }
+
 export function registerDenoPlug(
   cx: GhjkConfig,
   manifestUnclean: DenoWorkerPlugManifest,
