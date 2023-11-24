@@ -1,5 +1,13 @@
 FROM docker.io/denoland/deno:debian-1.38.0
 
+RUN set -eux; \
+    export DEBIAN_FRONTEND=noninteractive; \
+    apt update; \
+    apt install --yes \
+    git curl xz-utils \
+    ;\
+    apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
+
 ENV SHELL=/bin/bash
 
 WORKDIR /ghjk

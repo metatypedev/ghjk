@@ -1,6 +1,6 @@
 import { std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
-import { DepShims, PlugDep } from "./types.ts";
+import type { DepShims, PlugDep, InstallConfig, AsdfInstallConfig } from "./types.ts";
 export function dbg<T>(val: T) {
   logger().debug("inline", val);
   return val;
@@ -129,4 +129,13 @@ export function depBinShimPath(
     );
   }
   return path;
+}
+
+export function getInstallId(install: InstallConfig | AsdfInstallConfig) {
+  if ("plugRepo" in install) {
+    const url = new URL(install.plugRepo);
+    const pluginId = `${url.hostname}:${url.pathname.replaceAll("/", "=")}`;
+    return `asdf-${pluginId}`;
+  }
+  return install.plugName;
 }

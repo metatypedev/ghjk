@@ -23,16 +23,21 @@ import wasm_tools from "./plugs/wasm-tools.ts";
 import wasm_opt from "./plugs/wasm-opt.ts";
 import cargo_insta from "./plugs/cargo-insta.ts";
 import jco from "./plugs/jco.ts";
-// import mold from "./plugs/mold.ts";
+import mold from "./plugs/mold.ts";
 import act from "./plugs/act.ts";
+import asdf from "./plugs/asdf.ts";
 
 // node({});
 // wasmedge({});
 // pnpm({});
-// cargo_binstall({});
+cargo_binstall({});
 // wasm_tools({});
 // wasm_opt({});
 // cargo_insta({});
 // jco({});
 // mold({});
-act({});
+// act({});
+// asdf({
+//   plugRepo: "https://github.com/asdf-community/asdf-zig",
+//   installType: "version",
+// });

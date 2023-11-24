@@ -12,20 +12,31 @@ import {
   pathWithDepShims,
   spawn,
   spawnOutput,
+  getInstallId
 } from "./utils.ts";
-import * as std_plugs from "../std.ts";
+// import * as std_plugs from "../std.ts";
 import { std_fs, std_path } from "../deps/common.ts";
+
+const curl_aa_id = {
+  id: "curl@aa",
+};
+
+const git_aa_id = {
+  id: "git@aa",
+};
 
 export const manifest = {
   name: "asdf@asdf",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_plugs.tar_aa, std_plugs.git_aa],
+  // deps: [std_plugs.tar_aa, std_plugs.git_aa],
+  deps: [curl_aa_id, git_aa_id],
 };
 
 export class AsdfPlug extends PlugBase {
   manifest = manifest;
   constructor(
+    public asdfDir: string,
     public pluginDir: string,
     public config: AsdfInstallConfigX,
   ) {
@@ -37,17 +48,16 @@ export class AsdfPlug extends PlugBase {
     depShims: DepShims,
   ) {
     const asdfDir = std_path.resolve(envDir, "asdf");
-    const url = new URL(installConfig.plugRepo);
-    const pluginId = `${url.hostname}~${url.pathname.replaceAll("/", ".")}`;
+    const installId = getInstallId(installConfig);
 
-    const pluginDir = std_path.resolve(asdfDir, pluginId);
+    const pluginDir = std_path.resolve(asdfDir, installId);
     if (!await std_fs.exists(pluginDir)) {
       const tmpCloneDirPath = await Deno.makeTempDir({
-        prefix: `ghjk_asdf_clone_${pluginId}@$asdf_`,
+        prefix: `ghjk_asdf_clone_${installId}_`,
       });
       await spawn(
         [
-          depBinShimPath(std_plugs.git_aa, "git", depShims),
+          depBinShimPath(git_aa_id, "git", depShims),
           "clone",
           installConfig.plugRepo,
           "--depth",
@@ -61,14 +71,16 @@ export class AsdfPlug extends PlugBase {
       );
       void Deno.remove(tmpCloneDirPath, { recursive: true });
     }
-    return new AsdfPlug(pluginDir, installConfig);
+    return new AsdfPlug(asdfDir, pluginDir, installConfig);
   }
 
   async listAll(_args: ListAllArgs): Promise<string[]> {
     const out = await spawnOutput([
       std_path.resolve(this.pluginDir, "bin", "list-all"),
     ]);
-    return out.split(" ").filter((str) => str.length > 0);
+    return out.split(" ").filter((str) => str.length > 0).map((str) =>
+      str.trim()
+    );
   }
 
   async latestStable(args: ListAllArgs): Promise<string> {
@@ -102,9 +114,17 @@ export class AsdfPlug extends PlugBase {
         ASDF_INSTALL_PATH: args.installPath,
       },
     });
-    return out.split(" ").filter((str) => str.length > 0);
+    return out.split(" ").filter((str) => str.length > 0).map((str) =>
+      str.trim()
+    );
   }
-  async download(args: DownloadArgs): Promise<void> {
+
+  async download(args: DownloadArgs) {
+    const binPath = std_path.resolve(this.pluginDir, "bin", "download");
+    // some plugins don't have a download script despite the spec
+    if (!await std_fs.exists(binPath)) {
+      return;
+    }
     await spawn([
       std_path.resolve(this.pluginDir, "bin", "download"),
     ], {
@@ -117,7 +137,7 @@ export class AsdfPlug extends PlugBase {
       },
     });
   }
-  async install(args: InstallArgs): Promise<void> {
+  async install(args: InstallArgs) {
     await spawn([
       std_path.resolve(this.pluginDir, "bin", "install"),
     ], {

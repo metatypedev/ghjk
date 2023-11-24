@@ -26,7 +26,7 @@ const denoWorkerPlugManifest = plugManifestBase.merge(
 const ambientAccessPlugManifest = plugManifestBase.merge(
   zod.object({
     execName: zod.string().min(1),
-    versionExtractFlag: zod.enum(["version", "-v", "--version", "-v"]),
+    versionExtractFlag: zod.enum(["version", "-v", "--version", "-V", "-W version"]),
     versionExtractRegex: zod.string().refine((str) => new RegExp(str), {
       message: "invalid RegExp string",
     }),

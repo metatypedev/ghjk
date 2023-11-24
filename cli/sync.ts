@@ -4,7 +4,6 @@ import {
   type AmbientAccessPlugManifestX,
   type DenoWorkerPlugManifestX,
   type DepShims,
-  getInstallId,
   type GhjkCtx,
   type InstallConfig,
   InstallConfigX,
@@ -13,9 +12,10 @@ import {
   validators,
 } from "../core/mod.ts";
 import { DenoWorkerPlug } from "../core/worker.ts";
-import { AVAIL_CONCURRENCY, dirs } from "./utils.ts";
+import { AVAIL_CONCURRENCY, dirs, } from "./utils.ts";
 import { AmbientAccessPlug } from "../core/ambient.ts";
 import { AsdfPlug } from "../core/asdf.ts";
+import { getInstallId } from "../core/utils.ts";
 
 async function findConfig(path: string): Promise<string | null> {
   let current = path;
@@ -49,9 +49,9 @@ async function writeLoader(envDir: string, env: Record<string, string>) {
   await Deno.writeTextFile(
     `${envDir}/loader.sh`,
     `export GHJK_CLEANUP="";\n` +
-      Object.entries(env).map(([k, v]) =>
-        `GHJK_CLEANUP+="export ${k}='$${k}';";\nexport ${k}='${v}';`
-      ).join("\n"),
+    Object.entries(env).map(([k, v]) =>
+      `GHJK_CLEANUP+="export ${k}='$${k}';";\nexport ${k}='${v}';`
+    ).join("\n"),
   );
 }
 
@@ -200,8 +200,7 @@ export async function sync(cx: GhjkCtx) {
       const conflict = env[key];
       if (conflict) {
         throw new Error(
-          `duplicate env var found ${key} from installs ${instId} & ${
-            conflict[1]
+          `duplicate env var found ${key} from installs ${instId} & ${conflict[1]
           }`,
         );
       }
@@ -243,8 +242,7 @@ function buildInstallGraph(cx: GhjkCtx) {
       cx.allowedDeps.get(inst.plugName);
     if (!regPlug) {
       throw new Error(
-        `unable to find plugin "${inst.plugName}" specified by install ${
-          JSON.stringify(inst)
+        `unable to find plugin "${inst.plugName}" specified by install ${JSON.stringify(inst)
         }`,
       );
     }
@@ -374,6 +372,7 @@ async function doInstall(
       `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
     );
   }
+  const installId = getInstallId(inst);
   const installVersion = validators.string.parse(
     inst.version ?? await plug.latestStable({
       depShims,
@@ -382,13 +381,13 @@ async function doInstall(
   const installPath = std_path.resolve(
     envDir,
     "installs",
-    plug.manifest.name,
+    installId,
     installVersion,
   );
   const downloadPath = std_path.resolve(
     envDir,
     "downloads",
-    plug.manifest.name,
+    installId,
     installVersion,
   );
   const baseArgs: PlugArgsBase = {
@@ -400,9 +399,9 @@ async function doInstall(
     config: inst,
   };
   {
-    logger().info(`downloading ${inst.plugName}:${installVersion}`);
+    logger().info(`downloading ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({
-      prefix: `ghjk_download_${inst.plugName}@${installVersion}_`,
+      prefix: `ghjk_download_${installId}:${installVersion}_`,
     });
     await plug.download({
       ...baseArgs,
@@ -412,9 +411,9 @@ async function doInstall(
     void Deno.remove(tmpDirPath, { recursive: true });
   }
   {
-    logger().info(`installing ${inst.plugName}:${installVersion}`);
+    logger().info(`installing ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({
-      prefix: `ghjk_install_${inst.plugName}@${installVersion}_`,
+      prefix: `ghjk_install_${installId}@${installVersion}_`,
     });
     await plug.install({
       ...baseArgs,

@@ -163,4 +163,28 @@ await dockerTest([
   }`,
     ePoint: `jco --version`,
   },
+  // big
+  {
+    name: "asdf-zig",
+    imports: `import plug from "$ghjk/plugs/asdf.ts"`,
+    confFn: `async () => {
+  plug({
+    plugRepo: "https://github.com/asdf-community/asdf-zig",
+    installType: "version",
+  });
+    }`,
+    ePoint: `zig version`,
+  },
+  // big
+  {
+    name: "asdf-python",
+    imports: `import plug from "$ghjk/plugs/asdf.ts"`,
+    confFn: `async () => {
+  plug({
+    plugRepo: "https://github.com/asdf-community/asdf-python",
+    installType: "version",
+  });
+    }`,
+    ePoint: `python --version`,
+  },
 ]);
