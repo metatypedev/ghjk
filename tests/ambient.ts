@@ -6,6 +6,7 @@ import { type AmbientAccessPlugManifest } from "../core/types.ts";
 import * as tar from "../plugs/tar.ts";
 import * as git from "../plugs/git.ts";
 import * as curl from "../plugs/curl.ts";
+import * as unzip from "../plugs/unzip.ts";
 
 const manifests = [
   {
@@ -19,6 +20,7 @@ const manifests = [
   tar.manifest,
   git.manifest,
   curl.manifest,
+  unzip.manifest,
 ];
 for (const manifest of manifests) {
   Deno.test(`ambient access ${manifest.name}`, async () => {

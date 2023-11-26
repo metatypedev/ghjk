@@ -5,6 +5,7 @@ import validators from "./core/validators.ts";
 import { manifest as man_tar_aa } from "./plugs/tar.ts";
 import { manifest as man_git_aa } from "./plugs/git.ts";
 import { manifest as man_curl_aa } from "./plugs/curl.ts";
+import { manifest as man_unzip_aa } from "./plugs/unzip.ts";
 import { manifest as man_cbin_ghrel } from "./plugs/cargo-binstall.ts";
 import { manifest as man_node_org } from "./plugs/node.ts";
 import { manifest as man_pnpm_ghrel } from "./plugs/pnpm.ts";
@@ -13,6 +14,7 @@ const aaPlugs: RegisteredPlug[] = [
   man_tar_aa,
   man_git_aa,
   man_curl_aa,
+  man_unzip_aa,
 ]
   .map((man) => ({
     ty: "ambientAccess",
@@ -46,6 +48,10 @@ export const git_aa = Object.freeze({
 
 export const curl_aa = Object.freeze({
   id: man_curl_aa.name,
+} as PlugDep);
+
+export const unzip_aa = Object.freeze({
+  id: man_unzip_aa.name,
 } as PlugDep);
 
 export const cbin_ghrel = Object.freeze({
