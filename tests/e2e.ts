@@ -73,6 +73,15 @@ await (${confFn.toString()})()`;
 
 // order tests by download size to make failed runs less expensive
 await dockerTest([
+  // 3 megs
+  {
+    name: "protoc",
+    imports: `import plug from "$ghjk/plugs/protoc.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `protoc --version`,
+  },
   // 7 megs
   {
     name: "act",
