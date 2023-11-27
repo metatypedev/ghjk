@@ -59,8 +59,11 @@ await (${confFn.toString()})()`;
         tag,
         "bash",
         "-c",
-        "-i",
-        ePoint,
+        `
+        source ~/.bashrc
+        init_ghjk
+        ${ePoint}
+        `,
       ], { env });
       await spawn([
         ...dockerCmd,

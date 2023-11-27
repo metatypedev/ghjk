@@ -24,11 +24,11 @@ RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
-# # use -i interactive flag to enable sourcing .bashrc
-SHELL [ "/bin/bash", "-c", "-i" ] 
+SHELL [ "/bin/bash", "-c"] 
 
-# RUN ["bash", "-i", "-c", "ghjk", "sync"]
 RUN <<EOT 
+    source ~/.bashrc
+    init_ghjk
     ghjk sync
 EOT
 

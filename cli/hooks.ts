@@ -27,11 +27,14 @@ console.log = log;
 mod.ghjk.runCli(Deno.args.slice(1), mod.options);
     `,
 
+  "hooks/bash-preexec.sh": await (
+    await fetch(
+      "https://raw.githubusercontent.com/rcaloras/bash-preexec/master/bash-preexec.sh",
+    )
+  ).text(),
   // the hook run before every prompt draw in bash
   "hooks/hook.sh": `
-ghjk_already_run=false
-
-clean_up_paths() {
+__ghjk_clean_up_paths() {
     PATH=$(echo "$PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
     PATH="$\{PATH%:\}"
     LIBRARY_PATH=$(echo "$LIBRARY_PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
@@ -44,12 +47,7 @@ clean_up_paths() {
     CPLUS_INCLUDE_PATH="$\{CPLUS_INCLUDE_PATH%:\}"
 }
 
-ghjk_hook() {
-    # Check if the trap has already executed
-    if [[ "$ghjk_already_run" = true ]]; then
-      return
-    fi
-    ghjk_already_run=true
+init_ghjk() {
     if [[ -v GHJK_CLEANUP ]]; then
         eval $GHJK_CLEANUP
         unset GHJK_CLEANUP
@@ -59,7 +57,7 @@ ghjk_hook() {
         if [ -e "$cur_dir/ghjk.ts" ]; then
             envDir="$HOME/.local/share/ghjk/envs/$(echo "$cur_dir" | tr '/' '.')"
             if [ -d "$envDir" ]; then
-                clean_up_paths
+                __ghjk_clean_up_paths
 
                 PATH="$envDir/shims/bin:$PATH"
                 LIBRARY_PATH="$envDir/shims/lib:$LIBRARY_PATH"
@@ -75,26 +73,36 @@ ghjk_hook() {
                 echo -e "\e[38;2;255;69;0m[ghjk] Uninstalled runtime found, please sync...\e[0m"
                 echo "$envDir"
             fi
-            alias ghjk="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
+            export ghjk_alias="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         fi
         cur_dir="$(dirname "$cur_dir")"
     done
-    clean_up_paths
-    alias ghjk="echo 'No ghjk.ts config found.'"
+    __ghjk_clean_up_paths
+    export ghjk_alias="echo 'No ghjk.ts config found.'"
 }
 
-trap 'ghjk_hook' DEBUG
+ghjk_alias="echo 'No ghjk.ts config found.'"
 
-set_hook_flag() {
-    ghjk_already_run=false
+ghjk () {
+    eval "$ghjk_alias" $*;
 }
 
-if [[ -n "$PROMPT_COMMAND" ]]; then
-    PROMPT_COMMAND+=";"
-fi
+# export function for non-interactive use
+export -f ghjk
+export -f init_ghjk
+export -f __ghjk_clean_up_paths
 
-PROMPT_COMMAND+="set_hook_flag;"
+hooksDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
+source "$hooksDir/bash-preexec.sh"
+precmd() {
+    # Check if the trap has already executed
+    if [[ "$ghjk_already_run" = true ]]; then
+      return
+    fi
+    ghjk_already_run=true
+    init_ghjk
+}
 `,
 
   // the hook run before every prompt draw in fish
