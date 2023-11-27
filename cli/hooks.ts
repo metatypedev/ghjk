@@ -83,7 +83,6 @@ init_ghjk() {
 }
 
 ghjk_alias="echo 'No ghjk.ts config found.'"
-
 ghjk () {
     eval "$ghjk_alias" $*;
 }
@@ -93,16 +92,15 @@ export -f ghjk
 export -f init_ghjk
 export -f __ghjk_clean_up_paths
 
+# use precmd to check for ghjk.ts before every prompt draw
 hooksDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
 source "$hooksDir/bash-preexec.sh"
 precmd() {
-    # Check if the trap has already executed
-    if [[ "$ghjk_already_run" = true ]]; then
-      return
-    fi
-    ghjk_already_run=true
     init_ghjk
 }
+
+# try loading any relevant ghjk.ts right away
+init_ghjk
 `,
 
   // the hook run before every prompt draw in fish
