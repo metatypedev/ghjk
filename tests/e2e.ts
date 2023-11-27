@@ -157,6 +157,15 @@ await dockerTest([
   }`,
     ePoint: `wasm-opt --version`,
   },
+  // 42 megs
+  {
+    name: "pnpm",
+    imports: `import plug from "$ghjk/plugs/earthly.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `earthly --version`,
+  },
   // 56 megs
   {
     name: "pnpm",

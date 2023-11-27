@@ -1,18 +1,3 @@
-/*
-import { run, rust } from "./src/ghjk.ts";
-
-rust({
-  version: "1.55.0",
-});
-
-rust({
-  version: "nightly",
-  name: "nrust",
-});
-
-await run();
-*/
-
 export { ghjk } from "./mod.ts";
 import node from "./plugs/node.ts";
 import install from "./plugs/wasmedge.ts";
@@ -27,6 +12,7 @@ import mold from "./plugs/mold.ts";
 import act from "./plugs/act.ts";
 import asdf from "./plugs/asdf.ts";
 import protoc from "./plugs/protoc.ts";
+import earthly from "./plugs/earthly.ts";
 
 // node({});
 // wasmedge({});
@@ -42,4 +28,5 @@ import protoc from "./plugs/protoc.ts";
 //   plugRepo: "https://github.com/asdf-community/asdf-zig",
 //   installType: "version",
 // });
-protoc({});
+// protoc({});
+earthly({});
