@@ -1,6 +1,11 @@
 import { std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
-import type { DepShims, PlugDep, InstallConfig, AsdfInstallConfig } from "./types.ts";
+import type {
+  AsdfInstallConfig,
+  DepShims,
+  InstallConfig,
+  PlugDep,
+} from "./types.ts";
 export function dbg<T>(val: T) {
   logger().debug("inline", val);
   return val;
@@ -134,7 +139,7 @@ export function depBinShimPath(
 export function getInstallId(install: InstallConfig | AsdfInstallConfig) {
   if ("plugRepo" in install) {
     const url = new URL(install.plugRepo);
-    const pluginId = `${url.hostname}:${url.pathname.replaceAll("/", "=")}`;
+    const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }
   return install.plugName;

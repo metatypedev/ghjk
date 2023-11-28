@@ -28,5 +28,5 @@ import earthly from "./plugs/earthly.ts";
 //   plugRepo: "https://github.com/asdf-community/asdf-zig",
 //   installType: "version",
 // });
-// protoc({});
-earthly({});
+protoc({});
+// earthly({});
