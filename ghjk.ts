@@ -13,6 +13,7 @@ import act from "./plugs/act.ts";
 import asdf from "./plugs/asdf.ts";
 import protoc from "./plugs/protoc.ts";
 import earthly from "./plugs/earthly.ts";
+import ruff from "./plugs/ruff.ts";
 
 // node({});
 // wasmedge({});
@@ -28,5 +29,6 @@ import earthly from "./plugs/earthly.ts";
 //   plugRepo: "https://github.com/asdf-community/asdf-zig",
 //   installType: "version",
 // });
-protoc({});
+// protoc({});
 // earthly({});
+ruff({});

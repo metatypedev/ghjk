@@ -1,9 +1,8 @@
 export * from "./types.ts";
 export { default as validators } from "./validators.ts";
-import { semver, } from "../deps/common.ts";
+import { semver } from "../deps/common.ts";
 import type {
   AmbientAccessPlugManifest,
-  AsdfInstallConfig,
   DenoWorkerPlugManifest,
   GhjkConfig,
   InstallConfig,
@@ -45,7 +44,7 @@ export function registerPlug(
     ) {
       throw new Error(
         `Two instances of plugin "${manifest.name}" found with ` +
-        `both set to "${manifest.conflictResolution}" conflictResolution"`,
+          `both set to "${manifest.conflictResolution}" conflictResolution"`,
       );
     } else if (conflict.conflictResolution == "override") {
       logger().debug("plug rejected due to override", {
@@ -67,7 +66,7 @@ export function registerPlug(
     ) {
       throw new Error(
         `Two instances of the plug "${manifest.name}" found with an identical version` +
-        `and both set to "deferToNewer" conflictResolution.`,
+          `and both set to "deferToNewer" conflictResolution.`,
       );
     } else if (
       semver.compare(
@@ -98,7 +97,8 @@ export function addInstall(
 ) {
   if (!cx.plugs.has(config.plugName)) {
     throw new Error(
-      `unrecognized plug "${config.plugName}" specified by install ${JSON.stringify(config)
+      `unrecognized plug "${config.plugName}" specified by install ${
+        JSON.stringify(config)
       }`,
     );
   }

@@ -85,6 +85,15 @@ await dockerTest([
   }`,
     ePoint: `protoc --version`,
   },
+  // 6 megs
+  {
+    name: "ruff",
+    imports: `import plug from "$ghjk/plugs/ruff.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `ruff --version`,
+  },
   // 7 megs
   {
     name: "act",

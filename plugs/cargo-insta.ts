@@ -77,7 +77,6 @@ export class Plug extends PlugBase {
       args.tmpDirPath,
       args.downloadPath,
     );
-    await std_fs.ensureDir(args.downloadPath);
   }
 
   async install(args: InstallArgs) {
