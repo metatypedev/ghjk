@@ -26,10 +26,10 @@ wasmedge({});
 // jco({});
 // mold({});
 // act({});
-// asdf({
-//   plugRepo: "https://github.com/asdf-community/asdf-zig",
-//   installType: "version",
-// });
+asdf({
+  plugRepo: "https://github.com/asdf-community/asdf-python",
+  installType: "version",
+});
 // protoc({});
 // earthly({});
 // ruff({});

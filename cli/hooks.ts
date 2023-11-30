@@ -14,6 +14,17 @@ switch (Deno.build.os) {
     throw new Error(`unsupported os ${Deno.build.os}`);
 }
 
+const BASH_PREXEC = await (
+  async () => {
+    const resp = await fetch(
+      "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
+    );
+    if (!resp.ok) {
+      throw new Error("error fetching bash-preexec");
+    }
+    return await resp.text();
+  }
+)();
 // null means it should be removed (for cleaning up old versions)
 const vfs = {
   // the script executed when users use the ghjk command
@@ -27,29 +38,38 @@ console.log = log;
 mod.ghjk.runCli(Deno.args.slice(1), mod.options);
     `,
 
-  "hooks/bash-preexec.sh": await (
-    await fetch(
-      "https://raw.githubusercontent.com/rcaloras/bash-preexec/master/bash-preexec.sh",
-    )
-  ).text(),
+  "hooks/bash-preexec.sh": BASH_PREXEC,
+
+  "hooks/.zshenv": `
+if [ -e ~/.zshenv ]; then . ~/.zshenv; fi
+hooksDir=$(dirname -- "$(readlink -f -- "\${(%):-%x}")")
+. $hooksDir/hook.sh
+`,
   // the hook run before every prompt draw in bash
   "hooks/hook.sh": `
 __ghjk_clean_up_paths() {
     PATH=$(echo "$PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
-    PATH="$\{PATH%:\}"
+    PATH="\${PATH%:}"
     LIBRARY_PATH=$(echo "$LIBRARY_PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
-    LIBRARY_PATH="$\{LIBRARY_PATH%:\}"
+    LIBRARY_PATH="\${LIBRARY_PATH%:}"
     ${LD_LIBRARY_ENV}=$(echo "$${LD_LIBRARY_ENV}" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
-    ${LD_LIBRARY_ENV}="$\{${LD_LIBRARY_ENV}%:\}"
+    ${LD_LIBRARY_ENV}="\${${LD_LIBRARY_ENV}%:}"
     C_INCLUDE_PATH=$(echo "$C_INCLUDE_PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
-    C_INCLUDE_PATH="$\{C_INCLUDE_PATH%:\}"
+    C_INCLUDE_PATH="\${C_INCLUDE_PATH%:}"
     CPLUS_INCLUDE_PATH=$(echo "$CPLUS_INCLUDE_PATH" | tr ':' '\\n' | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr '\\n' ':')
-    CPLUS_INCLUDE_PATH="$\{CPLUS_INCLUDE_PATH%:\}"
+    CPLUS_INCLUDE_PATH="\${CPLUS_INCLUDE_PATH%:}"
 }
 
+# Define color variables
+ansi_red='\\033[0;31m'
+# GREEN='\\033[0;32m'
+ansi_yel='\\033[0;33m'
+# BLUE='\\033[0;34m'
+ansi_nc='\\033[0m' # No Color
+
 init_ghjk() {
-    if [[ -v GHJK_CLEANUP ]]; then
-        eval $GHJK_CLEANUP
+    if [ -n "\${GHJK_CLEANUP+x}" ]; then
+        eval "$GHJK_CLEANUP"
         unset GHJK_CLEANUP
     fi
     cur_dir=$PWD
@@ -61,16 +81,18 @@ init_ghjk() {
 
                 PATH="$envDir/shims/bin:$PATH"
                 LIBRARY_PATH="$envDir/shims/lib:$LIBRARY_PATH"
-                ${LD_LIBRARY_ENV}="$envDir/shims/lib:$${LD_LIBRARY_ENV}"
+                LD_LIBRARY_PATH="$envDir/shims/lib:$LD_LIBRARY_PATH"
                 C_INCLUDE_PATH="$envDir/shims/include:$C_INCLUDE_PATH"
                 CPLUS_INCLUDE_PATH="$envDir/shims/include:$CPLUS_INCLUDE_PATH"
                 
-                source "$envDir/loader.sh"
+                . "$envDir/loader.sh"
+                # FIXME: -ot not valid in POSIX
+                # shellcheck disable=SC3000-SC4000
                 if [ "$envDir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
-                    echo -e "\e[38;2;255;69;0m[ghjk] Detected changes, please sync...\e[0m"
+                    echo "\${ansi_yel}[ghjk] Detected changes, please sync...\${ansi_nc}"
                 fi
             else
-                echo -e "\e[38;2;255;69;0m[ghjk] Uninstalled runtime found, please sync...\e[0m"
+                echo "\${ansi_red}[ghjk] Uninstalled runtime found, please sync...\${ansi_nc}"
                 echo "$envDir"
             fi
             export ghjk_alias="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
@@ -79,12 +101,12 @@ init_ghjk() {
         cur_dir="$(dirname "$cur_dir")"
     done
     __ghjk_clean_up_paths
-    export ghjk_alias="echo 'No ghjk.ts config found.'"
+    export ghjk_alias="echo '\${ansi_red}No ghjk.ts config found.\${ansi_nc}'"
 }
 
 ghjk_alias="echo 'No ghjk.ts config found.'"
 ghjk () {
-    eval "$ghjk_alias" $*;
+    eval "$ghjk_alias" "$*";
 }
 
 # export function for non-interactive use
@@ -93,8 +115,8 @@ export -f init_ghjk
 export -f __ghjk_clean_up_paths
 
 # use precmd to check for ghjk.ts before every prompt draw
-hooksDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
-source "$hooksDir/bash-preexec.sh"
+hooksDir=$(dirname -- "$(readlink -f -- "\${BASH_SOURCE}")")
+. "$hooksDir/bash-preexec.sh"
 precmd() {
     init_ghjk
 }
@@ -233,6 +255,12 @@ export async function install() {
   } else if (shell === "bash") {
     await filterAddFile(
       std_path.resolve(homeDir, ".bashrc"),
+      /\.local\/share\/ghjk\/hooks\/hook.sh/,
+      "source $HOME/.local/share/ghjk/hooks/hook.sh",
+    );
+  } else if (shell === "zsh") {
+    await filterAddFile(
+      std_path.resolve(homeDir, ".zshrc"),
       /\.local\/share\/ghjk\/hooks\/hook.sh/,
       "source $HOME/.local/share/ghjk/hooks/hook.sh",
     );

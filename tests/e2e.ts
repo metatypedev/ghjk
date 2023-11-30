@@ -50,21 +50,19 @@ await (${confFn.toString()})()`;
         "-f-",
         ".",
       ], { env, pipeInput: dFile });
-      await spawn([
-        ...dockerCmd,
-        "run",
-        "--rm",
-        ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
-          .flat(),
-        tag,
-        "bash",
-        "-c",
-        `
-        source ~/.bashrc
-        init_ghjk
-        ${ePoint}
-        `,
-      ], { env });
+      for (const shell of ["bash", "fish"]) {
+        await spawn([
+          ...dockerCmd,
+          "run",
+          "--rm",
+          ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
+            .flat(),
+          tag,
+          shell,
+          "-c",
+          ePoint,
+        ], { env });
+      }
       await spawn([
         ...dockerCmd,
         "rmi",

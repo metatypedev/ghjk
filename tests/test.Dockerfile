@@ -4,16 +4,17 @@ RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt update; \
     apt install --yes \
+    # test deps
+    fish zsh \
     # asdf deps
     git curl xz-utils unzip \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 
-# activate ghjk for each bash shell
+# activate ghjk non-interactive shells execs
 ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
-# explicitly set the shell var as detection fails otherwise
-# because ps program is not present in this image
-ENV SHELL=/bin/bash
+ENV ZDOTDIR=/root/.local/share/ghjk/hooks/
+
 # BASH_ENV behavior is only avail in bash, not sh
 SHELL [ "/bin/bash", "-c"] 
 
@@ -23,7 +24,12 @@ COPY deno.lock ./
 COPY deps/* ./deps/
 RUN deno cache deps/*
 COPY . ./
-RUN deno run -A /ghjk/install.ts
+
+# explicitly set the shell var as detection fails otherwise
+# because ps program is not present in this image
+RUN SHELL=/bin/bash deno run -A /ghjk/install.ts
+RUN SHELL=/bin/fish deno run -A /ghjk/install.ts
+RUN SHELL=/bin/zsh  deno run -A /ghjk/install.ts
 
 WORKDIR /app
 

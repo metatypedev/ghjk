@@ -19,33 +19,12 @@ repos:
     hooks:
       - id: check-dependabot
       - id: check-github-workflows
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.0.292"
-    hooks:
-      - id: ruff
-  - repo: https://github.com/psf/black
-    rev: 23.9.1
-    hooks:
-      - id: black
   - repo: https://github.com/commitizen-tools/commitizen
     rev: 3.10.0
     hooks:
       - id: commitizen
         stages:
           - commit-msg
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
-    hooks:
-      - id: fmt
-      - id: cargo-check
-        args:
-          - "--locked"
-      - id: clippy
-        args:
-          - "--locked"
-          - "--"
-          - "--deny"
-          - "warnings"
   - repo: local
     hooks:
       - id: deno-fmt
@@ -69,70 +48,6 @@ repos:
         language: system
         entry: bash -c 'cd website && [ -f node_modules/.bin/eslint ] && pnpm lint'
         pass_filenames: false
-        types_or:
-          - ts
-          - tsx
-        files: ^website/
-  - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.4
-    hooks:
-      - id: insert-license
-        name: "License MPL-2.0 python"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-MPL-2.0.txt
-          - "--comment-style=#"
-          - "--skip-license-insertion-comment=no-auto-license-header"
-        types_or:
-          - python
-        files: ^typegraph/
-      - id: insert-license
-        name: "License Elastic-2.0 rust"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-Elastic-2.0.txt
-          - "--comment-style=//"
-          - "--skip-license-insertion-comment=no-auto-license-header"
-        types_or:
-          - rust
-        files: ^(typegate|libs)/
-      - id: insert-license
-        name: "License MPL-2.0 rust"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-MPL-2.0.txt
-          - "--comment-style=//"
-          - "--skip-license-insertion-comment=no-auto-license-header"
-        types_or:
-          - rust
-        files: ^(meta-cli|typegraph)/
-      - id: insert-license
-        name: "License Elastic-2.0 deno"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-Elastic-2.0.txt
-          - "--comment-style=//"
-          - "--skip-license-insertion-comment=no-auto-license-header"
-        types_or:
-          - ts
-        files: ^(typegate|dev)/
-      - id: insert-license
-        name: "License MPL-2.0 deno"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-MPL-2.0.txt
-          - "--comment-style=//"
-          - "--skip-license-insertion-comment=no-auto-license-header"
-        types_or:
-          - ts
-        files: ^typegraph/
-      - id: insert-license
-        name: "License Elastic-2.0 typescript"
-        args:
-          #- --remove-header
-          - --license-filepath=dev/license-header-Elastic-2.0.txt
-          - "--comment-style=//"
-          - "--skip-license-insertion-comment=no-auto-license-header"
         types_or:
           - ts
           - tsx
