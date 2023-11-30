@@ -8,7 +8,13 @@ RUN set -eux; \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 
+# activate ghjk for each bash shell
+ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
+# explicitly set the shell var as detection fails otherwise
+# because ps program is not present in this image
 ENV SHELL=/bin/bash
+# BASH_ENV behavior is only avail in bash, not sh
+SHELL [ "/bin/bash", "-c"] 
 
 WORKDIR /ghjk
 
@@ -24,12 +30,6 @@ RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
-SHELL [ "/bin/bash", "-c"] 
-
-RUN <<EOT 
-    source ~/.bashrc
-    init_ghjk
-    ghjk sync
-EOT
+RUN ghjk sync
 
 CMD ['false']

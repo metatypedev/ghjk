@@ -1,0 +1,123 @@
+import {
+  addInstallGlobal,
+  depBinShimPath,
+  DownloadArgs,
+  downloadFile,
+  InstallArgs,
+  type InstallConfigBase,
+  type PlatformInfo,
+  PlugBase,
+  registerDenoPlugGlobal,
+  removeFile,
+  spawn,
+  std_fs,
+  std_path,
+  std_url,
+} from "../plug.ts";
+import * as std_plugs from "../std.ts";
+
+const manifest = {
+  name: "whiz@ghrel",
+  version: "0.1.0",
+  moduleSpecifier: import.meta.url,
+  deps: [
+    std_plugs.tar_aa,
+  ],
+};
+
+registerDenoPlugGlobal(manifest, () => new Plug());
+
+export default function install(config: InstallConfigBase = {}) {
+  addInstallGlobal({
+    plugName: manifest.name,
+    ...config,
+  });
+}
+
+const repoOwner = "zifeo";
+const repoName = "whiz";
+const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
+
+export class Plug extends PlugBase {
+  manifest = manifest;
+
+  async latestStable(): Promise<string> {
+    const metadataRequest = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
+    );
+
+    const metadata = await metadataRequest.json() as {
+      tag_name: string;
+    };
+
+    return metadata.tag_name;
+  }
+
+  async listAll() {
+    const metadataRequest = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
+    );
+
+    const metadata = await metadataRequest.json() as [{
+      tag_name: string;
+    }];
+
+    return metadata.map((rel) => rel.tag_name).reverse();
+  }
+
+  async download(args: DownloadArgs) {
+    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  }
+
+  async install(args: InstallArgs) {
+    const fileName = std_url.basename(
+      downloadUrl(args.installVersion, args.platform),
+    );
+    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
+    await spawn([
+      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      "xf",
+      fileDwnPath,
+      `--directory=${args.tmpDirPath}`,
+    ]);
+
+    if (await std_fs.exists(args.installPath)) {
+      await removeFile(args.installPath, { recursive: true });
+    }
+    await std_fs.copy(
+      args.tmpDirPath,
+      std_path.resolve(args.installPath, "bin"),
+    );
+  }
+}
+
+function downloadUrl(installVersion: string, platform: PlatformInfo) {
+  let arch;
+  switch (platform.arch) {
+    case "x86_64":
+      arch = "x86_64";
+      break;
+    case "aarch64":
+      arch = "aarch64";
+      break;
+    default:
+      throw new Error(`unsupported arch: ${platform.arch}`);
+  }
+  let os;
+  const ext = "tar.gz";
+  switch (platform.os) {
+    case "linux":
+      os = "unknown-linux-musl";
+      break;
+    case "darwin":
+      os = "apple-darwin";
+      break;
+    case "windows":
+      os = "pc-windows-msvc";
+      break;
+    default:
+      throw new Error(`unsupported arch: ${platform.arch}`);
+  }
+  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${arch}-${os}.${ext}`;
+}

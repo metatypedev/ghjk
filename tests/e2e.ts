@@ -96,6 +96,15 @@ await dockerTest([
   },
   // 7 megs
   {
+    name: "whiz",
+    imports: `import plug from "$ghjk/plugs/whiz.ts"`,
+    confFn: `async () => {
+    plug({ });
+  }`,
+    ePoint: `whiz --version`,
+  },
+  // 7 megs
+  {
     name: "act",
     imports: `import plug from "$ghjk/plugs/act.ts"`,
     confFn: `async () => {

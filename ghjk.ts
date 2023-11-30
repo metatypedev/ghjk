@@ -14,6 +14,7 @@ import asdf from "./plugs/asdf.ts";
 import protoc from "./plugs/protoc.ts";
 import earthly from "./plugs/earthly.ts";
 import ruff from "./plugs/ruff.ts";
+import whiz from "./plugs/whiz.ts";
 
 // node({});
 // wasmedge({});
@@ -31,4 +32,5 @@ import ruff from "./plugs/ruff.ts";
 // });
 // protoc({});
 // earthly({});
-ruff({});
+// ruff({});
+whiz({});
