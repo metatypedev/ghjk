@@ -70,7 +70,7 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await unarchive(fileDwnPath args.tmpDirPath)
+    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });
@@ -108,8 +108,9 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
       default:
         throw new Error(`unsupported arch: ${platform.arch}`);
     }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
-      }-${arch}-${os}.tar.gz`;
+    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${
+      installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
+    }-${arch}-${os}.tar.gz`;
   } else {
     throw new Error(`unsupported os: ${platform.os}`);
   }

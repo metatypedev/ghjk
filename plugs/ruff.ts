@@ -1,6 +1,5 @@
 import {
   addInstallGlobal,
-  depBinShimPath,
   DownloadArgs,
   downloadFile,
   InstallArgs,
@@ -9,7 +8,6 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
@@ -81,6 +79,7 @@ export class Plug extends PlugBase {
       args.tmpDirPath,
       std_path.resolve(args.installPath, "bin"),
     );
+    // await Deno.chmod(std_path.resolve(args.installPath, "bin", "ruff"), 0o700);
   }
 }
 

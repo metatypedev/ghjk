@@ -2,18 +2,23 @@ import {
   addInstall,
   type AmbientAccessPlugManifest,
   type DenoWorkerPlugManifest,
-  type DepShims,
   type DownloadArgs,
   type GhjkConfig,
   type InstallConfig,
   type PlugBase,
-  type PlugDep,
   registerAmbientPlug,
   registerDenoPlug,
   registerPlug,
   validators,
 } from "./core/mod.ts";
-import { compress, log, std_fs, std_path, std_url, zip } from "./deps/plug.ts";
+import {
+  compress,
+  log,
+  std_fs,
+  std_path,
+  std_url,
+  zipjs,
+} from "./deps/plug.ts";
 import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
 import * as asdf from "./core/asdf.ts";
 import logger from "./core/logger.ts";
@@ -171,14 +176,44 @@ export async function unarchive(
     case ".gz":
     case ".tar.gz":
     case ".tgz":
-      await compress.tgz.uncompress(path, dest);
+      await compress.tgz.uncompress(path, dest, {
+        debug: true,
+      });
       break;
     case ".tar":
-      await compress.tar.uncompress(path, dest);
+      await compress.tar.uncompress(path, dest, {
+        debug: true,
+      });
       break;
-    case ".zip":
-      await zip.decompress(path, dest);
+    case ".zip": {
+      const zipFile = await Deno.open(path, { read: true });
+      const zipReader = new zipjs.ZipReader(zipFile.readable);
+      try {
+        await Promise.allSettled(
+          (await zipReader.getEntries()).map(async (entry) => {
+            if (entry.directory) {
+              await std_fs.ensureDir(std_path.resolve(dest, entry.filename));
+              return;
+            }
+            const filePath = std_path.resolve(dest, entry.filename);
+            await std_fs.ensureDir(std_path.dirname(filePath));
+            const file = await Deno.open(filePath, {
+              create: true,
+              truncate: true,
+              write: true,
+              mode: entry.externalFileAttribute >> 16,
+            });
+            if (!entry.getData) throw Error("impossible");
+            await entry.getData(file.writable);
+          }),
+        );
+      } catch (err) {
+        throw err;
+      } finally {
+        zipReader.close();
+      }
       break;
+    }
     default:
       throw Error("unsupported archive extension: ${ext}");
   }
