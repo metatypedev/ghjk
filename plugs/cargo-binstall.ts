@@ -1,6 +1,5 @@
 import {
   addInstallGlobal,
-  depBinShimPath,
   DownloadArgs,
   downloadFile,
   InstallArgs,
@@ -9,24 +8,16 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
+  unarchive,
 } from "../plug.ts";
-// FIXME: find a better way to expose std_plug.plug_Id
-// that allows standard plugs to depend on each other
-// import * as std_plugs from "../std.ts";
-
-const tar_aa_id = {
-  id: "tar@aa",
-};
 
 export const manifest = {
   name: "cargo-binstall@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [tar_aa_id],
 };
 
 registerDenoPlugGlobal(manifest, () => new Plug());
@@ -38,14 +29,12 @@ export default function install(config: InstallConfigBase = {}) {
   });
 }
 
-const repoAddress = "https://github.com/cargo-bins/cargo-binstall";
+const repoOwner = "cargo-bins";
+const repoName = "cargo-binstall";
+const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
 export class Plug extends PlugBase {
   manifest = manifest;
-
-  listBinPaths(): string[] {
-    return ["cargo-binstall", "detect-targets", "detect-wasi"];
-  }
 
   async listAll() {
     const metadataRequest = await fetch(
@@ -73,20 +62,14 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await spawn([
-      depBinShimPath(tar_aa_id, "tar", args.depShims),
-      "xf",
-      fileDwnPath,
-      `--directory=${args.tmpDirPath}`,
-    ]);
+    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });
     }
-
     await std_fs.copy(
       args.tmpDirPath,
-      args.installPath,
+      std_path.resolve(args.installPath, "bin"),
     );
   }
 }
@@ -105,12 +88,12 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
   }
   if (platform.os == "darwin") {
     // NOTE: the archive file name extensions are different from os to os
-    return `${repoAddress}/releases/download/v${installVersion}/cargo-binstall-${arch}-apple-darwin.full.zip`;
+    return `${repoAddress}/releases/download/v${installVersion}/${repoName}-${arch}-apple-darwin.full.zip`;
   } else if (platform.os == "linux") {
     // TODO: support for ubuntu/debian versions
     // we'll need a way to expose that to plugs
     const os = "unknown-linux-musl";
-    return `${repoAddress}/releases/download/v${installVersion}/cargo-binstall-${arch}-${os}.full.tgz`;
+    return `${repoAddress}/releases/download/v${installVersion}/${repoName}-${arch}-${os}.full.tgz`;
   } else {
     throw new Error(`unsupported os: ${platform.os}`);
   }

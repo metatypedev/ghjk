@@ -9,14 +9,16 @@ import {
 } from "./types.ts";
 import {
   depBinShimPath,
+  getInstallId,
   pathWithDepShims,
   spawn,
   spawnOutput,
-  getInstallId
 } from "./utils.ts";
 // import * as std_plugs from "../std.ts";
 import { std_fs, std_path } from "../deps/common.ts";
 
+// FIXME: find a better way to expose std_plug.plug_id s
+// that allows standard plugs to depend on each other
 const curl_aa_id = {
   id: "curl@aa",
 };
@@ -29,7 +31,6 @@ export const manifest = {
   name: "asdf@asdf",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  // deps: [std_plugs.tar_aa, std_plugs.git_aa],
   deps: [curl_aa_id, git_aa_id],
 };
 

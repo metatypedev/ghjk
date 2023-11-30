@@ -33,4 +33,4 @@ import whiz from "./plugs/whiz.ts";
 // protoc({});
 // earthly({});
 // ruff({});
-whiz({});
+// whiz({});

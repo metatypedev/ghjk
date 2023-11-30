@@ -1,6 +1,5 @@
 import {
   addInstallGlobal,
-  depBinShimPath,
   DownloadArgs,
   downloadFile,
   ExecEnvArgs,
@@ -11,25 +10,17 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
+  unarchive,
 } from "../plug.ts";
-// import * as std_plugs from "../std.ts";
-
-const tar_aa_id = {
-  id: "tar@aa",
-};
 
 // TODO: sanity check exports of all plugs
 export const manifest = {
   name: "node@org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
-    tar_aa_id,
-  ],
 };
 
 registerDenoPlugGlobal(manifest, () => new Plug());
@@ -77,12 +68,7 @@ export class Plug extends PlugBase {
       artifactUrl(args.installVersion, args.platform),
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await spawn([
-      depBinShimPath(tar_aa_id, "tar", args.depShims),
-      "xf",
-      fileDwnPath,
-      `--directory=${args.tmpDirPath}`,
-    ]);
+    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });

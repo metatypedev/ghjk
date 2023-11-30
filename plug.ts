@@ -13,7 +13,7 @@ import {
   registerPlug,
   validators,
 } from "./core/mod.ts";
-import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
+import { compress, log, std_fs, std_path, std_url, zip } from "./deps/plug.ts";
 import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
 import * as asdf from "./core/asdf.ts";
 import logger from "./core/logger.ts";
@@ -159,6 +159,29 @@ export async function downloadFile(
     tmpFilePath,
     fileDwnPath,
   );
+}
+
+/// Uses file extension to determine type
+export async function unarchive(
+  path: string,
+  dest = "./",
+  ext = std_path.extname(path),
+) {
+  switch (ext) {
+    case ".gz":
+    case ".tar.gz":
+    case ".tgz":
+      await compress.tgz.uncompress(path, dest);
+      break;
+    case ".tar":
+      await compress.tar.uncompress(path, dest);
+      break;
+    case ".zip":
+      await zip.decompress(path, dest);
+      break;
+    default:
+      throw Error("unsupported archive extension: ${ext}");
+  }
 }
 
 export const removeFile = Deno.remove;

@@ -4,7 +4,8 @@ RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt update; \
     apt install --yes \
-    git curl xz-utils unzip \
+    # asdf deps
+    git curl \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 

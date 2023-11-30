@@ -193,7 +193,7 @@ await dockerTest([
   }`,
     ePoint: `pnpm --version`,
   },
-  // pnpm + more megs
+  // node + more megs
   {
     name: "jco",
     imports: `import plug from "$ghjk/plugs/jco.ts"`,

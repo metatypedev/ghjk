@@ -1,6 +1,5 @@
 import {
   addInstallGlobal,
-  depBinShimPath,
   DownloadArgs,
   downloadFile,
   InstallArgs,
@@ -9,20 +8,16 @@ import {
   PlugBase,
   registerDenoPlugGlobal,
   removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
+  unarchive,
 } from "../plug.ts";
-import * as std_plugs from "../std.ts";
 
 const manifest = {
   name: "protoc@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
-    std_plugs.unzip_aa,
-  ],
 };
 
 registerDenoPlugGlobal(manifest, () => new Plug());
@@ -75,12 +70,7 @@ export class Plug extends PlugBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await spawn([
-      depBinShimPath(std_plugs.unzip_aa, "unzip", args.depShims),
-      fileDwnPath,
-      "-d",
-      args.tmpDirPath,
-    ]);
+    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });
