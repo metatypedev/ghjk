@@ -2,7 +2,6 @@
 
 export * from "./common.ts";
 export * as zipjs from "https://deno.land/x/zipjs@v2.7.31/index.js";
-export * as compress from "https://deno.land/x/compress@v0.4.5/mod.ts";
 export { Foras } from "https://deno.land/x/foras@v2.1.4/src/deno/mod.ts";
 export * as std_tar from "https://deno.land/std@0.129.0/archive/tar.ts";
 export * as std_streams from "https://deno.land/std@0.129.0/streams/mod.ts";

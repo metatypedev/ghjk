@@ -5,7 +5,7 @@ RUN set -eux; \
     apt update; \
     apt install --yes \
     # asdf deps
-    git curl \
+    git curl xz-utils unzip \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 

@@ -17,7 +17,7 @@ import ruff from "./plugs/ruff.ts";
 import whiz from "./plugs/whiz.ts";
 
 // node({});
-// wasmedge({});
+wasmedge({});
 // pnpm({});
 // cargo_binstall({});
 // wasm_tools({});
@@ -33,4 +33,4 @@ import whiz from "./plugs/whiz.ts";
 // protoc({});
 // earthly({});
 // ruff({});
-whiz({});
+// whiz({});

@@ -12,7 +12,6 @@ import {
   validators,
 } from "./core/mod.ts";
 import {
-  compress,
   Foras,
   log,
   std_fs,
@@ -171,6 +170,7 @@ export async function downloadFile(
 }
 
 /// Uses file extension to determine type
+/// Does not support symlinks
 export async function unarchive(
   path: string,
   dest = "./",
@@ -212,6 +212,7 @@ export async function untgz(
     },
   });
   const buf = gzDec.finish().copyAndDispose();
+  await Deno.writeFile("/tmp/my.tar", buf);
   await untarReader(new std_io.Buffer(buf), dest);
 }
 export async function untar(
@@ -240,7 +241,7 @@ export async function untarReader(
     const filePath = std_path.resolve(dest, entry.fileName);
     if (entry.type === "directory") {
       await std_fs.ensureDir(filePath);
-      return;
+      continue;
     }
     await std_fs.ensureDir(std_path.dirname(filePath));
     const file = await Deno.open(filePath, {
