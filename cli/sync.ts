@@ -12,7 +12,7 @@ import {
   validators,
 } from "../core/mod.ts";
 import { DenoWorkerPlug } from "../core/worker.ts";
-import { AVAIL_CONCURRENCY, dirs, } from "./utils.ts";
+import { AVAIL_CONCURRENCY, dirs } from "./utils.ts";
 import { AmbientAccessPlug } from "../core/ambient.ts";
 import { AsdfPlug } from "../core/asdf.ts";
 import { getInstallId } from "../core/utils.ts";
@@ -49,9 +49,9 @@ async function writeLoader(envDir: string, env: Record<string, string>) {
   await Deno.writeTextFile(
     `${envDir}/loader.sh`,
     `export GHJK_CLEANUP="";\n` +
-    Object.entries(env).map(([k, v]) =>
-      `GHJK_CLEANUP+="export ${k}='$${k}';";\nexport ${k}='${v}';`
-    ).join("\n"),
+      Object.entries(env).map(([k, v]) =>
+        `GHJK_CLEANUP+="export ${k}='$${k}';";\nexport ${k}='${v}';`
+      ).join("\n"),
   );
 }
 
@@ -76,20 +76,6 @@ export async function sync(cx: GhjkCtx) {
 
   const envDir = envDirFromConfig(config);
   logger().debug({ envDir });
-
-  /* for (const [name, { ty, manifest }] of cx.plugs) {
-          if (ty == "denoWorker") {
-            const plug = new DenoWorkerPlug(
-              manifest as DenoWorkerPlugManifestX,
-            );
-            const versions = await plug.listAll({});
-            console.log(name, { versions });
-          } else {
-            throw new Error(
-              `unsupported plugin type "${ty}": ${JSON.stringify(manifest)}`,
-            );
-          }
-        } */
 
   const installs = buildInstallGraph(cx);
   const artifacts = new Map<string, InstallArtifacts>();
@@ -200,7 +186,8 @@ export async function sync(cx: GhjkCtx) {
       const conflict = env[key];
       if (conflict) {
         throw new Error(
-          `duplicate env var found ${key} from installs ${instId} & ${conflict[1]
+          `duplicate env var found ${key} from installs ${instId} & ${
+            conflict[1]
           }`,
         );
       }
@@ -242,7 +229,8 @@ function buildInstallGraph(cx: GhjkCtx) {
       cx.allowedDeps.get(inst.plugName);
     if (!regPlug) {
       throw new Error(
-        `unable to find plugin "${inst.plugName}" specified by install ${JSON.stringify(inst)
+        `unable to find plugin "${inst.plugName}" specified by install ${
+          JSON.stringify(inst)
         }`,
       );
     }
