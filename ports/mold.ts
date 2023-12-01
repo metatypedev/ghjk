@@ -5,7 +5,7 @@ import {
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
@@ -20,11 +20,11 @@ const manifest = {
   moduleSpecifier: import.meta.url,
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
@@ -33,7 +33,7 @@ const repoOwner = "rui314";
 const repoName = "mold";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   async latestStable(): Promise<string> {

@@ -5,35 +5,33 @@ import {
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
   std_path,
-  std_url,
-  unarchive,
 } from "../port.ts";
 
 const manifest = {
-  name: "whiz@ghrel",
+  name: "earthly@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
 
-const repoOwner = "zifeo";
-const repoName = "whiz";
+const repoOwner = "earthly";
+const repoName = "earthly";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   async latestStable(): Promise<string> {
@@ -61,23 +59,24 @@ export class Plug extends PlugBase {
   }
 
   async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+    const fileName = repoName;
+    await downloadFile(args, downloadUrl(args.installVersion, args.platform), {
+      mode: 0o700,
+      fileName,
+    });
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
-    );
+    const fileName = repoName;
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-
-    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });
     }
+    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
     await std_fs.copy(
-      args.tmpDirPath,
-      std_path.resolve(args.installPath, "bin"),
+      fileDwnPath,
+      std_path.resolve(args.installPath, "bin", fileName),
     );
   }
 }
@@ -86,28 +85,24 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
   let arch;
   switch (platform.arch) {
     case "x86_64":
-      arch = "x86_64";
+      arch = "amd64";
       break;
     case "aarch64":
-      arch = "aarch64";
+      arch = "arm64";
       break;
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
   let os;
-  const ext = "tar.gz";
   switch (platform.os) {
     case "linux":
-      os = "unknown-linux-musl";
+      os = "linux";
       break;
     case "darwin":
-      os = "apple-darwin";
-      break;
-    case "windows":
-      os = "pc-windows-msvc";
+      os = "darwin";
       break;
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${arch}-${os}.${ext}`;
+  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${os}-${arch}`;
 }

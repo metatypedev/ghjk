@@ -4,7 +4,7 @@ import type {
   AsdfInstallConfig,
   DepShims,
   InstallConfig,
-  PlugDep,
+  PortDep,
 } from "../modules/ports/types.ts";
 export function dbg<T>(val: T) {
   logger().debug("inline", val);
@@ -98,7 +98,7 @@ export function pathWithDepShims(
 }
 
 export function depBinShimPath(
-  dep: PlugDep,
+  dep: PortDep,
   binName: string,
   depShims: DepShims,
 ) {
@@ -121,10 +121,15 @@ export function getInstallId(install: InstallConfig | AsdfInstallConfig) {
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }
-  return install.plugName;
+  return install.portName;
 }
 
 export const $ = dax.build$(
   {},
 );
 $.setPrintCommand(true);
+
+export function inWorker() {
+  return typeof WorkerGlobalScope !== "undefined" &&
+    self instanceof WorkerGlobalScope;
+}

@@ -47,7 +47,7 @@ init_ghjk() {
                 echo "${ansi_red}[ghjk] Uninstalled runtime found, please sync...${ansi_nc}"
                 echo "$envDir"
             fi
-            export ghjk_alias="deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
+            export ghjk_alias="deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         fi
         cur_dir="$(dirname "$cur_dir")"

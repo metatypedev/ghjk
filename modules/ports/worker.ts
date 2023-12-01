@@ -1,20 +1,17 @@
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
-import logger from "../../core/logger.ts";
+import logger from "../../utils/logger.ts";
+import { inWorker } from "../../utils/mod.ts";
 import {
-  type DenoWorkerPlugManifestX,
+  type DenoWorkerPortManifestX,
   type DownloadArgs,
   type ExecEnvArgs,
   type InstallArgs,
   type ListAllArgs,
   type ListBinPathsArgs,
-  PlugBase,
+  PortBase,
 } from "./types.ts";
-
-export function isWorker() {
-  return !!self.name;
-}
 
 type WorkerReq = {
   ty: "assert";
@@ -76,8 +73,8 @@ type WorkerResp = {
 
 /// Make sure to call this before any `await` point or your
 /// plug might miss messages
-export function initDenoWorkerPlug<P extends PlugBase>(plugInit: () => P) {
-  if (isWorker()) {
+export function initDenoWorkerPlug<P extends PortBase>(plugInit: () => P) {
+  if (inWorker()) {
     // let plugClass: (new () => PlugBase) | undefined;
     // const plugInit = () => {
     //   if (!plugClass) {
@@ -159,9 +156,9 @@ export function initDenoWorkerPlug<P extends PlugBase>(plugInit: () => P) {
 //   [P in keyof T]-?: T[P] extends Function ? P : never;
 // }[keyof T];
 
-export class DenoWorkerPlug extends PlugBase {
+export class DenoWorkerPort extends PortBase {
   constructor(
-    public manifest: DenoWorkerPlugManifestX,
+    public manifest: DenoWorkerPortManifestX,
   ) {
     super();
   }

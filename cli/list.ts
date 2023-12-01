@@ -12,7 +12,7 @@ export class ListCommand extends Command {
         console.log(
           cx.installs.map((install) => ({
             install,
-            plug: cx.plugs.get(install.plugName),
+            plug: cx.ports.get(install.portName),
           })),
         );
       });

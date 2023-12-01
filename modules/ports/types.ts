@@ -1,12 +1,14 @@
 import { semver, zod } from "../../deps/common.ts";
-import logger from "../../core/logger.ts";
+import logger from "../../utils/logger.ts";
 import { std_path } from "../../deps/common.ts";
 
-const plugDep = zod.object({
+// TODO: find a better identification scheme for ports
+
+const portDep = zod.object({
   id: zod.string(),
 });
 
-const plugManifestBase = zod.object({
+const portManifestBase = zod.object({
   name: zod.string().min(1),
   version: zod.string()
     .refine((str) => semver.parse(str), {
@@ -16,16 +18,16 @@ const plugManifestBase = zod.object({
     .enum(["deferToNewer", "override"])
     .nullish()
     .default("deferToNewer"),
-  deps: zod.array(plugDep).nullish(),
+  deps: zod.array(portDep).nullish(),
 }).passthrough();
 
-const denoWorkerPlugManifest = plugManifestBase.merge(
+const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
     moduleSpecifier: zod.string().url(),
   }),
 );
 
-const ambientAccessPlugManifest = plugManifestBase.merge(
+const ambientAccessPortManifest = portManifestBase.merge(
   zod.object({
     execName: zod.string().min(1),
     versionExtractFlag: zod.enum([
@@ -59,7 +61,7 @@ const installConfigBase = zod.object({
 
 const installConfig = installConfigBase.merge(
   zod.object({
-    plugName: zod.string().min(1),
+    portName: zod.string().min(1),
   }),
 );
 
@@ -72,10 +74,10 @@ const asdfInstallConfig = installConfig.merge(
 );
 
 const validators = {
-  plugDep,
-  plugManifestBase,
-  denoWorkerPlugManifest,
-  ambientAccessPlugManifest,
+  portDep,
+  portManifestBase,
+  denoWorkerPortManifest,
+  ambientAccessPortManifest,
   string: zod.string(),
   installConfigBase,
   installConfig,
@@ -85,48 +87,48 @@ const validators = {
 export default validators;
 
 // Describes the plugin itself
-export type PlugManifestBase = zod.input<typeof validators.plugManifestBase>;
+export type PortManifestBase = zod.input<typeof validators.portManifestBase>;
 
-export type DenoWorkerPlugManifest = zod.input<
-  typeof validators.denoWorkerPlugManifest
+export type DenoWorkerPortManifest = zod.input<
+  typeof validators.denoWorkerPortManifest
 >;
 
-export type AmbientAccessPlugManifest = zod.input<
-  typeof validators.ambientAccessPlugManifest
+export type AmbientAccessPortManifest = zod.input<
+  typeof validators.ambientAccessPortManifest
 >;
 
 // Describes the plugin itself
-export type PlugManifest =
-  | PlugManifestBase
-  | DenoWorkerPlugManifest
-  | AmbientAccessPlugManifest;
+export type PortManifest =
+  | PortManifestBase
+  | DenoWorkerPortManifest
+  | AmbientAccessPortManifest;
 
-export type PlugDep = zod.infer<typeof validators.plugDep>;
-export type PlugManifestBaseX = zod.infer<typeof validators.plugManifestBase>;
-export type DenoWorkerPlugManifestX = zod.infer<
-  typeof validators.denoWorkerPlugManifest
+export type PortDep = zod.infer<typeof validators.portDep>;
+export type PortManifestBaseX = zod.infer<typeof validators.portManifestBase>;
+export type DenoWorkerPortManifestX = zod.infer<
+  typeof validators.denoWorkerPortManifest
 >;
-export type AmbientAccessPlugManifestX = zod.infer<
-  typeof validators.ambientAccessPlugManifest
+export type AmbientAccessPortManifestX = zod.infer<
+  typeof validators.ambientAccessPortManifest
 >;
-// This is the transformed version of PlugManifest, ready for consumption
-export type PlugManifestX =
-  | PlugManifestBaseX
-  | DenoWorkerPlugManifestX
-  | AmbientAccessPlugManifestX;
+// This is the transformed version of PortManifest, ready for consumption
+export type PortManifestX =
+  | PortManifestBaseX
+  | DenoWorkerPortManifestX
+  | AmbientAccessPortManifestX;
 
-export type RegisteredPlug = {
+export type RegisteredPort = {
   ty: "ambientAccess";
-  manifest: AmbientAccessPlugManifestX;
+  manifest: AmbientAccessPortManifestX;
 } | {
   ty: "denoWorker";
-  manifest: DenoWorkerPlugManifestX;
+  manifest: DenoWorkerPortManifestX;
 } | {
   ty: "asdf";
-  manifest: PlugManifestBaseX;
+  manifest: PortManifestBaseX;
 };
 
-export type RegisteredPlugs = Map<string, RegisteredPlug>;
+export type RegisteredPorts = Map<string, RegisteredPort>;
 
 export type InstallConfigBase = zod.input<typeof validators.installConfigBase>;
 
@@ -137,8 +139,8 @@ export type AsdfInstallConfig = zod.input<typeof validators.asdfInstallConfig>;
 export type AsdfInstallConfigX = zod.infer<typeof validators.asdfInstallConfig>;
 
 export interface GhjkConfig {
-  /// Plugs explicitly added by the user
-  plugs: RegisteredPlugs;
+  /// Ports explicitly added by the user
+  ports: RegisteredPorts;
   installs: InstallConfig[];
 }
 
@@ -146,16 +148,16 @@ export interface GhjkConfig {
 /// from the config script instead of the global variable approach the
 /// main [`GhjkConfig`] can take.
 export interface GhjkSecureConfig {
-  allowedPluginDeps?: PlugDep[];
+  allowedPortDeps?: PortDep[];
 }
 
 export type GhjkCtx = GhjkConfig & {
-  /// Standard plugs allowed to be use as deps by other plugs
-  allowedDeps: RegisteredPlugs;
+  /// Standard list of ports allowed to be use as deps by other ports
+  allowedDeps: RegisteredPorts;
 };
 
-export abstract class PlugBase {
-  abstract manifest: PlugManifest;
+export abstract class PortBase {
+  abstract manifest: PortManifest;
 
   execEnv(
     _args: ExecEnvArgs,
@@ -190,7 +192,7 @@ export abstract class PlugBase {
   latestStable(args: ListAllArgs): Promise<string> | string {
     return (async () => {
       logger().warning(
-        `using default implementation of latestStable for plug ${this.manifest.name}`,
+        `using default implementation of latestStable for port ${this.manifest.name}`,
       );
       const allVers = await this.listAll(args);
       if (allVers.length == 0) {
@@ -227,7 +229,7 @@ export type DepShims = Record<
 
 export type PlatformInfo = Omit<typeof Deno.build, "target">;
 
-export interface PlugArgsBase {
+export interface PortArgsBase {
   // installType: "version" | "ref";
   installVersion: string;
   installPath: string;
@@ -240,18 +242,18 @@ export interface ListAllArgs {
   depShims: DepShims;
 }
 
-export interface ListBinPathsArgs extends PlugArgsBase {
+export interface ListBinPathsArgs extends PortArgsBase {
 }
 
-export interface ExecEnvArgs extends PlugArgsBase {
+export interface ExecEnvArgs extends PortArgsBase {
 }
 
-export interface DownloadArgs extends PlugArgsBase {
+export interface DownloadArgs extends PortArgsBase {
   downloadPath: string;
   tmpDirPath: string;
 }
 
-export interface InstallArgs extends PlugArgsBase {
+export interface InstallArgs extends PortArgsBase {
   availConcurrency: number;
   downloadPath: string;
   tmpDirPath: string;

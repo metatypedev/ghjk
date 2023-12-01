@@ -5,7 +5,7 @@ import {
   type InstallArgs,
   type ListAllArgs,
   type ListBinPathsArgs,
-  PlugBase,
+  PortBase,
 } from "./types.ts";
 import {
   depBinShimPath,
@@ -13,8 +13,8 @@ import {
   pathWithDepShims,
   spawn,
   spawnOutput,
-} from "../../core/utils.ts";
-// import * as std_plugs from "../std.ts";
+} from "../../utils/mod.ts";
+// import * as std_ports from "../std.ts";
 import { std_fs, std_path } from "../../deps/common.ts";
 
 // FIXME: find a better way to expose std_plug.plug_id s
@@ -34,7 +34,7 @@ export const manifest = {
   deps: [curl_aa_id, git_aa_id],
 };
 
-export class AsdfPlug extends PlugBase {
+export class AsdfPort extends PortBase {
   manifest = manifest;
   constructor(
     public asdfDir: string,
@@ -72,7 +72,7 @@ export class AsdfPlug extends PlugBase {
       );
       void Deno.remove(tmpCloneDirPath, { recursive: true });
     }
-    return new AsdfPlug(asdfDir, pluginDir, installConfig);
+    return new AsdfPort(asdfDir, pluginDir, installConfig);
   }
 
   async listAll(_args: ListAllArgs): Promise<string[]> {

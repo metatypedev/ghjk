@@ -1,6 +1,6 @@
 import { std_path } from "../deps/cli.ts";
 import { dirs, importRaw } from "../cli/utils.ts";
-import { spawnOutput } from "../core/utils.ts";
+import { spawnOutput } from "../utils/mod.ts";
 
 let LD_LIBRARY_ENV: string;
 switch (Deno.build.os) {

@@ -2,13 +2,13 @@ export * from "./types.ts";
 import { semver } from "../../deps/common.ts";
 
 import validators, {
-  type AmbientAccessPlugManifest,
-  type DenoWorkerPlugManifest,
+  type AmbientAccessPortManifest,
+  type DenoWorkerPortManifest,
   type GhjkConfig,
   type InstallConfig,
-  type RegisteredPlug,
+  type RegisteredPort,
 } from "./types.ts";
-import logger from "../../core/logger.ts";
+import logger from "../../utils/logger.ts";
 
 export const Ghjk = {
   cwd: Deno.cwd,
@@ -16,26 +16,26 @@ export const Ghjk = {
 
 export function registerDenoPlug(
   cx: GhjkConfig,
-  manifestUnclean: DenoWorkerPlugManifest,
+  manifestUnclean: DenoWorkerPortManifest,
 ) {
-  const manifest = validators.denoWorkerPlugManifest.parse(manifestUnclean);
+  const manifest = validators.denoWorkerPortManifest.parse(manifestUnclean);
   registerPlug(cx, { ty: "denoWorker", manifest });
 }
 
 export function registerAmbientPlug(
   cx: GhjkConfig,
-  manifestUnclean: AmbientAccessPlugManifest,
+  manifestUnclean: AmbientAccessPortManifest,
 ) {
-  const manifest = validators.ambientAccessPlugManifest.parse(manifestUnclean);
+  const manifest = validators.ambientAccessPortManifest.parse(manifestUnclean);
   registerPlug(cx, { ty: "ambientAccess", manifest });
 }
 
 export function registerPlug(
   cx: GhjkConfig,
-  plug: RegisteredPlug,
+  plug: RegisteredPort,
 ) {
   const { manifest } = plug;
-  const conflict = cx.plugs.get(manifest.name)?.manifest;
+  const conflict = cx.ports.get(manifest.name)?.manifest;
   if (conflict) {
     if (
       conflict.conflictResolution == "override" &&
@@ -56,7 +56,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, plug);
+      cx.ports.set(manifest.name, plug);
     } else if (
       semver.compare(
         semver.parse(manifest.version),
@@ -77,7 +77,7 @@ export function registerPlug(
         new: manifest,
         replaced: conflict,
       });
-      cx.plugs.set(manifest.name, plug);
+      cx.ports.set(manifest.name, plug);
     } else {
       logger().debug("plug rejected due after defer", {
         retained: conflict,
@@ -85,8 +85,8 @@ export function registerPlug(
       });
     }
   } else {
-    logger().debug("plug registered", manifest);
-    cx.plugs.set(manifest.name, plug);
+    logger().debug("plug registered", manifest.name);
+    cx.ports.set(manifest.name, plug);
   }
 }
 
@@ -94,9 +94,9 @@ export function addInstall(
   cx: GhjkConfig,
   config: InstallConfig,
 ) {
-  if (!cx.plugs.has(config.plugName)) {
+  if (!cx.ports.has(config.portName)) {
     throw new Error(
-      `unrecognized plug "${config.plugName}" specified by install ${
+      `unrecognized plug "${config.portName}" specified by install ${
         JSON.stringify(config)
       }`,
     );

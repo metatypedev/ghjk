@@ -1,21 +1,21 @@
 import {
   addInstallGlobal,
-  type AmbientAccessPlugManifest,
+  type AmbientAccessPortManifest,
   registerAmbientPlugGlobal,
 } from "../port.ts";
 
-export const manifest: AmbientAccessPlugManifest = {
-  name: "curl@aa",
+export const manifest: AmbientAccessPortManifest = {
+  name: "tar@aa",
   version: "0.1.0",
-  execName: "curl",
+  execName: "tar",
   versionExtractFlag: "--version",
-  versionExtractRegex: "(\\d+\\.\\d+\\.\\d+)",
+  versionExtractRegex: "(\\d+\\.\\d+)",
   versionExtractRegexFlags: "",
 };
 
 registerAmbientPlugGlobal(manifest);
 export default function install() {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
   });
 }

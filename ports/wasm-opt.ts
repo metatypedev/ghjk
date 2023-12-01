@@ -5,39 +5,39 @@ import {
   InstallArgs,
   type InstallConfigBase,
   logger,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   spawn,
   std_fs,
   std_path,
 } from "../port.ts";
-import * as std_plugs from "../modules/ports/std.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
-  name: "cargo-insta@cbinst",
+  name: "wasm-opt@cbinst",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.cbin_ghrel,
+    std_ports.cbin_ghrel,
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   async listAll() {
     const metadataRequest = await fetch(
-      `https://index.crates.io/ca/rg/cargo-insta`,
+      `https://index.crates.io/wa/sm/wasm-opt`,
     );
     const metadataText = await metadataRequest.text();
     const versions = metadataText
@@ -52,7 +52,7 @@ export class Plug extends PlugBase {
   }
 
   async download(args: DownloadArgs) {
-    const fileName = "cargo-insta";
+    const fileName = "wasm-opt";
     if (
       await std_fs.exists(std_path.resolve(args.downloadPath, fileName))
     ) {
@@ -62,8 +62,8 @@ export class Plug extends PlugBase {
       return;
     }
     await spawn([
-      depBinShimPath(std_plugs.cbin_ghrel, "cargo-binstall", args.depShims),
-      "cargo-insta",
+      depBinShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims),
+      "wasm-opt",
       `--version`,
       args.installVersion,
       `--install-path`,

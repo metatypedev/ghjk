@@ -1,5 +1,6 @@
 import { log, std_fmt_colors, std_path, std_url } from "../deps/common.ts";
 
+// TODO: consult GHJK_LOG variable
 export default function logger(
   name: ImportMeta | string = self.name,
 ) {
@@ -19,6 +20,25 @@ function formatter(lr: log.LogRecord) {
   });
 
   return msg;
+}
+
+export function setup() {
+  log.setup({
+    handlers: {
+      console: new ConsoleErrHandler("NOTSET"),
+    },
+
+    loggers: {
+      default: {
+        level: "DEBUG",
+        handlers: ["console"],
+      },
+      [self.name]: {
+        level: "DEBUG",
+        handlers: ["console"],
+      },
+    },
+  });
 }
 
 export class ConsoleErrHandler extends log.handlers.BaseHandler {

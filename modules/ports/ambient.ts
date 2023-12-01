@@ -1,15 +1,15 @@
 import {
-  type AmbientAccessPlugManifest,
+  type AmbientAccessPortManifest,
   type DownloadArgs,
   type InstallArgs,
   type ListAllArgs,
   type ListBinPathsArgs,
-  PlugBase,
+  PortBase,
 } from "./types.ts";
-import { ChildError, spawnOutput } from "../../core/utils.ts";
+import { ChildError, spawnOutput } from "../../utils/mod.ts";
 
-export class AmbientAccessPlug extends PlugBase {
-  constructor(public manifest: AmbientAccessPlugManifest) {
+export class AmbientAccessPort extends PortBase {
+  constructor(public manifest: AmbientAccessPortManifest) {
     super();
     if (manifest.deps && manifest.deps.length > 0) {
       throw new Error(

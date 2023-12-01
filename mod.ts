@@ -2,19 +2,18 @@
 //! avoid importing elsewhere at it has side-effects.
 
 import "./setup_logger.ts";
-import "./setup_globals.ts";
 
 import { type GhjkConfig } from "./modules/ports/types.ts";
 // this is only a shortcut for the cli
 import { runCli } from "./cli/mod.ts";
-import logger from "./core/logger.ts";
+import logger from "./utils/logger.ts";
 import { GhjkSecureConfig } from "./port.ts";
-import * as std_plugs from "./modules/ports/std.ts";
+import * as std_ports from "./modules/ports/std.ts";
 
 // we need to use global variables to allow
-// plugins to access the config object.
-// module imports wouldn't work as plugins might
-// import a different version.
+// pots to access the config object.
+// accessing it through ecma module imports wouldn't work
+//  as ports might import a different version of this module.
 declare global {
   interface Window {
     ghjk: GhjkConfig;
@@ -26,19 +25,19 @@ function runCliShim(
   secureConfig: GhjkSecureConfig | undefined,
 ) {
   let allowedDeps;
-  if (secureConfig?.allowedPluginDeps) {
+  if (secureConfig?.allowedPortDeps) {
     allowedDeps = new Map();
-    for (const depId of secureConfig.allowedPluginDeps) {
-      const regPlug = std_plugs.map.get(depId.id);
-      if (!regPlug) {
+    for (const depId of secureConfig.allowedPortDeps) {
+      const regPort = std_ports.map.get(depId.id);
+      if (!regPort) {
         throw new Error(
           `unrecognized dep "${depId.id}" found in "allowedPluginDeps"`,
         );
       }
-      allowedDeps.set(depId.id, regPlug);
+      allowedDeps.set(depId.id, regPort);
     }
   } else {
-    allowedDeps = new Map(std_plugs.map.entries());
+    allowedDeps = new Map(std_ports.map.entries());
   }
   runCli(args, {
     ...self.ghjk,

@@ -6,7 +6,7 @@ import {
   type InstallConfigBase,
   ListAllArgs,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
@@ -19,16 +19,16 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install({ version }: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     version,
   });
 }
 
-class Plug extends PlugBase {
+class Port extends PortBase {
   manifest = manifest;
 
   async listAll(_env: ListAllArgs) {

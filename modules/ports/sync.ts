@@ -1,20 +1,20 @@
 import { std_fs, std_path, zod } from "../../deps/cli.ts";
-import logger from "../../core/logger.ts";
+import logger from "../../utils/logger.ts";
 import validators, {
-  type AmbientAccessPlugManifestX,
-  type DenoWorkerPlugManifestX,
+  type AmbientAccessPortManifestX,
+  type DenoWorkerPortManifestX,
   type DepShims,
   type GhjkCtx,
   type InstallConfig,
   InstallConfigX,
-  type PlugArgsBase,
-  type RegisteredPlug,
+  type PortArgsBase,
+  type RegisteredPort,
 } from "./types.ts";
-import { DenoWorkerPlug } from "./worker.ts";
+import { DenoWorkerPort } from "./worker.ts";
 import { AVAIL_CONCURRENCY, dirs } from "../../cli/utils.ts";
-import { AmbientAccessPlug } from "./ambient.ts";
-import { AsdfPlug } from "./asdf.ts";
-import { getInstallId } from "../../core/utils.ts";
+import { AmbientAccessPort } from "./ambient.ts";
+import { AsdfPort } from "./asdf.ts";
+import { getInstallId } from "../../utils/mod.ts";
 
 async function findConfig(path: string): Promise<string | null> {
   let current = path;
@@ -72,9 +72,9 @@ export async function sync(cx: GhjkCtx) {
     const installId = pendingInstalls.pop()!;
     const inst = installs.all.get(installId)!;
 
-    const regPlug = cx.plugs.get(inst.plugName) ??
-      cx.allowedDeps.get(inst.plugName)!;
-    const { manifest } = regPlug;
+    const regPort = cx.ports.get(inst.portName) ??
+      cx.allowedDeps.get(inst.portName)!;
+    const { manifest } = regPort;
     const depShims: DepShims = {};
 
     // create the shims for the deps
@@ -82,9 +82,9 @@ export async function sync(cx: GhjkCtx) {
       prefix: `ghjk_dep_shims_${installId}_`,
     });
     for (const depId of manifest.deps ?? []) {
-      const depPlug = cx.allowedDeps.get(depId.id)!;
+      const depPort = cx.allowedDeps.get(depId.id)!;
       const depInstall = {
-        plugName: depPlug.manifest.name,
+        portName: depPort.manifest.name,
       };
       const depInstallId = getInstallId(depInstall);
       const depArtifacts = artifacts.get(depInstallId);
@@ -107,7 +107,7 @@ export async function sync(cx: GhjkCtx) {
 
     let thisArtifacts;
     try {
-      thisArtifacts = await doInstall(envDir, inst, regPlug, depShims);
+      thisArtifacts = await doInstall(envDir, inst, regPort, depShims);
     } catch (err) {
       throw new Error(`error installing ${installId}`, { cause: err });
     }
@@ -205,7 +205,7 @@ function buildInstallGraph(cx: GhjkCtx) {
     const instId = getInstallId(inst);
     // FIXME: better support for multi installs
     if (installs.user.has(instId)) {
-      throw new Error(`duplicate install found by plugin ${inst.plugName}`);
+      throw new Error(`duplicate install found by plugin ${inst.portName}`);
     }
     installs.user.add(instId);
     foundInstalls.push(inst);
@@ -213,11 +213,11 @@ function buildInstallGraph(cx: GhjkCtx) {
 
   while (foundInstalls.length > 0) {
     const inst = foundInstalls.pop()!;
-    const regPlug = cx.plugs.get(inst.plugName) ??
-      cx.allowedDeps.get(inst.plugName);
-    if (!regPlug) {
+    const regPort = cx.ports.get(inst.portName) ??
+      cx.allowedDeps.get(inst.portName);
+    if (!regPort) {
       throw new Error(
-        `unable to find plugin "${inst.plugName}" specified by install ${
+        `unable to find plugin "${inst.portName}" specified by install ${
           JSON.stringify(inst)
         }`,
       );
@@ -233,20 +233,20 @@ function buildInstallGraph(cx: GhjkCtx) {
 
     installs.all.set(installId, inst);
 
-    const { manifest } = regPlug;
+    const { manifest } = regPort;
     if (!manifest.deps || manifest.deps.length == 0) {
       installs.indie.push(installId);
     } else {
       const deps = [];
       for (const depId of manifest.deps) {
-        const depPlug = cx.allowedDeps.get(depId.id);
-        if (!depPlug) {
+        const depPort = cx.allowedDeps.get(depId.id);
+        if (!depPort) {
           throw new Error(
             `unrecognized dependency "${depId.id}" specified by plug "${manifest.name}"`,
           );
         }
         const depInstall = {
-          plugName: depPlug.manifest.name,
+          portName: depPort.manifest.name,
         };
         const depInstallId = getInstallId(depInstall);
 
@@ -323,26 +323,26 @@ type InstallArtifacts = DePromisify<ReturnType<typeof doInstall>>;
 async function doInstall(
   envDir: string,
   instUnclean: InstallConfig,
-  regPlug: RegisteredPlug,
+  regPort: RegisteredPort,
   depShims: DepShims,
 ) {
-  const { ty: plugType, manifest } = regPlug;
+  const { ty: plugType, manifest } = regPort;
   let plug;
   let inst: InstallConfigX;
   if (plugType == "denoWorker") {
     inst = validators.installConfig.parse(instUnclean);
-    plug = new DenoWorkerPlug(
-      manifest as DenoWorkerPlugManifestX,
+    plug = new DenoWorkerPort(
+      manifest as DenoWorkerPortManifestX,
     );
   } else if (plugType == "ambientAccess") {
     inst = validators.installConfig.parse(instUnclean);
-    plug = new AmbientAccessPlug(
-      manifest as AmbientAccessPlugManifestX,
+    plug = new AmbientAccessPort(
+      manifest as AmbientAccessPortManifestX,
     );
   } else if (plugType == "asdf") {
     const asdfInst = validators.asdfInstallConfig.parse(instUnclean);
     inst = asdfInst;
-    plug = await AsdfPlug.init(envDir, asdfInst, depShims);
+    plug = await AsdfPort.init(envDir, asdfInst, depShims);
   } else {
     throw new Error(
       `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
@@ -366,7 +366,7 @@ async function doInstall(
     installId,
     installVersion,
   );
-  const baseArgs: PlugArgsBase = {
+  const baseArgs: PortArgsBase = {
     installPath: installPath,
     // installType: "version",
     installVersion: installVersion,

@@ -1,5 +1,5 @@
 import "../setup_logger.ts";
-import { spawn } from "../core/utils.ts";
+import { spawn } from "../utils/mod.ts";
 
 type TestCase = {
   name: string;
@@ -77,7 +77,7 @@ await dockerTest([
   // 3 megs
   {
     name: "protoc",
-    imports: `import plug from "$ghjk/plugs/protoc.ts"`,
+    imports: `import port from "$ghjk/ports/protoc.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -86,7 +86,7 @@ await dockerTest([
   // 6 megs
   {
     name: "ruff",
-    imports: `import plug from "$ghjk/plugs/ruff.ts"`,
+    imports: `import port from "$ghjk/ports/ruff.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -95,7 +95,7 @@ await dockerTest([
   // 7 megs
   {
     name: "whiz",
-    imports: `import plug from "$ghjk/plugs/whiz.ts"`,
+    imports: `import port from "$ghjk/ports/whiz.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -104,7 +104,7 @@ await dockerTest([
   // 7 megs
   {
     name: "act",
-    imports: `import plug from "$ghjk/plugs/act.ts"`,
+    imports: `import port from "$ghjk/ports/act.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -113,7 +113,7 @@ await dockerTest([
   // 7 megs
   {
     name: "cargo-binstall",
-    imports: `import plug from "$ghjk/plugs/cargo-binstall.ts"`,
+    imports: `import port from "$ghjk/ports/cargo-binstall.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -122,7 +122,7 @@ await dockerTest([
   // 8 megs
   {
     name: "mold",
-    imports: `import plug from "$ghjk/plugs/mold.ts"`,
+    imports: `import port from "$ghjk/ports/mold.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -131,7 +131,7 @@ await dockerTest([
   // 16 megs
   {
     name: "wasmedge",
-    imports: `import plug from "$ghjk/plugs/wasmedge.ts"`,
+    imports: `import port from "$ghjk/ports/wasmedge.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -140,7 +140,7 @@ await dockerTest([
   // cargo binstall +7 megs
   {
     name: "cargo-insta",
-    imports: `import plug from "$ghjk/plugs/cargo-insta.ts"`,
+    imports: `import port from "$ghjk/ports/cargo-insta.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -149,7 +149,7 @@ await dockerTest([
   // cargo binsatll 13 megs
   {
     name: "wasm-tools",
-    imports: `import plug from "$ghjk/plugs/wasm-tools.ts"`,
+    imports: `import port from "$ghjk/ports/wasm-tools.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -158,7 +158,7 @@ await dockerTest([
   // 25 megs
   {
     name: "node",
-    imports: `import plug from "$ghjk/plugs/node.ts"`,
+    imports: `import port from "$ghjk/ports/node.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -167,7 +167,7 @@ await dockerTest([
   // cargo-binstall + 22 megs
   {
     name: "wasm-opt",
-    imports: `import plug from "$ghjk/plugs/wasm-opt.ts"`,
+    imports: `import port from "$ghjk/ports/wasm-opt.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -176,7 +176,7 @@ await dockerTest([
   // 42 megs
   {
     name: "pnpm",
-    imports: `import plug from "$ghjk/plugs/earthly.ts"`,
+    imports: `import port from "$ghjk/ports/earthly.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -185,7 +185,7 @@ await dockerTest([
   // 56 megs
   {
     name: "pnpm",
-    imports: `import plug from "$ghjk/plugs/pnpm.ts"`,
+    imports: `import port from "$ghjk/ports/pnpm.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -194,7 +194,7 @@ await dockerTest([
   // node + more megs
   {
     name: "jco",
-    imports: `import plug from "$ghjk/plugs/jco.ts"`,
+    imports: `import port from "$ghjk/ports/jco.ts"`,
     confFn: `async () => {
     plug({ });
   }`,
@@ -203,7 +203,7 @@ await dockerTest([
   // big
   {
     name: "asdf-zig",
-    imports: `import plug from "$ghjk/plugs/asdf.ts"`,
+    imports: `import port from "$ghjk/ports/asdf.ts"`,
     confFn: `async () => {
   plug({
     plugRepo: "https://github.com/asdf-community/asdf-zig",
@@ -215,7 +215,7 @@ await dockerTest([
   // // big
   // {
   //   name: "asdf-python",
-  //   imports: `import plug from "$ghjk/plugs/asdf.ts"`,
+  //   imports: `import port from "$ghjk/ports/asdf.ts"`,
   //   confFn: `async () => {
   // plug({
   //   plugRepo: "https://github.com/asdf-community/asdf-python",

@@ -5,7 +5,7 @@ import {
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
@@ -14,50 +14,42 @@ import {
   unarchive,
 } from "../port.ts";
 
-const manifest = {
-  name: "ruff@ghrel",
+export const manifest = {
+  name: "cargo-binstall@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
 
-const repoOwner = "astral-sh";
-const repoName = "ruff";
+const repoOwner = "cargo-bins";
+const repoName = "cargo-binstall";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
 
   async listAll() {
     const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
+      `https://index.crates.io/ca/rg/cargo-binstall`,
     );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
+    const metadataText = await metadataRequest.text();
+    const versions = metadataText
+      .split("\n")
+      .filter((str) => str.length > 0)
+      .map((str) =>
+        JSON.parse(str) as {
+          vers: string;
+        }
+      );
+    return versions.map((ver) => ver.vers);
   }
 
   async download(args: DownloadArgs) {
@@ -79,7 +71,6 @@ export class Plug extends PlugBase {
       args.tmpDirPath,
       std_path.resolve(args.installPath, "bin"),
     );
-    // await Deno.chmod(std_path.resolve(args.installPath, "bin", "ruff"), 0o700);
   }
 }
 
@@ -95,23 +86,15 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  let os;
-  let ext;
-  switch (platform.os) {
-    case "linux":
-      os = "unknown-linux-musl";
-      ext = "tar.gz";
-      break;
-    case "darwin":
-      os = "apple-darwin";
-      ext = "tar.gz";
-      break;
-    case "windows":
-      os = "pc-windows-msvc";
-      ext = "zip";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
+  if (platform.os == "darwin") {
+    // NOTE: the archive file name extensions are different from os to os
+    return `${repoAddress}/releases/download/v${installVersion}/${repoName}-${arch}-apple-darwin.full.zip`;
+  } else if (platform.os == "linux") {
+    // TODO: support for ubuntu/debian versions
+    // we'll need a way to expose that to ports
+    const os = "unknown-linux-musl";
+    return `${repoAddress}/releases/download/v${installVersion}/${repoName}-${arch}-${os}.full.tgz`;
+  } else {
+    throw new Error(`unsupported os: ${platform.os}`);
   }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${arch}-${os}.${ext}`;
 }

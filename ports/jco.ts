@@ -8,7 +8,7 @@ import {
   ListAllArgs,
   pathWithDepShims,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   spawn,
@@ -18,28 +18,28 @@ import {
   unarchive,
 } from "../port.ts";
 import node from "./node.ts";
-import * as std_plugs from "../modules/ports/std.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   name: "jco@npm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.node_org,
+    std_ports.node_org,
   ],
 };
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install({ version }: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     version,
   });
   // FIXME: conflict flags for install configs
   node({});
 }
 
-class Plug extends PlugBase {
+class Port extends PortBase {
   manifest = manifest;
 
   async listAll(_env: ListAllArgs) {
@@ -87,7 +87,7 @@ class Plug extends PlugBase {
       args.installPath,
     );
     await spawn([
-      depBinShimPath(std_plugs.node_org, "npm", args.depShims),
+      depBinShimPath(std_ports.node_org, "npm", args.depShims),
       "install",
       "--no-fund",
     ], {

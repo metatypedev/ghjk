@@ -8,7 +8,7 @@ import {
   type InstallConfigBase,
   ListAllArgs,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   spawn,
@@ -16,13 +16,13 @@ import {
   std_path,
   std_url,
 } from "../port.ts";
-// import * as std_plugs from "../std.ts";
+// import * as std_ports from "../std.ts";
 
 const tar_aa_id = {
   id: "tar@aa",
 };
 
-// TODO: sanity check exports of all plugs
+// TODO: sanity check exports of all ports
 export const manifest = {
   name: "node@org",
   version: "0.1.0",
@@ -32,17 +32,17 @@ export const manifest = {
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 // FIXME: improve multi platform support story
 export default function install({ version }: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     version,
   });
 }
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   execEnv(args: ExecEnvArgs) {

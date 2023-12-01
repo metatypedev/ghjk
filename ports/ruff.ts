@@ -5,33 +5,35 @@ import {
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   std_fs,
   std_path,
+  std_url,
+  unarchive,
 } from "../port.ts";
 
 const manifest = {
-  name: "earthly@ghrel",
+  name: "ruff@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
 
-const repoOwner = "earthly";
-const repoName = "earthly";
+const repoOwner = "astral-sh";
+const repoName = "ruff";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   async latestStable(): Promise<string> {
@@ -59,25 +61,25 @@ export class Plug extends PlugBase {
   }
 
   async download(args: DownloadArgs) {
-    const fileName = repoName;
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform), {
-      mode: 0o700,
-      fileName,
-    });
+    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
   }
 
   async install(args: InstallArgs) {
-    const fileName = repoName;
+    const fileName = std_url.basename(
+      downloadUrl(args.installVersion, args.platform),
+    );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
+    await unarchive(fileDwnPath, args.tmpDirPath);
 
     if (await std_fs.exists(args.installPath)) {
       await removeFile(args.installPath, { recursive: true });
     }
-    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
     await std_fs.copy(
-      fileDwnPath,
-      std_path.resolve(args.installPath, "bin", fileName),
+      args.tmpDirPath,
+      std_path.resolve(args.installPath, "bin"),
     );
+    // await Deno.chmod(std_path.resolve(args.installPath, "bin", "ruff"), 0o700);
   }
 }
 
@@ -85,24 +87,31 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
   let arch;
   switch (platform.arch) {
     case "x86_64":
-      arch = "amd64";
+      arch = "x86_64";
       break;
     case "aarch64":
-      arch = "arm64";
+      arch = "aarch64";
       break;
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
   let os;
+  let ext;
   switch (platform.os) {
     case "linux":
-      os = "linux";
+      os = "unknown-linux-musl";
+      ext = "tar.gz";
       break;
     case "darwin":
-      os = "darwin";
+      os = "apple-darwin";
+      ext = "tar.gz";
+      break;
+    case "windows":
+      os = "pc-windows-msvc";
+      ext = "zip";
       break;
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${os}-${arch}`;
+  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${arch}-${os}.${ext}`;
 }

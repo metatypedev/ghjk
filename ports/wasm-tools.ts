@@ -5,34 +5,34 @@ import {
   InstallArgs,
   type InstallConfigBase,
   logger,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   spawn,
   std_fs,
   std_path,
 } from "../port.ts";
-import * as std_plugs from "../modules/ports/std.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   name: "wasm-tools@cbinst",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.cbin_ghrel,
+    std_ports.cbin_ghrel,
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   async listAll() {
@@ -62,7 +62,7 @@ export class Plug extends PlugBase {
       return;
     }
     await spawn([
-      depBinShimPath(std_plugs.cbin_ghrel, "cargo-binstall", args.depShims),
+      depBinShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims),
       "wasm-tools",
       `--version`,
       args.installVersion,

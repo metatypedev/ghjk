@@ -36,7 +36,7 @@ function init_ghjk
                 echo $envDir
                 set_color normal
             end
-            set ghjk_alias "deno run -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
+            set ghjk_alias "deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         end
         set cur_dir (dirname $cur_dir)

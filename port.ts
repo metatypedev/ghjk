@@ -2,87 +2,72 @@
 
 import {
   addInstall,
-  type AmbientAccessPlugManifest,
-  type DenoWorkerPlugManifest,
+  type AmbientAccessPortManifest,
+  type DenoWorkerPortManifest,
   type DownloadArgs,
   type GhjkConfig,
   type InstallConfig,
-  type PlugBase,
+  type PortBase,
   registerAmbientPlug,
   registerDenoPlug,
   registerPlug,
 } from "./modules/ports/mod.ts";
 import validators from "./modules/ports/types.ts";
 import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
-import { initDenoWorkerPlug, isWorker } from "./modules/ports/worker.ts";
+import { initDenoWorkerPlug } from "./modules/ports/worker.ts";
 import * as asdf from "./modules/ports/asdf.ts";
-import logger, { ConsoleErrHandler } from "./core/logger.ts";
+import logger, { setup as setupLogger } from "./utils/logger.ts";
+import { inWorker } from "./utils/mod.ts";
 
 export * from "./modules/ports/mod.ts";
-export * from "./core/utils.ts";
+export * from "./utils/mod.ts";
 export * from "./deps/plug.ts";
-export { default as logger } from "./core/logger.ts";
-export { initDenoWorkerPlug, isWorker } from "./modules/ports/worker.ts";
+export { default as logger } from "./utils/logger.ts";
+export { initDenoWorkerPlug } from "./modules/ports/worker.ts";
 export * as asdf from "./modules/ports/asdf.ts";
 export type * from "./modules/ports/mod.ts";
-export * from "./unarchive.ts";
+export * from "./utils/unarchive.ts";
 
-if (isWorker()) {
-  log.setup({
-    handlers: {
-      console: new ConsoleErrHandler("NOTSET"),
-    },
-
-    loggers: {
-      default: {
-        level: "DEBUG",
-        handlers: ["console"],
-      },
-      ghjk: {
-        level: "DEBUG",
-        handlers: ["console"],
-      },
-      [self.name]: {
-        level: "DEBUG",
-        handlers: ["console"],
-      },
-    },
-  });
+if (inWorker()) {
+  setupLogger();
 }
 
 declare global {
   interface Window {
-    // this is null except when from from `ghjk.ts`
-    // i.e. a deno worker plug context won't have it avail
+    // this is null except when we're realmed along `ghjk.ts`
+    // i.e. a deno worker port context won't have it avail
     ghjk: GhjkConfig;
   }
 }
 
-export function registerDenoPlugGlobal<P extends PlugBase>(
-  manifestUnclean: DenoWorkerPlugManifest,
+function isInConfig() {
+  return !!self.ghjk;
+}
+
+export function registerDenoPlugGlobal<P extends PortBase>(
+  manifestUnclean: DenoWorkerPortManifest,
   plugInit: () => P,
 ) {
-  if (self.ghjk) {
-    if (isWorker()) throw new Error("literally impossible!");
+  if (isInConfig()) {
     registerDenoPlug(self.ghjk, manifestUnclean);
-  } else {
+  } else if (inWorker()) {
     initDenoWorkerPlug(plugInit);
   }
 }
 
-export function registerAsdfPlug() {
-  if (self.ghjk) {
+export function registerAsdfPort() {
+  if (isInConfig()) {
     registerPlug(self.ghjk, {
       ty: "asdf",
-      manifest: validators.plugManifestBase.parse(asdf.manifest),
+      manifest: validators.portManifestBase.parse(asdf.manifest),
     });
   }
 }
 
 export function registerAmbientPlugGlobal(
-  manifestUnclean: AmbientAccessPlugManifest,
+  manifestUnclean: AmbientAccessPortManifest,
 ) {
-  if (self.ghjk) {
+  if (isInConfig()) {
     registerAmbientPlug(self.ghjk, manifestUnclean);
   }
 }
@@ -90,7 +75,7 @@ export function registerAmbientPlugGlobal(
 export function addInstallGlobal(
   config: InstallConfig,
 ) {
-  if (self.ghjk) {
+  if (isInConfig()) {
     addInstall(self.ghjk, config);
   }
 }

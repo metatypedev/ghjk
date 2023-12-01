@@ -7,7 +7,7 @@ import {
   InstallArgs,
   type InstallConfigBase,
   type PlatformInfo,
-  PlugBase,
+  PortBase,
   registerDenoPlugGlobal,
   removeFile,
   spawn,
@@ -15,18 +15,18 @@ import {
   std_path,
   std_url,
 } from "../port.ts";
-import * as std_plugs from "../modules/ports/std.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   name: "wasmedge@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
-    std_plugs.tar_aa,
+    std_ports.tar_aa,
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Plug());
+registerDenoPlugGlobal(manifest, () => new Port());
 
 // TODO: wasmedge extension and plugin support
 /*
@@ -53,7 +53,7 @@ const supportedPlugins = [
  */
 export default function install(config: InstallConfigBase = {}) {
   addInstallGlobal({
-    plugName: manifest.name,
+    portName: manifest.name,
     ...config,
   });
 }
@@ -62,7 +62,7 @@ const repoOwner = "WasmEdge";
 const repoName = "WasmEdge";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Plug extends PlugBase {
+export class Port extends PortBase {
   manifest = manifest;
 
   execEnv(args: ExecEnvArgs) {
@@ -111,7 +111,7 @@ export class Plug extends PlugBase {
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await spawn([
-      depBinShimPath(std_plugs.tar_aa, "tar", args.depShims),
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims),
       "xf",
       fileDwnPath,
       `--directory=${args.tmpDirPath}`,
@@ -155,7 +155,7 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
     return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${platform.os}_${arch}.tar.gz`;
   } else if (platform.os == "linux") {
     // TODO: support for ubuntu/debian versions
-    // we'll need a way to expose that to plugs
+    // we'll need a way to expose that to ports
     const os = "manylinux2014";
     let arch;
     switch (platform.arch) {
