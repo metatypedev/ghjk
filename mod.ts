@@ -4,12 +4,12 @@
 import "./setup_logger.ts";
 import "./setup_globals.ts";
 
-import { type GhjkConfig } from "./core/mod.ts";
+import { type GhjkConfig } from "./modules/ports/types.ts";
 // this is only a shortcut for the cli
 import { runCli } from "./cli/mod.ts";
 import logger from "./core/logger.ts";
-import { GhjkSecureConfig } from "./plug.ts";
-import * as std_plugs from "./std.ts";
+import { GhjkSecureConfig } from "./port.ts";
+import * as std_plugs from "./modules/ports/std.ts";
 
 // we need to use global variables to allow
 // plugins to access the config object.

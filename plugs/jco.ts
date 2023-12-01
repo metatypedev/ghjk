@@ -16,9 +16,9 @@ import {
   std_path,
   std_url,
   unarchive,
-} from "../plug.ts";
+} from "../port.ts";
 import node from "./node.ts";
-import * as std_plugs from "../std.ts";
+import * as std_plugs from "../modules/ports/std.ts";
 
 const manifest = {
   name: "jco@npm",

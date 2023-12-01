@@ -1,7 +1,7 @@
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
-import logger from "./logger.ts";
+import logger from "../../core/logger.ts";
 import {
   type DenoWorkerPlugManifestX,
   type DownloadArgs,

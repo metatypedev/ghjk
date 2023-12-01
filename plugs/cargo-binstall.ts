@@ -12,7 +12,7 @@ import {
   std_path,
   std_url,
   unarchive,
-} from "../plug.ts";
+} from "../port.ts";
 
 export const manifest = {
   name: "cargo-binstall@ghrel",

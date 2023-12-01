@@ -11,8 +11,8 @@ import {
   spawn,
   std_fs,
   std_path,
-} from "../plug.ts";
-import * as std_plugs from "../std.ts";
+} from "../port.ts";
+import * as std_plugs from "../modules/ports/std.ts";
 
 const manifest = {
   name: "cargo-insta@cbinst",

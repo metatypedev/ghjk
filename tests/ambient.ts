@@ -1,7 +1,7 @@
-import "./setup_globals.ts";
+import "../setup_logger.ts";
 import { std_assert } from "../deps/dev.ts";
-import { AmbientAccessPlug } from "../core/ambient.ts";
-import { type AmbientAccessPlugManifest } from "../core/types.ts";
+import { AmbientAccessPlug } from "../modules/ports/ambient.ts";
+import { type AmbientAccessPlugManifest } from "../modules/ports/types.ts";
 
 import * as tar from "../plugs/tar.ts";
 import * as git from "../plugs/git.ts";

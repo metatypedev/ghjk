@@ -10,7 +10,7 @@ import {
   removeFile,
   std_fs,
   std_path,
-} from "../plug.ts";
+} from "../port.ts";
 
 const manifest = {
   name: "earthly@ghrel",

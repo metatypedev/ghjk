@@ -15,7 +15,7 @@ import {
   std_fs,
   std_path,
   std_url,
-} from "../plug.ts";
+} from "../port.ts";
 // import * as std_plugs from "../std.ts";
 
 const tar_aa_id = {

@@ -17,9 +17,11 @@ switch (Deno.build.os) {
 // null means it should be removed (for cleaning up old versions)
 const vfs = {
   // the script executed when users use the ghjk command
-  "hooks/entrypoint.ts": (
-    await importRaw(import.meta.resolve("./entrypoint.ts"))
-  ),
+  "hooks/entrypoint.ts": `
+import { main } from "${import.meta.resolve("../host/mod.ts")}";
+
+await main();
+`,
 
   "hooks/bash-preexec.sh": await importRaw(
     "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
@@ -103,7 +105,7 @@ async function filterAddFile(
   await Deno.writeTextFile(path, lines.join("\n"));
 }
 
-export async function setup() {
+export async function install() {
   const { homeDir, shareDir } = dirs();
   await unpackVFS(shareDir);
   const shell = await detectShell();

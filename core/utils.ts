@@ -5,7 +5,7 @@ import type {
   DepShims,
   InstallConfig,
   PlugDep,
-} from "./types.ts";
+} from "../modules/ports/types.ts";
 export function dbg<T>(val: T) {
   logger().debug("inline", val);
   return val;

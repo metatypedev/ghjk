@@ -6,7 +6,7 @@ import {
   type ListBinPathsArgs,
   PlugBase,
 } from "./types.ts";
-import { ChildError, spawnOutput } from "./utils.ts";
+import { ChildError, spawnOutput } from "../../core/utils.ts";
 
 export class AmbientAccessPlug extends PlugBase {
   constructor(public manifest: AmbientAccessPlugManifest) {

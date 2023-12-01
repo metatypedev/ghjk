@@ -14,8 +14,8 @@ import {
   std_fs,
   std_path,
   std_url,
-} from "../plug.ts";
-import * as std_plugs from "../std.ts";
+} from "../port.ts";
+import * as std_plugs from "../modules/ports/std.ts";
 
 const manifest = {
   name: "wasmedge@ghrel",

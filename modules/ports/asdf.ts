@@ -1,10 +1,10 @@
 import {
   type AsdfInstallConfigX,
   type DepShims,
-  DownloadArgs,
-  InstallArgs,
-  ListAllArgs,
-  ListBinPathsArgs,
+  type DownloadArgs,
+  type InstallArgs,
+  type ListAllArgs,
+  type ListBinPathsArgs,
   PlugBase,
 } from "./types.ts";
 import {
@@ -13,9 +13,9 @@ import {
   pathWithDepShims,
   spawn,
   spawnOutput,
-} from "./utils.ts";
+} from "../../core/utils.ts";
 // import * as std_plugs from "../std.ts";
-import { std_fs, std_path } from "../deps/common.ts";
+import { std_fs, std_path } from "../../deps/common.ts";
 
 // FIXME: find a better way to expose std_plug.plug_id s
 // that allows standard plugs to depend on each other

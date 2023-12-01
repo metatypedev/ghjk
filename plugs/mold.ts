@@ -12,7 +12,7 @@ import {
   std_path,
   std_url,
   unarchive,
-} from "../plug.ts";
+} from "../port.ts";
 
 const manifest = {
   name: "mold@ghrel",

@@ -12,7 +12,7 @@ import {
   std_fs,
   std_path,
   std_url,
-} from "../plug.ts";
+} from "../port.ts";
 
 export const manifest = {
   name: "pnpm@ghrel",

@@ -1,5 +1,5 @@
 import { Command } from "../deps/cli.ts";
-import { type GhjkCtx } from "../core/mod.ts";
+import { GhjkCtx } from "../modules/ports/mod.ts";
 
 export class ListCommand extends Command {
   constructor(

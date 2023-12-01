@@ -1,4 +1,4 @@
-import type { GhjkConfig } from "./core/mod.ts";
+import type { GhjkConfig } from "./modules/ports/mod.ts";
 
 declare global {
   interface Window {

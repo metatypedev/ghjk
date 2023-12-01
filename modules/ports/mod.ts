@@ -1,15 +1,14 @@
 export * from "./types.ts";
-export { default as validators } from "./validators.ts";
-import { semver } from "../deps/common.ts";
-import type {
-  AmbientAccessPlugManifest,
-  DenoWorkerPlugManifest,
-  GhjkConfig,
-  InstallConfig,
-  RegisteredPlug,
+import { semver } from "../../deps/common.ts";
+
+import validators, {
+  type AmbientAccessPlugManifest,
+  type DenoWorkerPlugManifest,
+  type GhjkConfig,
+  type InstallConfig,
+  type RegisteredPlug,
 } from "./types.ts";
-import validators from "./validators.ts";
-import logger from "./logger.ts";
+import logger from "../../core/logger.ts";
 
 export const Ghjk = {
   cwd: Deno.cwd,

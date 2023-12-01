@@ -4,7 +4,7 @@ import { SyncCommand } from "./sync.ts";
 import { ListCommand } from "./list.ts";
 import { OutdatedCommand } from "./outdated.ts";
 import { CleanupCommand } from "./cleanup.ts";
-import { type GhjkCtx } from "../core/mod.ts";
+import { GhjkCtx } from "../modules/ports/mod.ts";
 
 export function runCli(
   args: string[],

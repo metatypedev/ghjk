@@ -3,7 +3,7 @@ import {
   asdf,
   AsdfInstallConfig,
   registerAsdfPlug,
-} from "../plug.ts";
+} from "../port.ts";
 
 registerAsdfPlug();
 export default function install(config: Omit<AsdfInstallConfig, "plugName">) {

@@ -2,7 +2,7 @@ import {
   addInstallGlobal,
   type AmbientAccessPlugManifest,
   registerAmbientPlugGlobal,
-} from "../plug.ts";
+} from "../port.ts";
 
 export const manifest: AmbientAccessPlugManifest = {
   name: "tar@aa",

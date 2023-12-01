@@ -1,3 +1,5 @@
+//! this provides common exports for Port implementors
+
 import {
   addInstall,
   type AmbientAccessPlugManifest,
@@ -9,20 +11,20 @@ import {
   registerAmbientPlug,
   registerDenoPlug,
   registerPlug,
-  validators,
-} from "./core/mod.ts";
+} from "./modules/ports/mod.ts";
+import validators from "./modules/ports/types.ts";
 import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
-import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
-import * as asdf from "./core/asdf.ts";
+import { initDenoWorkerPlug, isWorker } from "./modules/ports/worker.ts";
+import * as asdf from "./modules/ports/asdf.ts";
 import logger, { ConsoleErrHandler } from "./core/logger.ts";
 
-export * from "./core/mod.ts";
+export * from "./modules/ports/mod.ts";
 export * from "./core/utils.ts";
 export * from "./deps/plug.ts";
 export { default as logger } from "./core/logger.ts";
-export { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
-export * as asdf from "./core/asdf.ts";
-export type * from "./core/mod.ts";
+export { initDenoWorkerPlug, isWorker } from "./modules/ports/worker.ts";
+export * as asdf from "./modules/ports/asdf.ts";
+export type * from "./modules/ports/mod.ts";
 export * from "./unarchive.ts";
 
 if (isWorker()) {
