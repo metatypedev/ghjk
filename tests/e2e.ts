@@ -1,4 +1,4 @@
-import "./setup_globals.ts";
+import "../setup_logger.ts";
 import { spawn } from "../core/utils.ts";
 
 type TestCase = {

@@ -1,5 +1,5 @@
 //! Setup ghjk for the CWD
 
-import { setup } from "./setup/mod.ts";
+import { setup } from "./init/mod.ts";
 
 await setup();

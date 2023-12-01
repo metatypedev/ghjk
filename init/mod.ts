@@ -18,7 +18,7 @@ switch (Deno.build.os) {
 const vfs = {
   // the script executed when users use the ghjk command
   "hooks/entrypoint.ts": (
-    await importRaw(import.meta.resolve("./vfs/entrypoint.ts"))
+    await importRaw(import.meta.resolve("./entrypoint.ts"))
   ),
 
   "hooks/bash-preexec.sh": await importRaw(
@@ -26,17 +26,17 @@ const vfs = {
   ),
 
   "hooks/.zshenv": (
-    await importRaw(import.meta.resolve("./vfs/zsh.zsh"))
+    await importRaw(import.meta.resolve("./hooks/zsh.zsh"))
   )
     .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
   // the hook run before every prompt draw in bash
   "hooks/hook.sh": (
-    await importRaw(import.meta.resolve("./vfs/bash.sh"))
+    await importRaw(import.meta.resolve("./hooks/bash.sh"))
   )
     .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
 
   "hooks/hook.fish": (
-    await importRaw(import.meta.resolve("./vfs/fish.fish"))
+    await importRaw(import.meta.resolve("./hooks/fish.fish"))
   )
     .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
 };

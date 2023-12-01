@@ -1,6 +1,7 @@
 //! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
 //! avoid importing elsewhere at it has side-effects.
 
+import "./setup_logger.ts";
 import "./setup_globals.ts";
 
 import { type GhjkConfig } from "./core/mod.ts";

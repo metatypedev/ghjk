@@ -1,4 +1,4 @@
-import { std_path } from "../deps/common.ts";
+import { dax, std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
 import type {
   AsdfInstallConfig,
@@ -123,3 +123,8 @@ export function getInstallId(install: InstallConfig | AsdfInstallConfig) {
   }
   return install.plugName;
 }
+
+export const $ = dax.build$(
+  {},
+);
+$.setPrintCommand(true);

@@ -1,3 +1,5 @@
+//! this loads the ghjk.ts module and provides a program for it
+
 const log = console.log;
 console.log = (...args) => {
   log("[ghjk.ts]", ...args);

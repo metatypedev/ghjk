@@ -14,7 +14,7 @@ import {
 import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
 import { initDenoWorkerPlug, isWorker } from "./core/worker.ts";
 import * as asdf from "./core/asdf.ts";
-import logger from "./core/logger.ts";
+import logger, { ConsoleErrHandler } from "./core/logger.ts";
 
 export * from "./core/mod.ts";
 export * from "./core/utils.ts";
@@ -28,21 +28,7 @@ export * from "./unarchive.ts";
 if (isWorker()) {
   log.setup({
     handlers: {
-      console: new log.handlers.ConsoleHandler("NOTSET", {
-        formatter: (lr) => {
-          let msg = `[${lr.levelName} ${lr.loggerName}] ${lr.msg}`;
-
-          lr.args.forEach((arg, _index) => {
-            msg += `, ${JSON.stringify(arg)}`;
-          });
-          // if (lr.args.length > 0) {
-          //   msg += JSON.stringify(lr.args);
-          // }
-
-          return msg;
-        },
-        // formatter: "[{loggerName}] - {levelName} {msg}",
-      }),
+      console: new ConsoleErrHandler("NOTSET"),
     },
 
     loggers: {
