@@ -6,6 +6,7 @@ import {
   type ListAllArgs,
   type ListBinPathsArgs,
   PortBase,
+  type TheAsdfPortManifest,
 } from "./types.ts";
 import {
   depBinShimPath,
@@ -27,11 +28,14 @@ const git_aa_id = {
   id: "git@aa",
 };
 
-export const manifest = {
+export const manifest: TheAsdfPortManifest = {
+  ty: "asdf",
   name: "asdf@asdf",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [curl_aa_id, git_aa_id],
+  // there should only be a single asdf port registered at any time
+  conflictResolution: "override",
 };
 
 export class AsdfPort extends PortBase {
@@ -60,7 +64,7 @@ export class AsdfPort extends PortBase {
         [
           depBinShimPath(git_aa_id, "git", depShims),
           "clone",
-          installConfig.plugRepo,
+          installConfig.pluginRepo,
           "--depth",
           "1",
           tmpCloneDirPath,

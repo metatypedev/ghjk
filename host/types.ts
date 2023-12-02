@@ -3,7 +3,7 @@ import moduleValidators from "../modules/types.ts";
 
 const serializedConfig = zod.object(
   {
-    modules: zod.array(moduleValidators.module),
+    modules: zod.array(moduleValidators.moduleManifest),
   },
 );
 

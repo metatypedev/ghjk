@@ -5,25 +5,24 @@ import {
   type AmbientAccessPortManifest,
   type DenoWorkerPortManifest,
   type DownloadArgs,
-  type GhjkConfig,
   type InstallConfig,
   type PortBase,
-  registerAmbientPlug,
-  registerDenoPlug,
-  registerPlug,
+  type PortsModuleConfigBase,
+  registerAmbientPort,
+  registerDenoPort,
+  registerPort,
 } from "./modules/ports/mod.ts";
-import validators from "./modules/ports/types.ts";
-import { log, std_fs, std_path, std_url } from "./deps/plug.ts";
-import { initDenoWorkerPlug } from "./modules/ports/worker.ts";
+import { std_fs, std_path, std_url } from "./deps/ports.ts";
+import { initDenoWorkerPort } from "./modules/ports/worker.ts";
 import * as asdf from "./modules/ports/asdf.ts";
 import logger, { setup as setupLogger } from "./utils/logger.ts";
 import { inWorker } from "./utils/mod.ts";
 
 export * from "./modules/ports/mod.ts";
 export * from "./utils/mod.ts";
-export * from "./deps/plug.ts";
+export * from "./deps/ports.ts";
 export { default as logger } from "./utils/logger.ts";
-export { initDenoWorkerPlug } from "./modules/ports/worker.ts";
+export { initDenoWorkerPort } from "./modules/ports/worker.ts";
 export * as asdf from "./modules/ports/asdf.ts";
 export type * from "./modules/ports/mod.ts";
 export * from "./utils/unarchive.ts";
@@ -36,39 +35,36 @@ declare global {
   interface Window {
     // this is null except when we're realmed along `ghjk.ts`
     // i.e. a deno worker port context won't have it avail
-    ghjk: GhjkConfig;
+    ports: PortsModuleConfigBase;
   }
 }
 
 function isInConfig() {
-  return !!self.ghjk;
+  return !!self.ports;
 }
 
-export function registerDenoPlugGlobal<P extends PortBase>(
-  manifestUnclean: DenoWorkerPortManifest,
-  plugInit: () => P,
+export function registerDenoPortGlobal<P extends PortBase>(
+  manifest: DenoWorkerPortManifest,
+  portCtor: () => P,
 ) {
   if (isInConfig()) {
-    registerDenoPlug(self.ghjk, manifestUnclean);
+    registerDenoPort(self.ports, manifest);
   } else if (inWorker()) {
-    initDenoWorkerPlug(plugInit);
+    initDenoWorkerPort(portCtor);
   }
 }
 
 export function registerAsdfPort() {
   if (isInConfig()) {
-    registerPlug(self.ghjk, {
-      ty: "asdf",
-      manifest: validators.portManifestBase.parse(asdf.manifest),
-    });
+    registerPort(self.ports, asdf.manifest);
   }
 }
 
-export function registerAmbientPlugGlobal(
+export function registerAmbientPortGlobal(
   manifestUnclean: AmbientAccessPortManifest,
 ) {
   if (isInConfig()) {
-    registerAmbientPlug(self.ghjk, manifestUnclean);
+    registerAmbientPort(self.ports, manifestUnclean);
   }
 }
 
@@ -76,7 +72,7 @@ export function addInstallGlobal(
   config: InstallConfig,
 ) {
   if (isInConfig()) {
-    addInstall(self.ghjk, config);
+    addInstall(self.ports, config);
   }
 }
 

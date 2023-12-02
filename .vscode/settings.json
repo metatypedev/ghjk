@@ -1,6 +1,6 @@
 {
   "deno.enablePaths": [
-    ".",
+    "."
   ],
   "deno.suggest.completeFunctionCalls": true,
   "deno.inlayHints.variableTypes.enabled": true,

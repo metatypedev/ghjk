@@ -22,9 +22,9 @@ WORKDIR /app
 
 # explicitly set the shell var as detection fails otherwise
 # because ps program is not present in this image
-RUN SHELL=/bin/bash deno run -A /ghjk/init.ts
-RUN SHELL=/bin/fish deno run -A /ghjk/init.ts
-RUN SHELL=/bin/zsh  deno run -A /ghjk/init.ts
+RUN SHELL=/bin/bash deno run -A /ghjk/install.ts
+RUN SHELL=/bin/fish deno run -A /ghjk/install.ts
+RUN SHELL=/bin/zsh  deno run -A /ghjk/install.ts
 
 # activate ghjk non-interactive shells execs
 ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
@@ -37,6 +37,6 @@ RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
-RUN ghjk sync
+RUN ghjk ports sync
 
 CMD ['false']

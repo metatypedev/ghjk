@@ -1,10 +1,11 @@
 import {
   addInstallGlobal,
   type AmbientAccessPortManifest,
-  registerAmbientPlugGlobal,
+  registerAmbientPortGlobal,
 } from "../port.ts";
 
 export const manifest: AmbientAccessPortManifest = {
+  ty: "ambientAccess" as const,
   name: "git@aa",
   version: "0.1.0",
   execName: "git",
@@ -13,7 +14,7 @@ export const manifest: AmbientAccessPortManifest = {
   versionExtractRegexFlags: "",
 };
 
-registerAmbientPlugGlobal(manifest);
+registerAmbientPortGlobal(manifest);
 export default function git() {
   addInstallGlobal({
     portName: manifest.name,

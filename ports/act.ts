@@ -3,10 +3,10 @@ import {
   DownloadArgs,
   downloadFile,
   InstallArgs,
-  type InstallConfigBase,
+  type InstallConfigSimple,
   type PlatformInfo,
   PortBase,
-  registerDenoPlugGlobal,
+  registerDenoPortGlobal,
   removeFile,
   std_fs,
   std_path,
@@ -15,14 +15,15 @@ import {
 } from "../port.ts";
 
 const manifest = {
+  ty: "denoWorker" as const,
   name: "act@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
 };
 
-registerDenoPlugGlobal(manifest, () => new Port());
+registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install(config: InstallConfigBase = {}) {
+export default function install(config: InstallConfigSimple = {}) {
   addInstallGlobal({
     portName: manifest.name,
     ...config,

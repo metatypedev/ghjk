@@ -4,12 +4,12 @@ import {
   DownloadArgs,
   downloadFile,
   InstallArgs,
-  type InstallConfigBase,
+  type InstallConfigSimple,
   ListAllArgs,
   pathWithDepShims,
   type PlatformInfo,
   PortBase,
-  registerDenoPlugGlobal,
+  registerDenoPortGlobal,
   removeFile,
   spawn,
   std_fs,
@@ -21,6 +21,7 @@ import node from "./node.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
+  ty: "denoWorker" as const,
   name: "jco@npm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
@@ -28,12 +29,12 @@ const manifest = {
     std_ports.node_org,
   ],
 };
-registerDenoPlugGlobal(manifest, () => new Port());
+registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install({ version }: InstallConfigBase = {}) {
+export default function install(config: InstallConfigSimple = {}) {
   addInstallGlobal({
     portName: manifest.name,
-    version,
+    ...config,
   });
   // FIXME: conflict flags for install configs
   node({});

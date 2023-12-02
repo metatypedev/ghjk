@@ -24,7 +24,7 @@ ghjk (jk) is a programmable runtime manager.
 Install the hooks:
 
 ```bash
-deno run -A https://raw.githubusercontent.com/metatypedev/ghjk/main/init.ts
+deno run -A https://raw.githubusercontent.com/metatypedev/ghjk/main/install.ts
 ```
 
 In your project, create a configuration file `ghjk.ts`:
@@ -51,7 +51,7 @@ and looks as follows (abstracting away some implementation details):
     and clear previously loaded ones (if any)
   - defines an alias `ghjk` running `deno run -A $PWD/ghjk.ts`
 - you can then
-  - sync your runtime with `ghjk sync` which
+  - sync your runtime with `ghjk ports sync` which
     - installs the missing tools at `$HOME/.local/share/ghjk/installs`
     - regenerates the shims with symlinks and environment variables
     - detects any violation of the enforced rules

@@ -4,14 +4,14 @@ import validators, {
   type AmbientAccessPortManifestX,
   type DenoWorkerPortManifestX,
   type DepShims,
-  type GhjkCtx,
   type InstallConfig,
   InstallConfigX,
   type PortArgsBase,
-  type RegisteredPort,
+  type PortManifestX,
+  type PortsModuleConfig,
 } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
-import { AVAIL_CONCURRENCY, dirs } from "../../cli/utils.ts";
+import { AVAIL_CONCURRENCY, dirs } from "../../utils/cli.ts";
 import { AmbientAccessPort } from "./ambient.ts";
 import { AsdfPort } from "./asdf.ts";
 import { getInstallId } from "../../utils/mod.ts";
@@ -54,13 +54,13 @@ async function writeLoader(envDir: string, env: Record<string, string>) {
   );
 }
 
-export async function sync(cx: GhjkCtx) {
+export async function sync(cx: PortsModuleConfig) {
   const config = await findConfig(Deno.cwd());
   if (!config) {
     logger().error("ghjk did not find any `ghjk.ts` config.");
     return;
   }
-  logger().debug("syncnig", config);
+  logger().debug("syncing");
 
   const envDir = envDirFromConfig(config);
   logger().debug({ envDir });
@@ -72,9 +72,8 @@ export async function sync(cx: GhjkCtx) {
     const installId = pendingInstalls.pop()!;
     const inst = installs.all.get(installId)!;
 
-    const regPort = cx.ports.get(inst.portName) ??
-      cx.allowedDeps.get(inst.portName)!;
-    const { manifest } = regPort;
+    const manifest = cx.ports[inst.portName] ??
+      cx.allowedDeps[inst.portName]!;
     const depShims: DepShims = {};
 
     // create the shims for the deps
@@ -82,9 +81,9 @@ export async function sync(cx: GhjkCtx) {
       prefix: `ghjk_dep_shims_${installId}_`,
     });
     for (const depId of manifest.deps ?? []) {
-      const depPort = cx.allowedDeps.get(depId.id)!;
+      const depPort = cx.allowedDeps[depId.id]!;
       const depInstall = {
-        portName: depPort.manifest.name,
+        portName: depPort.name,
       };
       const depInstallId = getInstallId(depInstall);
       const depArtifacts = artifacts.get(depInstallId);
@@ -107,7 +106,7 @@ export async function sync(cx: GhjkCtx) {
 
     let thisArtifacts;
     try {
-      thisArtifacts = await doInstall(envDir, inst, regPort, depShims);
+      thisArtifacts = await doInstall(envDir, inst, manifest, depShims);
     } catch (err) {
       throw new Error(`error installing ${installId}`, { cause: err });
     }
@@ -190,7 +189,7 @@ export async function sync(cx: GhjkCtx) {
     ),
   );
 }
-function buildInstallGraph(cx: GhjkCtx) {
+function buildInstallGraph(cx: PortsModuleConfig) {
   const installs = {
     all: new Map<string, InstallConfig>(),
     indie: [] as string[],
@@ -213,9 +212,9 @@ function buildInstallGraph(cx: GhjkCtx) {
 
   while (foundInstalls.length > 0) {
     const inst = foundInstalls.pop()!;
-    const regPort = cx.ports.get(inst.portName) ??
-      cx.allowedDeps.get(inst.portName);
-    if (!regPort) {
+    const manifest = cx.ports[inst.portName] ??
+      cx.allowedDeps[inst.portName];
+    if (!manifest) {
       throw new Error(
         `unable to find plugin "${inst.portName}" specified by install ${
           JSON.stringify(inst)
@@ -233,20 +232,19 @@ function buildInstallGraph(cx: GhjkCtx) {
 
     installs.all.set(installId, inst);
 
-    const { manifest } = regPort;
     if (!manifest.deps || manifest.deps.length == 0) {
       installs.indie.push(installId);
     } else {
       const deps = [];
       for (const depId of manifest.deps) {
-        const depPort = cx.allowedDeps.get(depId.id);
+        const depPort = cx.allowedDeps[depId.id];
         if (!depPort) {
           throw new Error(
             `unrecognized dependency "${depId.id}" specified by plug "${manifest.name}"`,
           );
         }
         const depInstall = {
-          portName: depPort.manifest.name,
+          portName: depPort.name,
         };
         const depInstallId = getInstallId(depInstall);
 
@@ -323,34 +321,36 @@ type InstallArtifacts = DePromisify<ReturnType<typeof doInstall>>;
 async function doInstall(
   envDir: string,
   instUnclean: InstallConfig,
-  regPort: RegisteredPort,
+  manifest: PortManifestX,
   depShims: DepShims,
 ) {
-  const { ty: plugType, manifest } = regPort;
-  let plug;
+  logger().debug("installing", { envDir, instUnclean, port: manifest });
+  let port;
   let inst: InstallConfigX;
-  if (plugType == "denoWorker") {
+  if (manifest.ty == "denoWorker") {
     inst = validators.installConfig.parse(instUnclean);
-    plug = new DenoWorkerPort(
+    port = new DenoWorkerPort(
       manifest as DenoWorkerPortManifestX,
     );
-  } else if (plugType == "ambientAccess") {
+  } else if (manifest.ty == "ambientAccess") {
     inst = validators.installConfig.parse(instUnclean);
-    plug = new AmbientAccessPort(
+    port = new AmbientAccessPort(
       manifest as AmbientAccessPortManifestX,
     );
-  } else if (plugType == "asdf") {
+  } else if (manifest.ty == "asdf") {
     const asdfInst = validators.asdfInstallConfig.parse(instUnclean);
     inst = asdfInst;
-    plug = await AsdfPort.init(envDir, asdfInst, depShims);
+    port = await AsdfPort.init(envDir, asdfInst, depShims);
   } else {
     throw new Error(
-      `unsupported plugin type "${plugType}": ${JSON.stringify(manifest)}`,
+      `unsupported plugin type "${(manifest as unknown as any).ty}": ${
+        JSON.stringify(manifest)
+      }`,
     );
   }
   const installId = getInstallId(inst);
   const installVersion = validators.string.parse(
-    inst.version ?? await plug.latestStable({
+    inst.version ?? await port.latestStable({
       depShims,
     }),
   );
@@ -379,7 +379,7 @@ async function doInstall(
     const tmpDirPath = await Deno.makeTempDir({
       prefix: `ghjk_download_${installId}:${installVersion}_`,
     });
-    await plug.download({
+    await port.download({
       ...baseArgs,
       downloadPath: downloadPath,
       tmpDirPath,
@@ -391,7 +391,7 @@ async function doInstall(
     const tmpDirPath = await Deno.makeTempDir({
       prefix: `ghjk_install_${installId}@${installVersion}_`,
     });
-    await plug.install({
+    await port.install({
       ...baseArgs,
       availConcurrency: AVAIL_CONCURRENCY,
       downloadPath: downloadPath,
@@ -400,22 +400,22 @@ async function doInstall(
     void Deno.remove(tmpDirPath, { recursive: true });
   }
   const binPaths = validators.stringArray.parse(
-    await plug.listBinPaths({
+    await port.listBinPaths({
       ...baseArgs,
     }),
   );
   const libPaths = validators.stringArray.parse(
-    await plug.listLibPaths({
+    await port.listLibPaths({
       ...baseArgs,
     }),
   );
   const includePaths = validators.stringArray.parse(
-    await plug.listIncludePaths({
+    await port.listIncludePaths({
       ...baseArgs,
     }),
   );
   const env = zod.record(zod.string()).parse(
-    await plug.execEnv({
+    await port.execEnv({
       ...baseArgs,
     }),
   );

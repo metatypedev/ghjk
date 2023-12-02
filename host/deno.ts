@@ -7,7 +7,7 @@ import { std_url } from "../deps/common.ts";
 
 import { inWorker } from "../utils/mod.ts";
 import logger, { setup as setupLogger } from "../utils/logger.ts";
-import type { GhjkConfig } from "../modules/ports/mod.ts";
+import type { PortsModuleConfigBase } from "../modules/ports/mod.ts";
 
 if (inWorker()) {
   initWorker();
@@ -15,14 +15,14 @@ if (inWorker()) {
 
 declare global {
   interface Window {
-    ghjk: GhjkConfig;
+    ports: PortsModuleConfigBase;
   }
 }
 
 function initWorker() {
   setupLogger();
-  self.ghjk = {
-    ports: new Map(),
+  self.ports = {
+    ports: {},
     installs: [],
   };
 
@@ -58,7 +58,8 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
 
 async function serializeConfig(uri: string) {
   const mod = await import(uri);
-  return JSON.parse(JSON.stringify(mod));
+  const config = mod.ghjk.getConfig(mod.secureConfig);
+  return JSON.parse(JSON.stringify(config));
 }
 
 export async function getSerializedConfig(configUri: string) {
@@ -78,19 +79,20 @@ async function rpc(moduleUri: string, req: DriverRequests) {
   const worker = new Worker(import.meta.url, {
     name: `${dirBaseName}/${baseName}`,
     type: "module",
-    deno: {
-      namespace: true,
-      permissions: {
-        sys: true,
-        net: true,
-        read: ["."],
-        hrtime: false,
-        write: false,
-        run: false,
-        ffi: false,
-        env: true,
-      } as Deno.PermissionOptions,
-    },
+    // TODO: proper permissioning
+    // deno: {
+    //   namespace: true,
+    //   permissions: {
+    //     sys: true,
+    //     net: true,
+    //     read: ["."],
+    //     hrtime: false,
+    //     write: false,
+    //     run: false,
+    //     ffi: false,
+    //     env: true,
+    //   } as Deno.PermissionOptions,
+    // },
   } as WorkerOptions);
 
   const promise = new Promise<DriverResponse>((resolve, reject) => {

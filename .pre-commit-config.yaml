@@ -13,7 +13,7 @@ repos:
       - id: check-merge-conflict
       - id: end-of-file-fixer
         # exclude all generated files
-        exclude: (typegate/deno.lock|.*\.snap$|typegate/src/typegraphs/.*\.json|website/docs/reference/)
+        exclude: (deno.lock)
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.27.0
     hooks:
@@ -30,25 +30,21 @@ repos:
       - id: deno-fmt
         name: Deno format
         language: system
-        entry: bash -c 'cd typegate && deno fmt --ignore=native,src/typegraphs,tmp && cd ../dev && deno fmt'
+        entry: bash -c 'deno fmt'
         pass_filenames: false
         types:
           - ts
-        files: ^(typegate|dev)/
+      - id: deno-check
+        name: Deno check
+        language: system
+        entry: bash -c 'deno task check'
+        pass_filenames: false
+        types:
+          - ts
       - id: deno-lint
         name: Deno lint
         language: system
-        entry: bash -c 'cd typegate && deno lint --rules-exclude=no-explicit-any --ignore=native,tmp && cd ../dev && deno lint'
+        entry: bash -c 'deno task lint'
         pass_filenames: false
         types:
           - ts
-        files: ^(typegate|dev)/
-      - id: es-lint
-        name: Eslint
-        language: system
-        entry: bash -c 'cd website && [ -f node_modules/.bin/eslint ] && pnpm lint'
-        pass_filenames: false
-        types_or:
-          - ts
-          - tsx
-        files: ^website/

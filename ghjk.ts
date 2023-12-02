@@ -1,6 +1,5 @@
 export { ghjk } from "./mod.ts";
 import node from "./ports/node.ts";
-import install from "./ports/wasmedge.ts";
 import pnpm from "./ports/pnpm.ts";
 import cargo_binstall from "./ports/cargo-binstall.ts";
 import wasmedge from "./ports/wasmedge.ts";
@@ -17,7 +16,7 @@ import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 
 // node({});
-wasmedge({});
+// wasmedge({});
 // pnpm({});
 // cargo_binstall({});
 // wasm_tools({});
@@ -26,11 +25,11 @@ wasmedge({});
 // jco({});
 // mold({});
 // act({});
-asdf({
-  plugRepo: "https://github.com/asdf-community/asdf-python",
-  installType: "version",
-});
-// protoc({});
+// asdf({
+//   pluginRepo: "https://github.com/asdf-community/asdf-python",
+//   installType: "version",
+// });
+protoc({});
 // earthly({});
 // ruff({});
 // whiz({});

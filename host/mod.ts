@@ -1,15 +1,16 @@
 import "../setup_logger.ts";
 
 import { std_path } from "../deps/common.ts";
+import { cliffy_cmd } from "../deps/cli.ts";
 import logger from "../utils/logger.ts";
-import { $ } from "../utils/mod.ts";
+// import { $ } from "../utils/mod.ts";
 
-import validators, { type SerializedConfig } from "./types.ts";
+import validators from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 
 export async function main() {
-  const configPath = Deno.args[0];
+  const configPath = Deno.args[0]; // FIXME: might be better to get this from env var
 
   logger().debug("config", configPath);
 
@@ -33,7 +34,28 @@ export async function main() {
       );
   }
 
-  console.log(serializedJson);
+  // console.log(JSON.stringify(serializedJson, null, "   "));
+
+  const serializedConfig = validators.serializedConfig.parse(serializedJson);
+
+  let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
+    .name("ghjk")
+    .version("0.1.0") // FIXME: get better version
+    .description("Programmable runtime manager.")
+    .action(function () {
+      this.showHelp();
+    });
+  for (const man of serializedConfig.modules) {
+    const mod = std_modules.map[man.id];
+    if (!mod) {
+      throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
+    }
+    const instance = mod.ctor(man);
+    cmd = cmd.command(man.id, instance.command());
+  }
+  cmd
+    .command("completions", new cliffy_cmd.CompletionsCommand())
+    .parse(Deno.args.slice(1));
   //   const serializedConfig = validators.serializedConfig.parse(
   //     serializedJson,
   //   );

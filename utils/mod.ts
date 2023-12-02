@@ -1,7 +1,6 @@
 import { dax, std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
 import type {
-  AsdfInstallConfig,
   DepShims,
   InstallConfig,
   PortDep,
@@ -115,9 +114,9 @@ export function depBinShimPath(
   return path;
 }
 
-export function getInstallId(install: InstallConfig | AsdfInstallConfig) {
-  if ("plugRepo" in install) {
-    const url = new URL(install.plugRepo);
+export function getInstallId(install: InstallConfig) {
+  if ("pluginRepo" in install) {
+    const url = new URL(install.pluginRepo);
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }

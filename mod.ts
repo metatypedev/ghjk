@@ -3,12 +3,15 @@
 
 import "./setup_logger.ts";
 
-import { type GhjkConfig } from "./modules/ports/types.ts";
-// this is only a shortcut for the cli
-import { runCli } from "./cli/mod.ts";
+import {
+  type PortsModuleConfigBase,
+  type PortsModuleSecureConfig,
+  type RegisteredPorts,
+} from "./modules/ports/types.ts";
+import type { SerializedConfig } from "./host/types.ts";
 import logger from "./utils/logger.ts";
-import { GhjkSecureConfig } from "./port.ts";
 import * as std_ports from "./modules/ports/std.ts";
+import { std_modules } from "./modules/mod.ts";
 
 // we need to use global variables to allow
 // pots to access the config object.
@@ -16,38 +19,42 @@ import * as std_ports from "./modules/ports/std.ts";
 //  as ports might import a different version of this module.
 declare global {
   interface Window {
-    ghjk: GhjkConfig;
+    ports: PortsModuleConfigBase;
   }
 }
 
-function runCliShim(
-  args: string[],
-  secureConfig: GhjkSecureConfig | undefined,
-) {
+function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
   let allowedDeps;
   if (secureConfig?.allowedPortDeps) {
-    allowedDeps = new Map();
+    allowedDeps = {} as RegisteredPorts;
     for (const depId of secureConfig.allowedPortDeps) {
-      const regPort = std_ports.map.get(depId.id);
+      const regPort = std_ports.map[depId.id];
       if (!regPort) {
         throw new Error(
           `unrecognized dep "${depId.id}" found in "allowedPluginDeps"`,
         );
       }
-      allowedDeps.set(depId.id, regPort);
+      allowedDeps[depId.id] = regPort;
     }
   } else {
-    allowedDeps = new Map(std_ports.map.entries());
+    allowedDeps = std_ports.map;
   }
-  runCli(args, {
-    ...self.ghjk,
-    allowedDeps,
-  });
+  const config: SerializedConfig = {
+    modules: [{
+      id: std_modules.ports,
+      config: {
+        installs: self.ports.installs,
+        ports: self.ports.ports,
+        allowedDeps: allowedDeps,
+      },
+    }],
+  };
+  return config;
 }
 
 // freeze the object to prevent malicious tampering of the secureConfig
 export const ghjk = Object.freeze({
-  runCli: Object.freeze(runCliShim),
+  getConfig: Object.freeze(getConfig),
 });
 
 export { logger };

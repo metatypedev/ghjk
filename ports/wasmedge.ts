@@ -5,10 +5,10 @@ import {
   downloadFile,
   ExecEnvArgs,
   InstallArgs,
-  type InstallConfigBase,
+  type InstallConfigSimple,
   type PlatformInfo,
   PortBase,
-  registerDenoPlugGlobal,
+  registerDenoPortGlobal,
   removeFile,
   spawn,
   std_fs,
@@ -18,6 +18,7 @@ import {
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
+  ty: "denoWorker" as const,
   name: "wasmedge@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
@@ -26,7 +27,7 @@ const manifest = {
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Port());
+registerDenoPortGlobal(manifest, () => new Port());
 
 // TODO: wasmedge extension and plugin support
 /*
@@ -51,7 +52,7 @@ const supportedPlugins = [
   "wasmedge_bpf" as const,
 ];
  */
-export default function install(config: InstallConfigBase = {}) {
+export default function install(config: InstallConfigSimple = {}) {
   addInstallGlobal({
     portName: manifest.name,
     ...config,

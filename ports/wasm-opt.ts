@@ -3,10 +3,10 @@ import {
   depBinShimPath,
   type DownloadArgs,
   InstallArgs,
-  type InstallConfigBase,
+  type InstallConfigSimple,
   logger,
   PortBase,
-  registerDenoPlugGlobal,
+  registerDenoPortGlobal,
   removeFile,
   spawn,
   std_fs,
@@ -15,6 +15,7 @@ import {
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
+  ty: "denoWorker" as const,
   name: "wasm-opt@cbinst",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
@@ -23,9 +24,9 @@ const manifest = {
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Port());
+registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install(config: InstallConfigBase = {}) {
+export default function install(config: InstallConfigSimple = {}) {
   addInstallGlobal({
     portName: manifest.name,
     ...config,

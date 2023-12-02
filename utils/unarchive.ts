@@ -6,7 +6,7 @@ import {
   std_streams,
   std_tar,
   zipjs,
-} from "../deps/plug.ts";
+} from "../deps/ports.ts";
 
 /// Uses file extension to determine type
 /// Does not support symlinks

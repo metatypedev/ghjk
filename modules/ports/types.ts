@@ -9,6 +9,7 @@ const portDep = zod.object({
 });
 
 const portManifestBase = zod.object({
+  ty: zod.string(),
   name: zod.string().min(1),
   version: zod.string()
     .refine((str) => semver.parse(str), {
@@ -23,12 +24,14 @@ const portManifestBase = zod.object({
 
 const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
+    ty: zod.literal("denoWorker"),
     moduleSpecifier: zod.string().url(),
   }),
 );
 
 const ambientAccessPortManifest = portManifestBase.merge(
   zod.object({
+    ty: zod.literal("ambientAccess"),
     execName: zod.string().min(1),
     versionExtractFlag: zod.enum([
       "version",
@@ -49,6 +52,18 @@ const ambientAccessPortManifest = portManifestBase.merge(
     // TODO: custom shell shims
   }),
 );
+const theAsdfPortManifest = portManifestBase.merge(
+  zod.object({
+    ty: zod.literal("asdf"),
+    moduleSpecifier: zod.string().url(),
+  }),
+);
+
+const portManifest = zod.discriminatedUnion("ty", [
+  denoWorkerPortManifest,
+  ambientAccessPortManifest,
+  theAsdfPortManifest,
+]);
 
 const installConfigBase = zod.object({
   version: zod.string()
@@ -57,21 +72,33 @@ const installConfigBase = zod.object({
     .enum(["deferToNewer", "override"])
     .nullish()
     .default("deferToNewer"),
+  portName: zod.string().min(1),
 }).passthrough();
 
-const installConfig = installConfigBase.merge(
-  zod.object({
-    portName: zod.string().min(1),
-  }),
-);
+const stdInstallConfig = installConfigBase.merge(zod.object({}));
 
-const asdfInstallConfig = installConfig.merge(
+const asdfInstallConfig = installConfigBase.merge(
   zod.object({
-    plugRepo: zod.string().url(),
+    pluginRepo: zod.string().url(),
     installType: zod
       .enum(["version", "ref"]),
   }),
 );
+
+const installConfig = zod.union([stdInstallConfig, asdfInstallConfig]);
+
+const portsModuleConfigBase = zod.object({
+  ports: zod.record(zod.string(), portManifest),
+  installs: zod.array(installConfig),
+});
+
+const portsModuleSecureConfig = zod.object({
+  allowedPortDeps: zod.array(portDep).nullish(),
+});
+
+const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
+  allowedDeps: zod.record(zod.string(), portManifest),
+}));
 
 const validators = {
   portDep,
@@ -80,8 +107,14 @@ const validators = {
   ambientAccessPortManifest,
   string: zod.string(),
   installConfigBase,
+  stdInstallConfig,
   installConfig,
   asdfInstallConfig,
+  portManifest,
+  portsModuleConfigBase,
+  portsModuleSecureConfig,
+  portsModuleConfig,
+  theAsdfPortManifest,
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
@@ -96,14 +129,15 @@ export type DenoWorkerPortManifest = zod.input<
 export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
 >;
+export type TheAsdfPortManifest = zod.input<
+  typeof validators.theAsdfPortManifest
+>;
 
 // Describes the plugin itself
-export type PortManifest =
-  | PortManifestBase
-  | DenoWorkerPortManifest
-  | AmbientAccessPortManifest;
+export type PortManifest = zod.input<
+  typeof validators.portManifest
+>;
 
-export type PortDep = zod.infer<typeof validators.portDep>;
 export type PortManifestBaseX = zod.infer<typeof validators.portManifestBase>;
 export type DenoWorkerPortManifestX = zod.infer<
   typeof validators.denoWorkerPortManifest
@@ -112,49 +146,39 @@ export type AmbientAccessPortManifestX = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
 // This is the transformed version of PortManifest, ready for consumption
-export type PortManifestX =
-  | PortManifestBaseX
-  | DenoWorkerPortManifestX
-  | AmbientAccessPortManifestX;
+export type PortManifestX = zod.infer<
+  typeof validators.portManifest
+>;
 
-export type RegisteredPort = {
-  ty: "ambientAccess";
-  manifest: AmbientAccessPortManifestX;
-} | {
-  ty: "denoWorker";
-  manifest: DenoWorkerPortManifestX;
-} | {
-  ty: "asdf";
-  manifest: PortManifestBaseX;
-};
+export type PortDep = zod.infer<typeof validators.portDep>;
 
-export type RegisteredPorts = Map<string, RegisteredPort>;
+export type RegisteredPorts = Record<string, PortManifestX | undefined>;
 
-export type InstallConfigBase = zod.input<typeof validators.installConfigBase>;
+export type InstallConfigBase = zod.input<
+  typeof validators.installConfigBase
+>;
+export type InstallConfigSimple = Omit<InstallConfigBase, "portName">;
 
-// Describes a single installation done by a specific plugin.
-export type InstallConfig = zod.input<typeof validators.installConfig>;
-export type InstallConfigX = zod.infer<typeof validators.installConfig>;
 export type AsdfInstallConfig = zod.input<typeof validators.asdfInstallConfig>;
 export type AsdfInstallConfigX = zod.infer<typeof validators.asdfInstallConfig>;
 
-export interface GhjkConfig {
-  /// Ports explicitly added by the user
-  ports: RegisteredPorts;
-  installs: InstallConfig[];
-}
+// Describes a single installation done by a specific plugin.
+// export type InstallConfig = zod.input<typeof validators.installConfig>;
+export type InstallConfig = zod.input<typeof validators.installConfig>;
+export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+
+export type PortsModuleConfigBase = zod.infer<
+  typeof validators.portsModuleConfigBase
+>;
 
 /// This is a secure sections of the config intended to be direct exports
 /// from the config script instead of the global variable approach the
 /// main [`GhjkConfig`] can take.
-export interface GhjkSecureConfig {
-  allowedPortDeps?: PortDep[];
-}
+export type PortsModuleSecureConfig = zod.infer<
+  typeof validators.portsModuleSecureConfig
+>;
 
-export type GhjkCtx = GhjkConfig & {
-  /// Standard list of ports allowed to be use as deps by other ports
-  allowedDeps: RegisteredPorts;
-};
+export type PortsModuleConfig = zod.infer<typeof validators.portsModuleConfig>;
 
 export abstract class PortBase {
   abstract manifest: PortManifest;
@@ -242,11 +266,8 @@ export interface ListAllArgs {
   depShims: DepShims;
 }
 
-export interface ListBinPathsArgs extends PortArgsBase {
-}
-
-export interface ExecEnvArgs extends PortArgsBase {
-}
+export type ListBinPathsArgs = PortArgsBase;
+export type ExecEnvArgs = PortArgsBase;
 
 export interface DownloadArgs extends PortArgsBase {
   downloadPath: string;

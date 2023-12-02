@@ -5,11 +5,11 @@ import {
   downloadFile,
   ExecEnvArgs,
   InstallArgs,
-  type InstallConfigBase,
+  type InstallConfigSimple,
   ListAllArgs,
   type PlatformInfo,
   PortBase,
-  registerDenoPlugGlobal,
+  registerDenoPortGlobal,
   removeFile,
   spawn,
   std_fs,
@@ -24,6 +24,7 @@ const tar_aa_id = {
 
 // TODO: sanity check exports of all ports
 export const manifest = {
+  ty: "denoWorker" as const,
   name: "node@org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
@@ -32,13 +33,13 @@ export const manifest = {
   ],
 };
 
-registerDenoPlugGlobal(manifest, () => new Port());
+registerDenoPortGlobal(manifest, () => new Port());
 
 // FIXME: improve multi platform support story
-export default function install({ version }: InstallConfigBase = {}) {
+export default function install(config: InstallConfigSimple = {}) {
   addInstallGlobal({
     portName: manifest.name,
-    version,
+    ...config,
   });
 }
 

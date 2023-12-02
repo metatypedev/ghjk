@@ -73,7 +73,7 @@ type WorkerResp = {
 
 /// Make sure to call this before any `await` point or your
 /// plug might miss messages
-export function initDenoWorkerPlug<P extends PortBase>(plugInit: () => P) {
+export function initDenoWorkerPort<P extends PortBase>(portCtor: () => P) {
   if (inWorker()) {
     // let plugClass: (new () => PlugBase) | undefined;
     // const plugInit = () => {
@@ -105,40 +105,40 @@ export function initDenoWorkerPlug<P extends PortBase>(plugInit: () => P) {
         res = {
           ty: req.ty,
           // id: req.id,
-          payload: await plugInit().listAll(req.arg),
+          payload: await portCtor().listAll(req.arg),
         };
       } else if (req.ty === "latestStable") {
         res = {
           ty: req.ty,
-          payload: await plugInit().latestStable(req.arg),
+          payload: await portCtor().latestStable(req.arg),
         };
       } else if (req.ty === "execEnv") {
         res = {
           ty: req.ty,
-          payload: await plugInit().execEnv(req.arg),
+          payload: await portCtor().execEnv(req.arg),
         };
       } else if (req.ty === "listBinPaths") {
         res = {
           ty: req.ty,
-          payload: await plugInit().listBinPaths(req.arg),
+          payload: await portCtor().listBinPaths(req.arg),
         };
       } else if (req.ty === "listLibPaths") {
         res = {
           ty: req.ty,
-          payload: await plugInit().listLibPaths(req.arg),
+          payload: await portCtor().listLibPaths(req.arg),
         };
       } else if (req.ty === "listIncludePaths") {
         res = {
           ty: req.ty,
-          payload: await plugInit().listIncludePaths(req.arg),
+          payload: await portCtor().listIncludePaths(req.arg),
         };
       } else if (req.ty === "download") {
-        await plugInit().download(req.arg),
+        await portCtor().download(req.arg),
           res = {
             ty: req.ty,
           };
       } else if (req.ty === "install") {
-        await plugInit().install(req.arg),
+        await portCtor().install(req.arg),
           res = {
             ty: req.ty,
           };

@@ -79,7 +79,7 @@ await dockerTest([
     name: "protoc",
     imports: `import port from "$ghjk/ports/protoc.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `protoc --version`,
   },
@@ -88,7 +88,7 @@ await dockerTest([
     name: "ruff",
     imports: `import port from "$ghjk/ports/ruff.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `ruff --version`,
   },
@@ -97,7 +97,7 @@ await dockerTest([
     name: "whiz",
     imports: `import port from "$ghjk/ports/whiz.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `whiz --version`,
   },
@@ -106,7 +106,7 @@ await dockerTest([
     name: "act",
     imports: `import port from "$ghjk/ports/act.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `act --version`,
   },
@@ -115,7 +115,7 @@ await dockerTest([
     name: "cargo-binstall",
     imports: `import port from "$ghjk/ports/cargo-binstall.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `cargo-binstall -V`,
   },
@@ -124,7 +124,7 @@ await dockerTest([
     name: "mold",
     imports: `import port from "$ghjk/ports/mold.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `mold -V`,
   },
@@ -133,7 +133,7 @@ await dockerTest([
     name: "wasmedge",
     imports: `import port from "$ghjk/ports/wasmedge.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `wasmedge --version`,
   },
@@ -142,7 +142,7 @@ await dockerTest([
     name: "cargo-insta",
     imports: `import port from "$ghjk/ports/cargo-insta.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `cargo-insta -V`,
   },
@@ -151,7 +151,7 @@ await dockerTest([
     name: "wasm-tools",
     imports: `import port from "$ghjk/ports/wasm-tools.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `wasm-tools -V`,
   },
@@ -160,7 +160,7 @@ await dockerTest([
     name: "node",
     imports: `import port from "$ghjk/ports/node.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `node --version`,
   },
@@ -169,7 +169,7 @@ await dockerTest([
     name: "wasm-opt",
     imports: `import port from "$ghjk/ports/wasm-opt.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `wasm-opt --version`,
   },
@@ -178,7 +178,7 @@ await dockerTest([
     name: "pnpm",
     imports: `import port from "$ghjk/ports/earthly.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `earthly --version`,
   },
@@ -187,7 +187,7 @@ await dockerTest([
     name: "pnpm",
     imports: `import port from "$ghjk/ports/pnpm.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `pnpm --version`,
   },
@@ -196,7 +196,7 @@ await dockerTest([
     name: "jco",
     imports: `import port from "$ghjk/ports/jco.ts"`,
     confFn: `async () => {
-    plug({ });
+    port({ });
   }`,
     ePoint: `jco --version`,
   },
@@ -205,8 +205,8 @@ await dockerTest([
     name: "asdf-zig",
     imports: `import port from "$ghjk/ports/asdf.ts"`,
     confFn: `async () => {
-  plug({
-    plugRepo: "https://github.com/asdf-community/asdf-zig",
+  port({
+    portRepo: "https://github.com/asdf-community/asdf-zig",
     installType: "version",
   });
     }`,
@@ -217,8 +217,8 @@ await dockerTest([
   //   name: "asdf-python",
   //   imports: `import port from "$ghjk/ports/asdf.ts"`,
   //   confFn: `async () => {
-  // plug({
-  //   plugRepo: "https://github.com/asdf-community/asdf-python",
+  // port({
+  //   portRepo: "https://github.com/asdf-community/asdf-python",
   //   installType: "version",
   // });
   //   }`,
