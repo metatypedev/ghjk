@@ -3,11 +3,11 @@ FROM docker.io/denoland/deno:debian-1.38.0
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt update; \
-    apt install --yes \
+    apt install --yes --no-install-recommends \
     # test deps
     fish zsh \
     # asdf deps
-    git curl xz-utils unzip \
+    git curl xz-utils unzip ca-certificates \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 
@@ -37,6 +37,7 @@ RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
+RUN CLICOLOR_FORCE=1 ghjk config
 RUN ghjk ports sync
 
 CMD ['false']

@@ -25,11 +25,11 @@ import whiz from "./ports/whiz.ts";
 // jco({});
 // mold({});
 // act({});
-// asdf({
-//   pluginRepo: "https://github.com/asdf-community/asdf-python",
-//   installType: "version",
-// });
-protoc({});
+asdf({
+  pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+  installType: "version",
+});
+// protoc({ });
 // earthly({});
 // ruff({});
 // whiz({});

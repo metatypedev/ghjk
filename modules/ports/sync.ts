@@ -37,20 +37,48 @@ function envDirFromConfig(config: string): string {
   );
 }
 
-async function writeLoader(envDir: string, env: Record<string, string>) {
+async function writeLoader(
+  envDir: string,
+  env: Record<string, string>,
+  pathVars: Record<string, string>,
+) {
+  const loader = {
+    posix: [
+      `export GHJK_CLEANUP_POSIX="";`,
+      ...Object.entries(env).map(([k, v]) =>
+        // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
+        `GHJK_CLEANUP_POSIX+="export ${k}='$${k}';";
+export ${k}='${v}';`
+      ),
+      ...Object.entries(pathVars).map(([k, v]) =>
+        // NOTE: double quote the path vars for expansion
+        // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
+        `GHJK_CLEANUP_POSIX+='${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr "\\n" ":");${k}="\${${k}%:}"';
+${k}="${v}:$${k}";
+`
+      ),
+    ].join("\n"),
+    fish: [
+      `set --erase GHJK_CLEANUP_FISH`,
+      ...Object.entries(env).map(([k, v]) =>
+        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
+set --global --export ${k} '${v}';`
+      ),
+      ...Object.entries(pathVars).map(([k, v]) =>
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^$HOME\\/\\.local\\/share\\/ghjk\\/envs" $${k});';
+set --global --prepend ${k} ${v};
+`
+      ),
+    ].join("\n"),
+  };
   await Deno.mkdir(envDir, { recursive: true });
   await Deno.writeTextFile(
     `${envDir}/loader.fish`,
-    Object.entries(env).map(([k, v]) =>
-      `set --global --append GHJK_CLEANUP "set --global --export ${k} '$${k}';";\nset --global --export ${k} '${v}';`
-    ).join("\n"),
+    loader.fish,
   );
   await Deno.writeTextFile(
     `${envDir}/loader.sh`,
-    `export GHJK_CLEANUP="";\n` +
-      Object.entries(env).map(([k, v]) =>
-        `GHJK_CLEANUP+="export ${k}='$${k}';";\nexport ${k}='${v}';`
-      ).join("\n"),
+    loader.posix,
   );
 }
 
@@ -173,7 +201,7 @@ export async function sync(cx: PortsModuleConfig) {
       const conflict = env[key];
       if (conflict) {
         throw new Error(
-          `duplicate env var found ${key} from installs ${instId} & ${
+          `duplicate env var found ${key} from sources ${instId} & ${
             conflict[1]
           }`,
         );
@@ -181,12 +209,31 @@ export async function sync(cx: PortsModuleConfig) {
       env[key] = [val, instId];
     }
   }
+  let LD_LIBRARY_ENV: string;
+  switch (Deno.build.os) {
+    case "darwin":
+      LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
+      break;
+    case "linux":
+      LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
+      break;
+    default:
+      throw new Error(`unsupported os ${Deno.build.os}`);
+  }
+  const pathVars = {
+    PATH: `${envDir}/shims/bin`,
+    LIBRARY_PATH: `${envDir}/shims/lib`,
+    [LD_LIBRARY_ENV]: `${envDir}/shims/lib`,
+    C_INCLUDE_PATH: `${envDir}/shims/include`,
+    CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
+  };
   // FIXME: prevent malicious env manipulations
   await writeLoader(
     envDir,
     Object.fromEntries(
       Object.entries(env).map(([key, [val, _]]) => [key, val]),
     ),
+    pathVars,
   );
 }
 function buildInstallGraph(cx: PortsModuleConfig) {
@@ -339,6 +386,7 @@ async function doInstall(
     );
   } else if (manifest.ty == "asdf") {
     const asdfInst = validators.asdfInstallConfig.parse(instUnclean);
+    logger().debug(instUnclean);
     inst = asdfInst;
     port = await AsdfPort.init(envDir, asdfInst, depShims);
   } else {

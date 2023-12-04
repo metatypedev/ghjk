@@ -21,6 +21,7 @@ export class PortsModule extends ModuleBase {
   }
   command() {
     return new cliffy_cmd.Command()
+      // .alias("port")
       .action(function () {
         this.showHelp();
       })
@@ -124,8 +125,9 @@ export function registerPort(
 
 export function addInstall(
   cx: PortsModuleConfigBase,
-  config: InstallConfig,
+  configUnclean: InstallConfig,
 ) {
+  const config = validators.installConfig.parse(configUnclean);
   if (!cx.ports[config.portName]) {
     throw new Error(
       `unrecognized port "${config.portName}" specified by install ${
@@ -134,5 +136,5 @@ export function addInstall(
     );
   }
   logger().debug("install added", config);
-  cx.installs.push(validators.installConfig.parse(config));
+  cx.installs.push(config);
 }

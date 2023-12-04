@@ -85,7 +85,15 @@ const asdfInstallConfig = installConfigBase.merge(
   }),
 );
 
-const installConfig = zod.union([stdInstallConfig, asdfInstallConfig]);
+// NOTE: zod unions are tricky. It'll parse with the first schema
+// in the array that parses. And if this early schema is a subset
+// of its siblings (and it doesn't have `passthrough`), it will discard
+// fields meant for sibs.
+// Which's to say ordering matters
+const installConfig = zod.union([
+  asdfInstallConfig,
+  stdInstallConfig,
+]);
 
 const portsModuleConfigBase = zod.object({
   ports: zod.record(zod.string(), portManifest),

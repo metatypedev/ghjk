@@ -1,11 +1,3 @@
-function clean_up_paths
-    set --global --path PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $PATH)
-    set --global --path LIBRARY_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $LIBRARY_PATH)
-    set --global --path __var_LD_LIBRARY_ENV__ (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $__var_LD_LIBRARY_ENV__)
-    set --global --path C_INCLUDE_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $C_INCLUDE_PATH)
-    set --global --path CPLUS_INCLUDE_PATH (string match --invert --regex "^$HOME\/\.local\/share\/ghjk\/envs" $CPLUS_INCLUDE_PATH)
-end
-
 function init_ghjk
     if set --query GHJK_CLEANUP
         eval $GHJK_CLEANUP
@@ -16,14 +8,6 @@ function init_ghjk
         if test -e $cur_dir/ghjk.ts
             set --local envDir $HOME/.local/share/ghjk/envs/(string replace --all / . $cur_dir)
             if test -d $envDir
-                clean_up_paths
-
-                set --global --prepend PATH $envDir/shims/bin
-                set --global --prepend LIBRARY_PATH $envDir/shims/lib
-                set --global --prepend __var_LD_LIBRARY_ENV__ $envDir/shims/lib
-                set --global --prepend C_INCLUDE_PATH $envDir/shims/include
-                set --global --prepend CPLUS_INCLUDE_PATH $envDir/shims/include
-
                 source $envDir/loader.fish
                 if test $envDir/loader.fish -ot $cur_dir/ghjk.ts
                     set_color FF4500
@@ -41,7 +25,6 @@ function init_ghjk
         end
         set cur_dir (dirname $cur_dir)
     end
-    clean_up_paths
     set ghjk_alias "echo 'No ghjk.ts config found.'"
 end
 

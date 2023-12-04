@@ -5,6 +5,7 @@ import { cliffy_cmd } from "../deps/cli.ts";
 import logger from "../utils/logger.ts";
 // import { $ } from "../utils/mod.ts";
 
+import { isColorfulTty } from "../utils/mod.ts";
 import validators from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
@@ -33,9 +34,6 @@ export async function main() {
         `unrecognized ghjk config type provided at path: ${configPath}`,
       );
   }
-
-  // console.log(JSON.stringify(serializedJson, null, "   "));
-
   const serializedConfig = validators.serializedConfig.parse(serializedJson);
 
   let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
@@ -44,7 +42,18 @@ export async function main() {
     .description("Programmable runtime manager.")
     .action(function () {
       this.showHelp();
-    });
+    })
+    .command(
+      "config",
+      new cliffy_cmd.Command()
+        .description("Print the extracted config from the ghjk.ts file")
+        .action(function () {
+          console.log(Deno.inspect(serializedConfig, {
+            depth: 10,
+            colors: isColorfulTty(),
+          }));
+        }),
+    );
   for (const man of serializedConfig.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
