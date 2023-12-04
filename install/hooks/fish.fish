@@ -20,19 +20,12 @@ function init_ghjk
                 echo $envDir
                 set_color normal
             end
-            set ghjk_alias "deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
+            alias ghjk "deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         end
         set cur_dir (dirname $cur_dir)
     end
-    set ghjk_alias "echo 'No ghjk.ts config found.'"
-end
-
-# the alias value could be changed by init_ghjk
-# to execute the appropriate cmd based on ghjk.ts
-set ghjk_alias "echo 'No ghjk.ts config found.'"
-function ghjk
-    eval $ghjk_alias $argv
+    alias ghjk "echo 'No ghjk.ts config found.'"
 end
 
 # try to detect ghjk.ts on each change of PWD

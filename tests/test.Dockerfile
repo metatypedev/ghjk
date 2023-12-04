@@ -1,4 +1,4 @@
-ARG DENO_V=1.38.3
+ARG DENO_V=1.38.4
 
 FROM docker.io/denoland/deno:debian-${DENO_V}
 
@@ -45,12 +45,12 @@ RUN SHELL=/bin/zsh  deno run -A /ghjk/install.ts
 ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
 ENV ZDOTDIR=/root/.local/share/ghjk/hooks/
 
-# BASH_ENV behavior is only avail in bash, not sh
-SHELL [ "/bin/bash", "-c"] 
-
 RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
+
+# BASH_ENV behavior is only avail in bash, not sh
+SHELL [ "/bin/bash", "-c"] 
 
 RUN CLICOLOR_FORCE=1 ghjk config
 RUN ghjk ports sync

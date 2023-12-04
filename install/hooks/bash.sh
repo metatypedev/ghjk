@@ -1,3 +1,6 @@
+# please keep this posix compatible and avoid bash extensions when possible
+# the zsh impl also relies on this
+# https;//shellcheck.net can come in handy in this
 
 # Define color variables
 ansi_red='\033[0;31m'
@@ -14,38 +17,30 @@ init_ghjk() {
     cur_dir=$PWD
     while [ "$cur_dir" != "/" ]; do
         if [ -e "$cur_dir/ghjk.ts" ]; then
-            envDir="$HOME/.local/share/ghjk/envs/$(echo "$cur_dir" | tr '/' '.')"
+            envDir="$HOME/.local/share/ghjk/envs/$(printf "$cur_dir" | tr '/' '.')"
             if [ -d "$envDir" ]; then
                 . "$envDir/loader.sh"
                 # FIXME: -ot not valid in POSIX
                 # shellcheck disable=SC3000-SC4000
                 if [ "$envDir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
-                    echo "${ansi_yel}[ghjk] Detected changes, please sync...${ansi_nc}"
+                    printf "${ansi_yel}[ghjk] Detected changes, please sync...${ansi_nc}"
                 fi
             else
-                echo "${ansi_red}[ghjk] Uninstalled runtime found, please sync...${ansi_nc}"
-                echo "$envDir"
+                printf "${ansi_red}[ghjk] Uninstalled runtime found, please sync...${ansi_nc}\n"
+                printf "$envDir\n"
             fi
-            export ghjk_alias="deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
+            alias ghjk="deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         fi
         cur_dir="$(dirname "$cur_dir")"
     done
-    export ghjk_alias="echo '${ansi_red}No ghjk.ts config found.${ansi_nc}'"
+    alias ghjk="printf '${ansi_red}No ghjk.ts config found.${ansi_nc}\n'"
 }
 
-# the alias value could be changed by init_ghjk
-# to execute the appropriate cmd based on ghjk.ts
-ghjk_alias="echo 'No ghjk.ts config found.'"
-ghjk () {
-    eval "$ghjk_alias" "$*";
-}
-
-# export function for non-interactive use
-export -f ghjk
-export -f init_ghjk
-
-# bash-preexec only executes if it detects bash
+# onlt load bash-prexec if we detect bash
+# bash-preexec itslef only executes if it detects bash
+# but even reliably resolving it's address
+# requires bash extensions. 
 if [ -n "${BASH_SOURCE+x}" ]; then
     hooksDir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE}")")
     . "$hooksDir/bash-preexec.sh"
