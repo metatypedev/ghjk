@@ -11,31 +11,9 @@ import validators, {
   type PortsModuleConfig,
 } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
-import { AVAIL_CONCURRENCY, dirs } from "../../utils/cli.ts";
 import { AmbientAccessPort } from "./ambient.ts";
 import { AsdfPort } from "./asdf.ts";
-import { getInstallId } from "../../utils/mod.ts";
-
-async function findConfig(path: string): Promise<string | null> {
-  let current = path;
-  while (current !== "/") {
-    const location = `${path}/ghjk.ts`;
-    if (await std_fs.exists(location)) {
-      return location;
-    }
-    current = std_path.dirname(current);
-  }
-  return null;
-}
-
-function envDirFromConfig(config: string): string {
-  const { shareDir } = dirs();
-  return std_path.resolve(
-    shareDir,
-    "envs",
-    std_path.dirname(config).replaceAll("/", "."),
-  );
-}
+import { AVAIL_CONCURRENCY, getInstallId } from "../../utils/mod.ts";
 
 async function writeLoader(
   envDir: string,
@@ -82,17 +60,7 @@ set --global --prepend ${k} ${v};
   );
 }
 
-export async function sync(cx: PortsModuleConfig) {
-  const config = await findConfig(Deno.cwd());
-  if (!config) {
-    logger().error("ghjk did not find any `ghjk.ts` config.");
-    return;
-  }
-  logger().debug("syncing");
-
-  const envDir = envDirFromConfig(config);
-  logger().debug({ envDir });
-
+export async function sync(envDir: string, cx: PortsModuleConfig) {
   const installs = buildInstallGraph(cx);
   const artifacts = new Map<string, InstallArtifacts>();
   const pendingInstalls = [...installs.indie];

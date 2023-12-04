@@ -1,46 +1,30 @@
-import { std_path } from "../deps/cli.ts";
-import { dirs, importRaw } from "../utils/cli.ts";
+//! this installs the different shell ghjk hooks in ~/.local/share/ghjk
+//! and a `ghjk` bin at ~/.local/share/bin
+
+// TODO: support for different environments to use different versions of ghjk
+
+import { std_fs, std_path } from "../deps/cli.ts";
+import { dirs, importRaw } from "../utils/mod.ts";
 import { spawnOutput } from "../utils/mod.ts";
 
-let LD_LIBRARY_ENV: string;
-switch (Deno.build.os) {
-  case "darwin":
-    LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
-    break;
-  case "linux":
-    LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
-    break;
-  default:
-    throw new Error(`unsupported os ${Deno.build.os}`);
-}
-
 // null means it should be removed (for cleaning up old versions)
-const vfs = {
-  // the script executed when users use the ghjk command
-  "hooks/entrypoint.ts": `
-import { main } from "${import.meta.resolve("../host/mod.ts")}";
-
-await main();
-`,
-
+const hookVfs = {
   "hooks/bash-preexec.sh": await importRaw(
     "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
   ),
 
   "hooks/.zshenv": (
     await importRaw(import.meta.resolve("./hooks/zsh.zsh"))
-  )
-    .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
+  ),
+
   // the hook run before every prompt draw in bash
   "hooks/hook.sh": (
     await importRaw(import.meta.resolve("./hooks/bash.sh"))
-  )
-    .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
+  ),
 
   "hooks/hook.fish": (
     await importRaw(import.meta.resolve("./hooks/fish.fish"))
-  )
-    .replaceAll("__var_LD_LIBRARY_ENV__", LD_LIBRARY_ENV),
+  ),
 };
 
 async function detectShell(): Promise<string> {
@@ -60,11 +44,10 @@ async function detectShell(): Promise<string> {
   }
   return std_path.basename(path, ".exe").toLowerCase().trim();
 }
-
 async function unpackVFS(baseDir: string): Promise<void> {
   await Deno.mkdir(baseDir, { recursive: true });
 
-  for (const [subpath, content] of Object.entries(vfs)) {
+  for (const [subpath, content] of Object.entries(hookVfs)) {
     const path = std_path.resolve(baseDir, subpath);
     if (content === null) {
       await Deno.remove(path);
@@ -106,6 +89,9 @@ async function filterAddFile(
 }
 
 export async function install() {
+  if (Deno.build.os == "windows") {
+    throw new Error("windows is not yet supported :/");
+  }
   const { homeDir, shareDir } = dirs();
   await unpackVFS(shareDir);
   const shell = await detectShell();
@@ -129,5 +115,29 @@ export async function install() {
     );
   } else {
     throw new Error(`unsupported shell: ${shell}`);
+  }
+  const skipBinInstall = Deno.env.get("GHJK_SKIP_BIN_INSTALL");
+  if (!skipBinInstall && skipBinInstall != "0" && skipBinInstall != "false") {
+    switch (Deno.build.os) {
+      case "linux":
+      case "freebsd":
+      case "solaris":
+      case "illumos":
+      case "darwin": {
+        // TODO: respect xdg dirs
+        const binDir = Deno.env.get("GHJK_BIN_INSTALL_PATH") ??
+          std_path.resolve(homeDir, ".local", "bin");
+        await std_fs.ensureDir(binDir);
+        await Deno.writeTextFile(
+          std_path.resolve(binDir, `ghjk`),
+          `#!/bin/sh 
+deno run --unstable-worker-options -A  ${import.meta.resolve("../main.ts")} $*`,
+          { mode: 0o700 },
+        );
+        break;
+      }
+      default:
+        throw new Error(`${Deno.build.os} is not yet supported`);
+    }
   }
 }

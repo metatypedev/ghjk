@@ -23,18 +23,16 @@ init_ghjk() {
                 # FIXME: -ot not valid in POSIX
                 # shellcheck disable=SC3000-SC4000
                 if [ "$envDir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
-                    printf "${ansi_yel}[ghjk] Detected changes, please sync...${ansi_nc}"
+                    printf "${ansi_yel}[ghjk] Detected changes, please sync...${ansi_nc}\n"
                 fi
             else
                 printf "${ansi_red}[ghjk] Uninstalled runtime found, please sync...${ansi_nc}\n"
                 printf "$envDir\n"
             fi
-            alias ghjk="deno run --unstable-worker-options -A $HOME/.local/share/ghjk/hooks/entrypoint.ts $cur_dir/ghjk.ts"
             return
         fi
         cur_dir="$(dirname "$cur_dir")"
     done
-    alias ghjk="printf '${ansi_red}No ghjk.ts config found.${ansi_nc}\n'"
 }
 
 # onlt load bash-prexec if we detect bash

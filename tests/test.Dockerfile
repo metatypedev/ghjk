@@ -9,7 +9,6 @@ ARG CURL_V=7.88.1-10+deb12u4
 ARG XZ_V=5.4.1-0.2
 ARG UNZIP_V=6.0-28
 
-RUN echo $FISH_V $GIT_V
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt update; \
@@ -32,27 +31,31 @@ COPY deno.lock ./
 COPY deps/* ./deps/
 RUN deno cache deps/*
 COPY . ./
+RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
+ENV GHJK_BIN_INSTALL_PATH=/usr/bin
 # explicitly set the shell var as detection fails otherwise
 # because ps program is not present in this image
 RUN SHELL=/bin/bash deno run -A /ghjk/install.ts
 RUN SHELL=/bin/fish deno run -A /ghjk/install.ts
 RUN SHELL=/bin/zsh  deno run -A /ghjk/install.ts
 
-# activate ghjk non-interactive shells execs
-ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
-ENV ZDOTDIR=/root/.local/share/ghjk/hooks/
-
 RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
+RUN <<EOT
+    CLICOLOR_FORCE=1 ghjk config
+    ghjk ports sync
+EOT
+
+# activate ghjk non-interactive shells execs
+ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
+ENV ZDOTDIR=/root/.local/share/ghjk/hooks/
+
 # BASH_ENV behavior is only avail in bash, not sh
 SHELL [ "/bin/bash", "-c"] 
-
-RUN CLICOLOR_FORCE=1 ghjk config
-RUN ghjk ports sync
 
 CMD ['false']

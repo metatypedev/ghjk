@@ -11,12 +11,16 @@ import validators, {
   type PortsModuleConfig,
   type PortsModuleConfigBase,
 } from "./types.ts";
+import { type GhjkCtx } from "../types.ts";
 import logger from "../../utils/logger.ts";
 import { ModuleBase } from "../mod.ts";
 import { sync } from "./sync.ts";
 
 export class PortsModule extends ModuleBase {
-  constructor(public config: PortsModuleConfig) {
+  constructor(
+    public ctx: GhjkCtx,
+    public config: PortsModuleConfig,
+  ) {
     super();
   }
   command() {
@@ -29,7 +33,7 @@ export class PortsModule extends ModuleBase {
       .command(
         "sync",
         new cliffy_cmd.Command().description("Syncs the environment.")
-          .action(() => sync(this.config)),
+          .action(() => sync(this.ctx.envDir, this.config)),
       )
       .command(
         "list",
