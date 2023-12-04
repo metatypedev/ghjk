@@ -1,13 +1,28 @@
-FROM docker.io/denoland/deno:debian-1.38.0
+ARG DENO_V=1.38.3
 
+FROM docker.io/denoland/deno:debian-${DENO_V}
+
+ARG FISH_V=3.6.0-3.1
+ARG ZSH_V=5.9-4+b2
+ARG GIT_V=1:2.39.2-1.1
+ARG CURL_V=7.88.1-10+deb12u4
+ARG XZ_V=5.4.1-0.2
+ARG UNZIP_V=6.0-28
+
+RUN echo $FISH_V $GIT_V
 RUN set -eux; \
     export DEBIAN_FRONTEND=noninteractive; \
     apt update; \
     apt install --yes --no-install-recommends \
     # test deps
-    fish zsh \
+    fish=$FISH_V \
+    zsh=$ZSH_V \
     # asdf deps
-    git curl xz-utils unzip ca-certificates \
+    git=$GIT_V \
+    curl=$CURL_V \
+    xz-utils=$XZ_V \
+    unzip=$UNZIP_V \
+    ca-certificates \
     ;\
     apt clean autoclean; apt autoremove --yes; rm -rf /var/lib/{apt,dpkg,cache,log}/;
 
