@@ -11,25 +11,22 @@ inputs:
     description: 'Disable to skip syncing ports'
     required: true
     default: true
-outputs:
-  # FIXME: convert to js based action to access env var exports
-  # for BASH_ENV
-  hooks-dir:
-    description: "Directory where the hooks are placed"
-    value: ${{ steps.ghjk-dirs.outputs.share-dir }}/hooks
 runs:
   using: "composite"
   steps:
     - id: install-ghjk
       shell: bash
-      env: 
-        GHJK_EXE_INSTALL_DIR: /usr/bin
-      run: deno run -A ${{ inputs.installer-uri }}
+      run: |
+        deno run -A ${{ inputs.installer-uri }}
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - id: sync-ghjk
       shell: bash
       if: ${{ inputs.sync }}
       run: |
         ghjk ports sync
-    - id: ghjk-dirs
+    - id: ghjk-outputs
       shell: bash
-      run: echo "share-dir=$HOME/.local/share/ghjk" >> $GITHUB_OUTPUT
+      run: |
+        echo "GHJK_SHARE_DIR=$HOME/.local/share/ghjk" >> $GITHUB_OUTPUT
+        echo "GHJK_HOOK_DIR=$HOME/.local/share/ghjk/hooks" >> $GITHUB_OUTPUT
+        echo "BASH_ENV=$HOME/.local/share/ghjk/hooks/hook.sh" >> $GITHUB_ENV

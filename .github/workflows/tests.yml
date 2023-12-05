@@ -55,5 +55,5 @@ jobs:
       - shell: bash
         run: |
           cd examples/protoc
-          . ${{ steps.ghjk-action.outputs.hooks-dir }}/hook.sh
+          . $BASH_ENV
           protoc --version
