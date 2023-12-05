@@ -10,24 +10,24 @@ import { dirs, importRaw } from "../utils/mod.ts";
 import { spawnOutput } from "../utils/mod.ts";
 
 // null means it should be removed (for cleaning up old versions)
-const hookVfs = {
-  "hooks/bash-preexec.sh": await importRaw(
+const getHooksVfs = async () => ({
+  "bash-preexec.sh": await importRaw(
     "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
   ),
 
-  "hooks/.zshenv": (
+  ".zshenv": (
     await importRaw(import.meta.resolve("./hooks/zsh.zsh"))
   ),
 
   // the hook run before every prompt draw in bash
-  "hooks/hook.sh": (
+  "env.sh": (
     await importRaw(import.meta.resolve("./hooks/bash.sh"))
   ),
 
-  "hooks/hook.fish": (
+  "env.fish": (
     await importRaw(import.meta.resolve("./hooks/fish.fish"))
   ),
-};
+});
 
 async function detectShell(): Promise<string> {
   let path = Deno.env.get("SHELL");
@@ -49,6 +49,7 @@ async function detectShell(): Promise<string> {
 async function unpackVFS(baseDir: string): Promise<void> {
   await Deno.mkdir(baseDir, { recursive: true });
 
+  const hookVfs = await getHooksVfs();
   for (const [subpath, content] of Object.entries(hookVfs)) {
     const path = std_path.resolve(baseDir, subpath);
     if (content === null) {
@@ -101,20 +102,21 @@ export async function install() {
   if (shell === "fish") {
     await filterAddFile(
       std_path.resolve(homeDir, ".config/fish/config.fish"),
-      /\.local\/share\/ghjk\/hooks\/hook.fish/,
-      ". $HOME/.local/share/ghjk/hooks/hook.fish",
+      /\.local\/share\/ghjk\/env/,
+      ". $HOME/.local/share/ghjk/env.fish",
     );
   } else if (shell === "bash") {
     await filterAddFile(
       std_path.resolve(homeDir, ".bashrc"),
-      /\.local\/share\/ghjk\/hooks\/hook.sh/,
-      ". $HOME/.local/share/ghjk/hooks/hook.sh",
+      /\.local\/share\/ghjk\/env/,
+      ". $HOME/.local/share/ghjk/env.sh",
     );
   } else if (shell === "zsh") {
     await filterAddFile(
       std_path.resolve(homeDir, ".zshrc"),
-      /\.local\/share\/ghjk\/hooks\/hook.sh/,
-      ". $HOME/.local/share/ghjk/hooks/.zshenv",
+      /\.local\/share\/ghjk\/env/,
+      // NOTE: we use the posix for zsh
+      ". $HOME/.local/share/ghjk/env.sh",
     );
   } else {
     throw new Error(`unsupported shell: ${shell}`);

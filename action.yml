@@ -27,6 +27,5 @@ runs:
     - id: ghjk-outputs
       shell: bash
       run: |
-        echo "GHJK_SHARE_DIR=$HOME/.local/share/ghjk" >> $GITHUB_OUTPUT
-        echo "GHJK_HOOK_DIR=$HOME/.local/share/ghjk/hooks" >> $GITHUB_OUTPUT
-        echo "BASH_ENV=$HOME/.local/share/ghjk/hooks/hook.sh" >> $GITHUB_ENV
+        echo "GHJK_DIR=$HOME/.local/share/ghjk" >> $GITHUB_OUTPUT
+        echo "BASH_ENV=$HOME/.local/share/ghjk/env.sh" >> $GITHUB_ENV

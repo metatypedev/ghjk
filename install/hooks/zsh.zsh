@@ -1,4 +1,3 @@
 if [ -e ~/.zshenv ]; then . ~/.zshenv; fi
-hooksDir=$(dirname -- "$(readlink -f -- "${(%):-%x}")")
-echo $hooksDir
-. $hooksDir/hook.sh
+myDir=$(dirname -- "$(readlink -f -- "${(%):-%x}")")
+. $myDir/env.sh

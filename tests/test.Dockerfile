@@ -52,8 +52,8 @@ RUN <<EOT
 EOT
 
 # activate ghjk non-interactive shells execs
-ENV BASH_ENV=/root/.local/share/ghjk/hooks/hook.sh
-ENV ZDOTDIR=/root/.local/share/ghjk/hooks/
+ENV BASH_ENV=/root/.local/share/ghjk/env.sh
+ENV ZDOTDIR=/root/.local/share/ghjk/
 
 # BASH_ENV behavior is only avail in bash, not sh
 SHELL [ "/bin/bash", "-c"] 

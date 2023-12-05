@@ -12,13 +12,17 @@ ansi_nc='\033[0m' # No Color
 init_ghjk() {
     if [ -n "${GHJK_CLEANUP+x}" ]; then
         eval "$GHJK_CLEANUP"
-        unset GHJK_CLEANUP
     fi
+    unset GHJK_CLEANUP
+    unset GHJK_LAST_LOADER_PATH
+    unset GHJK_LAST_LOADER_TS
     cur_dir=$PWD
     while [ "$cur_dir" != "/" ]; do
         if [ -e "$cur_dir/ghjk.ts" ]; then
             envDir="$HOME/.local/share/ghjk/envs/$(printf "$cur_dir" | tr '/' '.')"
             if [ -d "$envDir" ]; then
+                export GHJK_LAST_LOADER_PATH="$envDir/loader.sh"
+                export GHJK_LAST_LOADER_TS=$(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n')
                 . "$envDir/loader.sh"
                 # FIXME: -ot not valid in POSIX
                 # shellcheck disable=SC3000-SC4000
@@ -40,14 +44,23 @@ init_ghjk() {
 # but even reliably resolving it's address
 # requires bash extensions. 
 if [ -n "${BASH_SOURCE+x}" ]; then
-    hooksDir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE}")")
-    . "$hooksDir/bash-preexec.sh"
+    myDir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE}")")
+    . "$myDir/bash-preexec.sh"
 fi
 
+export LAST_PWD="$PWD"
 # use precmd to check for ghjk.ts before every prompt draw
 # precmd is avail natively for zsh
 precmd() {
-    init_ghjk
+    if [ "$LAST_PWD" != "$PWD" ] || (
+        # if the last detected loader has been touched
+        [ -n "${GHJK_LAST_LOADER_PATH+x}" ] && [ $(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n') != $(("$GHJK_LAST_LOADER_TS")) ]
+    ); then
+        echo "got here"
+        init_ghjk
+        export LAST_PWD="$PWD"
+    fi
+
 }
 
 # try loading any relevant ghjk.ts right away
