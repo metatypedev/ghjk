@@ -26,6 +26,7 @@ runs:
         GHJK_EXE_INSTALL_DIR: /usr/bin
       run: deno run -A ${{ inputs.installer-uri }}
     - id: sync-ghjk
+      shell: bash
       if: ${{ inputs.sync }}
       run: |
         ghjk ports sync
