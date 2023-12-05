@@ -3,6 +3,8 @@
 
 // TODO: support for different environments to use different versions of ghjk
 
+import "../setup_logger.ts";
+import logger from "../utils/logger.ts";
 import { std_fs, std_path } from "../deps/cli.ts";
 import { dirs, importRaw } from "../utils/mod.ts";
 import { spawnOutput } from "../utils/mod.ts";
@@ -93,6 +95,7 @@ export async function install() {
     throw new Error("windows is not yet supported :/");
   }
   const { homeDir, shareDir } = dirs();
+  logger().debug("installing hooks", { shareDir });
   await unpackVFS(shareDir);
   const shell = await detectShell();
   if (shell === "fish") {
@@ -116,7 +119,7 @@ export async function install() {
   } else {
     throw new Error(`unsupported shell: ${shell}`);
   }
-  const skipBinInstall = Deno.env.get("GHJK_SKIP_BIN_INSTALL");
+  const skipBinInstall = Deno.env.get("GHJK_SKIP_EXE_INSTALL");
   if (!skipBinInstall && skipBinInstall != "0" && skipBinInstall != "false") {
     switch (Deno.build.os) {
       case "linux":
@@ -125,11 +128,13 @@ export async function install() {
       case "illumos":
       case "darwin": {
         // TODO: respect xdg dirs
-        const binDir = Deno.env.get("GHJK_BIN_INSTALL_PATH") ??
+        const exeDir = Deno.env.get("GHJK_EXE_INSTALL_DIR") ??
           std_path.resolve(homeDir, ".local", "bin");
-        await std_fs.ensureDir(binDir);
+        await std_fs.ensureDir(exeDir);
+        const exePath = std_path.resolve(exeDir, `ghjk`);
+        logger().debug("installing executable", { exePath });
         await Deno.writeTextFile(
-          std_path.resolve(binDir, `ghjk`),
+          exePath,
           `#!/bin/sh 
 deno run --unstable-worker-options -A  ${import.meta.resolve("../main.ts")} $*`,
           { mode: 0o700 },
@@ -140,4 +145,5 @@ deno run --unstable-worker-options -A  ${import.meta.resolve("../main.ts")} $*`,
         throw new Error(`${Deno.build.os} is not yet supported`);
     }
   }
+  logger().info("install success");
 }

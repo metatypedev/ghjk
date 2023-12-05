@@ -11,12 +11,13 @@ import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 
 export async function main() {
-  const configPath = Deno.env.get("GHJK_CONFIG") ??
+  const configPathIn = Deno.env.get("GHJK_CONFIG") ??
     await findConfig(Deno.cwd());
-  if (!configPath) {
+  if (!configPathIn) {
     logger().error("ghjk did not find any `ghjk.ts` config.");
     Deno.exit(2);
   }
+  const configPath = std_path.resolve(Deno.cwd(), configPathIn);
   const envDir = envDirFromConfig(configPath);
 
   logger().debug({ configPath });

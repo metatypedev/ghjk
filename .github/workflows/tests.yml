@@ -40,3 +40,20 @@ jobs:
         env:
           SKIP_LOGIN: true
       - run: deno task test
+
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - uses: ./
+        id: ghjk-action
+        env: 
+          GHJK_CONFIG: ./examples/protoc/ghjk.ts
+      - shell: bash
+        run: |
+          cd examples/protoc
+          . ${{ steps.ghjk-action.outputs.hooks-dir }}/hook.sh
+          protoc --version

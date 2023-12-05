@@ -35,7 +35,7 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
-ENV GHJK_BIN_INSTALL_PATH=/usr/bin
+ENV GHJK_EXE_INSTALL_DIR=/usr/bin
 # explicitly set the shell var as detection fails otherwise
 # because ps program is not present in this image
 RUN SHELL=/bin/bash deno run -A /ghjk/install.ts
