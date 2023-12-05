@@ -1,0 +1,31 @@
+name: 'Setup Ghjk'
+description: 'Installs ghjk and optionally syncs according to the config'
+inputs:
+  installer-uri:
+    description: 'Alternative installer script to use'
+    required: true
+    # FIXME: find a way to get commit sha of current executing action version
+    # default: $GITHUB_SERVER_URL/$GITHUB_ACTION_REPOSITORY/raw/feat/
+    default: './install.ts'
+  sync:
+    description: 'Disable to skip syncing ports'
+    required: true
+    default: true
+runs:
+  using: "composite"
+  steps:
+    - id: install-ghjk
+      shell: bash
+      run: |
+        deno run -A ${{ inputs.installer-uri }}
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - id: sync-ghjk
+      shell: bash
+      if: ${{ inputs.sync }}
+      run: |
+        ghjk ports sync
+    - id: ghjk-outputs
+      shell: bash
+      run: |
+        echo "GHJK_DIR=$HOME/.local/share/ghjk" >> $GITHUB_OUTPUT
+        echo "BASH_ENV=$HOME/.local/share/ghjk/env.sh" >> $GITHUB_ENV

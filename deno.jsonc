@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    // "test": "DOCKER_SOCK=/var/run/docker.sock deno test --unstable --allow-env=DOCKER_SOCK --allow-read=/var/run/docker.sock --allow-write=/var/run/docker.sock tests/*"
+    "test": "deno test --fail-fast --parallel --unstable --allow-run=docker,sudo,which,ls,tar,git,curl,unzip --allow-read --allow-env tests/*",
+    "cache": "deno cache deps/*",
+    "check": "deno check *.ts **/*.ts",
+    "lint": "deno lint --ignore=ghjk.ts,play.ts --rules-exclude=no-explicit-any"
+  }
+}
