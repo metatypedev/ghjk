@@ -10,11 +10,10 @@ on:
 
 env:
   DENO_VERSION: 1.38.2
-  FISH_V_BREW: 3.6.4
-  ZSH_V_BREW: 5.9
-  XZ_V_BREW: 5.4.5
-  UNZIP_V: 6.0
-
+  FISH_V_BREW: "3.6.4"
+  ZSH_V_BREW: "5.9"
+  XZ_V_BREW: "5.4.5"
+  UNZIP_V: "6.0"
 
 jobs:
   changes:
