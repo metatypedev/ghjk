@@ -1,11 +1,11 @@
 import {
   Foras,
+  jszip,
   std_fs,
   std_io,
   std_path,
   std_streams,
   std_tar,
-  zipjs,
 } from "../deps/ports.ts";
 
 /// Uses file extension to determine type
@@ -98,30 +98,21 @@ export async function unzip(
   path: string,
   dest = "./",
 ) {
-  const zipFile = await Deno.open(path, { read: true });
-  const zipReader = new zipjs.ZipReader(zipFile.readable);
-  try {
-    await Promise.allSettled(
-      (await zipReader.getEntries()).map(async (entry) => {
-        const filePath = std_path.resolve(dest, entry.filename);
-        if (entry.directory) {
-          await std_fs.ensureDir(filePath);
-          return;
-        }
-        await std_fs.ensureDir(std_path.dirname(filePath));
-        const file = await Deno.open(filePath, {
-          create: true,
-          truncate: true,
-          write: true,
-          mode: entry.externalFileAttribute >> 16,
-        });
-        if (!entry.getData) throw Error("impossible");
-        await entry.getData(file.writable);
-      }),
-    );
-  } catch (err) {
-    throw err;
-  } finally {
-    zipReader.close();
-  }
+  const zipArc = await jszip.readZip(path);
+  await Promise.allSettled(
+    Object.entries(zipArc.files()).map(async ([_, entry]) => {
+      const filePath = std_path.resolve(dest, entry.name);
+      if (entry.dir) {
+        await std_fs.ensureDir(filePath);
+        return;
+      }
+      await std_fs.ensureDir(std_path.dirname(filePath));
+      const buf = await entry.async("uint8array");
+      await Deno.writeFile(filePath, buf, {
+        create: true,
+        // FIXME: windows support
+        mode: Number(entry.unixPermissions ?? 0o666),
+      });
+    }),
+  );
 }

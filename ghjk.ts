@@ -24,12 +24,12 @@ import whiz from "./ports/whiz.ts";
 // cargo_insta({});
 // jco({});
 // mold({});
-act({});
+// act({});
 // asdf({
 //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
 //   installType: "version",
 // });
-// protoc({ });
+protoc({});
 // earthly({});
 // ruff({});
 // whiz({});
