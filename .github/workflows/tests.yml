@@ -9,7 +9,12 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.38.2"
+  DENO_VERSION: 1.38.2
+  FISH_V_BREW: 3.6.4
+  ZSH_V_BREW: 5.9
+  XZ_V_BREW: 5.4.5
+  UNZIP_V: 6.0
+
 
 jobs:
   changes:
@@ -47,6 +52,8 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
+      - if: "${{ matrix.os == 'macos-latest' }}"
+        run: brew install fish@$FISH_V_BREW zsh@$ZSH_V_BREW
       - if: "${{ matrix.e2eType == 'docker' }}"
         uses: docker/setup-buildx-action@v3
       - if: "${{ matrix.e2eType == 'docker' }}"

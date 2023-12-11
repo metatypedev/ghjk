@@ -39,7 +39,7 @@ init_ghjk() {
     done
 }
 
-# onlt load bash-prexec if we detect bash
+# only load bash-prexec if we detect bash
 # bash-preexec itslef only executes if it detects bash
 # but even reliably resolving it's address
 # requires bash extensions. 
