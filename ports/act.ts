@@ -1,13 +1,13 @@
 import {
+  $,
   addInstallGlobal,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
   std_path,
   std_url,
@@ -34,37 +34,10 @@ const repoOwner = "nektos";
 const repoName = "act";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  listBinPaths(): string[] {
-    return [
-      "act",
-    ];
-  }
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
     await downloadFile(args, downloadUrl(args.installVersion, args.platform));
@@ -78,12 +51,13 @@ export class Port extends PortBase {
 
     await unarchive(fileDwnPath, args.tmpDirPath);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
     await std_fs.copy(
       args.tmpDirPath,
-      args.installPath,
+      installPath.join("bin").toString(),
     );
   }
 }

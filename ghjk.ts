@@ -16,7 +16,7 @@ import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 
 // node({});
-// wasmedge({});
+wasmedge({});
 // pnpm({});
 // cargo_binstall({});
 // wasm_tools({});
@@ -29,7 +29,7 @@ import whiz from "./ports/whiz.ts";
 //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
 //   installType: "version",
 // });
-protoc({});
+// protoc({});
 // earthly({});
 // ruff({});
 // whiz({});

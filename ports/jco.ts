@@ -1,17 +1,16 @@
 import {
+  $,
   addInstallGlobal,
   depBinShimPath,
-  DownloadArgs,
+  type DownloadArgs,
   downloadFile,
-  InstallArgs,
+  type InstallArgs,
   type InstallConfigSimple,
-  ListAllArgs,
+  type ListAllArgs,
   pathWithDepShims,
   type PlatformInfo,
   PortBase,
   registerDenoPortGlobal,
-  removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
@@ -44,13 +43,12 @@ class Port extends PortBase {
   manifest = manifest;
 
   async listAll(_env: ListAllArgs) {
-    const metadataRequest = await fetch(
+    const metadataRequest = await $.request(
       `https://registry.npmjs.org/@bytecodealliance/jco`,
+    ).header(
       {
-        headers: {
-          // use abbreviated registry info which's still 500kb unzipped
-          "Accept": "application/vnd.npm.install-v1+json",
-        },
+        // use abbreviated registry info which's still 500kb unzipped
+        "Accept": "application/vnd.npm.install-v1+json",
       },
     );
     const metadata = await metadataRequest.json() as {
@@ -76,8 +74,9 @@ class Port extends PortBase {
 
     await unarchive(fileDwnPath, args.tmpDirPath);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
 
     await std_fs.copy(
@@ -87,20 +86,17 @@ class Port extends PortBase {
       ),
       args.installPath,
     );
-    await spawn([
-      depBinShimPath(std_ports.node_org, "npm", args.depShims),
-      "install",
-      "--no-fund",
-    ], {
-      cwd: args.installPath,
-      env: {
+    await $`${
+      depBinShimPath(std_ports.node_org, "npm", args.depShims)
+    } install --no-fund`
+      .cwd(args.installPath)
+      .env({
         PATH: pathWithDepShims(args.depShims),
-      },
-    });
-    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
+      });
+    await installPath.join("bin").ensureDir();
     await Deno.symlink(
-      std_path.resolve(args.installPath, "src", "jco.js"),
-      std_path.resolve(args.installPath, "bin", "jco"),
+      installPath.join("src", "jco.js").toString(),
+      installPath.join("bin", "jco").toString(),
     );
   }
 }

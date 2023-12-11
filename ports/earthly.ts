@@ -1,13 +1,13 @@
 import {
+  $,
   addInstallGlobal,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
   std_path,
 } from "../port.ts";
@@ -32,32 +32,10 @@ const repoOwner = "earthly";
 const repoName = "earthly";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
     const fileName = repoName;
@@ -71,13 +49,13 @@ export class Port extends PortBase {
     const fileName = repoName;
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
-    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
     await std_fs.copy(
       fileDwnPath,
-      std_path.resolve(args.installPath, "bin", fileName),
+      installPath.join("bin").toString(),
     );
   }
 }

@@ -9,7 +9,7 @@ import {
 } from "../deps/ports.ts";
 
 /// Uses file extension to determine type
-/// Does not support symlinks
+/// Does not support extracting symlinks
 export async function unarchive(
   path: string,
   dest = "./",
