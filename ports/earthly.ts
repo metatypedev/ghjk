@@ -9,7 +9,6 @@ import {
   type PlatformInfo,
   registerDenoPortGlobal,
   std_fs,
-  std_path,
 } from "../port.ts";
 
 const manifest = {
@@ -46,15 +45,12 @@ export class Port extends GithubReleasePort {
   }
 
   async install(args: InstallArgs) {
-    const fileName = repoName;
-    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
     await std_fs.copy(
-      fileDwnPath,
+      args.downloadPath,
       installPath.join("bin").toString(),
     );
   }

@@ -57,10 +57,11 @@ export class Port extends GithubReleasePort {
     }
     await std_fs.copy(
       $.path(args.downloadPath).join(fileName).toString(),
-      installPath.join(
-        "bin",
-        args.platform.os == "windows" ? "pnpm.exe" : "pnpm",
-      ).toString(),
+      (
+        await installPath.join("bin").ensureDir()
+      )
+        .join(args.platform.os == "windows" ? "pnpm.exe" : "pnpm")
+        .toString(),
     );
   }
 }
@@ -92,5 +93,5 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported os: ${platform.arch}`);
   }
-  return `${repoAddress}/releases/download/v${installVersion}/pnpm-${os}-${arch}`;
+  return `${repoAddress}/releases/download/${installVersion}/pnpm-${os}-${arch}`;
 }

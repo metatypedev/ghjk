@@ -16,7 +16,7 @@ import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 
 // node({});
-wasmedge({});
+// wasmedge({});
 // pnpm({});
 // cargo_binstall({});
 // wasm_tools({});
@@ -30,6 +30,6 @@ wasmedge({});
 //   installType: "version",
 // });
 // protoc({});
-// earthly({});
+earthly({});
 // ruff({});
 // whiz({});

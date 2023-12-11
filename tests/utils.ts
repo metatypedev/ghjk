@@ -1,7 +1,7 @@
 import "../setup_logger.ts";
 import { defaultInstallArgs, install } from "../install/mod.ts";
 import { std_url } from "../deps/common.ts";
-import { $, spawn } from "../utils/mod.ts";
+import { $ } from "../utils/mod.ts";
 import logger from "../utils/logger.ts";
 
 export type E2eTestCase = {
@@ -105,37 +105,21 @@ await (${confFn.toString()})()`;
         templateStrings.addConfig,
         configFile,
       );
-      await spawn([
-        ...dockerCmd,
-        "buildx",
-        "build",
-        "--tag",
-        tag,
-        "--network=host",
-        // add to images list
-        "--output",
-        "type=docker",
-        "-f-",
-        ".",
-      ], { env, pipeInput: dFile });
+      await $
+        .raw`${dockerCmd} buildx build --tag '${tag}' --network=host --output type=docker -f- .`
+        .env(env)
+        .stdinText(dFile);
       for (const shell of ["bash", "fish", "zsh"]) {
-        await spawn([
-          ...dockerCmd,
-          "run",
-          "--rm",
-          ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
-            .flat(),
-          tag,
-          shell,
-          "-c",
-          ePoint,
-        ], { env });
+        await $
+          .raw`${dockerCmd} run --rm ${
+          Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
+            .flat()
+        } ${tag} ${shell} -c '${ePoint}'`
+          .env(env);
       }
-      await spawn([
-        ...dockerCmd,
-        "rmi",
-        tag,
-      ]);
+      await $
+        .raw`${dockerCmd} rmi '${tag}'`
+        .env(env);
     });
   }
 }

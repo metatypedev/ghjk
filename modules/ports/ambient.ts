@@ -6,7 +6,7 @@ import {
   type ListBinPathsArgs,
   PortBase,
 } from "./types.ts";
-import { ChildError, spawnOutput } from "../../utils/mod.ts";
+import { $ } from "../../utils/mod.ts";
 
 export class AmbientAccessPort extends PortBase {
   constructor(public manifest: AmbientAccessPortManifest) {
@@ -21,20 +21,15 @@ export class AmbientAccessPort extends PortBase {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
-      versionOut = await spawnOutput([
-        execPath,
-        this.manifest.versionExtractFlag,
-      ]);
+      versionOut = await $`${execPath} ${this.manifest.versionExtractFlag}`
+        .text();
     } catch (err) {
-      if (err instanceof ChildError) {
-        new Error(
-          `error trying to get version output for "${this.manifest.name}@${this.manifest.version}" using command ${execPath} ${this.manifest.versionExtractFlag}: ${err}`,
-          {
-            cause: err,
-          },
-        );
-      }
-      throw err;
+      throw new Error(
+        `error trying to get version output for "${this.manifest.name}@${this.manifest.version}" using command ${execPath} ${this.manifest.versionExtractFlag}: ${err}`,
+        {
+          cause: err,
+        },
+      );
     }
     const extractionRegex = new RegExp(
       this.manifest.versionExtractRegex,
@@ -68,18 +63,18 @@ export class AmbientAccessPort extends PortBase {
   }
   async pathToExec(): Promise<string> {
     try {
-      const output = await spawnOutput(["which", this.manifest.execName]);
-      return output.trim();
-    } catch (err) {
-      if (err instanceof ChildError) {
-        new Error(
-          `error trying to get exec path for "${this.manifest.name}@${this.manifest.version}" for exec name ${this.manifest.execName}: ${err}`,
-          {
-            cause: err,
-          },
-        );
+      const out = await $.which(this.manifest.execName);
+      if (!out) {
+        throw Error("not found");
       }
-      throw err;
+      return out;
+    } catch (err) {
+      throw new Error(
+        `error trying to get exec path for "${this.manifest.name}@${this.manifest.version}" for exec name ${this.manifest.execName}: ${err}`,
+        {
+          cause: err,
+        },
+      );
     }
   }
 }

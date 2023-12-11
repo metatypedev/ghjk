@@ -1,6 +1,7 @@
 import {
   $,
   addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
   downloadFile,
   ExecEnvArgs,
@@ -13,15 +14,19 @@ import {
   std_fs,
   std_path,
   std_url,
-  unarchive,
 } from "../port.ts";
 
+// FIXME: circular module resolution when one std_port imports another
+const tar_aa_id = {
+  id: "tar@aa",
+};
 // TODO: sanity check exports of all ports
 export const manifest = {
   ty: "denoWorker" as const,
   name: "node@org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [tar_aa_id],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
@@ -69,7 +74,9 @@ export class Port extends PortBase {
       artifactUrl(args.installVersion, args.platform),
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await $`${
+      depBinShimPath(tar_aa_id, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {

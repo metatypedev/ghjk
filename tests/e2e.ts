@@ -103,7 +103,7 @@ const cases: E2eTestCase[] = [
   },
   // 42 megs
   {
-    name: "pnpm",
+    name: "earthly",
     imports: `import port from "$ghjk/ports/earthly.ts"`,
     confFn: `async () => {
     port({ });
