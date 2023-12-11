@@ -1,12 +1,16 @@
 name: 'Setup Ghjk'
 description: 'Installs ghjk and optionally syncs according to the config'
 inputs:
-  installer-uri:
-    description: 'Alternative installer script to use'
+  version:
+    description: 'Github version/branch to install from'
     required: true
-    # FIXME: find a way to get commit sha of current executing action version
-    # default: $GITHUB_SERVER_URL/$GITHUB_ACTION_REPOSITORY/raw/feat/
-    default: './install.ts'
+    default: 'v0.1.0-alpha'
+  # installer-uri:
+  #   description: 'Alternative installer script to use'
+  #   required: true
+  #   # FIXME: find a way to get commit sha of current executing action version
+  #   # default: $GITHUB_SERVER_URL/$GITHUB_ACTION_REPOSITORY/raw/feat/
+  #   default: './install.ts'
   sync:
     description: 'Disable to skip syncing ports'
     required: true

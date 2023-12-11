@@ -1,24 +1,20 @@
-import "../setup_logger.ts";
-
 import { std_path } from "../deps/common.ts";
 import { cliffy_cmd } from "../deps/cli.ts";
-import logger from "../utils/logger.ts";
+import logger, { isColorfulTty } from "../utils/logger.ts";
 // import { $ } from "../utils/mod.ts";
 
-import { envDirFromConfig, findConfig, isColorfulTty } from "../utils/mod.ts";
+import { envDirFromConfig } from "../utils/mod.ts";
 import validators from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 
-export async function main() {
-  const configPathIn = Deno.env.get("GHJK_CONFIG") ??
-    await findConfig(Deno.cwd());
-  if (!configPathIn) {
-    logger().error("ghjk did not find any `ghjk.ts` config.");
-    Deno.exit(2);
-  }
-  const configPath = std_path.resolve(Deno.cwd(), configPathIn);
-  const envDir = envDirFromConfig(configPath);
+export interface MainArgs {
+  ghjkDir: string;
+  configPath: string;
+}
+export async function main(args: MainArgs) {
+  const { configPath, ghjkDir } = args;
+  const envDir = envDirFromConfig(ghjkDir, configPath);
 
   logger().debug({ configPath });
   logger().debug({ envDir });

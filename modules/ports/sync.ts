@@ -31,7 +31,7 @@ export ${k}='${v}';`
       ...Object.entries(pathVars).map(([k, v]) =>
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX+='${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr "\\n" ":");${k}="\${${k}%:}"';
+        `GHJK_CLEANUP_POSIX+='${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}"';
 ${k}="${v}:$${k}";
 `
       ),
@@ -43,7 +43,7 @@ ${k}="${v}:$${k}";
 set --global --export ${k} '${v}';`
       ),
       ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^$HOME\\/\\.local\\/share\\/ghjk\\/envs" $${k});';
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^${envDir}" $${k});';
 set --global --prepend ${k} ${v};
 `
       ),

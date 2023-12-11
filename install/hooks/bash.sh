@@ -10,16 +10,16 @@ ansi_yel='\033[0;33m'
 ansi_nc='\033[0m' # No Color
 
 init_ghjk() {
-    if [ -n "${GHJK_CLEANUP+x}" ]; then
-        eval "$GHJK_CLEANUP"
+    if [ -n "${GHJK_CLEANUP_POSIX+x}" ]; then
+        eval "$GHJK_CLEANUP_POSIX"
     fi
-    unset GHJK_CLEANUP
+    unset GHJK_CLEANUP_POSIX
     unset GHJK_LAST_LOADER_PATH
     unset GHJK_LAST_LOADER_TS
     cur_dir=$PWD
     while [ "$cur_dir" != "/" ]; do
         if [ -e "$cur_dir/ghjk.ts" ]; then
-            envDir="$HOME/.local/share/ghjk/envs/$(printf "$cur_dir" | tr '/' '.')"
+            envDir="__GHJK_DIR__/envs/$(printf "$cur_dir" | tr '/' '.')"
             if [ -d "$envDir" ]; then
                 export GHJK_LAST_LOADER_PATH="$envDir/loader.sh"
                 export GHJK_LAST_LOADER_TS=$(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n')
@@ -54,9 +54,8 @@ export LAST_PWD="$PWD"
 precmd() {
     if [ "$LAST_PWD" != "$PWD" ] || (
         # if the last detected loader has been touched
-        [ -n "${GHJK_LAST_LOADER_PATH+x}" ] && [ $(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n') != $(("$GHJK_LAST_LOADER_TS")) ]
+        [ -n "${GHJK_LAST_LOADER_PATH+x}" ] && [ $(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n') != "$GHJK_LAST_LOADER_TS" ]
     ); then
-        echo "got here"
         init_ghjk
         export LAST_PWD="$PWD"
     fi

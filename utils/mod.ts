@@ -135,28 +135,6 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-let colorEnvFlagSet = false;
-Deno.permissions.query({
-  name: "env",
-  variable: "CLICOLOR_FORCE",
-}).then((perm) => {
-  if (perm.state == "granted") {
-    const val = Deno.env.get("CLICOLOR_FORCE");
-    colorEnvFlagSet = !!val && val != "0" && val != "false";
-  }
-});
-
-export function isColorfulTty(outFile = Deno.stdout) {
-  if (colorEnvFlagSet) {
-    return true;
-  }
-  if (Deno.isatty(outFile.rid)) {
-    const { columns } = Deno.consoleSize();
-    return columns > 0;
-  }
-  return false;
-}
-
 export async function findConfig(path: string) {
   let current = path;
   while (current !== "/") {
@@ -169,12 +147,11 @@ export async function findConfig(path: string) {
   return null;
 }
 
-export function envDirFromConfig(config: string) {
-  const { shareDir } = dirs();
+export function envDirFromConfig(ghjkDir: string, configPath: string) {
   return std_path.resolve(
-    shareDir,
+    ghjkDir,
     "envs",
-    std_path.dirname(config).replaceAll("/", "."),
+    std_path.dirname(configPath).replaceAll("/", "."),
   );
 }
 
@@ -195,7 +172,10 @@ export function dirs() {
   if (!home) {
     throw new Error("cannot find home dir");
   }
-  return { homeDir: home, shareDir: `${home}/.local/share/ghjk` };
+  return {
+    homeDir: home,
+    shareDir: std_path.resolve(home, ".local", "share"),
+  };
 }
 
 export const AVAIL_CONCURRENCY = Number.parseInt(

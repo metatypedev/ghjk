@@ -1,7 +1,7 @@
-import { dockerE2eTest } from "./utils.ts";
+import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
 
 // order tests by download size to make failed runs less expensive
-await dockerE2eTest([
+const cases: E2eTestCase[] = [
   // 3 megs
   {
     name: "protoc",
@@ -152,4 +152,20 @@ await dockerE2eTest([
   //   }`,
   //   ePoint: `python --version`,
   // },
-]);
+];
+
+if (Deno.env.get("GHJK_E2E_TYPE") == "both") {
+  localE2eTest(cases);
+  await dockerE2eTest(cases);
+} else if (Deno.env.get("GHJK_TEST_E2E_TYPE") == "local") {
+  localE2eTest(cases);
+} else if (
+  Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker" ||
+  !Deno.env.has("GHJK_TEST_E2E_TYPE")
+) {
+  await dockerE2eTest(cases);
+} else {
+  throw new Error(
+    `unexpected GHJK_TEST_E2E_TYPE: ${Deno.env.get("GHJK_TEST_E2E_TYPE")}`,
+  );
+}

@@ -16,7 +16,7 @@ function formatter(lr: log.LogRecord) {
   let msg = `[${lr.levelName}${loggerName}] ${lr.msg}`;
 
   lr.args.forEach((arg, _index) => {
-    msg += `, ${JSON.stringify(arg)}`;
+    msg += `, ${Deno.inspect(arg, { colors: isColorfulTty(), depth: 10 })}`;
   });
 
   return msg;
@@ -76,4 +76,26 @@ export class ConsoleErrHandler extends log.handlers.BaseHandler {
 
     return msg;
   }
+}
+
+let colorEnvFlagSet = false;
+Deno.permissions.query({
+  name: "env",
+  variable: "CLICOLOR_FORCE",
+}).then((perm) => {
+  if (perm.state == "granted") {
+    const val = Deno.env.get("CLICOLOR_FORCE");
+    colorEnvFlagSet = !!val && val != "0" && val != "false";
+  }
+});
+
+export function isColorfulTty(outFile = Deno.stdout) {
+  if (colorEnvFlagSet) {
+    return true;
+  }
+  if (Deno.isatty(outFile.rid)) {
+    const { columns } = Deno.consoleSize();
+    return columns > 0;
+  }
+  return false;
 }

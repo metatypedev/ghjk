@@ -69,6 +69,7 @@ export class Port extends PortBase {
   execEnv(args: ExecEnvArgs) {
     return {
       WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
+      WASMEDGE_INCLUDE_DIR: std_path.resolve(args.installPath, "include"),
     };
   }
 
