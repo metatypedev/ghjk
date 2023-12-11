@@ -30,6 +30,7 @@ jobs:
 
   test-e2e:
     runs-on: "${{ matrix.os }}"
+    # runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
