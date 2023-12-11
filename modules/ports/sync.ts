@@ -195,6 +195,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     C_INCLUDE_PATH: `${envDir}/shims/include`,
     CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
   };
+  logger().debug("adding vars to loader", env);
   // FIXME: prevent malicious env manipulations
   await writeLoader(
     envDir,
@@ -204,6 +205,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     pathVars,
   );
 }
+
 function buildInstallGraph(cx: PortsModuleConfig) {
   const installs = {
     all: new Map<string, InstallConfig>(),

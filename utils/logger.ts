@@ -16,7 +16,13 @@ function formatter(lr: log.LogRecord) {
   let msg = `[${lr.levelName}${loggerName}] ${lr.msg}`;
 
   lr.args.forEach((arg, _index) => {
-    msg += `, ${Deno.inspect(arg, { colors: isColorfulTty(), depth: 10 })}`;
+    msg += `, ${
+      Deno.inspect(arg, {
+        colors: isColorfulTty(),
+        depth: 10,
+        strAbbreviateSize: 256,
+      })
+    }`;
   });
 
   return msg;

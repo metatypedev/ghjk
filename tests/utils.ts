@@ -2,6 +2,7 @@ import "../setup_logger.ts";
 import { defaultInstallArgs, install } from "../install/mod.ts";
 import { std_url } from "../deps/common.ts";
 import { $, spawn } from "../utils/mod.ts";
+import logger from "../utils/logger.ts";
 
 export type E2eTestCase = {
   name: string;
@@ -60,6 +61,11 @@ await (${confFn.toString()})()`
       await $`${ghjkDir.join("ghjk").toString()} ports sync`
         .cwd(tmpDir.toString())
         .env(env);
+      for await (const entry of ghjkDir.walk()) {
+        logger().debug(entry.path, {
+          ty: entry.isDirectory ? "dir" : entry.isSymlink ? "link" : "file",
+        });
+      }
       for (const shell of ["bash -c", "fish -c", "zsh -c"]) {
         await $.raw`env ${shell} '${ePoint}'`
           .cwd(tmpDir.toString())
