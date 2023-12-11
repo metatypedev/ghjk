@@ -9,14 +9,6 @@ import * as curl from "../ports/curl.ts";
 import * as unzip from "../ports/unzip.ts";
 
 const manifests = [
-  {
-    name: "ls",
-    execName: "ls",
-    version: "0.1.0",
-    versionExtractFlag: "--version",
-    versionExtractRegex: "(\\d+\\.\\d+)",
-    versionExtractRegexFlags: "",
-  },
   tar.manifest,
   git.manifest,
   curl.manifest,
