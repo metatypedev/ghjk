@@ -1,6 +1,7 @@
 import {
   $,
   addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
   downloadFile,
   GithubReleasePort,
@@ -11,14 +12,18 @@ import {
   std_fs,
   std_path,
   std_url,
-  unarchive,
 } from "../port.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   ty: "denoWorker" as const,
   name: "ruff@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [
+    // we have to use tar because their tarballs for darwin use gnu sparse
+    std_ports.tar_aa,
+  ],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
@@ -47,8 +52,11 @@ export class Port extends GithubReleasePort {
     const fileName = std_url.basename(
       artifactUrl(args.installVersion, args.platform),
     );
+
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await $`${
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {

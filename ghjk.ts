@@ -30,6 +30,6 @@ import whiz from "./ports/whiz.ts";
 //   installType: "version",
 // });
 // protoc({});
-earthly({});
-// ruff({});
+// earthly({});
+ruff({});
 // whiz({});

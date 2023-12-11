@@ -10,6 +10,7 @@ import {
 
 /// Uses file extension to determine type
 /// Does not support extracting symlinks
+/// Does not support tarballs using [GnuSparse](https://www.gnu.org/software/tar/manual/html_node/Sparse-Recovery.html)
 export async function unarchive(
   path: string,
   dest = "./",
