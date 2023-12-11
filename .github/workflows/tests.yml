@@ -40,6 +40,8 @@ jobs:
             e2eType: "local"
           # - os: windows-latest
           #   e2eType: "local"
+    env:
+      GHJK_TEST_E2E_TYPE: ${{ matrix.e2eType }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
