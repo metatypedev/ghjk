@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runs-on: ubuntu-latest
+          - os: ubuntu-latest
             e2eType: "docker"
           - os: macos-latest
             e2eType: "local"
