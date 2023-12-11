@@ -10,10 +10,6 @@ on:
 
 env:
   DENO_VERSION: 1.38.2
-  FISH_V_BREW: "3.6"
-  ZSH_V_BREW: "5.9"
-  XZ_V_BREW: "5.4"
-  UNZIP_V: "6.0"
 
 jobs:
   changes:
@@ -52,7 +48,7 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - if: "${{ matrix.os == 'macos-latest' }}"
-        run: brew install fish@$FISH_V_BREW zsh@$ZSH_V_BREW
+        run: brew install fish zsh
       - if: "${{ matrix.e2eType == 'docker' }}"
         uses: docker/setup-buildx-action@v3
       - if: "${{ matrix.e2eType == 'docker' }}"
