@@ -18,7 +18,7 @@ export function localE2eTest(cases: E2eTestCase[]) {
     Deno.test(`localE2eTest - ${name}`, async () => {
       const tmpDir = $.path(
         await Deno.makeTempDir({
-          prefix: "ghjk_test_localE2e_",
+          prefix: "ghjk_le2e_",
         }),
       );
 
@@ -61,8 +61,9 @@ await (${confFn.toString()})()`
       await $`${ghjkDir.join("ghjk").toString()} ports sync`
         .cwd(tmpDir.toString())
         .env(env);
+      const ghjkDirLen = ghjkDir.toString().length;
       for await (const entry of ghjkDir.walk()) {
-        logger().debug(entry.path, {
+        logger().debug(entry.path.toString().slice(ghjkDirLen), {
           ty: entry.isDirectory ? "dir" : entry.isSymlink ? "link" : "file",
         });
       }

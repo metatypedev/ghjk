@@ -1,5 +1,16 @@
 {
   "version": "3",
+  "packages": {
+    "specifiers": {
+      "npm:@types/node": "npm:@types/node@18.16.19"
+    },
+    "npm": {
+      "@types/node@18.16.19": {
+        "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==",
+        "dependencies": {}
+      }
+    }
+  },
   "redirects": {
     "https://cdn.esm.sh/extract-files@12.0.0/extractFiles.mjs": "https://esm.sh/extract-files@12.0.0/extractFiles.mjs",
     "https://cdn.esm.sh/extract-files@12.0.0/isExtractableFile.mjs": "https://esm.sh/extract-files@12.0.0/isExtractableFile.mjs",
