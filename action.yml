@@ -12,15 +12,17 @@ inputs:
     description: 'Disable to skip syncing ports'
     required: true
     default: true
+
+env:
+  DEFAULT_INSTALL_URL: "${{ github.action_path }}/install.ts"
+
 runs:
   using: "composite"
   steps:
     - id: install-ghjk
       shell: bash
-      env:
-        DEFAULT_INSTALL_URL: "${{ github.action_path }}/install.ts"
       run: |
-        deno run -A ${${{ inputs.installer-uri }}:-$DEFAULT_INSTALL_URL}
+        deno run -A ${{ inputs.installer-uri || $DEFAULT_INSTALL_URL }}
         echo "$HOME/.local/bin" >> $GITHUB_PATH
     - id: sync-ghjk
       shell: bash
