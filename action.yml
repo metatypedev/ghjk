@@ -5,12 +5,10 @@ inputs:
     description: 'Github version/branch to install from'
     required: true
     default: 'v0.1.0-alpha'
-  # installer-uri:
-  #   description: 'Alternative installer script to use'
-  #   required: true
-  #   # FIXME: find a way to get commit sha of current executing action version
-  #   # default: $GITHUB_SERVER_URL/$GITHUB_ACTION_REPOSITORY/raw/feat/
-  #   default: './install.ts'
+  installer-uri:
+    description: 'Alternative installer script to use'
+    required: true
+    default: ${{ github.action_path }}/install.ts
   sync:
     description: 'Disable to skip syncing ports'
     required: true
@@ -27,6 +25,7 @@ runs:
       shell: bash
       if: ${{ inputs.sync }}
       run: |
+        ghjk config
         ghjk ports sync
     - id: ghjk-outputs
       shell: bash
