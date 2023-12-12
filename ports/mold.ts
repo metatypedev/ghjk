@@ -78,6 +78,8 @@ export class Port extends GithubReleasePort {
       dirs[0].path,
       args.installPath,
     );
+    await installPath.join("bin", "ld")
+      .createSymlinkTo(installPath.join("bin", "mold").toString());
   }
 }
 

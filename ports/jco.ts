@@ -94,10 +94,8 @@ class Port extends PortBase {
         PATH: pathWithDepShims(args.depShims),
       });
     await installPath.join("bin").ensureDir();
-    await Deno.symlink(
-      installPath.join("src", "jco.js").toString(),
-      installPath.join("bin", "jco").toString(),
-    );
+    await installPath.join("bin", "jco")
+      .createSymlinkTo(installPath.join("src", "jco.js").toString());
   }
 }
 
