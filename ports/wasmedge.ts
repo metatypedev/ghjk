@@ -69,8 +69,9 @@ export class Port extends GithubReleasePort {
 
   execEnv(args: ExecEnvArgs) {
     return {
-      WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
-      WASMEDGE_INCLUDE_DIR: std_path.resolve(args.installPath, "include"),
+      WASMEDGE_DIR: args.installPath,
+      // WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib64"),
+      // WASMEDGE_INCLUDE_DIR: std_path.resolve(args.installPath, "include"),
     };
   }
 
