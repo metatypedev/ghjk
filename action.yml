@@ -1,5 +1,5 @@
 name: 'Setup Ghjk'
-description: 'Installs ghjk and optionally syncs according to the config'
+description: 'Installs ghjk and syncs ports'
 inputs:
   version:
     description: 'Github version/branch to install from'
