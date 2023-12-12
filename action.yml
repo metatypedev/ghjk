@@ -19,7 +19,10 @@ runs:
     - id: install-ghjk
       shell: bash
       run: |
-        deno run -A ${{ inputs.installer-uri || format('{0}install.ts', github.action_path) }}
+        deno run -A ${{ 
+        inputs.installer-uri 
+        || (inputs.version && format('https://raw.github.com/metatypedev/ghjk/{0}/install.ts', inputs.version)) 
+        || format('{0}install.ts', github.action_path) }}
         echo "$HOME/.local/bin" >> $GITHUB_PATH
     - id: sync-ghjk
       shell: bash
