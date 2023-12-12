@@ -28,7 +28,12 @@ const manifest = {
 
 registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install(config: InstallConfigSimple = {}) {
+export type MoldInstallConfig = InstallConfigSimple & {
+  replaceLd: boolean;
+};
+export default function install(
+  config: MoldInstallConfig = { replaceLd: true },
+) {
   addInstallGlobal({
     portName: manifest.name,
     ...config,
@@ -78,8 +83,10 @@ export class Port extends GithubReleasePort {
       dirs[0].path,
       args.installPath,
     );
-    await installPath.join("bin", "ld")
-      .createSymlinkTo(installPath.join("bin", "mold").toString());
+    if ((args.config as unknown as MoldInstallConfig).replaceLd) {
+      await installPath.join("bin", "ld")
+        .createSymlinkTo(installPath.join("bin", "mold").toString());
+    }
   }
 }
 

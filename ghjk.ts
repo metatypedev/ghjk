@@ -23,7 +23,9 @@ import whiz from "./ports/whiz.ts";
 // wasm_opt({});
 // cargo_insta({});
 // jco({});
-// mold({});
+mold({
+  replaceLd: true,
+});
 // act({});
 // asdf({
 //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
@@ -32,4 +34,4 @@ import whiz from "./ports/whiz.ts";
 // protoc({});
 // earthly({});
 // ruff({});
-whiz({});
+// whiz({});

@@ -42,8 +42,8 @@ export function depBinShimPath(
 }
 
 export function getInstallId(install: InstallConfig) {
-  if ("pluginRepo" in install) {
-    const url = new URL(install.pluginRepo);
+  if ("pluginRepo" in install && install.portName == "asdf@asdf") {
+    const url = new URL(install.pluginRepo as string);
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }
