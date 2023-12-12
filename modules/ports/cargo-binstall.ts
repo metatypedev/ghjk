@@ -10,6 +10,10 @@ import * as std_ports from "./std.ts";
 export abstract class CargoBinstallPort extends PortBase {
   abstract crateName: string;
 
+  binName() {
+    return this.crateName;
+  }
+
   async listAll() {
     const metadataText = await $.request(
       `https://index.crates.io/${this.crateName.slice(0, 2)}/${
@@ -28,7 +32,7 @@ export abstract class CargoBinstallPort extends PortBase {
   }
 
   async download(args: DownloadArgs) {
-    const fileName = "cargo-insta";
+    const fileName = this.binName();
     if (await std_fs.exists(std_path.resolve(args.downloadPath, fileName))) {
       logger().debug(
         `file ${fileName} already downloaded, skipping whole download`,
