@@ -2,6 +2,20 @@ import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
 
 // order tests by download size to make failed runs less expensive
 const cases: E2eTestCase[] = [
+  ...(Deno.build.os == "linux"
+    ? [
+      // 8 megs
+      {
+        name: "mold",
+        imports: `import port from "$ghjk/ports/mold.ts"`,
+        confFn: `async () => {
+    port({ });
+  }`,
+        ePoint: `mold -V`,
+      },
+    ]
+    : []),
+
   // 3 megs
   {
     name: "protoc",
@@ -46,15 +60,6 @@ const cases: E2eTestCase[] = [
     port({ });
   }`,
     ePoint: `cargo-binstall -V`,
-  },
-  // 8 megs
-  {
-    name: "mold",
-    imports: `import port from "$ghjk/ports/mold.ts"`,
-    confFn: `async () => {
-    port({ });
-  }`,
-    ePoint: `mold -V`,
   },
   // 16 megs
   {
