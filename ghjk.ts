@@ -31,5 +31,5 @@ import whiz from "./ports/whiz.ts";
 // });
 // protoc({});
 // earthly({});
-ruff({});
-// whiz({});
+// ruff({});
+whiz({});
