@@ -28,7 +28,7 @@ runs:
       shell: bash
       if: ${{ inputs.sync }}
       run: |
-        ghjk config
+        ghjk print config
         ghjk ports sync
     - id: ghjk-outputs
       shell: bash

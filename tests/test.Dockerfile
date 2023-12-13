@@ -45,7 +45,7 @@ EOT
 
 RUN <<EOT
     export CLICOLOR_FORCE=1 
-    ghjk config
+    ghjk print config
     ghjk ports sync
 EOT
 

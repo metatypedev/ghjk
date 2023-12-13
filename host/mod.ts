@@ -13,12 +13,88 @@ export interface MainArgs {
   configPath: string;
 }
 export async function main(args: MainArgs) {
-  const { configPath, ghjkDir } = args;
+  const configPath = std_path.normalize(
+    std_path.resolve(Deno.cwd(), args.configPath),
+  );
+  const ghjkDir = std_path.normalize(
+    std_path.resolve(Deno.cwd(), args.ghjkDir),
+  );
   const envDir = envDirFromConfig(ghjkDir, configPath);
 
   logger().debug({ configPath });
   logger().debug({ envDir });
 
+  const serializedConfig = await serializeConfig(configPath);
+
+  const ctx = { configPath, envDir };
+  let cmd = new cliffy_cmd.Command()
+    .name("ghjk")
+    .version("0.1.0") // FIXME: better way to resolve version
+    .description("Programmable runtime manager.")
+    .action(function () {
+      this.showHelp();
+    })
+    .command(
+      "print",
+      new cliffy_cmd.Command()
+        .description("Emit different discovored and built values to stdout.")
+        .action(function () {
+          this.showHelp();
+        })
+        .command(
+          "ghjk-dir-path",
+          new cliffy_cmd.Command()
+            .description("Print the path where ghjk is installed in.")
+            .action(function () {
+              console.log(ghjkDir);
+            }),
+        )
+        .command(
+          "config-path",
+          new cliffy_cmd.Command()
+            .description("Print the path of the ghjk.ts used")
+            .action(function () {
+              console.log(configPath);
+            }),
+        )
+        .command(
+          "config",
+          new cliffy_cmd.Command()
+            .description(
+              "Print the extracted ans serialized config from the ghjk.ts file",
+            )
+            .action(function () {
+              console.log(Deno.inspect(serializedConfig, {
+                depth: 10,
+                colors: isColorfulTty(),
+              }));
+            }),
+        )
+        .command(
+          "env-dir-path",
+          new cliffy_cmd.Command()
+            .description(
+              "Print the directory the current config's env is housed in.",
+            )
+            .action(function () {
+              console.log(envDir);
+            }),
+        ),
+    );
+  for (const man of serializedConfig.modules) {
+    const mod = std_modules.map[man.id];
+    if (!mod) {
+      throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
+    }
+    const instance = mod.ctor(ctx, man);
+    cmd = cmd.command(man.id, instance.command());
+  }
+  cmd
+    .command("completions", new cliffy_cmd.CompletionsCommand())
+    .parse(Deno.args);
+}
+
+async function serializeConfig(configPath: string) {
   let serializedJson;
   switch (std_path.extname(configPath)) {
     case "":
@@ -39,38 +115,5 @@ export async function main(args: MainArgs) {
       );
   }
   const serializedConfig = validators.serializedConfig.parse(serializedJson);
-
-  const ctx = { configPath, envDir };
-  let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
-    .name("ghjk")
-    .version("0.1.0") // FIXME: better way to resolve version
-    .description("Programmable runtime manager.")
-    .action(function () {
-      this.showHelp();
-    })
-    .command(
-      "config",
-      new cliffy_cmd.Command()
-        .description("Print the extracted config from the ghjk.ts file")
-        .action(function () {
-          console.log(Deno.inspect(serializedConfig, {
-            depth: 10,
-            colors: isColorfulTty(),
-          }));
-        }),
-    );
-  for (const man of serializedConfig.modules) {
-    const mod = std_modules.map[man.id];
-    if (!mod) {
-      throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
-    }
-    const instance = mod.ctor(ctx, man);
-    cmd = cmd.command(man.id, instance.command());
-  }
-  cmd
-    .command("completions", new cliffy_cmd.CompletionsCommand())
-    .parse(Deno.args);
-  //   const serializedConfig = validators.serializedConfig.parse(
-  //     serializedJson,
-  //   );
+  return serializedConfig;
 }

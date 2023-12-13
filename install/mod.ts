@@ -107,6 +107,8 @@ export interface InstallArgs {
   /// the deno exec to be used by the ghjk executable
   /// by default will be "deno" i.e. whatever the shell resolves that to
   ghjkExecDenoExec: string;
+  // Disable using a lockfile for the ghjk command
+  noLockfile: boolean;
 }
 
 export const defaultInstallArgs: InstallArgs = {
@@ -118,6 +120,7 @@ export const defaultInstallArgs: InstallArgs = {
   // TODO: respect xdg dirs
   ghjkExecInstallDir: std_path.resolve(dirs().homeDir, ".local", "bin"),
   ghjkExecDenoExec: "deno",
+  noLockfile: false,
 };
 export async function install(
   args: InstallArgs = defaultInstallArgs,
@@ -126,7 +129,10 @@ export async function install(
   if (Deno.build.os == "windows") {
     throw new Error("windows is not yet supported :/");
   }
-  const { ghjkDir } = args;
+  const ghjkDir = std_path.resolve(
+    Deno.cwd(),
+    std_path.normalize(args.ghjkDir),
+  );
   // const hookVfs = ;
   logger().debug("unpacking vfs", { ghjkDir });
   await unpackVFS(
@@ -190,10 +196,14 @@ export async function install(
         await std_fs.ensureDir(args.ghjkExecInstallDir);
         const exePath = std_path.resolve(args.ghjkExecInstallDir, `ghjk`);
         logger().debug("installing executable", { exePath });
+        const lockFlag = args.noLockfile
+          ? "--no-lock"
+          : `--lock $GHJK_DIR/deno.lock`;
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
-${args.ghjkExecDenoExec} run --unstable-worker-options -A  ${
+GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}"
+${args.ghjkExecDenoExec} run --unstable-worker-options -A ${lockFlag} ${
             import.meta.resolve("../main.ts")
           } $*`,
           { mode: 0o700 },
