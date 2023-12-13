@@ -9,6 +9,7 @@ import {
   type InstallConfigSimple,
   type PlatformInfo,
   registerDenoPortGlobal,
+  semver,
   std_fs,
   std_path,
   std_url,
@@ -100,5 +101,8 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${arch}-${os}.${ext}`;
+  const prefix = semver.lt(semver.parse(installVersion), semver.parse("0.1.9"))
+    ? repoName
+    : `${repoName}-${installVersion.replace(/^v/, "")}`;
+  return `${repoAddress}/releases/download/${installVersion}/${prefix}-${arch}-${os}.${ext}`;
 }
