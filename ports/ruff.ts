@@ -101,7 +101,7 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  const prefix = semver.lt(semver.parse(installVersion), semver.parse("0.1.9"))
+  const prefix = semver.lt(semver.parse(installVersion), semver.parse("0.1.8"))
     ? repoName
     : `${repoName}-${installVersion.replace(/^v/, "")}`;
   return `${repoAddress}/releases/download/${installVersion}/${prefix}-${arch}-${os}.${ext}`;
