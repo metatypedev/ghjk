@@ -4,6 +4,7 @@ inputs:
   version:
     description: 'Github version/branch to install from'
     required: true
+    # TODO: auto update this
     default: 'v0.1.0-alpha'
   installer-uri:
     description: 'Alternative installer script to use'

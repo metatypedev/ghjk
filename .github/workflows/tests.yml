@@ -66,6 +66,8 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
       - uses: ./
         id: ghjk-action
+        with:
+          installer-uri: ./install.ts
         env: 
           GHJK_CONFIG: ./examples/protoc/ghjk.ts
       - shell: bash

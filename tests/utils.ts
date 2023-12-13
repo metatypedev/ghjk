@@ -55,7 +55,7 @@ await (${confFn.toString()})()`
         );
         env["XDG_CONFIG_HOME"] = confHome.toString();
       }
-      await $`${ghjkDir.join("ghjk").toString()} config`
+      await $`${ghjkDir.join("ghjk").toString()} print config`
         .cwd(tmpDir.toString())
         .env(env);
       await $`${ghjkDir.join("ghjk").toString()} ports sync`
