@@ -119,7 +119,7 @@ export const defaultInstallArgs: InstallArgs = {
   skipExecInstall: true,
   // TODO: respect xdg dirs
   ghjkExecInstallDir: std_path.resolve(dirs().homeDir, ".local", "bin"),
-  ghjkExecDenoExec: "deno",
+  ghjkExecDenoExec: Deno.execPath(),
   noLockfile: false,
 };
 export async function install(

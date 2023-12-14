@@ -1,9 +1,13 @@
 {
   "tasks": {
-    // "test": "DOCKER_SOCK=/var/run/docker.sock deno test --unstable --allow-env=DOCKER_SOCK --allow-read=/var/run/docker.sock --allow-write=/var/run/docker.sock tests/*"
     "test": "deno test --fail-fast --parallel --unstable -A tests/*",
     "cache": "deno cache deps/*",
-    "check": "deno check *.ts **/*.ts",
-    "lint": "deno lint --ignore=ghjk.ts,play.ts --rules-exclude=no-explicit-any"
+    "check": "deno run -A check.ts"
+  },
+  "lint": {
+    "exclude": ["gh_action/", "ghjk.ts", "play.ts"],
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
   }
 }

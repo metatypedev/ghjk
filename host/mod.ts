@@ -8,11 +8,11 @@ import validators from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 
-export interface MainArgs {
+export interface CliArgs {
   ghjkDir: string;
   configPath: string;
 }
-export async function main(args: MainArgs) {
+export async function cli(args: CliArgs) {
   const configPath = std_path.normalize(
     std_path.resolve(Deno.cwd(), args.configPath),
   );
