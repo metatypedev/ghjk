@@ -23,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
       - uses: pre-commit/action@v3.0.0
 
   test-e2e:
@@ -40,6 +43,9 @@ jobs:
       GHJK_TEST_E2E_TYPE: ${{ matrix.e2eType }}
     steps:
       - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
       - if: "${{ matrix.os == 'macos-latest' }}"
         run: brew install fish zsh
       - if: "${{ matrix.e2eType == 'docker' }}"

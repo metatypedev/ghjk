@@ -24,7 +24,7 @@ async function run(): Promise<void> {
       ? inputInstallerUrl
       : !!version
       ? `https://raw.github.com/metatypedev/ghjk/${version}/install.ts`
-      : `${process.env.GITHUB_ACTION_PATH}install.ts`;
+      : `${process.env["GITHUB_ACTION_PATH"] ?? ""}install.ts`;
 
     const execDir = await install(
       version,
@@ -76,6 +76,7 @@ async function install(
 
   const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ?? "/ghjk-exec";
   const env: Record<string, string> = {
+    ...process.env as Record<string, string>,
     GHJK_INSTALLER_URL: installerUrl,
     GHJK_INSTALL_EXE_DIR: installDir,
   };
@@ -90,7 +91,7 @@ async function install(
   }
 
   const installShPath = path.resolve(
-    process.env.GITHUB_ACTION_PATH ?? "",
+    process.env["GITHUB_ACTION_PATH"] ?? "",
     "install.sh",
   );
   core.debug(util.inspect({ installShPath, env }, false, undefined, false));
@@ -99,7 +100,6 @@ async function install(
     [],
     {
       env: {
-        ...process.env as Record<string, string>,
         ...env,
       },
     },

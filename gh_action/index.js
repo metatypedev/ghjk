@@ -28615,7 +28615,7 @@ async function run() {
             ? inputInstallerUrl
             : !!version
                 ? `https://raw.github.com/metatypedev/ghjk/${version}/install.ts`
-                : `${process.env.GITHUB_ACTION_PATH}install.ts`;
+                : `${process.env["GITHUB_ACTION_PATH"] ?? ""}install.ts`;
         const execDir = await install(version, installerUrl, inputSkipDenoInstall == "true");
         core.addPath(execDir);
         if (inputSync == "true") {
@@ -28651,6 +28651,7 @@ async function install(version, installerUrl, skipDenoInstall) {
     core.debug(`installing ghjk using install.sh`);
     const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ?? "/ghjk-exec";
     const env = {
+        ...process.env,
         GHJK_INSTALLER_URL: installerUrl,
         GHJK_INSTALL_EXE_DIR: installDir,
     };
@@ -28662,11 +28663,10 @@ async function install(version, installerUrl, skipDenoInstall) {
         env["GHJK_INSTALL_DENO_EXEC"] = "deno";
         core.debug(`skipping deno install & using found "deno" bin`);
     }
-    const installShPath = path.resolve(process.env.GITHUB_ACTION_PATH ?? "", "install.sh");
+    const installShPath = path.resolve(process.env["GITHUB_ACTION_PATH"] ?? "", "install.sh");
     core.debug(util.inspect({ installShPath, env }, false, undefined, false));
     await exec.exec(`"${installShPath}"`, [], {
         env: {
-            ...process.env,
             ...env,
         },
     });
