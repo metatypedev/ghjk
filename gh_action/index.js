@@ -28649,7 +28649,8 @@ async function install(version, installerUrl, skipDenoInstall) {
         }
     }
     core.debug(`installing ghjk using install.sh`);
-    const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ?? "/ghjk-exec";
+    const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ??
+        path.resolve(process.env["HOME"], ".local", "bin");
     const env = {
         ...process.env,
         GHJK_INSTALLER_URL: installerUrl,
@@ -28665,11 +28666,7 @@ async function install(version, installerUrl, skipDenoInstall) {
     }
     const installShPath = path.resolve(process.env["GITHUB_ACTION_PATH"] ?? "", "install.sh");
     core.debug(util.inspect({ installShPath, env }, false, undefined, false));
-    await exec.exec(`"${installShPath}"`, [], {
-        env: {
-            ...env,
-        },
-    });
+    await exec.exec(`"${installShPath}"`, [], { env });
     if (version) {
         return await tc.cacheDir(installDir, "ghjk", version);
     }

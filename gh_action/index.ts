@@ -74,7 +74,8 @@ async function install(
   }
   core.debug(`installing ghjk using install.sh`);
 
-  const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ?? "/ghjk-exec";
+  const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ??
+    path.resolve(process.env["HOME"]!, ".local", "bin");
   const env: Record<string, string> = {
     ...process.env as Record<string, string>,
     GHJK_INSTALLER_URL: installerUrl,
@@ -95,15 +96,7 @@ async function install(
     "install.sh",
   );
   core.debug(util.inspect({ installShPath, env }, false, undefined, false));
-  await exec.exec(
-    `"${installShPath}"`,
-    [],
-    {
-      env: {
-        ...env,
-      },
-    },
-  );
+  await exec.exec(`"${installShPath}"`, [], { env });
   if (version) {
     return await tc.cacheDir(installDir, "ghjk", version);
   }

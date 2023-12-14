@@ -16,31 +16,6 @@ inputs:
     required: true
     default: true
 
-# runs:
-#   using: "composite"
-#   steps:
-#     - id: install-ghjk
-#       shell: bash
-#       env: 
-#         GHJK_INSTALLER_URL: ${{ inputs.installer-url 
-#           || (inputs.version && format('https://raw.github.com/metatypedev/ghjk/{0}/install.ts', inputs.version)) 
-#           || format('file://{0}install.ts', github.action_path) }}
-#       run: |
-#         [ $(which deno) ] && export GHJK_INSTALL_DENO_EXEC=deno
-#         set | grep GHJK | cat
-#         ${{ format('{0}install.sh', github.action_path) }}
-#         echo "${GHJK_INSTALL_EXE_DIR:-$HOME/.local/bin}" >> $GITHUB_PATH
-#     - id: sync-ghjk
-#       shell: bash
-#       if: ${{ inputs.sync }}
-#       run: |
-#         ghjk print config
-#         ghjk ports sync
-#     - id: ghjk-outputs
-#       shell: bash
-#       run: |
-#         echo "GHJK_DIR=$(ghjk print ghjk-dir-path)" >> $GITHUB_OUTPUT
-#         echo "BASH_ENV=$(ghjk print ghjk-dir-path)/env.sh" >> $GITHUB_ENV
 runs:
   using: node20
   main: gh_action/index.js
