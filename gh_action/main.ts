@@ -6,6 +6,7 @@ import * as path from "path";
 import * as util from "util";
 import * as os from "os";
 import crypto from "crypto";
+import { info } from "console";
 
 // TODO: auto-manage this version
 const DENO_VERSION = "1.38.5";
@@ -45,20 +46,24 @@ async function run(): Promise<void> {
 
     const configStr =
       (await exec.getExecOutput("ghjk", ["print", "config"])).stdout;
-    console.log(configStr);
 
     const ghjkDir =
-      (await exec.getExecOutput("ghjk", ["print", "ghjk-dir-path"]))
+      (await exec.getExecOutput("ghjk", ["print", "ghjk-dir-path"], {
+        silent: true,
+      }))
         .stdout
         .trim();
 
-    if (inputCacheDisable == "false") {
-      const ghjkVersion = (await exec.getExecOutput("ghjk", ["--version"]))
-        .stdout
-        .trim();
+    if (inputCacheDisable == "false" && cache.isFeatureAvailable()) {
+      const ghjkVersion =
+        (await exec.getExecOutput("ghjk", ["--version"], { silent: true }))
+          .stdout
+          .trim();
 
       const configPath =
-        (await exec.getExecOutput("ghjk", ["print", "config-path"]))
+        (await exec.getExecOutput("ghjk", ["print", "config-path"], {
+          silent: true,
+        }))
           .stdout
           .trim();
 
@@ -82,14 +87,18 @@ async function run(): Promise<void> {
         }
       }
       const hash = hasher.digest("hex");
-      const key = `${inputCacheKeyPrefix ?? "v0-ghjk"}-${hash}`;
+      const keyPrefix = inputCacheKeyPrefix.length > 0
+        ? inputCacheKeyPrefix
+        : "v0-ghjk";
+      const key = `${keyPrefix}-${hash}`;
 
       const envsDir = core.toPlatformPath(path.resolve(ghjkDir, "envs"));
       const cacheDirs = [envsDir];
       await cache.restoreCache(cacheDirs, key);
-      if (inputCacheSaveIf != "true") {
-        core.saveState("cahe-save", true);
-        core.saveState("post-args", {
+      if (inputCacheSaveIf == "true") {
+        core.info(`enabling cache with key ${key}`);
+        core.saveState("ghjk-cache-save", true);
+        core.saveState("ghjk-post-args", {
           key,
           cacheDirs,
         });

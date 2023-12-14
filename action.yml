@@ -19,14 +19,15 @@ inputs:
     description: 'Enable to skip caching the GHJK dir'
     required: true
     default: false
+  cache-save-if:
+    description: "Toggle cache saving. To disable cache restore as well, use cache-disable"
+    required: true
+    default: true
   cache-key-prefix:
     description: 'Prefix to use for the cache key. v0-ghjk by default'
     required: false
   cache-key-env-vars:
     description: "Additional environment variables to include in the cache key, separated by comma."
-    required: false
-  cache-key-save-if:
-    description: "Toggle cache saving. To disable cache restore as well, use cache-disable"
     required: false
 
 runs:

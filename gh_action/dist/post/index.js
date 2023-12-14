@@ -80153,12 +80153,15 @@ const cache = __importStar(__nccwpck_require__(7877));
  */
 async function run() {
     try {
-        if (core.getState("cache-save") == "true") {
-            const argsStr = core.getState("post-args");
+        if (cache.isFeatureAvailable() && core.getState("ghjk-cache-save") == "true") {
+            const argsStr = core.getState("ghjk-post-args");
             core.info(argsStr);
             const args = JSON.parse(argsStr);
             const { key, cacheDirs, } = args;
             await cache.saveCache(cacheDirs, key);
+        }
+        else {
+            core.info("cache-save flag is false, skipping");
         }
     }
     catch (error) {

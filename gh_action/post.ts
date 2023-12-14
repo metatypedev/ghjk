@@ -7,8 +7,10 @@ import * as cache from "@actions/cache";
  */
 async function run(): Promise<void> {
   try {
-    if (core.getState("cache-save") == "true") {
-      const argsStr = core.getState("post-args");
+    if (
+      cache.isFeatureAvailable() && core.getState("ghjk-cache-save") == "true"
+    ) {
+      const argsStr = core.getState("ghjk-post-args");
       core.info(argsStr);
       const args = JSON.parse(argsStr);
       const {
@@ -16,6 +18,8 @@ async function run(): Promise<void> {
         cacheDirs,
       } = args;
       await cache.saveCache(cacheDirs, key);
+    } else {
+      core.info("cache-save flag is false, skipping");
     }
   } catch (error) {
     // Fail the workflow run if an error occurs

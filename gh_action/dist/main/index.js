@@ -81081,15 +81081,18 @@ async function run() {
         const execDir = await installGhjk(version, installerUrl, inputSkipDenoInstall == "true");
         core.addPath(execDir);
         const configStr = (await exec.getExecOutput("ghjk", ["print", "config"])).stdout;
-        console.log(configStr);
-        const ghjkDir = (await exec.getExecOutput("ghjk", ["print", "ghjk-dir-path"]))
+        const ghjkDir = (await exec.getExecOutput("ghjk", ["print", "ghjk-dir-path"], {
+            silent: true,
+        }))
             .stdout
             .trim();
-        if (inputCacheDisable == "false") {
-            const ghjkVersion = (await exec.getExecOutput("ghjk", ["--version"]))
+        if (inputCacheDisable == "false" && cache.isFeatureAvailable()) {
+            const ghjkVersion = (await exec.getExecOutput("ghjk", ["--version"], { silent: true }))
                 .stdout
                 .trim();
-            const configPath = (await exec.getExecOutput("ghjk", ["print", "config-path"]))
+            const configPath = (await exec.getExecOutput("ghjk", ["print", "config-path"], {
+                silent: true,
+            }))
                 .stdout
                 .trim();
             let hasher = crypto_1.default.createHash("sha1");
@@ -81108,13 +81111,17 @@ async function run() {
                 }
             }
             const hash = hasher.digest("hex");
-            const key = `${inputCacheKeyPrefix ?? "v0-ghjk"}-${hash}`;
+            const keyPrefix = inputCacheKeyPrefix.length > 0
+                ? inputCacheKeyPrefix
+                : "v0-ghjk";
+            const key = `${keyPrefix}-${hash}`;
             const envsDir = core.toPlatformPath(path.resolve(ghjkDir, "envs"));
             const cacheDirs = [envsDir];
             await cache.restoreCache(cacheDirs, key);
-            if (inputCacheSaveIf != "true") {
-                core.saveState("cahe-save", true);
-                core.saveState("post-args", {
+            if (inputCacheSaveIf == "true") {
+                core.info(`enabling cache with key ${key}`);
+                core.saveState("ghjk-cache-save", true);
+                core.saveState("ghjk-post-args", {
                     key,
                     cacheDirs,
                 });
