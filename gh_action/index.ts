@@ -13,7 +13,7 @@ const DENO_VERSION = "1.38.5";
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
-async function run(): Promise<void> {
+export async function main(): Promise<void> {
   try {
     const inputVersion = core.getInput("version");
     const inputInstallerUrl = core.getInput("installer-url");
@@ -229,4 +229,28 @@ export async function installDeno(version: string) {
   return `${newCachedPath}/deno`;
 }
 
-void run();
+/**
+ * The post function for the action.
+ * @returns {Promise<void>} Resolves when the action is complete.
+ */
+export async function post(): Promise<void> {
+  try {
+    if (
+      cache.isFeatureAvailable() && core.getState("ghjk-cache-save") == "true"
+    ) {
+      const argsStr = core.getState("ghjk-post-args");
+      core.info(argsStr);
+      const args = JSON.parse(argsStr);
+      const {
+        key,
+        cacheDirs,
+      } = args;
+      await cache.saveCache(cacheDirs, key);
+    } else {
+      core.info("cache-save flag is false, skipping");
+    }
+  } catch (error) {
+    // Fail the workflow run if an error occurs
+    if (error instanceof Error) core.setFailed(error.message);
+  }
+}

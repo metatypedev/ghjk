@@ -32,6 +32,6 @@ inputs:
 
 runs:
   using: node20
-  main: gh_action/dist/main/index.js
-  post: gh_action/dist/post/index.js
+  main: gh_action/main.js
+  post: gh_action/post.js
   post-if: "success() || env.CACHE_ON_FAILURE == 'true'"
