@@ -16,8 +16,10 @@
   },
   "scripts": {
     "lint": "pnpm dlx eslint . -c ./.github/linters/.eslintrc.yml",
-    "package": "ncc build index.ts -o .",
-    "package:watch": "ncc build index.ts -w -o ."
+    "build:main": "ncc build main.ts -o dist/main .",
+    "build:main:watch": "ncc build main.ts -w -o dist/main",
+    "build:post": "ncc build post.ts -o dist/post",
+    "build:post:watch": "ncc build post.ts -w -o dist/post"
   },
   "dependencies": {
     "@actions/cache": "^3.2.2",

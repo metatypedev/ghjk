@@ -15,7 +15,22 @@ inputs:
     description: 'Disable to skip syncing ports'
     required: true
     default: true
+  cache-disable:
+    description: 'Enable to skip caching the GHJK dir'
+    required: true
+    default: false
+  cache-key-prefix:
+    description: 'Prefix to use for the cache key. v0-ghjk by default'
+    required: false
+  cache-key-env-vars:
+    description: "Additional environment variables to include in the cache key, separated by comma."
+    required: false
+  cache-key-save-if:
+    description: "Toggle cache saving. To disable cache restore as well, use cache-disable"
+    required: false
 
 runs:
   using: node20
-  main: gh_action/index.js
+  main: gh_action/dist/main/index.js
+  post: gh_action/dist/post/index.js
+  post-if: "success() || env.CACHE_ON_FAILURE == 'true'"

@@ -3,7 +3,7 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
-        exclude: gh_action/index.js
+        exclude: gh_action/dist/.*.js
       - id: check-ast
       - id: check-json
         exclude: .vscode/.*\.json
@@ -17,7 +17,7 @@ repos:
         exclude: |
             (?x)^(
                 deno.lock|
-                gh_action/index.js
+                gh_action/.*.js
             )$
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.27.0
