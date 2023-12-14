@@ -17,12 +17,18 @@ fi
 if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
     echo "GHJK_INSTALL_DENO_EXEC not set, installing deno $DENO_VERSION for ghjk"
     if ! command -v curl >/dev/null; then
-        echo "Error: curl is required to install ghjk." 1>&2
+        echo "Error: curl is required to install deno for ghjk." 1>&2
         exit 1
     fi
-    DENO_INSTALL="$GHJK_DIR/deno"
+
+    DENO_INSTALL="$GHJK_DIR/tmp/deno-install"
     curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$DENO_INSTALL" sh -s "$DENO_VERSION"
-    GHJK_INSTALL_DENO_EXEC="$DENO_INSTALL/bin/deno"
+
+    # disinterr the deno bin from the install dir
+    mv "$DENO_INSTALL/bin/deno" "$GHJK_DIR"
+    rm "$DENO_INSTALL" -r
+
+    GHJK_INSTALL_DENO_EXEC="$GHJK_DIR/deno"
 fi
 
 (

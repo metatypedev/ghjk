@@ -3,6 +3,7 @@ import * as tc from "@actions/tool-cache";
 import * as cache from "@actions/cache";
 import * as exec from "@actions/exec";
 import * as path from "path";
+import * as util from "util";
 
 /**
  * The main function for the action.
@@ -88,9 +89,13 @@ async function install(
     core.debug(`skipping deno install & using found "deno" bin`);
   }
 
-  core.debug(`${process.cwd()}`);
+  const installShPath = path.resolve(
+    process.env.GITHUB_ACTION_PATH ?? "",
+    "install.sh",
+  );
+  core.debug(util.inspect({ installShPath, env }, false, undefined, false));
   await exec.exec(
-    `"${path.resolve(process.env.GITHUB_ACTION_PATH ?? "", "install.sh")}"`,
+    `"${installShPath}"`,
     [],
     {
       env: {

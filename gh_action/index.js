@@ -28597,6 +28597,7 @@ const core = __importStar(__nccwpck_require__(9093));
 const tc = __importStar(__nccwpck_require__(5561));
 const exec = __importStar(__nccwpck_require__(7775));
 const path = __importStar(__nccwpck_require__(1017));
+const util = __importStar(__nccwpck_require__(3837));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -28661,8 +28662,9 @@ async function install(version, installerUrl, skipDenoInstall) {
         env["GHJK_INSTALL_DENO_EXEC"] = "deno";
         core.debug(`skipping deno install & using found "deno" bin`);
     }
-    core.debug(`${process.cwd()}`);
-    await exec.exec(`"${path.resolve(process.env.GITHUB_ACTION_PATH ?? "", "install.sh")}"`, [], {
+    const installShPath = path.resolve(process.env.GITHUB_ACTION_PATH ?? "", "install.sh");
+    core.debug(util.inspect({ installShPath, env }, false, undefined, false));
+    await exec.exec(`"${installShPath}"`, [], {
         env: {
             ...process.env,
             ...env,
