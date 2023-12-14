@@ -81051,7 +81051,6 @@ const tc = __importStar(__nccwpck_require__(5561));
 const cache = __importStar(__nccwpck_require__(7877));
 const exec = __importStar(__nccwpck_require__(7775));
 const path = __importStar(__nccwpck_require__(1017));
-const util = __importStar(__nccwpck_require__(3837));
 const os = __importStar(__nccwpck_require__(2037));
 const crypto_1 = __importDefault(__nccwpck_require__(6113));
 // TODO: auto-manage this version
@@ -81117,9 +81116,11 @@ async function run() {
             const key = `${keyPrefix}-${hash}`;
             const envsDir = core.toPlatformPath(path.resolve(ghjkDir, "envs"));
             const cacheDirs = [envsDir];
-            await cache.restoreCache(cacheDirs, key);
+            core.info(JSON.stringify({ cacheDirs, envsDir, ghjkDir }));
+            // NOTE: restoreCache modifies the array it's given for some reason
+            await cache.restoreCache([...cacheDirs], key);
             if (inputCacheSaveIf == "true") {
-                core.info(`enabling cache with key ${key}`);
+                core.info(`enabling cache with key ${key}: [${cacheDirs}]`);
                 core.saveState("ghjk-cache-save", true);
                 core.saveState("ghjk-post-args", {
                     key,
@@ -81162,7 +81163,7 @@ async function installGhjk(version, installerUrl, skipDenoInstall) {
             core.debug(`unable to find cached ghjk tool under version ${version}`);
         }
     }
-    core.debug(`installing ghjk using install.sh`);
+    core.debug(`installing ghjk using install.ts`);
     const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ??
         core.toPlatformPath(path.resolve(os.homedir(), ".local", "bin"));
     const env = {
@@ -81174,7 +81175,7 @@ async function installGhjk(version, installerUrl, skipDenoInstall) {
     // to avoid it hardcoding the current deno bin path
     // which won't be the same after tool cache restore
     env["GHJK_INSTALL_DENO_EXEC"] = "deno";
-    core.debug(util.inspect({ denoExec, env }, false, undefined, false));
+    core.debug(JSON.stringify({ denoExec, env }, undefined, "  "));
     await exec.exec(`"${denoExec}" run -A`, [installerUrl], { env });
     if (version) {
         return await tc.cacheDir(installDir, "ghjk", version);

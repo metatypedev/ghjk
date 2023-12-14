@@ -3,10 +3,8 @@ import * as tc from "@actions/tool-cache";
 import * as cache from "@actions/cache";
 import * as exec from "@actions/exec";
 import * as path from "path";
-import * as util from "util";
 import * as os from "os";
 import crypto from "crypto";
-import { info } from "console";
 
 // TODO: auto-manage this version
 const DENO_VERSION = "1.38.5";
@@ -94,9 +92,11 @@ async function run(): Promise<void> {
 
       const envsDir = core.toPlatformPath(path.resolve(ghjkDir, "envs"));
       const cacheDirs = [envsDir];
-      await cache.restoreCache(cacheDirs, key);
+      core.info(JSON.stringify({ cacheDirs, envsDir, ghjkDir }));
+      // NOTE: restoreCache modifies the array it's given for some reason
+      await cache.restoreCache([...cacheDirs], key);
       if (inputCacheSaveIf == "true") {
-        core.info(`enabling cache with key ${key}`);
+        core.info(`enabling cache with key ${key}: [${cacheDirs}]`);
         core.saveState("ghjk-cache-save", true);
         core.saveState("ghjk-post-args", {
           key,
@@ -145,7 +145,7 @@ export async function installGhjk(
       core.debug(`unable to find cached ghjk tool under version ${version}`);
     }
   }
-  core.debug(`installing ghjk using install.sh`);
+  core.debug(`installing ghjk using install.ts`);
 
   const installDir = process.env["GHJK_INSTALL_EXE_DIR"] ??
     core.toPlatformPath(path.resolve(os.homedir(), ".local", "bin"));
@@ -159,7 +159,7 @@ export async function installGhjk(
   // which won't be the same after tool cache restore
   env["GHJK_INSTALL_DENO_EXEC"] = "deno";
 
-  core.debug(util.inspect({ denoExec, env }, false, undefined, false));
+  core.debug(JSON.stringify({ denoExec, env }, undefined, "  "));
   await exec.exec(`"${denoExec}" run -A`, [installerUrl], { env });
   if (version) {
     return await tc.cacheDir(installDir, "ghjk", version);
