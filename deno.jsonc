@@ -4,6 +4,9 @@
     "cache": "deno cache deps/*",
     "check": "deno run -A check.ts"
   },
+  "fmt": {
+    "exclude": ["gh_action/index.js"]
+  },
   "lint": {
     "exclude": ["gh_action/", "ghjk.ts", "play.ts"],
     "rules": {

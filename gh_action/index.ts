@@ -23,7 +23,7 @@ async function run(): Promise<void> {
       ? inputInstallerUrl
       : !!version
       ? `https://raw.github.com/metatypedev/ghjk/${version}/install.ts`
-      : `${process.env.GITHUB_ACTION_PATH}/install.ts`;
+      : `${process.env.GITHUB_ACTION_PATH}install.ts`;
 
     const execDir = await install(
       version,
@@ -45,6 +45,10 @@ async function run(): Promise<void> {
     core.setOutput("GHJK_DIR", ghjkDir);
     core.exportVariable("GHJK_DIR", ghjkDir);
     core.exportVariable("BASH_ENV", `${ghjkDir}/env.sh`);
+
+    // cache.saveCache([
+    //   ghjkDir
+    // ],);
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message);
@@ -96,9 +100,9 @@ async function install(
     },
   );
   if (version) {
-    return await tc.cacheDir(installDir, "ghjk", "ghjk", version);
+    return await tc.cacheDir(installDir, "ghjk", version);
   }
-  return `${installDir}/ghjk`;
+  return installDir;
 }
 
 void run();

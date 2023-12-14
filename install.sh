@@ -8,6 +8,11 @@ GHJK_DIR="${GHJK_DIR:-$HOME/.local/share/ghjk}"
 SHELL="${SHELL:-bash}"
 DENO_VERSION="${DENO_VERSION:-v1.38.5}"
 
+# make sure the version is prepended with v
+if [ "${DENO_VERSION#"v"}" = "$DENO_VERSION" ]; then
+    DENO_VERSION="v$DENO_VERSION"
+fi
+
 # if custom deno bin is not set, install one
 if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
     echo "GHJK_INSTALL_DENO_EXEC not set, installing deno $DENO_VERSION for ghjk"
