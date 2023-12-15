@@ -1,9 +1,16 @@
 import { $ } from "../../utils/mod.ts";
-import { PortBase } from "./types.ts";
+import { PortBase } from "./base.ts";
 
 export abstract class GithubReleasePort extends PortBase {
   abstract repoOwner: string;
   abstract repoName: string;
+
+  repoAddress() {
+    return `https://github.com/${this.repoOwner}/${this.repoName}`;
+  }
+  releaseArtifactUrl(version: string, fileName: string) {
+    return `${this.repoAddress()}/releases/download/${version}/${fileName}`;
+  }
 
   async latestStable(): Promise<string> {
     const metadata = await $.withRetries({

@@ -32,6 +32,7 @@ export function localE2eTest(cases: E2eTestCase[]) {
       });
       await tmpDir.join("ghjk.ts").writeText(
         `export { ghjk } from "$ghjk/mod.ts";
+import { install } from "$ghjk/mod.ts";
 ${imports}
 
 await (${confFn.toString()})()`
@@ -96,10 +97,11 @@ export async function dockerE2eTest(cases: E2eTestCase[]) {
         ...defaultEnvs,
         ...testEnvs,
       };
-      const configFile = `export { ghjk } from "/ghjk/mod.ts";
-${imports.replaceAll("$ghjk", "/ghjk")}
+      const configFile = `export { ghjk } from "$ghjk/mod.ts";
+import { install } from "$ghjk/mod.ts";
+${imports}
 
-await (${confFn.toString()})()`;
+await (${confFn.toString()})()`.replaceAll("$ghjk", "/ghjk");
 
       const dFile = dFileTemplate.replaceAll(
         templateStrings.addConfig,

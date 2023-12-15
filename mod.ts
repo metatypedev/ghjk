@@ -3,7 +3,11 @@
 
 import "./setup_logger.ts";
 
-import {
+import { semver } from "./deps/common.ts";
+import portsValidators, {
+  type InstallConfigFat,
+  type InstallConfigLite,
+  type PortManifest,
   type PortsModuleConfigBase,
   type PortsModuleSecureConfig,
   type RegisteredPorts,
@@ -14,16 +18,7 @@ import { $ } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
 import { std_modules } from "./modules/mod.ts";
 
-// we need to use global variables to allow
-// pots to access the config object.
-// accessing it through ecma module imports wouldn't work
-//  as ports might import a different version of this module.
-declare global {
-  interface Window {
-    ports: PortsModuleConfigBase;
-  }
-}
-
+const portsConfig: PortsModuleConfigBase = { ports: {}, installs: [] };
 function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
   let allowedDeps;
   if (secureConfig?.allowedPortDeps) {
@@ -44,8 +39,8 @@ function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
     modules: [{
       id: std_modules.ports,
       config: {
-        installs: self.ports.installs,
-        ports: self.ports.ports,
+        installs: portsConfig.installs,
+        ports: portsConfig.ports,
         allowedDeps: allowedDeps,
       },
     }],
@@ -59,3 +54,104 @@ export const ghjk = Object.freeze({
 });
 
 export { $, logger };
+
+export function install(...configs: (InstallConfigFat | InstallConfigLite)[]) {
+  const cx = portsConfig;
+  for (const config of configs) {
+    if ("portId" in config) {
+      addInstall(cx, config as InstallConfigLite);
+    } else {
+      const {
+        port,
+        ...liteConfig
+      } = config;
+      const portId = registerPort(cx, port);
+      addInstall(cx, { ...liteConfig, portId });
+    }
+  }
+}
+
+export function port(...manifests: PortManifest[]) {
+  const cx = portsConfig;
+  for (const man of manifests) {
+    registerPort(cx, man);
+  }
+}
+
+function addInstall(
+  cx: PortsModuleConfigBase,
+  configUnclean: InstallConfigLite,
+) {
+  const config = portsValidators.installConfigLite.parse(configUnclean);
+  if (!cx.ports[config.portId]) {
+    throw new Error(
+      `unrecognized port "${config.portId}" specified by install ${
+        JSON.stringify(config)
+      }`,
+    );
+  }
+  logger().debug("install added", config);
+  cx.installs.push(config);
+}
+
+function registerPort(
+  cx: PortsModuleConfigBase,
+  manUnclean: PortManifest,
+) {
+  const manifest = portsValidators.portManifest.parse(manUnclean);
+  const id = manifest.name;
+  const conflict = cx.ports[id];
+  if (conflict) {
+    if (
+      conflict.conflictResolution == "override" &&
+      manifest.conflictResolution == "override"
+    ) {
+      throw new Error(
+        `Two instances of port "${id}" found with ` +
+          `both set to "${manifest.conflictResolution}" conflictResolution"`,
+      );
+    } else if (conflict.conflictResolution == "override") {
+      logger().debug("port rejected due to override", {
+        retained: conflict,
+        rejected: manifest,
+      });
+      // do nothing
+    } else if (manifest.conflictResolution == "override") {
+      logger().debug("port override", {
+        new: manifest,
+        replaced: conflict,
+      });
+      cx.ports[id] = manifest;
+    } else if (
+      semver.compare(
+        semver.parse(manifest.version),
+        semver.parse(conflict.version),
+      ) == 0
+    ) {
+      throw new Error(
+        `Two instances of the port "${id}" found with an identical version` +
+          `and both set to "deferToNewer" conflictResolution.`,
+      );
+    } else if (
+      semver.compare(
+        semver.parse(manifest.version),
+        semver.parse(conflict.version),
+      ) > 0
+    ) {
+      logger().debug("port replaced after version defer", {
+        new: manifest,
+        replaced: conflict,
+      });
+      cx.ports[id] = manifest;
+    } else {
+      logger().debug("port rejected due after defer", {
+        retained: conflict,
+        rejected: manifest,
+      });
+    }
+  } else {
+    logger().debug("port registered", manifest.name);
+    cx.ports[id] = manifest;
+  }
+  return id;
+}

@@ -1,47 +1,56 @@
 import {
   $,
-  addInstallGlobal,
   DownloadArgs,
-  downloadFile,
   GithubReleasePort,
   InstallArgs,
-  type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  InstallConfigSimple,
+  osXarch,
   std_fs,
 } from "../port.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "earthly@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "earthly_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
-
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
     ...config,
-  });
+    port: manifest,
+  };
 }
 
-const repoOwner = "earthly";
-const repoName = "earthly";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
-
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "earthly";
+  repoName = "earthly";
 
-  async download(args: DownloadArgs) {
-    const fileName = repoName;
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform), {
-      mode: 0o700,
-      fileName,
-    });
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let arch;
+    switch (platform.arch) {
+      case "x86_64":
+        arch = "amd64";
+        break;
+      case "aarch64":
+        arch = "arm64";
+        break;
+      default:
+        throw new Error(`unsupported arch: ${platform.arch}`);
+    }
+    const os = platform.os;
+    return [
+      {
+        url: this.releaseArtifactUrl(
+          installVersion,
+          `${this.repoName}-${os}-${arch}${os == "windows" ? ".exe" : ""}`,
+        ),
+        name: this.repoName,
+        mode: 0o700,
+      },
+    ];
   }
 
   async install(args: InstallArgs) {
@@ -54,30 +63,4 @@ export class Port extends GithubReleasePort {
       installPath.join("bin").toString(),
     );
   }
-}
-
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  let arch;
-  switch (platform.arch) {
-    case "x86_64":
-      arch = "amd64";
-      break;
-    case "aarch64":
-      arch = "arm64";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  let os;
-  switch (platform.os) {
-    case "linux":
-      os = "linux";
-      break;
-    case "darwin":
-      os = "darwin";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${os}-${arch}`;
 }

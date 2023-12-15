@@ -1,31 +1,24 @@
-import {
-  addInstallGlobal,
-  type InstallConfigSimple,
-  registerDenoPortGlobal,
-} from "../port.ts";
+import { InstallConfigSimple, osXarch } from "../port.ts";
 import { CargoBinstallPort } from "../modules/ports/cargo-binstall.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "wasm-tools@cbinst",
+  ty: "denoWorker@v1" as const,
+  name: "wasm_tools_cbinst",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     std_ports.cbin_ghrel,
   ],
+  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
-
-registerDenoPortGlobal(manifest, () => new Port());
-
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
     ...config,
-  });
+    port: manifest,
+  };
 }
 
 export class Port extends CargoBinstallPort {
-  manifest = manifest;
   crateName = "wasm-tools";
 }

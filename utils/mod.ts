@@ -2,7 +2,7 @@ import { dax, std_fs, std_path } from "../deps/common.ts";
 import logger from "./logger.ts";
 import type {
   DepShims,
-  InstallConfig,
+  InstallConfigLite,
   PortDep,
 } from "../modules/ports/types.ts";
 
@@ -41,13 +41,14 @@ export function depBinShimPath(
   return path;
 }
 
-export function getInstallId(install: InstallConfig) {
-  if ("pluginRepo" in install && install.portName == "asdf@asdf") {
+export function getInstallId(install: InstallConfigLite) {
+  // TODO: hash
+  if ("pluginRepo" in install && install.portId == "asdf@asdf") {
     const url = new URL(install.pluginRepo as string);
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }
-  return install.portName;
+  return install.portId;
 }
 
 export const $ = dax.build$(

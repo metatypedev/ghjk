@@ -1,4 +1,5 @@
-import { type DownloadArgs, type InstallArgs, PortBase } from "./mod.ts";
+import { type DownloadArgs, type InstallArgs } from "./mod.ts";
+import { PortBase } from "./base.ts";
 import { std_fs, std_path } from "../../deps/ports.ts";
 import logger from "../../utils/logger.ts";
 import { $, depBinShimPath } from "../../utils/mod.ts";

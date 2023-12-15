@@ -1,16 +1,34 @@
 import { semver, zod } from "../../deps/common.ts";
-import logger from "../../utils/logger.ts";
-import { std_path } from "../../deps/common.ts";
 
 // TODO: find a better identification scheme for ports
+const portId = zod.string().regex(/[^ @]*/);
+// const portRef = zod.string().regex(/[^ ]*@[^ ]/);
 
 const portDep = zod.object({
-  id: zod.string(),
+  id: portId,
 });
+
+export const ALL_OS = [
+  "linux",
+  "darwin",
+  "windows",
+  "freebsd",
+  "netbsd",
+  "aix",
+  "solaris",
+  "illumos",
+] as const;
+export const ALL_ARCH = [
+  "x86_64",
+  "aarch64",
+] as const;
+const osEnum = zod.enum(ALL_OS);
+const archEnum = zod.enum(ALL_ARCH);
 
 const portManifestBase = zod.object({
   ty: zod.string(),
   name: zod.string().min(1),
+  platforms: zod.object({ os: osEnum, arch: archEnum }).array(),
   version: zod.string()
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
@@ -24,14 +42,14 @@ const portManifestBase = zod.object({
 
 const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
-    ty: zod.literal("denoWorker"),
+    ty: zod.literal("denoWorker@v1"),
     moduleSpecifier: zod.string().url(),
   }),
 );
 
 const ambientAccessPortManifest = portManifestBase.merge(
   zod.object({
-    ty: zod.literal("ambientAccess"),
+    ty: zod.literal("ambientAccess@v1"),
     execName: zod.string().min(1),
     versionExtractFlag: zod.enum([
       "version",
@@ -54,7 +72,7 @@ const ambientAccessPortManifest = portManifestBase.merge(
 );
 const theAsdfPortManifest = portManifestBase.merge(
   zod.object({
-    ty: zod.literal("asdf"),
+    ty: zod.literal("asdf@v1"),
     moduleSpecifier: zod.string().url(),
   }),
 );
@@ -72,17 +90,29 @@ const installConfigBase = zod.object({
     .enum(["deferToNewer", "override"])
     .nullish()
     .default("deferToNewer"),
-  portName: zod.string().min(1),
 }).passthrough();
 
-const stdInstallConfig = installConfigBase.merge(zod.object({})).passthrough();
+const installConfigBaseFat = installConfigBase.merge(zod.object({
+  port: portManifest,
+})).passthrough();
 
-const asdfInstallConfig = installConfigBase.merge(
-  zod.object({
-    pluginRepo: zod.string().url(),
-    installType: zod
-      .enum(["version", "ref"]),
-  }),
+const installConfigBaseLite = installConfigBase.merge(zod.object({
+  portId: portId,
+})).passthrough();
+
+const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
+  .passthrough();
+const stdInstallConfigLite = installConfigBaseLite.merge(zod.object({}))
+  .passthrough();
+
+const asdfInstallConfigBase = zod.object({
+  pluginRepo: zod.string().url(),
+  installType: zod
+    .enum(["version", "ref"]),
+});
+const asdfInstallConfigFat = installConfigBaseFat.merge(asdfInstallConfigBase);
+const asdfInstallConfigLite = installConfigBaseLite.merge(
+  asdfInstallConfigBase,
 );
 
 // NOTE: zod unions are tricky. It'll parse with the first schema
@@ -90,14 +120,23 @@ const asdfInstallConfig = installConfigBase.merge(
 // of its siblings (and it doesn't have `passthrough`), it will discard
 // fields meant for sibs.
 // Which's to say ordering matters
+const installConfigLite = zod.union([
+  asdfInstallConfigLite,
+  stdInstallConfigLite,
+]);
+const installConfigFat = zod.union([
+  asdfInstallConfigFat,
+  stdInstallConfigFat,
+]);
+
 const installConfig = zod.union([
-  asdfInstallConfig,
-  stdInstallConfig,
+  installConfigLite,
+  installConfigFat,
 ]);
 
 const portsModuleConfigBase = zod.object({
   ports: zod.record(zod.string(), portManifest),
-  installs: zod.array(installConfig),
+  installs: zod.array(installConfigLite),
 });
 
 const portsModuleSecureConfig = zod.object({
@@ -109,15 +148,25 @@ const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
 }));
 
 const validators = {
+  osEnum,
+  archEnum,
+  portId,
   portDep,
   portManifestBase,
   denoWorkerPortManifest,
   ambientAccessPortManifest,
   string: zod.string(),
   installConfigBase,
-  stdInstallConfig,
+  installConfigBaseFat,
+  installConfigBaseLite,
+  stdInstallConfigFat,
+  stdInstallConfigLite,
+  asdfInstallConfigBase,
+  asdfInstallConfigFat,
+  asdfInstallConfigLite,
+  installConfigFat,
+  installConfigLite,
   installConfig,
-  asdfInstallConfig,
   portManifest,
   portsModuleConfigBase,
   portsModuleSecureConfig,
@@ -126,6 +175,9 @@ const validators = {
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
+
+export type OsEnum = zod.infer<typeof osEnum>;
+export type ArchEnum = zod.infer<typeof archEnum>;
 
 // Describes the plugin itself
 export type PortManifestBase = zod.input<typeof validators.portManifestBase>;
@@ -162,16 +214,35 @@ export type PortDep = zod.infer<typeof validators.portDep>;
 
 export type RegisteredPorts = Record<string, PortManifestX | undefined>;
 
-export type InstallConfigBase = zod.input<
+export type InstallConfigSimple = zod.input<
   typeof validators.installConfigBase
 >;
-export type InstallConfigSimple = Omit<InstallConfigBase, "portName">;
+export type InstallConfigBaseLite = zod.input<
+  typeof validators.installConfigBaseLite
+>;
+export type InstallConfigBaseFat = zod.input<
+  typeof validators.installConfigBaseFat
+>;
 
-export type AsdfInstallConfig = zod.input<typeof validators.asdfInstallConfig>;
-export type AsdfInstallConfigX = zod.infer<typeof validators.asdfInstallConfig>;
+export type AsdfInstallConfigFat = zod.input<
+  typeof validators.asdfInstallConfigFat
+>;
+export type AsdfInstallConfigFatX = zod.infer<
+  typeof validators.asdfInstallConfigFat
+>;
+export type AsdfInstallConfigLite = zod.input<
+  typeof validators.asdfInstallConfigLite
+>;
+export type AsdfInstallConfigLiteX = zod.infer<
+  typeof validators.asdfInstallConfigLite
+>;
 
 // Describes a single installation done by a specific plugin.
 // export type InstallConfig = zod.input<typeof validators.installConfig>;
+export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
+export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
+export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
+export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
 export type InstallConfig = zod.input<typeof validators.installConfig>;
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
 
@@ -188,59 +259,7 @@ export type PortsModuleSecureConfig = zod.infer<
 
 export type PortsModuleConfig = zod.infer<typeof validators.portsModuleConfig>;
 
-export abstract class PortBase {
-  abstract manifest: PortManifest;
-
-  execEnv(
-    _args: ExecEnvArgs,
-  ): Promise<Record<string, string>> | Record<string, string> {
-    return {};
-  }
-
-  listBinPaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "bin"), "*"]),
-    ];
-  }
-
-  listLibPaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "lib"), "*"]),
-    ];
-  }
-
-  listIncludePaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "include"), "*"]),
-    ];
-  }
-
-  latestStable(args: ListAllArgs): Promise<string> | string {
-    return (async () => {
-      logger().warning(
-        `using default implementation of latestStable for port ${this.manifest.name}`,
-      );
-      const allVers = await this.listAll(args);
-      if (allVers.length == 0) {
-        throw new Error("no versions found");
-      }
-      return allVers[allVers.length - 1];
-    })();
-  }
-
-  abstract listAll(args: ListAllArgs): Promise<string[]> | string[];
-
-  abstract download(args: DownloadArgs): Promise<void> | void;
-
-  abstract install(args: InstallArgs): Promise<void> | void;
-}
-
+/*
 interface ASDF_CONFIG_EXAMPLE {
   ASDF_INSTALL_TYPE: "version" | "ref";
   ASDF_INSTALL_VERSION: string; //	full version number or Git Ref depending on ASDF_INSTALL_TYPE
@@ -253,13 +272,14 @@ interface ASDF_CONFIG_EXAMPLE {
   ASDF_PLUGIN_POST_REF: string; //	updated git-ref of the plugin repo
   ASDF_CMD_FILE: string; // resolves to the full path of the file being sourced
 }
+*/
 
 export type DepShims = Record<
   string,
   Record<string, string>
 >;
 
-export type PlatformInfo = Omit<typeof Deno.build, "target">;
+export type PlatformInfo = { os: OsEnum; arch: ArchEnum };
 
 export interface PortArgsBase {
   // installType: "version" | "ref";
@@ -267,11 +287,13 @@ export interface PortArgsBase {
   installPath: string;
   depShims: DepShims;
   platform: PlatformInfo;
-  config: InstallConfigX;
+  config: InstallConfigLiteX;
+  manifest: PortManifestX;
 }
 
 export interface ListAllArgs {
   depShims: DepShims;
+  manifest: PortManifestX;
 }
 
 export type ListBinPathsArgs = PortArgsBase;
@@ -281,6 +303,7 @@ export interface DownloadArgs extends PortArgsBase {
   downloadPath: string;
   tmpDirPath: string;
 }
+export type DownloadUrlsOut = { url: string; name: string; mode?: number }[];
 
 export interface InstallArgs extends PortArgsBase {
   availConcurrency: number;

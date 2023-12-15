@@ -1,32 +1,35 @@
 import {
   $,
-  addInstallGlobal,
   depBinShimPath,
   DownloadArgs,
-  downloadFile,
+  dwnUrlOut,
   ExecEnvArgs,
   GithubReleasePort,
   InstallArgs,
-  type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  InstallConfigSimple,
+  osXarch,
   std_fs,
   std_path,
-  std_url,
 } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "wasmedge@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "wasmedge_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     std_ports.tar_aa,
   ],
+  platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
+    ...config,
+    port: manifest,
+  };
+}
 
 // TODO: wasmedge extension and plugin support
 /*
@@ -51,21 +54,10 @@ const supportedPlugins = [
   "wasmedge_bpf" as const,
 ];
  */
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
-    ...config,
-  });
-}
-
-const repoOwner = "WasmEdge";
-const repoName = "WasmEdge";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "WasmEdge";
+  repoName = "WasmEdge";
 
   execEnv(args: ExecEnvArgs) {
     return {
@@ -79,14 +71,53 @@ export class Port extends GithubReleasePort {
     return ["lib*/*"];
   }
 
-  async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let fileName;
+    if (platform.os == "darwin") {
+      let arch;
+      switch (platform.arch) {
+        case "x86_64":
+          arch = "x86_64";
+          break;
+        case "aarch64":
+          arch = "arm64";
+          break;
+        default:
+          throw new Error(`unsupported arch: ${platform.arch}`);
+      }
+      fileName =
+        `${this.repoName}-${installVersion}-${platform.os}_${arch}.tar.gz`;
+    } else if (platform.os == "linux") {
+      // TODO: support for ubuntu/debian versions
+      // we'll need a way to expose that to ports
+      const os = "manylinux2014";
+      let arch;
+      switch (platform.arch) {
+        case "x86_64":
+          arch = "x86_64";
+          break;
+        case "aarch64":
+          arch = "aarch64"; // NOTE: arch is different from darwin releases
+          break;
+        default:
+          throw new Error(`unsupported arch: ${platform.arch}`);
+      }
+      fileName = `${this.repoName}-${installVersion}-${os}_${arch}.tar.gz`;
+    } else {
+      throw new Error(`unsupported os: ${platform.os}`);
+    }
+
+    return [
+      this.releaseArtifactUrl(
+        installVersion,
+        fileName,
+      ),
+    ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await $`${
@@ -113,40 +144,5 @@ export class Port extends GithubReleasePort {
       dirs[0].path,
       args.installPath,
     );
-  }
-}
-
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  if (platform.os == "darwin") {
-    let arch;
-    switch (platform.arch) {
-      case "x86_64":
-        arch = "x86_64";
-        break;
-      case "aarch64":
-        arch = "arm64";
-        break;
-      default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
-    }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${platform.os}_${arch}.tar.gz`;
-  } else if (platform.os == "linux") {
-    // TODO: support for ubuntu/debian versions
-    // we'll need a way to expose that to ports
-    const os = "manylinux2014";
-    let arch;
-    switch (platform.arch) {
-      case "x86_64":
-        arch = "x86_64";
-        break;
-      case "aarch64":
-        arch = "aarch64"; // NOTE: arch is different from darwin releases
-        break;
-      default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
-    }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${os}_${arch}.tar.gz`;
-  } else {
-    throw new Error(`unsupported os: ${platform.os}`);
   }
 }

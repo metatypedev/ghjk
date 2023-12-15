@@ -1,15 +1,15 @@
 import {
-  type AmbientAccessPortManifest,
+  type AmbientAccessPortManifestX,
   type DownloadArgs,
   type InstallArgs,
   type ListAllArgs,
   type ListBinPathsArgs,
-  PortBase,
 } from "./types.ts";
 import { $ } from "../../utils/mod.ts";
+import { PortBase } from "./base.ts";
 
 export class AmbientAccessPort extends PortBase {
-  constructor(public manifest: AmbientAccessPortManifest) {
+  constructor(public manifest: AmbientAccessPortManifestX) {
     super();
     if (manifest.deps && manifest.deps.length > 0) {
       throw new Error(
@@ -55,7 +55,7 @@ export class AmbientAccessPort extends PortBase {
     return [await this.pathToExec()];
   }
 
-  download(_env: DownloadArgs): void | Promise<void> {
+  async download(_env: DownloadArgs) {
     // no op
   }
   install(_env: InstallArgs): void | Promise<void> {

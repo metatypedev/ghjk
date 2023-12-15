@@ -1,62 +1,63 @@
 import {
   $,
-  addInstallGlobal,
   depBinShimPath,
   DownloadArgs,
-  downloadFile,
+  dwnUrlOut,
   GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  osXarch,
   std_fs,
   std_path,
-  std_url,
 } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "mold@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "mold_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     // we have to use tar because their tarballs contain symlinks
     std_ports.tar_aa,
   ],
+  platforms: osXarch(["linux"], ["aarch64", "x86_64"]),
 };
-
-registerDenoPortGlobal(manifest, () => new Port());
 
 export type MoldInstallConfig = InstallConfigSimple & {
   replaceLd: boolean;
 };
-export default function install(
-  config: MoldInstallConfig = { replaceLd: true },
-) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: MoldInstallConfig = { replaceLd: true }) {
+  return {
     ...config,
-  });
+    port: manifest,
+  };
 }
 
-const repoOwner = "rui314";
-const repoName = "mold";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
-
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "rui314";
+  repoName = "mold";
 
-  async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+
+    const os = platform.os;
+    const arch = platform.arch;
+
+    return [
+      this.releaseArtifactUrl(
+        installVersion,
+        `${this.repoName}-${
+          installVersion.startsWith("v")
+            ? installVersion.slice(1)
+            : installVersion
+        }-${arch}-${os}.tar.gz`,
+      ),
+    ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await $`${
@@ -87,27 +88,5 @@ export class Port extends GithubReleasePort {
       await installPath.join("bin", "ld")
         .createSymlinkTo(installPath.join("bin", "mold").toString());
     }
-  }
-}
-
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  if (platform.os == "linux") {
-    const os = "linux";
-    let arch;
-    switch (platform.arch) {
-      case "x86_64":
-        arch = "x86_64";
-        break;
-      case "aarch64":
-        arch = "aarch64";
-        break;
-      default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
-    }
-    return `${repoAddress}/releases/download/${installVersion}/${repoName}-${
-      installVersion.startsWith("v") ? installVersion.slice(1) : installVersion
-    }-${arch}-${os}.tar.gz`;
-  } else {
-    throw new Error(`unsupported os: ${platform.os}`);
   }
 }

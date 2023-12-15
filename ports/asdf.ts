@@ -1,14 +1,10 @@
-import {
-  addInstallGlobal,
-  asdf,
-  AsdfInstallConfig,
-  registerAsdfPort,
-} from "../port.ts";
+import { asdf, AsdfInstallConfigLite } from "../port.ts";
 
-registerAsdfPort();
-export default function install(config: Omit<AsdfInstallConfig, "portName">) {
-  addInstallGlobal({
-    portName: asdf.manifest.name,
+export default function conf(
+  config: Omit<AsdfInstallConfigLite, "portId">,
+) {
+  return {
     ...config,
-  });
+    port: asdf.manifest,
+  };
 }

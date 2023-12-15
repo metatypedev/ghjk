@@ -1,4 +1,5 @@
 export { ghjk } from "./mod.ts";
+import { install } from "./mod.ts";
 import node from "./ports/node.ts";
 import pnpm from "./ports/pnpm.ts";
 import cargo_binstall from "./ports/cargo-binstall.ts";
@@ -15,23 +16,25 @@ import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 
-// node({});
-// wasmedge({});
-// pnpm({});
-// cargo_binstall({});
-// wasm_tools({});
-// wasm_opt({});
-// cargo_insta({});
-// jco({});
-// mold({
-//   replaceLd: true,
-// });
-act({});
-// asdf({
-//   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-//   installType: "version",
-// });
-// protoc({});
-// earthly({});
-// ruff({});
-// whiz({});
+install(
+  // node(),
+  // wasmedge(),
+  // pnpm(),
+  // cargo_binstall(),
+  // wasm_tools(),
+  // wasm_opt(),
+  // cargo_insta(),
+  // mold({
+  //   replaceLd: true,
+  // }),
+  // act(),
+  // asdf({
+  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+  //   installType: "version",
+  // }),
+  // protoc(),
+  earthly(),
+  // ruff(),
+  // whiz(),
+  // jco()[0],
+);

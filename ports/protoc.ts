@@ -1,51 +1,69 @@
 import {
   $,
-  addInstallGlobal,
   DownloadArgs,
-  downloadFile,
+  dwnUrlOut,
   GithubReleasePort,
   InstallArgs,
-  type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  InstallConfigSimple,
+  osXarch,
   std_fs,
-  std_url,
   unarchive,
 } from "../port.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "protoc@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "protoc_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
-
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
     ...config,
-  });
+    port: manifest,
+  };
 }
 
-const repoOwner = "protocolbuffers";
-const repoName = "protobuf";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
-
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "protocolbuffers";
+  repoName = "protobuf";
 
-  async download(args: DownloadArgs) {
-    await downloadFile(args, artifactUrl(args.installVersion, args.platform));
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let os;
+    switch (platform.os) {
+      case "linux":
+        os = "linux";
+        break;
+      case "darwin":
+        os = "osx";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+    let arch;
+    switch (platform.arch) {
+      case "x86_64":
+        arch = "x86_64";
+        break;
+      case "aarch64":
+        arch = "aarch_64";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+
+    return [
+      this.releaseArtifactUrl(
+        installVersion,
+        `protoc-${installVersion.replace(/^v/, "")}-${os}-${arch}.zip`,
+      ),
+    ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      artifactUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = $.path(args.downloadPath).join(fileName);
 
     await unarchive(fileDwnPath.toString(), args.tmpDirPath);
@@ -60,32 +78,4 @@ export class Port extends GithubReleasePort {
       args.installPath,
     );
   }
-}
-
-function artifactUrl(installVersion: string, platform: PlatformInfo) {
-  let os;
-  switch (platform.os) {
-    case "linux":
-      os = "linux";
-      break;
-    case "darwin":
-      os = "osx";
-      break;
-    default:
-      throw new Error(`unsupported os: ${platform.os}`);
-  }
-  let arch;
-  switch (platform.arch) {
-    case "x86_64":
-      arch = "x86_64";
-      break;
-    case "aarch64":
-      arch = "aarch_64";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  return `${repoAddress}/releases/download/${installVersion}/protoc-${
-    installVersion.replace(/^v/, "")
-  }-${os}-${arch}.zip`;
 }

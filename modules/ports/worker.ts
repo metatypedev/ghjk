@@ -1,53 +1,124 @@
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
-import logger from "../../utils/logger.ts";
+import logger, { setup as setupLogger } from "../../utils/logger.ts";
 import { inWorker } from "../../utils/mod.ts";
-import {
-  type DenoWorkerPortManifestX,
-  type DownloadArgs,
-  type ExecEnvArgs,
-  type InstallArgs,
-  type ListAllArgs,
-  type ListBinPathsArgs,
-  PortBase,
+import { PortBase } from "./base.ts";
+import type {
+  DenoWorkerPortManifestX,
+  DownloadArgs,
+  ExecEnvArgs,
+  InstallArgs,
+  ListAllArgs,
+  ListBinPathsArgs,
 } from "./types.ts";
 
-type WorkerReq = {
-  ty: "assert";
-  arg: {
+if (inWorker()) {
+  initWorker();
+}
+
+function initWorker() {
+  setupLogger();
+
+  self.onmessage = onMsg;
+}
+
+async function onMsg(msg: MessageEvent<WorkerReq>) {
+  const req = msg.data;
+  if (!req.ty) {
+    logger().error("invalid worker request", req);
+    throw new Error("unrecognized worker request type");
+  }
+
+  const { Port } = await import(req.moduleSpecifier);
+  if (typeof Port != "function") {
+    throw new Error(
+      `export "Port" of module ${req.moduleSpecifier} is not a function`,
+    );
+  }
+  const portCtor = Port as unknown as new () => PortBase;
+  const port = new portCtor();
+
+  let res: WorkerResp;
+  if (req.ty == "listAll") {
+    res = {
+      ty: req.ty,
+      // id: req.id,
+      payload: await port.listAll(req.arg),
+    };
+  } else if (req.ty === "latestStable") {
+    res = {
+      ty: req.ty,
+      payload: await port.latestStable(req.arg),
+    };
+  } else if (req.ty === "execEnv") {
+    res = {
+      ty: req.ty,
+      payload: await port.execEnv(req.arg),
+    };
+  } else if (req.ty === "listBinPaths") {
+    res = {
+      ty: req.ty,
+      payload: await port.listBinPaths(req.arg),
+    };
+  } else if (req.ty === "listLibPaths") {
+    res = {
+      ty: req.ty,
+      payload: await port.listLibPaths(req.arg),
+    };
+  } else if (req.ty === "listIncludePaths") {
+    res = {
+      ty: req.ty,
+      payload: await port.listIncludePaths(req.arg),
+    };
+  } else if (req.ty === "download") {
+    await port.download(req.arg),
+      res = {
+        ty: req.ty,
+      };
+  } else if (req.ty === "install") {
+    await port.install(req.arg),
+      res = {
+        ty: req.ty,
+      };
+  } else {
+    logger().error("unrecognized worker request type", req);
+    throw new Error("unrecognized worker request type");
+  }
+  self.postMessage(res);
+}
+
+type WorkerReq =
+  & {
     moduleSpecifier: string;
-  };
-} | {
-  ty: "listAll";
-  arg: ListAllArgs;
-} | {
-  ty: "latestStable";
-  arg: ListAllArgs;
-} | {
-  ty: "execEnv";
-  arg: ExecEnvArgs;
-} | {
-  ty: "download";
-  arg: DownloadArgs;
-} | {
-  ty: "install";
-  arg: InstallArgs;
-} | {
-  ty: "listBinPaths";
-  arg: ListBinPathsArgs;
-} | {
-  ty: "listLibPaths";
-  arg: ListBinPathsArgs;
-} | {
-  ty: "listIncludePaths";
-  arg: ListBinPathsArgs;
-};
+  }
+  & ({
+    ty: "listAll";
+    arg: ListAllArgs;
+  } | {
+    ty: "latestStable";
+    arg: ListAllArgs;
+  } | {
+    ty: "execEnv";
+    arg: ExecEnvArgs;
+  } | {
+    ty: "download";
+    arg: DownloadArgs;
+  } | {
+    ty: "install";
+    arg: InstallArgs;
+  } | {
+    ty: "listBinPaths";
+    arg: ListBinPathsArgs;
+  } | {
+    ty: "listLibPaths";
+    arg: ListBinPathsArgs;
+  } | {
+    ty: "listIncludePaths";
+    arg: ListBinPathsArgs;
+  });
 
 type WorkerResp = {
-  ty: "assert";
-  // success
-} | {
   ty: "listAll";
   payload: string[];
 } | {
@@ -71,91 +142,6 @@ type WorkerResp = {
   ty: "install";
 };
 
-/// Make sure to call this before any `await` point or your
-/// plug might miss messages
-export function initDenoWorkerPort<P extends PortBase>(portCtor: () => P) {
-  if (inWorker()) {
-    // let plugClass: (new () => PlugBase) | undefined;
-    // const plugInit = () => {
-    //   if (!plugClass) {
-    //     throw new Error("worker yet to be initialized");
-    //   }
-    //   return new plugClass();
-    // };
-    self.onmessage = async (msg: MessageEvent<WorkerReq>) => {
-      const req = msg.data;
-      if (!req.ty) {
-        logger().error("invalid worker request", req);
-        throw new Error("unrecognized worker request type");
-      }
-      let res: WorkerResp;
-      if (req.ty == "assert") {
-        throw new Error("not yet impl");
-        /* const { default: defExport } = await import(req.arg.moduleSpecifier);
-        if (typeof defExport != "function") {
-          throw new Error(
-            `default export of module ${req.arg.moduleSpecifier} is not a function`,
-          );
-        }
-        plugClass = defExport;
-        res = {
-          ty: req.ty,
-        }; */
-      } else if (req.ty == "listAll") {
-        res = {
-          ty: req.ty,
-          // id: req.id,
-          payload: await portCtor().listAll(req.arg),
-        };
-      } else if (req.ty === "latestStable") {
-        res = {
-          ty: req.ty,
-          payload: await portCtor().latestStable(req.arg),
-        };
-      } else if (req.ty === "execEnv") {
-        res = {
-          ty: req.ty,
-          payload: await portCtor().execEnv(req.arg),
-        };
-      } else if (req.ty === "listBinPaths") {
-        res = {
-          ty: req.ty,
-          payload: await portCtor().listBinPaths(req.arg),
-        };
-      } else if (req.ty === "listLibPaths") {
-        res = {
-          ty: req.ty,
-          payload: await portCtor().listLibPaths(req.arg),
-        };
-      } else if (req.ty === "listIncludePaths") {
-        res = {
-          ty: req.ty,
-          payload: await portCtor().listIncludePaths(req.arg),
-        };
-      } else if (req.ty === "download") {
-        await portCtor().download(req.arg),
-          res = {
-            ty: req.ty,
-          };
-      } else if (req.ty === "install") {
-        await portCtor().install(req.arg),
-          res = {
-            ty: req.ty,
-          };
-      } else {
-        logger().error("unrecognized worker request type", req);
-        throw new Error("unrecognized worker request type");
-      }
-      self.postMessage(res);
-    };
-  } else {
-    throw new Error("expecting to be running not running in Worker");
-  }
-}
-// type MethodKeys<T> = {
-//   [P in keyof T]-?: T[P] extends Function ? P : never;
-// }[keyof T];
-
 export class DenoWorkerPort extends PortBase {
   constructor(
     public manifest: DenoWorkerPortManifestX,
@@ -167,7 +153,7 @@ export class DenoWorkerPort extends PortBase {
   async call(
     req: WorkerReq,
   ): Promise<WorkerResp> {
-    const worker = new Worker(this.manifest.moduleSpecifier, {
+    const worker = new Worker(import.meta.url, {
       name: `${this.manifest.name}@${this.manifest.version}`,
       type: "module",
     });
@@ -189,11 +175,12 @@ export class DenoWorkerPort extends PortBase {
     return resp;
   }
 
-  async listAll(env: ListAllArgs): Promise<string[]> {
+  async listAll(args: ListAllArgs): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listAll",
       // id: crypto.randomUUID(),
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "listAll") {
@@ -206,6 +193,7 @@ export class DenoWorkerPort extends PortBase {
     const req: WorkerReq = {
       ty: "latestStable",
       arg: env,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "latestStable") {
@@ -215,11 +203,12 @@ export class DenoWorkerPort extends PortBase {
   }
 
   async execEnv(
-    env: ExecEnvArgs,
+    args: ExecEnvArgs,
   ): Promise<Record<string, string>> {
     const req: WorkerReq = {
       ty: "execEnv",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "execEnv") {
@@ -228,11 +217,12 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
   async listBinPaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listBinPaths",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "listBinPaths") {
@@ -242,11 +232,12 @@ export class DenoWorkerPort extends PortBase {
   }
 
   async listLibPaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listLibPaths",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "listLibPaths") {
@@ -256,11 +247,12 @@ export class DenoWorkerPort extends PortBase {
   }
 
   async listIncludePaths(
-    env: ListBinPathsArgs,
+    args: ListBinPathsArgs,
   ): Promise<string[]> {
     const req: WorkerReq = {
       ty: "listIncludePaths",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "listIncludePaths") {
@@ -269,10 +261,11 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async download(env: DownloadArgs): Promise<void> {
+  async download(args: DownloadArgs): Promise<void> {
     const req: WorkerReq = {
       ty: "download",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "download") {
@@ -280,10 +273,11 @@ export class DenoWorkerPort extends PortBase {
     }
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async install(env: InstallArgs): Promise<void> {
+  async install(args: InstallArgs): Promise<void> {
     const req: WorkerReq = {
       ty: "install",
-      arg: env,
+      arg: args,
+      moduleSpecifier: this.manifest.moduleSpecifier,
     };
     const res = await this.call(req);
     if (res.ty == "install") {

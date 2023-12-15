@@ -4,8 +4,8 @@ import validators, {
   type AmbientAccessPortManifestX,
   type DenoWorkerPortManifestX,
   type DepShims,
-  type InstallConfig,
-  InstallConfigX,
+  type InstallConfigLite,
+  InstallConfigLiteX,
   type PortArgsBase,
   type PortManifestX,
   type PortsModuleConfig,
@@ -68,8 +68,8 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     const installId = pendingInstalls.pop()!;
     const inst = installs.all.get(installId)!;
 
-    const manifest = cx.ports[inst.portName] ??
-      cx.allowedDeps[inst.portName]!;
+    const manifest = cx.ports[inst.portId] ??
+      cx.allowedDeps[inst.portId]!;
     const depShims: DepShims = {};
 
     // create the shims for the deps
@@ -79,7 +79,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     for (const depId of manifest.deps ?? []) {
       const depPort = cx.allowedDeps[depId.id]!;
       const depInstall = {
-        portName: depPort.name,
+        portId: depPort.name,
       };
       const depInstallId = getInstallId(depInstall);
       const depArtifacts = artifacts.get(depInstallId);
@@ -132,7 +132,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     await Deno.remove(shimDir, { recursive: true });
   }
   // create shims for the environment
-  await Promise.allSettled([
+  await Promise.all([
     Deno.mkdir(std_path.resolve(shimDir, "bin"), { recursive: true }),
     Deno.mkdir(std_path.resolve(shimDir, "lib"), { recursive: true }),
     Deno.mkdir(std_path.resolve(shimDir, "include"), { recursive: true }),
@@ -208,7 +208,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
 
 function buildInstallGraph(cx: PortsModuleConfig) {
   const installs = {
-    all: new Map<string, InstallConfig>(),
+    all: new Map<string, InstallConfigLite>(),
     indie: [] as string[],
     // edges from dependency to dependent
     revDepEdges: new Map<string, string[]>(),
@@ -216,12 +216,12 @@ function buildInstallGraph(cx: PortsModuleConfig) {
     depEdges: new Map<string, string[]>(),
     user: new Set<string>(),
   };
-  const foundInstalls: InstallConfig[] = [];
+  const foundInstalls: InstallConfigLite[] = [];
   for (const inst of cx.installs) {
     const instId = getInstallId(inst);
     // FIXME: better support for multi installs
     if (installs.user.has(instId)) {
-      throw new Error(`duplicate install found by plugin ${inst.portName}`);
+      throw new Error(`duplicate install found by plugin ${inst.portId}`);
     }
     installs.user.add(instId);
     foundInstalls.push(inst);
@@ -229,11 +229,11 @@ function buildInstallGraph(cx: PortsModuleConfig) {
 
   while (foundInstalls.length > 0) {
     const inst = foundInstalls.pop()!;
-    const manifest = cx.ports[inst.portName] ??
-      cx.allowedDeps[inst.portName];
+    const manifest = cx.ports[inst.portId] ??
+      cx.allowedDeps[inst.portId];
     if (!manifest) {
       throw new Error(
-        `unable to find plugin "${inst.portName}" specified by install ${
+        `unable to find plugin "${inst.portId}" specified by install ${
           JSON.stringify(inst)
         }`,
       );
@@ -261,7 +261,7 @@ function buildInstallGraph(cx: PortsModuleConfig) {
           );
         }
         const depInstall = {
-          portName: depPort.name,
+          portId: depPort.name,
         };
         const depInstallId = getInstallId(depInstall);
 
@@ -337,25 +337,25 @@ type InstallArtifacts = DePromisify<ReturnType<typeof doInstall>>;
 
 async function doInstall(
   envDir: string,
-  instUnclean: InstallConfig,
+  instUnclean: InstallConfigLite,
   manifest: PortManifestX,
   depShims: DepShims,
 ) {
   logger().debug("installing", { envDir, instUnclean, port: manifest });
   let port;
-  let inst: InstallConfigX;
-  if (manifest.ty == "denoWorker") {
-    inst = validators.installConfig.parse(instUnclean);
+  let inst: InstallConfigLiteX;
+  if (manifest.ty == "denoWorker@v1") {
+    inst = validators.installConfigLite.parse(instUnclean);
     port = new DenoWorkerPort(
       manifest as DenoWorkerPortManifestX,
     );
-  } else if (manifest.ty == "ambientAccess") {
-    inst = validators.installConfig.parse(instUnclean);
+  } else if (manifest.ty == "ambientAccess@v1") {
+    inst = validators.installConfigLite.parse(instUnclean);
     port = new AmbientAccessPort(
       manifest as AmbientAccessPortManifestX,
     );
-  } else if (manifest.ty == "asdf") {
-    const asdfInst = validators.asdfInstallConfig.parse(instUnclean);
+  } else if (manifest.ty == "asdf@v1") {
+    const asdfInst = validators.asdfInstallConfigLite.parse(instUnclean);
     logger().debug(instUnclean);
     inst = asdfInst;
     port = await AsdfPort.init(envDir, asdfInst, depShims);
@@ -370,6 +370,7 @@ async function doInstall(
   const installVersion = validators.string.parse(
     inst.version ?? await port.latestStable({
       depShims,
+      manifest,
     }),
   );
   const installPath = std_path.resolve(
@@ -391,6 +392,7 @@ async function doInstall(
     depShims,
     platform: Deno.build,
     config: inst,
+    manifest,
   };
   {
     logger().info(`downloading ${installId}:${installVersion}`);

@@ -1,22 +1,23 @@
 import {
-  addInstallGlobal,
   type AmbientAccessPortManifest,
-  registerAmbientPortGlobal,
+  InstallConfigSimple,
+  osXarch,
 } from "../port.ts";
 
 export const manifest: AmbientAccessPortManifest = {
-  ty: "ambientAccess" as const,
-  name: "tar@aa",
+  ty: "ambientAccess@v1" as const,
+  name: "tar_aa",
   version: "0.1.0",
   execName: "tar",
   versionExtractFlag: "--version",
   versionExtractRegex: "(\\d+\\.\\d+)",
   versionExtractRegexFlags: "",
+  platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
-registerAmbientPortGlobal(manifest);
-export default function install() {
-  addInstallGlobal({
-    portName: manifest.name,
-  });
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
+    ...config,
+    port: manifest,
+  };
 }

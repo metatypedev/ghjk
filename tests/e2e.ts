@@ -9,7 +9,7 @@ const cases: E2eTestCase[] = [
         name: "mold",
         imports: `import port from "$ghjk/ports/mold.ts"`,
         confFn: `async () => {
-    port({ });
+    install(port());
   }`,
         ePoint: `mold -V`,
       },
@@ -21,7 +21,7 @@ const cases: E2eTestCase[] = [
     name: "protoc",
     imports: `import port from "$ghjk/ports/protoc.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `protoc --version`,
   },
@@ -30,7 +30,7 @@ const cases: E2eTestCase[] = [
     name: "ruff",
     imports: `import port from "$ghjk/ports/ruff.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `ruff --version`,
   },
@@ -39,7 +39,7 @@ const cases: E2eTestCase[] = [
     name: "whiz",
     imports: `import port from "$ghjk/ports/whiz.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `whiz --version`,
   },
@@ -48,7 +48,7 @@ const cases: E2eTestCase[] = [
     name: "act",
     imports: `import port from "$ghjk/ports/act.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `act --version`,
   },
@@ -57,7 +57,7 @@ const cases: E2eTestCase[] = [
     name: "cargo-binstall",
     imports: `import port from "$ghjk/ports/cargo-binstall.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `cargo-binstall -V`,
   },
@@ -66,7 +66,7 @@ const cases: E2eTestCase[] = [
     name: "wasmedge",
     imports: `import port from "$ghjk/ports/wasmedge.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `wasmedge --version`,
   },
@@ -75,7 +75,7 @@ const cases: E2eTestCase[] = [
     name: "cargo-insta",
     imports: `import port from "$ghjk/ports/cargo-insta.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `cargo-insta -V`,
   },
@@ -84,7 +84,7 @@ const cases: E2eTestCase[] = [
     name: "wasm-tools",
     imports: `import port from "$ghjk/ports/wasm-tools.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `wasm-tools -V`,
   },
@@ -93,7 +93,7 @@ const cases: E2eTestCase[] = [
     name: "node",
     imports: `import port from "$ghjk/ports/node.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `node --version`,
   },
@@ -102,7 +102,7 @@ const cases: E2eTestCase[] = [
     name: "wasm-opt",
     imports: `import port from "$ghjk/ports/wasm-opt.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `wasm-opt --version`,
   },
@@ -111,7 +111,7 @@ const cases: E2eTestCase[] = [
     name: "earthly",
     imports: `import port from "$ghjk/ports/earthly.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `earthly --version`,
   },
@@ -120,7 +120,7 @@ const cases: E2eTestCase[] = [
     name: "pnpm",
     imports: `import port from "$ghjk/ports/pnpm.ts"`,
     confFn: `async () => {
-    port({ });
+    install(port());
   }`,
     ePoint: `pnpm --version`,
   },
@@ -129,7 +129,7 @@ const cases: E2eTestCase[] = [
     name: "jco",
     imports: `import port from "$ghjk/ports/jco.ts"`,
     confFn: `async () => {
-    port({ });
+    install(...port());
   }`,
     ePoint: `jco --version`,
   },
@@ -138,10 +138,10 @@ const cases: E2eTestCase[] = [
     name: "asdf-cmake",
     imports: `import port from "$ghjk/ports/asdf.ts"`,
     confFn: `async () => {
-  port({
+  install(port({
     pluginRepo: "https://github.com/asdf-community/asdf-cmake",
     installType: "version",
-  });
+  }));
     }`,
     ePoint: `cmake --version`,
   },

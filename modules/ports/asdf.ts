@@ -1,13 +1,13 @@
 import {
-  type AsdfInstallConfigX,
+  type AsdfInstallConfigLiteX,
   type DepShims,
   type DownloadArgs,
   type InstallArgs,
   type ListAllArgs,
   type ListBinPathsArgs,
-  PortBase,
   type TheAsdfPortManifest,
 } from "./types.ts";
+import { PortBase } from "./base.ts";
 import {
   $,
   depBinShimPath,
@@ -20,21 +20,27 @@ import { std_fs, std_path } from "../../deps/common.ts";
 // FIXME: find a better way to expose std_plug.plug_id s
 // that allows standard plugs to depend on each other
 const curl_aa_id = {
-  id: "curl@aa",
+  id: "curl_aa",
 };
 
 const git_aa_id = {
-  id: "git@aa",
+  id: "git_aa",
 };
 
 export const manifest: TheAsdfPortManifest = {
-  ty: "asdf",
-  name: "asdf@asdf",
+  ty: "asdf@v1",
+  name: "asdf",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [curl_aa_id, git_aa_id],
   // there should only be a single asdf port registered at any time
   conflictResolution: "override",
+  platforms: [
+    { os: "linux", arch: "x86_64" },
+    { os: "linux", arch: "aarch64" },
+    { os: "darwin", arch: "x86_64" },
+    { os: "darwin", arch: "aarch64" },
+  ],
 };
 
 export class AsdfPort extends PortBase {
@@ -42,13 +48,13 @@ export class AsdfPort extends PortBase {
   constructor(
     public asdfDir: string,
     public pluginDir: string,
-    public config: AsdfInstallConfigX,
+    public config: AsdfInstallConfigLiteX,
   ) {
     super();
   }
   static async init(
     envDir: string,
-    installConfig: AsdfInstallConfigX,
+    installConfig: AsdfInstallConfigLiteX,
     depShims: DepShims,
   ) {
     const asdfDir = std_path.resolve(envDir, "asdf");
