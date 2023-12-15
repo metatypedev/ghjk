@@ -60,12 +60,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./
-        id: ghjk-action
+      - uses: metatypedev/setup-ghjk@v1
+        with:
+          installer-url: ./install.ts
         env: 
           GHJK_CONFIG: ./examples/protoc/ghjk.ts
-      - shell: bash
-        run: |
+      - run: |
           cd examples/protoc
           . $BASH_ENV
           protoc --version
