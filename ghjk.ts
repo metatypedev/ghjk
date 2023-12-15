@@ -28,12 +28,16 @@ install(
   //   replaceLd: true,
   // }),
   // act(),
-  // asdf({
-  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-  //   installType: "version",
-  // }),
+  asdf({
+    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+    installType: "version",
+  }),
+  asdf({
+    pluginRepo: "https://github.com/asdf-community/asdf-poetry",
+    installType: "version",
+  }),
   // protoc(),
-  earthly(),
+  // earthly(),
   // ruff(),
   // whiz(),
   // jco()[0],

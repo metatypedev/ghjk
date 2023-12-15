@@ -106,10 +106,25 @@ function registerPort(
       conflict.conflictResolution == "override" &&
       manifest.conflictResolution == "override"
     ) {
-      throw new Error(
-        `Two instances of port "${id}" found with ` +
-          `both set to "${manifest.conflictResolution}" conflictResolution"`,
-      );
+      if (
+        semver.compare(
+          semver.parse(manifest.version),
+          semver.parse(conflict.version),
+        ) != 0
+      ) {
+        throw new Error(
+          `Two instances of port "${id}" found with different versions and` +
+            `both set to "${manifest.conflictResolution}" conflictResolution"`,
+        );
+      } else {
+        logger().debug(
+          "port rejected due to dual override and equal versions",
+          {
+            retained: conflict,
+            rejected: manifest,
+          },
+        );
+      }
     } else if (conflict.conflictResolution == "override") {
       logger().debug("port rejected due to override", {
         retained: conflict,
