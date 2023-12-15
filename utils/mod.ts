@@ -43,7 +43,7 @@ export function depBinShimPath(
 
 export function getInstallId(install: InstallConfigLite) {
   // TODO: hash
-  if ("pluginRepo" in install && install.portId == "asdf@asdf") {
+  if ("pluginRepo" in install && install.portId == "asdf") {
     const url = new URL(install.pluginRepo as string);
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
