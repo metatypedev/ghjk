@@ -9,11 +9,10 @@ import {
   type TheAsdfPortManifest,
 } from "./types.ts";
 import {
+  $,
   depBinShimPath,
   getInstallId,
   pathWithDepShims,
-  spawn,
-  spawnOutput,
 } from "../../utils/mod.ts";
 // import * as std_ports from "../std.ts";
 import { std_fs, std_path } from "../../deps/common.ts";
@@ -60,16 +59,9 @@ export class AsdfPort extends PortBase {
       const tmpCloneDirPath = await Deno.makeTempDir({
         prefix: `ghjk_asdf_clone_${installId}_`,
       });
-      await spawn(
-        [
-          depBinShimPath(git_aa_id, "git", depShims),
-          "clone",
-          installConfig.pluginRepo,
-          "--depth",
-          "1",
-          tmpCloneDirPath,
-        ],
-      );
+      await $`${
+        depBinShimPath(git_aa_id, "git", depShims)
+      } clone ${installConfig.pluginRepo} --depth 1 ${tmpCloneDirPath}`;
       await std_fs.copy(
         tmpCloneDirPath,
         pluginDir,
@@ -80,9 +72,8 @@ export class AsdfPort extends PortBase {
   }
 
   async listAll(_args: ListAllArgs): Promise<string[]> {
-    const out = await spawnOutput([
-      std_path.resolve(this.pluginDir, "bin", "list-all"),
-    ]);
+    const out = await $`${std_path.resolve(this.pluginDir, "bin", "list-all")}`
+      .text();
     return out.split(" ").filter((str) => str.length > 0).map((str) =>
       str.trim()
     );
@@ -93,15 +84,14 @@ export class AsdfPort extends PortBase {
     if (!await std_fs.exists(binPath)) {
       return super.latestStable(args);
     }
-    const out = await spawnOutput([binPath], {
-      env: {
+    const out = await $`${binPath}`
+      .env({
         PATH: pathWithDepShims(args.depShims),
         ASDF_INSTALL_TYPE: this.config.installType,
         // FIXME: asdf requires these vars for latest-stable. this makes no sense!
         ASDF_INSTALL_VERSION: this.config.version ?? "",
         // ASDF_INSTALL_PATH: args.installPath,
-      },
-    });
+      }).text();
     return out.trim();
   }
 
@@ -111,14 +101,13 @@ export class AsdfPort extends PortBase {
       return super.listBinPaths(args);
     }
 
-    const out = await spawnOutput([binPath], {
-      env: {
+    const out = await $`${binPath}`
+      .env({
         PATH: pathWithDepShims(args.depShims),
         ASDF_INSTALL_TYPE: this.config.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,
-      },
-    });
+      }).text();
     return out.split(" ").filter((str) => str.length > 0).map((str) =>
       str.trim()
     );
@@ -130,30 +119,24 @@ export class AsdfPort extends PortBase {
     if (!await std_fs.exists(binPath)) {
       return;
     }
-    await spawn([
-      std_path.resolve(this.pluginDir, "bin", "download"),
-    ], {
-      env: {
+    await $`${std_path.resolve(this.pluginDir, "bin", "download")}`
+      .env({
         PATH: pathWithDepShims(args.depShims),
         ASDF_INSTALL_TYPE: this.config.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,
         ASDF_DOWNLOAD_PATH: args.downloadPath,
-      },
-    });
+      });
   }
   async install(args: InstallArgs) {
-    await spawn([
-      std_path.resolve(this.pluginDir, "bin", "install"),
-    ], {
-      env: {
+    await $`${std_path.resolve(this.pluginDir, "bin", "install")}`
+      .env({
         PATH: pathWithDepShims(args.depShims),
         ASDF_INSTALL_TYPE: this.config.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,
         ASDF_DOWNLOAD_PATH: args.downloadPath,
         ASDF_CONCURRENCY: args.availConcurrency.toString(),
-      },
-    });
+      });
   }
 }

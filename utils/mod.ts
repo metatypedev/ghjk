@@ -11,81 +11,6 @@ export function dbg<T>(val: T) {
   return val;
 }
 
-export class ChildError extends Error {
-  constructor(
-    public code: number,
-    public output: string,
-  ) {
-    super(`ChildError - ${code} - ${output}`);
-  }
-}
-
-export type SpawnOptions = {
-  cwd?: string;
-  env?: Record<string, string>;
-  pipeInput?: string;
-  // pipeOut?: WritableStream<Uint8Array>;
-  // pipeErr?: WritableStream<Uint8Array>;
-};
-
-/// This is deprecated, please use the dax lib
-// as exposed from this module by the `$` object
-export async function spawn(
-  cmd: string[],
-  options: SpawnOptions = {},
-) {
-  const { cwd, env, pipeInput } = {
-    ...options,
-  };
-  logger().debug("spawning", cmd);
-  const child = new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    ...(pipeInput
-      ? {
-        stdin: "piped",
-      }
-      : {}),
-    env,
-  }).spawn();
-
-  if (pipeInput) {
-    const writer = child.stdin.getWriter();
-    await writer.write(new TextEncoder().encode(pipeInput));
-    writer.releaseLock();
-    await child.stdin.close();
-  }
-  const { code, success } = await child.status;
-  if (!success) {
-    throw new Error(`child failed with code ${code}`);
-  }
-}
-
-export async function spawnOutput(
-  cmd: string[],
-  options: Omit<SpawnOptions, "pipeOut" | "pipeErr" | "pipeInput"> = {},
-): Promise<string> {
-  const { cwd, env } = {
-    ...options,
-  };
-  logger().debug("spawning", cmd);
-  const child = new Deno.Command(cmd[0], {
-    args: cmd.slice(1),
-    cwd,
-    stdout: "piped",
-    stderr: "piped",
-    env,
-  }).spawn();
-
-  const { code, success, stdout, stderr } = await child.output();
-  if (!success) {
-    throw new Error(
-      `child failed with code ${code} - ${new TextDecoder().decode(stderr)}`,
-    );
-  }
-  return new TextDecoder().decode(stdout);
-}
-
 export function pathWithDepShims(
   depShims: DepShims,
 ) {
@@ -117,8 +42,8 @@ export function depBinShimPath(
 }
 
 export function getInstallId(install: InstallConfig) {
-  if ("pluginRepo" in install) {
-    const url = new URL(install.pluginRepo);
+  if ("pluginRepo" in install && install.portName == "asdf@asdf") {
+    const url = new URL(install.pluginRepo as string);
     const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
     return `asdf-${pluginId}`;
   }
@@ -135,28 +60,6 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-let colorEnvFlagSet = false;
-Deno.permissions.query({
-  name: "env",
-  variable: "CLICOLOR_FORCE",
-}).then((perm) => {
-  if (perm.state == "granted") {
-    const val = Deno.env.get("CLICOLOR_FORCE");
-    colorEnvFlagSet = !!val && val != "0" && val != "false";
-  }
-});
-
-export function isColorfulTty(outFile = Deno.stdout) {
-  if (colorEnvFlagSet) {
-    return true;
-  }
-  if (Deno.isatty(outFile.rid)) {
-    const { columns } = Deno.consoleSize();
-    return columns > 0;
-  }
-  return false;
-}
-
 export async function findConfig(path: string) {
   let current = path;
   while (current !== "/") {
@@ -169,12 +72,11 @@ export async function findConfig(path: string) {
   return null;
 }
 
-export function envDirFromConfig(config: string) {
-  const { shareDir } = dirs();
+export function envDirFromConfig(ghjkDir: string, configPath: string) {
   return std_path.resolve(
-    shareDir,
+    ghjkDir,
     "envs",
-    std_path.dirname(config).replaceAll("/", "."),
+    std_path.dirname(configPath).replaceAll("/", "."),
   );
 }
 
@@ -195,7 +97,10 @@ export function dirs() {
   if (!home) {
     throw new Error("cannot find home dir");
   }
-  return { homeDir: home, shareDir: `${home}/.local/share/ghjk` };
+  return {
+    homeDir: home,
+    shareDir: std_path.resolve(home, ".local", "share"),
+  };
 }
 
 export const AVAIL_CONCURRENCY = Number.parseInt(

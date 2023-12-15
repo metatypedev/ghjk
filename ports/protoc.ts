@@ -1,15 +1,14 @@
 import {
+  $,
   addInstallGlobal,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
-  std_path,
   std_url,
   unarchive,
 } from "../port.ts";
@@ -34,47 +33,26 @@ const repoOwner = "protocolbuffers";
 const repoName = "protobuf";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+    await downloadFile(args, artifactUrl(args.installVersion, args.platform));
   }
 
   async install(args: InstallArgs) {
     const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
+      artifactUrl(args.installVersion, args.platform),
     );
-    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+    const fileDwnPath = $.path(args.downloadPath).join(fileName);
 
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await unarchive(fileDwnPath.toString(), args.tmpDirPath);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
 
     await std_fs.copy(
@@ -84,7 +62,7 @@ export class Port extends PortBase {
   }
 }
 
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
+function artifactUrl(installVersion: string, platform: PlatformInfo) {
   let os;
   switch (platform.os) {
     case "linux":

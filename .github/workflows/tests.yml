@@ -9,7 +9,7 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.38.2"
+  DENO_VERSION: "1.38.5"
 
 jobs:
   changes:
@@ -29,14 +29,29 @@ jobs:
       - uses: pre-commit/action@v3.0.0
 
   test-e2e:
-    runs-on: ubuntu-latest
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            e2eType: "docker"
+          - os: macos-latest
+            e2eType: "local"
+          # - os: windows-latest
+          #   e2eType: "local"
+    env:
+      GHJK_TEST_E2E_TYPE: ${{ matrix.e2eType }}
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
-      - uses: docker/setup-buildx-action@v3
-      - uses: actions-hub/docker/cli@master
+      - if: "${{ matrix.os == 'macos-latest' }}"
+        run: brew install fish zsh
+      - if: "${{ matrix.e2eType == 'docker' }}"
+        uses: docker/setup-buildx-action@v3
+      - if: "${{ matrix.e2eType == 'docker' }}"
+        uses: actions-hub/docker/cli@master
         env:
           SKIP_LOGIN: true
       - run: deno task test
@@ -45,15 +60,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - uses: metatypedev/setup-ghjk@v1
         with:
-          deno-version: ${{ env.DENO_VERSION }}
-      - uses: ./
-        id: ghjk-action
+          installer-url: ./install.ts
         env: 
           GHJK_CONFIG: ./examples/protoc/ghjk.ts
-      - shell: bash
-        run: |
+      - run: |
           cd examples/protoc
           . $BASH_ENV
           protoc --version

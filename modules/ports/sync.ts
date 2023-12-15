@@ -25,14 +25,14 @@ async function writeLoader(
       `export GHJK_CLEANUP_POSIX="";`,
       ...Object.entries(env).map(([k, v]) =>
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        `GHJK_CLEANUP_POSIX+="export ${k}='$${k}';";
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${k}='$${k}';";
 export ${k}='${v}';`
       ),
       ...Object.entries(pathVars).map(([k, v]) =>
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX+='${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^$HOME/\\.local/share/ghjk/envs" | tr "\\n" ":");${k}="\${${k}%:}"';
-${k}="${v}:$${k}";
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}"';
+export ${k}="${v}:$${k}";
 `
       ),
     ].join("\n"),
@@ -43,7 +43,7 @@ ${k}="${v}:$${k}";
 set --global --export ${k} '${v}';`
       ),
       ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^$HOME\\/\\.local\\/share\\/ghjk\\/envs" $${k});';
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^${envDir}" $${k});';
 set --global --prepend ${k} ${v};
 `
       ),
@@ -195,6 +195,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     C_INCLUDE_PATH: `${envDir}/shims/include`,
     CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
   };
+  logger().debug("adding vars to loader", env);
   // FIXME: prevent malicious env manipulations
   await writeLoader(
     envDir,
@@ -204,6 +205,7 @@ export async function sync(envDir: string, cx: PortsModuleConfig) {
     pathVars,
   );
 }
+
 function buildInstallGraph(cx: PortsModuleConfig) {
   const installs = {
     all: new Map<string, InstallConfig>(),

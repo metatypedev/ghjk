@@ -6,17 +6,17 @@ import {
   type DenoWorkerPortManifest,
   type DownloadArgs,
   type InstallConfig,
-  type PortBase,
+  PortBase,
   type PortsModuleConfigBase,
   registerAmbientPort,
   registerDenoPort,
   registerPort,
 } from "./modules/ports/mod.ts";
-import { std_fs, std_path, std_url } from "./deps/ports.ts";
+import { std_url } from "./deps/ports.ts";
 import { initDenoWorkerPort } from "./modules/ports/worker.ts";
 import * as asdf from "./modules/ports/asdf.ts";
 import logger, { setup as setupLogger } from "./utils/logger.ts";
-import { inWorker } from "./utils/mod.ts";
+import { $, inWorker } from "./utils/mod.ts";
 
 export * from "./modules/ports/mod.ts";
 export * from "./utils/mod.ts";
@@ -25,6 +25,7 @@ export { default as logger } from "./utils/logger.ts";
 export { initDenoWorkerPort } from "./modules/ports/worker.ts";
 export * as asdf from "./modules/ports/asdf.ts";
 export type * from "./modules/ports/mod.ts";
+export { GithubReleasePort } from "./modules/ports/ghrel.ts";
 export * from "./utils/unarchive.ts";
 
 if (inWorker()) {
@@ -90,43 +91,20 @@ export async function downloadFile(
     mode: 0o666,
     ...options,
   };
-  const fileDwnPath = std_path.resolve(env.downloadPath, fileName);
-  if (await std_fs.exists(fileDwnPath)) {
+  const fileDwnPath = $.path(env.downloadPath).join(fileName);
+  if (await fileDwnPath.exists()) {
     logger().debug(`file ${fileName} already downloaded, skipping`);
     return;
   }
-  const tmpFilePath = std_path.resolve(
-    env.tmpDirPath,
-    fileName,
-  );
+  const tmpFilePath = $.path(env.tmpDirPath).join(fileName);
 
-  const resp = await fetch(url);
+  await $.request(url)
+    .showProgress()
+    .pipeToPath(tmpFilePath, { create: true, mode });
 
-  if (!resp.ok) {
-    throw new Error(
-      `${resp.status}: ${resp.statusText} downloading file at ${url}`,
-    );
-  }
-  const length = resp.headers.get("content-length");
-  logger().debug(
-    `downloading file: `,
-    {
-      fileSize: length ? Number(length) / 1024 : "N/A",
-      url,
-      to: fileDwnPath,
-    },
-  );
+  await $.path(env.downloadPath).ensureDir();
 
-  const dest = await Deno.open(
-    tmpFilePath,
-    { create: true, truncate: true, write: true, mode },
-  );
-  await resp.body!.pipeTo(dest.writable, { preventClose: false });
-  await std_fs.ensureDir(env.downloadPath);
-  await std_fs.copy(
-    tmpFilePath,
-    fileDwnPath,
-  );
+  await tmpFilePath.copyFile(fileDwnPath);
 }
 
 export const removeFile = Deno.remove;

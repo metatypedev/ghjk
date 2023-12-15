@@ -1,16 +1,14 @@
 import {
+  $,
   addInstallGlobal,
   DownloadArgs,
   downloadFile,
-  InstallArgs,
+  GithubReleasePort,
+  type InstallArgs,
   type InstallConfigSimple,
-  ListAllArgs,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
-  std_path,
   std_url,
 } from "../port.ts";
 
@@ -29,26 +27,14 @@ export default function install(config: InstallConfigSimple = {}) {
   });
 }
 
-class Port extends PortBase {
+const repoOwner = "pnpm";
+const repoName = "pnpm";
+const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
+
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async listAll(_env: ListAllArgs) {
-    const metadataRequest = await fetch(
-      `https://registry.npmjs.org/@pnpm/exe`,
-      {
-        headers: {
-          // use abbreviated registry info which's still 500kb unzipped
-          "Accept": "application/vnd.npm.install-v1+json",
-        },
-      },
-    );
-    const metadata = await metadataRequest.json() as {
-      versions: Record<string, unknown>;
-    };
-
-    const versions = Object.keys(metadata.versions);
-    return versions;
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
     await downloadFile(
@@ -64,20 +50,18 @@ class Port extends PortBase {
     const fileName = std_url.basename(
       artifactUrl(args.installVersion, args.platform),
     );
-    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
-
-    await std_fs.ensureDir(std_path.resolve(args.installPath, "bin"));
     await std_fs.copy(
-      fileDwnPath,
-      std_path.resolve(
-        args.installPath,
-        "bin",
-        args.platform.os == "windows" ? "pnpm.exe" : "pnpm",
-      ),
+      $.path(args.downloadPath).join(fileName).toString(),
+      (
+        await installPath.join("bin").ensureDir()
+      )
+        .join(args.platform.os == "windows" ? "pnpm.exe" : "pnpm")
+        .toString(),
     );
   }
 }
@@ -105,9 +89,9 @@ function artifactUrl(installVersion: string, platform: PlatformInfo) {
       break;
     case "windows":
       os = "win";
-      return `https://github.com/pnpm/pnpm/releases/download/v${installVersion}/pnpm-${os}-${arch}.exe`;
+      return `${repoAddress}/releases/download/v${installVersion}/pnpm-${os}-${arch}.exe`;
     default:
       throw new Error(`unsupported os: ${platform.arch}`);
   }
-  return `https://github.com/pnpm/pnpm/releases/download/v${installVersion}/pnpm-${os}-${arch}`;
+  return `${repoAddress}/releases/download/${installVersion}/pnpm-${os}-${arch}`;
 }

@@ -1,24 +1,29 @@
 import {
+  $,
   addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
   std_path,
   std_url,
-  unarchive,
 } from "../port.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   ty: "denoWorker" as const,
   name: "whiz@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [
+    // we have to use tar because their tarballs for darwin use gnu sparse
+    std_ports.tar_aa,
+  ],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
@@ -34,32 +39,10 @@ const repoOwner = "zifeo";
 const repoName = "whiz";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
     await downloadFile(args, downloadUrl(args.installVersion, args.platform));
@@ -70,15 +53,17 @@ export class Port extends PortBase {
       downloadUrl(args.installVersion, args.platform),
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+    await $`${
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
-    await unarchive(fileDwnPath, args.tmpDirPath);
-
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
     await std_fs.copy(
       args.tmpDirPath,
-      std_path.resolve(args.installPath, "bin"),
+      installPath.join("bin").toString(),
     );
   }
 }

@@ -75,7 +75,7 @@ const installConfigBase = zod.object({
   portName: zod.string().min(1),
 }).passthrough();
 
-const stdInstallConfig = installConfigBase.merge(zod.object({}));
+const stdInstallConfig = installConfigBase.merge(zod.object({})).passthrough();
 
 const asdfInstallConfig = installConfigBase.merge(
   zod.object({

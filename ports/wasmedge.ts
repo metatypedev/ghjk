@@ -1,16 +1,15 @@
 import {
+  $,
   addInstallGlobal,
   depBinShimPath,
   DownloadArgs,
   downloadFile,
   ExecEnvArgs,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
@@ -63,42 +62,21 @@ const repoOwner = "WasmEdge";
 const repoName = "WasmEdge";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   execEnv(args: ExecEnvArgs) {
     return {
-      WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib"),
+      WASMEDGE_DIR: args.installPath,
+      // WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib64"),
+      // WASMEDGE_INCLUDE_DIR: std_path.resolve(args.installPath, "include"),
     };
   }
 
   listLibPaths(): string[] {
     return ["lib*/*"];
-  }
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    // NOTE: this downloads a 1+ meg json
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
   }
 
   async download(args: DownloadArgs) {
@@ -111,15 +89,13 @@ export class Port extends PortBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await spawn([
-      depBinShimPath(std_ports.tar_aa, "tar", args.depShims),
-      "xf",
-      fileDwnPath,
-      `--directory=${args.tmpDirPath}`,
-    ]);
+    await $`${
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
 
     const dirs = [];

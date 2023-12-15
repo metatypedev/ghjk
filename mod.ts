@@ -10,6 +10,7 @@ import {
 } from "./modules/ports/types.ts";
 import type { SerializedConfig } from "./host/types.ts";
 import logger from "./utils/logger.ts";
+import { $ } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
 import { std_modules } from "./modules/mod.ts";
 
@@ -57,4 +58,4 @@ export const ghjk = Object.freeze({
   getConfig: Object.freeze(getConfig),
 });
 
-export { logger };
+export { $, logger };

@@ -23,13 +23,15 @@ import whiz from "./ports/whiz.ts";
 // wasm_opt({});
 // cargo_insta({});
 // jco({});
-// mold({});
-// act({});
+// mold({
+//   replaceLd: true,
+// });
+act({});
 // asdf({
 //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
 //   installType: "version",
 // });
-// protoc({ });
+// protoc({});
 // earthly({});
 // ruff({});
 // whiz({});

@@ -59,7 +59,7 @@ and looks as follows (abstracting away some implementation details):
     - detects any violation of the enforced rules
   - [ ] `ghjk list`: list installed tools and versions
   - [ ] `ghjk outdated`: list outdated tools
-  - [ ]`ghjk cleanup`: remove unused tools and versions
+  - [ ] `ghjk cleanup`: remove unused tools and versions
 
 ## Extending `ghjk`
 
@@ -69,15 +69,10 @@ and looks as follows (abstracting away some implementation details):
 ## todo
 
 - multiple version of the same package (e.g. rust stable and rust nighted)
-- [x] wasmedge
-- [x] jco
 - [ ] python with virtual env dir
   - poetry
   - pre-commit
-- [x] pnpm
-- [x] mold
-- [x] wasm-tools
-- [x] cargo-insta
+- [ ] rust toolchain
 - hash verifiable dependencies (timestamp)
 - hide the `Deno` object in an abstraction
 - support windows

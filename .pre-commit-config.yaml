@@ -3,6 +3,7 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
+        exclude: gh_action/dist/.*.js
       - id: check-ast
       - id: check-json
         exclude: .vscode/.*\.json
@@ -13,14 +14,18 @@ repos:
       - id: check-merge-conflict
       - id: end-of-file-fixer
         # exclude all generated files
-        exclude: (deno.lock)
+        exclude: |
+            (?x)^(
+                deno.lock|
+                gh_action/.*.js
+            )$
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.27.0
     hooks:
       - id: check-dependabot
       - id: check-github-workflows
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 3.10.0
+    rev: v3.13.0
     hooks:
       - id: commitizen
         stages:
@@ -44,7 +49,7 @@ repos:
       - id: deno-lint
         name: Deno lint
         language: system
-        entry: bash -c 'deno task lint'
+        entry: bash -c 'deno lint'
         pass_filenames: false
         types:
           - ts

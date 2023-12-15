@@ -1,24 +1,30 @@
 import {
+  $,
   addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
+  semver,
   std_fs,
   std_path,
   std_url,
-  unarchive,
 } from "../port.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   ty: "denoWorker" as const,
   name: "ruff@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [
+    // we have to use tar because their tarballs for darwin use gnu sparse
+    std_ports.tar_aa,
+  ],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
@@ -34,57 +40,38 @@ const repoOwner = "astral-sh";
 const repoName = "ruff";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+    await downloadFile(args, artifactUrl(args.installVersion, args.platform));
   }
 
   async install(args: InstallArgs) {
     const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
+      artifactUrl(args.installVersion, args.platform),
     );
+
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+    await $`${
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
-    await unarchive(fileDwnPath, args.tmpDirPath);
-
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
     await std_fs.copy(
       args.tmpDirPath,
-      std_path.resolve(args.installPath, "bin"),
+      installPath.join("bin").toString(),
     );
     // await Deno.chmod(std_path.resolve(args.installPath, "bin", "ruff"), 0o700);
   }
 }
 
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
+function artifactUrl(installVersion: string, platform: PlatformInfo) {
   let arch;
   switch (platform.arch) {
     case "x86_64":
@@ -114,5 +101,8 @@ function downloadUrl(installVersion: string, platform: PlatformInfo) {
     default:
       throw new Error(`unsupported arch: ${platform.arch}`);
   }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${arch}-${os}.${ext}`;
+  const prefix = semver.lt(semver.parse(installVersion), semver.parse("0.1.8"))
+    ? repoName
+    : `${repoName}-${installVersion.replace(/^v/, "")}`;
+  return `${repoAddress}/releases/download/${installVersion}/${prefix}-${arch}-${os}.${ext}`;
 }

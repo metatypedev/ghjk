@@ -1,4 +1,5 @@
 import {
+  $,
   addInstallGlobal,
   DownloadArgs,
   downloadFile,
@@ -7,7 +8,6 @@ import {
   type PlatformInfo,
   PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
   std_path,
   std_url,
@@ -38,10 +38,9 @@ export class Port extends PortBase {
   manifest = manifest;
 
   async listAll() {
-    const metadataRequest = await fetch(
+    const metadataText = await $.request(
       `https://index.crates.io/ca/rg/cargo-binstall`,
-    );
-    const metadataText = await metadataRequest.text();
+    ).text();
     const versions = metadataText
       .split("\n")
       .filter((str) => str.length > 0)
@@ -65,8 +64,9 @@ export class Port extends PortBase {
 
     await unarchive(fileDwnPath, args.tmpDirPath);
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
     await std_fs.copy(
       args.tmpDirPath,

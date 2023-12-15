@@ -1,29 +1,39 @@
 import {
+  $,
   addInstallGlobal,
+  depBinShimPath,
   DownloadArgs,
   downloadFile,
+  GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
   type PlatformInfo,
-  PortBase,
   registerDenoPortGlobal,
-  removeFile,
   std_fs,
   std_path,
   std_url,
-  unarchive,
 } from "../port.ts";
+import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
   ty: "denoWorker" as const,
   name: "mold@ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [
+    // we have to use tar because their tarballs contain symlinks
+    std_ports.tar_aa,
+  ],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install(config: InstallConfigSimple = {}) {
+export type MoldInstallConfig = InstallConfigSimple & {
+  replaceLd: boolean;
+};
+export default function install(
+  config: MoldInstallConfig = { replaceLd: true },
+) {
   addInstallGlobal({
     portName: manifest.name,
     ...config,
@@ -34,32 +44,10 @@ const repoOwner = "rui314";
 const repoName = "mold";
 const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
 
-export class Port extends PortBase {
+export class Port extends GithubReleasePort {
   manifest = manifest;
-
-  async latestStable(): Promise<string> {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`,
-    );
-
-    const metadata = await metadataRequest.json() as {
-      tag_name: string;
-    };
-
-    return metadata.tag_name;
-  }
-
-  async listAll() {
-    const metadataRequest = await fetch(
-      `https://api.github.com/repos/${repoOwner}/${repoName}/releases`,
-    );
-
-    const metadata = await metadataRequest.json() as [{
-      tag_name: string;
-    }];
-
-    return metadata.map((rel) => rel.tag_name).reverse();
-  }
+  repoName = repoName;
+  repoOwner = repoOwner;
 
   async download(args: DownloadArgs) {
     await downloadFile(args, downloadUrl(args.installVersion, args.platform));
@@ -71,10 +59,13 @@ export class Port extends PortBase {
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await $`${
+      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
 
     const dirs = [];
@@ -92,6 +83,10 @@ export class Port extends PortBase {
       dirs[0].path,
       args.installPath,
     );
+    if ((args.config as unknown as MoldInstallConfig).replaceLd) {
+      await installPath.join("bin", "ld")
+        .createSymlinkTo(installPath.join("bin", "mold").toString());
+    }
   }
 }
 

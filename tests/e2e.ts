@@ -1,7 +1,21 @@
-import { dockerE2eTest } from "./utils.ts";
+import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
 
 // order tests by download size to make failed runs less expensive
-await dockerE2eTest([
+const cases: E2eTestCase[] = [
+  ...(Deno.build.os == "linux"
+    ? [
+      // 8 megs
+      {
+        name: "mold",
+        imports: `import port from "$ghjk/ports/mold.ts"`,
+        confFn: `async () => {
+    port({ });
+  }`,
+        ePoint: `mold -V`,
+      },
+    ]
+    : []),
+
   // 3 megs
   {
     name: "protoc",
@@ -46,15 +60,6 @@ await dockerE2eTest([
     port({ });
   }`,
     ePoint: `cargo-binstall -V`,
-  },
-  // 8 megs
-  {
-    name: "mold",
-    imports: `import port from "$ghjk/ports/mold.ts"`,
-    confFn: `async () => {
-    port({ });
-  }`,
-    ePoint: `mold -V`,
   },
   // 16 megs
   {
@@ -103,7 +108,7 @@ await dockerE2eTest([
   },
   // 42 megs
   {
-    name: "pnpm",
+    name: "earthly",
     imports: `import port from "$ghjk/ports/earthly.ts"`,
     confFn: `async () => {
     port({ });
@@ -152,4 +157,20 @@ await dockerE2eTest([
   //   }`,
   //   ePoint: `python --version`,
   // },
-]);
+];
+
+if (Deno.env.get("GHJK_E2E_TYPE") == "both") {
+  localE2eTest(cases);
+  await dockerE2eTest(cases);
+} else if (Deno.env.get("GHJK_TEST_E2E_TYPE") == "local") {
+  localE2eTest(cases);
+} else if (
+  Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker" ||
+  !Deno.env.has("GHJK_TEST_E2E_TYPE")
+) {
+  await dockerE2eTest(cases);
+} else {
+  throw new Error(
+    `unexpected GHJK_TEST_E2E_TYPE: ${Deno.env.get("GHJK_TEST_E2E_TYPE")}`,
+  );
+}

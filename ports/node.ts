@@ -1,4 +1,5 @@
 import {
+  $,
   addInstallGlobal,
   depBinShimPath,
   DownloadArgs,
@@ -10,27 +11,22 @@ import {
   type PlatformInfo,
   PortBase,
   registerDenoPortGlobal,
-  removeFile,
-  spawn,
   std_fs,
   std_path,
   std_url,
 } from "../port.ts";
-// import * as std_ports from "../std.ts";
 
+// FIXME: circular module resolution when one std_port imports another
 const tar_aa_id = {
   id: "tar@aa",
 };
-
 // TODO: sanity check exports of all ports
 export const manifest = {
   ty: "denoWorker" as const,
   name: "node@org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
-    tar_aa_id,
-  ],
+  deps: [tar_aa_id],
 };
 
 registerDenoPortGlobal(manifest, () => new Port());
@@ -59,8 +55,8 @@ export class Port extends PortBase {
   }
 
   async listAll(_env: ListAllArgs) {
-    const metadataRequest = await fetch(`https://nodejs.org/dist/index.json`);
-    const metadata = await metadataRequest.json() as { version: string }[];
+    const metadata = await $.request(`https://nodejs.org/dist/index.json`)
+      .json() as { version: string }[];
 
     const versions = metadata.map((v) => v.version);
     // sort them numerically to make sure version 0.10.0 comes after 0.2.9
@@ -78,15 +74,13 @@ export class Port extends PortBase {
       artifactUrl(args.installVersion, args.platform),
     );
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await spawn([
-      depBinShimPath(tar_aa_id, "tar", args.depShims),
-      "xf",
-      fileDwnPath,
-      `--directory=${args.tmpDirPath}`,
-    ]);
+    await $`${
+      depBinShimPath(tar_aa_id, "tar", args.depShims)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
-    if (await std_fs.exists(args.installPath)) {
-      await removeFile(args.installPath, { recursive: true });
+    const installPath = $.path(args.installPath);
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
     }
 
     await std_fs.copy(

@@ -35,19 +35,17 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
-ENV GHJK_EXE_INSTALL_DIR=/usr/bin
-# explicitly set the shell var as detection fails otherwise
-# because ps program is not present in this image
-RUN SHELL=/bin/bash deno run -A /ghjk/install.ts
-RUN SHELL=/bin/fish deno run -A /ghjk/install.ts
-RUN SHELL=/bin/zsh  deno run -A /ghjk/install.ts
+ENV GHJK_INSTALL_EXE_DIR=/usr/bin
+ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
+RUN deno run -A /ghjk/install.ts
 
 RUN cat > ghjk.ts <<EOT
 #{{CMD_ADD_CONFIG}}
 EOT
 
 RUN <<EOT
-    CLICOLOR_FORCE=1 ghjk config
+    export CLICOLOR_FORCE=1 
+    ghjk print config
     ghjk ports sync
 EOT
 
