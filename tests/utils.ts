@@ -43,7 +43,7 @@ await (${confFn.toString()})()`
       const env: Record<string, string> = {
         ...defaultEnvs,
         ...testEnvs,
-        BASH_ENV: `${ghjkDir.toString()}/env.sh`,
+        BASH_ENV: `${ghjkDir.toString()}/env.bash`,
         ZDOTDIR: ghjkDir.toString(),
         GHJK_DIR: ghjkDir.toString(),
       };
