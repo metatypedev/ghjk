@@ -13,17 +13,16 @@ const getHooksVfs = async () => ({
     "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
   ),
 
-  ".zshenv": (
-    await importRaw(import.meta.resolve("./hooks/zsh.zsh"))
+  "env.zsh": (
+    await importRaw(import.meta.resolve("./hook.sh"))
   ),
 
-  // the hook run before every prompt draw in bash
-  "env.sh": (
-    await importRaw(import.meta.resolve("./hooks/bash.sh"))
+  "env.bash": (
+    await importRaw(import.meta.resolve("./hook.sh"))
   ),
 
   "env.fish": (
-    await importRaw(import.meta.resolve("./hooks/fish.fish"))
+    await importRaw(import.meta.resolve("./hook.fish"))
   ),
 });
 
@@ -61,7 +60,7 @@ async function unpackVFS(
   }
 }
 
-async function filterAddFile(
+async function filterAddContent(
   path: string,
   marker: RegExp,
   content: string | null,
@@ -91,7 +90,7 @@ async function filterAddFile(
   await Deno.writeTextFile(path, lines.join("\n"));
 }
 
-export interface InstallArgs {
+interface InstallArgs {
   homeDir: string;
   ghjkDir: string;
   shellsToHook: string[];
@@ -122,70 +121,54 @@ export const defaultInstallArgs: InstallArgs = {
   ghjkExecDenoExec: Deno.execPath(),
   noLockfile: false,
 };
+
+const shellConfig: Record<string, string> = {
+  fish: ".config/fish/config.fish",
+  bash: ".bashrc",
+  zsh: ".zshrc",
+};
+
 export async function install(
   args: InstallArgs = defaultInstallArgs,
 ) {
   logger().debug("installing", args);
+
   if (Deno.build.os == "windows") {
-    throw new Error("windows is not yet supported :/");
+    throw new Error("windows is not yet supported, please use wsl");
   }
   const ghjkDir = std_path.resolve(
     Deno.cwd(),
     std_path.normalize(args.ghjkDir),
   );
-  // const hookVfs = ;
+
   logger().debug("unpacking vfs", { ghjkDir });
   await unpackVFS(
     await getHooksVfs(),
     ghjkDir,
     [[/__GHJK_DIR__/g, ghjkDir]],
   );
+
   for (const shell of args.shellsToHook) {
     const { homeDir } = args;
-    if (shell === "fish") {
-      const rcPath = std_path.resolve(homeDir, ".config/fish/config.fish");
-      logger().debug("installing hook", {
-        ghjkDir,
-        shell,
-        marker: args.shellHookMarker,
-        rcPath,
-      });
-      await filterAddFile(
-        rcPath,
-        new RegExp(args.shellHookMarker, "g"),
-        `. ${ghjkDir}/env.fish # ${args.shellHookMarker}`,
-      );
-    } else if (shell === "bash") {
-      const rcPath = std_path.resolve(homeDir, ".bashrc");
-      logger().debug("installing hook", {
-        ghjkDir,
-        shell,
-        marker: args.shellHookMarker,
-        rcPath,
-      });
-      await filterAddFile(
-        rcPath,
-        new RegExp(args.shellHookMarker, "g"),
-        `. ${ghjkDir}/env.sh # ${args.shellHookMarker}`,
-      );
-    } else if (shell === "zsh") {
-      const rcPath = std_path.resolve(homeDir, ".zshrc");
-      logger().debug("installing hook", {
-        ghjkDir,
-        shell,
-        marker: args.shellHookMarker,
-        rcPath,
-      });
-      await filterAddFile(
-        rcPath,
-        new RegExp(args.shellHookMarker, "g"),
-        // NOTE: we use the posix hook for zsh as well
-        `. ${ghjkDir}/env.sh # ${args.shellHookMarker}`,
-      );
-    } else {
+
+    if (!(shell in shellConfig)) {
       throw new Error(`unsupported shell: ${shell}`);
     }
+
+    const rcPath = std_path.resolve(homeDir, shellConfig[shell]);
+    logger().debug("installing hook", {
+      ghjkDir,
+      shell,
+      marker: args.shellHookMarker,
+      rcPath,
+    });
+    await filterAddContent(
+      rcPath,
+      new RegExp(args.shellHookMarker, "g"),
+      `. ${ghjkDir}/env.${shell} # ${args.shellHookMarker}`,
+    );
   }
+
   if (!args.skipExecInstall) {
     switch (Deno.build.os) {
       case "linux":
@@ -199,6 +182,7 @@ export async function install(
         const lockFlag = args.noLockfile
           ? "--no-lock"
           : `--lock $GHJK_DIR/deno.lock`;
+
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
