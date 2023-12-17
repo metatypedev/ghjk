@@ -5,7 +5,6 @@ set -e -u
 GHJK_VERISON="${GHJK_VERISON:-v0.1.0-alpha}"
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/metatypedev/ghjk/$GHJK_VERISON/install.ts}"
 GHJK_DIR="${GHJK_DIR:-$HOME/.local/share/ghjk}"
-SHELL="${SHELL:-bash}"
 DENO_VERSION="${DENO_VERSION:-v1.38.5}"
 
 # make sure the version is prepended with v
@@ -22,17 +21,17 @@ if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
     fi
 
     DENO_INSTALL="$GHJK_DIR/tmp/deno-install"
-    curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$DENO_INSTALL" sh -s "$DENO_VERSION"
+    curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$DENO_INSTALL" sh -s "$DENO_VERSION" >/dev/null
 
     # disinterr the deno bin from the install dir
     mv "$DENO_INSTALL/bin/deno" "$GHJK_DIR"
-    rm "$DENO_INSTALL" -r
+    rm -r "$DENO_INSTALL"
 
     GHJK_INSTALL_DENO_EXEC="$GHJK_DIR/deno"
 fi
 
 (
-  # pass all capitalized local vars as env vars
-  export $(set | grep "^[A-Z_][A-Z0-9_]*=" | cut -d= -f1); 
-  "$GHJK_INSTALL_DENO_EXEC" run -A "$GHJK_INSTALLER_URL"
+    # pass all capitalized local vars as env vars
+    export $(set | grep "^[A-Z_][A-Z0-9_]*=" | cut -d= -f1)
+    "$GHJK_INSTALL_DENO_EXEC" run -A "$GHJK_INSTALLER_URL"
 )

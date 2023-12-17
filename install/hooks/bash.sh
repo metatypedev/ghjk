@@ -22,7 +22,7 @@ init_ghjk() {
             envDir="__GHJK_DIR__/envs/$(printf "$cur_dir" | tr '/' '.')"
             if [ -d "$envDir" ]; then
                 export GHJK_LAST_LOADER_PATH="$envDir/loader.sh"
-                export GHJK_LAST_LOADER_TS=$(stat -c "%Y" "$GHJK_LAST_LOADER_PATH" | tr -d '\n')
+                export GHJK_LAST_LOADER_TS=$(date -r "$(stat -f "%m" $GHJK_LAST_LOADER_PATH)" +%s | tr -d '\n')
                 . "$envDir/loader.sh"
                 # FIXME: -ot not valid in POSIX
                 # shellcheck disable=SC3000-SC4000
@@ -42,7 +42,7 @@ init_ghjk() {
 # only load bash-prexec if we detect bash
 # bash-preexec itslef only executes if it detects bash
 # but even reliably resolving it's address
-# requires bash extensions. 
+# requires bash extensions.
 if [ -n "${BASH_SOURCE+x}" ]; then
     myDir=$(dirname -- "$(readlink -f -- "${BASH_SOURCE}")")
     . "$myDir/bash-preexec.sh"

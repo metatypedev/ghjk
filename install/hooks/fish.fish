@@ -6,12 +6,12 @@ function init_ghjk
     set --erase GHJK_LAST_LOADER_PATH
     set --erase GHJK_LAST_LOADER_TS
     set --local cur_dir $PWD
-    while test $cur_dir != "/"
+    while test $cur_dir != /
         if test -e $cur_dir/ghjk.ts
             set --local envDir __GHJK_DIR__/envs/(string replace --all / . $cur_dir)
             if test -d $envDir
                 set -g -x GHJK_LAST_LOADER_PATH $envDir/loader.fish
-                set -g -x GHJK_LAST_LOADER_TS (stat -c "%Y" $envDir/loader.fish | tr -d '\n')
+                set -g -x GHJK_LAST_LOADER_TS (date -r "$(stat -f "%m" $envDir/loader.fish)" +%s | tr -d '\n')
                 source $envDir/loader.fish
                 if test $envDir/loader.fish -ot $cur_dir/ghjk.ts
                     set_color FF4500
