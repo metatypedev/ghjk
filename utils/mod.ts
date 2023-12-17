@@ -1,5 +1,5 @@
-import { dax, std_fs, std_path } from "../deps/common.ts";
-import logger from "./logger.ts";
+import { dax, jsonHash, std_fs, std_path } from "../deps/common.ts";
+import logger, { isColorfulTty } from "./logger.ts";
 import type {
   DepShims,
   InstallConfigLite,
@@ -41,20 +41,41 @@ export function depBinShimPath(
   return path;
 }
 
-export function getInstallId(install: InstallConfigLite) {
-  // TODO: hash
-  if ("pluginRepo" in install && install.portId == "asdf") {
-    const url = new URL(install.pluginRepo as string);
-    const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
-    return `asdf-${pluginId}`;
-  }
-  return install.portId;
+// Lifted from https://deno.land/x/hextools@v1.0.0
+// MIT License
+// Copyright (c) 2020 Santiago Aguilar Hernández
+export function bufferToHex(buffer: ArrayBuffer): string {
+  return Array.prototype.map.call(
+    new Uint8Array(buffer),
+    (b) => b.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+export async function getInstallHash(install: InstallConfigLite) {
+  const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
+  const hashHex = bufferToHex(hashBuf).slice(0, 8);
+  return `${install.portId}@${hashHex}`;
 }
 
 export const $ = dax.build$(
-  {},
+  {
+    commandBuilder: (() => {
+      const builder = new dax.CommandBuilder().printCommand(true);
+      builder.setPrintCommandLogger((...args) =>
+        logger().debug("spawning", args.splice(1))
+      );
+      return builder;
+    })(),
+    extras: {
+      inspect(val: unknown) {
+        return Deno.inspect(val, { colors: isColorfulTty() });
+      },
+      pathToString(path: dax.PathRef) {
+        return path.toString();
+      },
+    },
+  },
 );
-$.setPrintCommand(true);
 
 export function inWorker() {
   return typeof WorkerGlobalScope !== "undefined" &&

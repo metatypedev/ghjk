@@ -21,12 +21,11 @@ export async function cli(args: CliArgs) {
   );
   const envDir = envDirFromConfig(ghjkDir, configPath);
 
-  logger().debug({ configPath });
-  logger().debug({ envDir });
+  logger().debug({ configPath, envDir });
 
   const serializedConfig = await serializeConfig(configPath);
 
-  const ctx = { configPath, envDir };
+  const ctx = { ghjkDir, configPath, envDir };
   let cmd = new cliffy_cmd.Command()
     .name("ghjk")
     .version("0.1.0") // FIXME: better way to resolve version

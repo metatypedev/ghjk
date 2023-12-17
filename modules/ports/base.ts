@@ -73,7 +73,6 @@ export abstract class PortBase {
     await Promise.all(urls.map(async (item) => {
       await downloadFile(args, item);
     }));
-    logger().debug("done downloading", urls);
   }
 
   abstract install(args: InstallArgs): Promise<void> | void;

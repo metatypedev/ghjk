@@ -24,7 +24,7 @@ export class PortsModule extends ModuleBase {
       .command(
         "sync",
         new cliffy_cmd.Command().description("Syncs the environment.")
-          .action(() => sync(this.ctx.envDir, this.config)),
+          .action(() => sync(this.ctx.ghjkDir, this.ctx.envDir, this.config)),
       )
       .command(
         "list",

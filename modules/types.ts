@@ -13,6 +13,7 @@ export type ModuleManifest = zod.infer<typeof moduleManifest>;
 export type GhjkCtx = {
   configPath: string;
   envDir: string;
+  ghjkDir: string;
 };
 
 export default {

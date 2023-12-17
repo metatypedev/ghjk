@@ -11,7 +11,7 @@ import { PortBase } from "./base.ts";
 import {
   $,
   depBinShimPath,
-  getInstallId,
+  getInstallHash,
   pathWithDepShims,
 } from "../../utils/mod.ts";
 // import * as std_ports from "../std.ts";
@@ -36,10 +36,10 @@ export const manifest: TheAsdfPortManifest = {
   // there should only be a single asdf port registered at any time
   conflictResolution: "override",
   platforms: [
-    { os: "linux", arch: "x86_64" },
-    { os: "linux", arch: "aarch64" },
-    { os: "darwin", arch: "x86_64" },
-    { os: "darwin", arch: "aarch64" },
+    ["linux", "x86_64"],
+    ["linux", "aarch64"],
+    ["darwin", "x86_64"],
+    ["darwin", "aarch64"],
   ],
 };
 
@@ -58,7 +58,7 @@ export class AsdfPort extends PortBase {
     depShims: DepShims,
   ) {
     const asdfDir = std_path.resolve(envDir, "asdf");
-    const installId = getInstallId(installConfig);
+    const installId = await getInstallHash(installConfig);
 
     const pluginDir = std_path.resolve(asdfDir, installId);
     if (!await std_fs.exists(pluginDir)) {

@@ -28,7 +28,7 @@ const archEnum = zod.enum(ALL_ARCH);
 const portManifestBase = zod.object({
   ty: zod.string(),
   name: zod.string().min(1),
-  platforms: zod.object({ os: osEnum, arch: archEnum }).array(),
+  platforms: zod.tuple([osEnum, archEnum]).array(),
   version: zod.string()
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
@@ -130,8 +130,15 @@ const installConfigFat = zod.union([
 ]);
 
 const installConfig = zod.union([
-  installConfigLite,
-  installConfigFat,
+  // NOTE: generated types break if we make a union of other unions
+  // so we get the schemas of those unions instead
+  // https://github.com/colinhacks/zod/discussions/3010
+  // ...installConfigLite.options,
+  // ...installConfigFat.options,
+  asdfInstallConfigLite,
+  asdfInstallConfigFat,
+  stdInstallConfigLite,
+  stdInstallConfigFat,
 ]);
 
 const portsModuleConfigBase = zod.object({
@@ -294,6 +301,8 @@ export interface PortArgsBase {
 export interface ListAllArgs {
   depShims: DepShims;
   manifest: PortManifestX;
+  // FIXME: switch to X type when https://github.com/colinhacks/zod/issues/2864 is resolved
+  config: InstallConfigLiteX;
 }
 
 export type ListBinPathsArgs = PortArgsBase;

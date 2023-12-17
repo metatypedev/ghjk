@@ -27,15 +27,15 @@ install(
   // mold({
   //   replaceLd: true,
   // }),
-  // act(),
-  asdf({
-    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-    installType: "version",
-  }),
-  asdf({
-    pluginRepo: "https://github.com/asdf-community/asdf-poetry",
-    installType: "version",
-  }),
+  act(),
+  // asdf({
+  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+  //   installType: "version",
+  // }),
+  // asdf({
+  //   pluginRepo: "https://github.com/asdf-community/asdf-poetry",
+  //   installType: "version",
+  // }),
   // protoc(),
   // earthly(),
   // ruff(),
