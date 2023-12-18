@@ -9,17 +9,17 @@ import { $, dirs, importRaw } from "../utils/mod.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const getHooksVfs = async () => ({
-  "bash-preexec.sh": await importRaw(
-    "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
-  ),
-
   "env.zsh": (
     await importRaw(import.meta.resolve("./hook.sh"))
   ),
 
-  "env.bash": (
-    await importRaw(import.meta.resolve("./hook.sh"))
-  ),
+  "env.bash": [
+    "# importing bash-preexec, see the ghjk hook at then end\n\n",
+    await importRaw(
+      "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
+    ),
+    await importRaw(import.meta.resolve("./hook.sh")),
+  ].join("\n"),
 
   "env.fish": (
     await importRaw(import.meta.resolve("./hook.fish"))

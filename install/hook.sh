@@ -3,16 +3,21 @@
 
 ghjk_reload() {
     if [ -n "${GHJK_CLEANUP_POSIX+x}" ]; then
+        # restore previous env
         eval "$GHJK_CLEANUP_POSIX"
     fi
     unset GHJK_CLEANUP_POSIX
+
     cur_dir=$PWD
     while [ "$cur_dir" != "/" ]; do
-        if [ -e "$cur_dir/ghjk.ts" ]; then
+        if [ -f "$cur_dir/ghjk.ts" ]; then
+            # locate the shim
             env_dir="__GHJK_DIR__/envs/$(printf "%s" "$cur_dir" | tr '/' '.')"
             if [ -d "$env_dir" ]; then
+                # load the shim
                 # shellcheck source=/dev/null
                 . "$env_dir/loader.sh"
+
                 # FIXME: -ot not valid in POSIX
                 # shellcheck disable=SC3000-SC4000
                 if [ "$env_dir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
@@ -23,16 +28,10 @@ ghjk_reload() {
             fi
             return
         fi
+        # recursively look in parent directory
         cur_dir="$(dirname "$cur_dir")"
     done
 }
-
-# only load bash-prexec when we detect bash (native in zsh)
-if [ -n "${BASH_SOURCE+x}" ]; then
-    this_dir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
-    # shellcheck source=/dev/null
-    . "$this_dir/bash-preexec.sh"
-fi
 
 # memo to detect directory changes
 export GHJK_LAST_PWD="$PWD"

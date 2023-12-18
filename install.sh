@@ -14,24 +14,21 @@ fi
 
 # if custom deno bin is not set, install one
 if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
-    echo "GHJK_INSTALL_DENO_EXEC not set, installing deno $DENO_VERSION for ghjk"
-    if ! command -v curl >/dev/null; then
-        echo "Error: curl is required to install deno for ghjk." 1>&2
-        exit 1
+
+    GHJK_INSTALL_DENO_EXEC="$GHJK_DIR/bin/deno"
+    if [ ! -f "$GHJK_INSTALL_DENO_EXEC" ] || [ "$DENO_VERSION" != "v$("$GHJK_INSTALL_DENO_EXEC" --version | head -n 1 | cut -d ' ' -f 2)" ]; then
+
+        echo "GHJK_INSTALL_DENO_EXEC not set, installing deno $DENO_VERSION for ghjk"
+
+        if ! command -v curl >/dev/null; then
+            echo "Error: curl is required to install deno for ghjk." 1>&2
+            exit 1
+        fi
+
+        curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$GHJK_DIR" sh -s "$DENO_VERSION" >/dev/null
     fi
-
-    DENO_INSTALL="$GHJK_DIR/tmp/deno-install"
-    curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$DENO_INSTALL" sh -s "$DENO_VERSION" >/dev/null
-
-    # disinterr the deno bin from the install dir
-    mv "$DENO_INSTALL/bin/deno" "$GHJK_DIR"
-    rm -r "$DENO_INSTALL"
-
-    GHJK_INSTALL_DENO_EXEC="$GHJK_DIR/deno"
 fi
 
-(
-    # pass all capitalized local vars as env vars
-    export $(set | grep "^[A-Z_][A-Z0-9_]*=" | cut -d= -f1)
-    "$GHJK_INSTALL_DENO_EXEC" run -A "$GHJK_INSTALLER_URL"
-)
+export GHJK_DIR="$GHJK_DIR"
+export GHJK_INSTALL_DENO_EXEC="$GHJK_INSTALL_DENO_EXEC"
+"$GHJK_INSTALL_DENO_EXEC" run -A "$GHJK_INSTALLER_URL"
