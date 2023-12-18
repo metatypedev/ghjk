@@ -2,7 +2,7 @@ import {
   $,
   ALL_ARCH,
   ALL_OS,
-  depBinShimPath,
+  depExecShimPath,
   type DownloadArgs,
   dwnUrlOut,
   type InstallArgs,
@@ -82,7 +82,7 @@ export class Port extends PortBase {
       args.installPath,
     );
     await $`${
-      depBinShimPath(std_ports.node_org, "npm", args.depShims)
+      depExecShimPath(std_ports.node_org, "npm", args.depShims)
     } install --no-fund`
       .cwd(args.installPath)
       .env({

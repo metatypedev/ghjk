@@ -70,28 +70,24 @@ const ambientAccessPortManifest = portManifestBase.merge(
     // TODO: custom shell shims
   }),
 );
-const theAsdfPortManifest = portManifestBase.merge(
-  zod.object({
-    ty: zod.literal("asdf@v1"),
-    moduleSpecifier: zod.string().url(),
-  }),
-);
 
 const portManifest = zod.discriminatedUnion("ty", [
   denoWorkerPortManifest,
   ambientAccessPortManifest,
-  theAsdfPortManifest,
 ]);
 
-const installConfigBase = zod.object({
+const installConfigSimple = zod.object({
   version: zod.string()
     .nullish(),
+}).passthrough();
+
+const installConfigBase = installConfigSimple.merge(zod.object({
   depConfigs: zod.record(
     portName,
     // FIXME: figure out cyclically putting `installConfigLite` here
     zod.unknown(),
   ).nullish(),
-}).passthrough();
+})).passthrough();
 
 const installConfigBaseFat = installConfigBase.merge(zod.object({
   port: portManifest,
@@ -106,29 +102,16 @@ const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
 const stdInstallConfigLite = installConfigBaseLite.merge(zod.object({}))
   .passthrough();
 
-const asdfInstallConfigBase = zod.object({
-  pluginRepo: zod.string().url(),
-  installType: zod
-    .enum(["version", "ref"]),
-});
-const asdfInstallConfigFat = installConfigBaseFat.merge(asdfInstallConfigBase);
-const asdfInstallConfigLite = installConfigBaseLite.merge(
-  asdfInstallConfigBase,
-);
-
 // NOTE: zod unions are tricky. It'll parse with the first schema
 // in the array that parses. And if this early schema is a subset
 // of its siblings (and it doesn't have `passthrough`), it will discard
 // fields meant for sibs.
 // Which's to say ordering matters
-const installConfigLite = zod.union([
-  asdfInstallConfigLite,
-  stdInstallConfigLite,
-]);
-const installConfigFat = zod.union([
-  asdfInstallConfigFat,
-  stdInstallConfigFat,
-]);
+const installConfigLite =
+  // zod.union([
+  stdInstallConfigLite;
+// ]);
+const installConfigFat = stdInstallConfigFat;
 
 const installConfig = zod.union([
   // NOTE: generated types break if we make a union of other unions
@@ -136,8 +119,6 @@ const installConfig = zod.union([
   // https://github.com/colinhacks/zod/discussions/3010
   // ...installConfigLite.options,
   // ...installConfigFat.options,
-  asdfInstallConfigLite,
-  asdfInstallConfigFat,
   stdInstallConfigLite,
   stdInstallConfigFat,
 ]);
@@ -171,15 +152,12 @@ const validators = {
   portManifestBase,
   denoWorkerPortManifest,
   ambientAccessPortManifest,
-  string: zod.string(),
+  installConfigSimple,
   installConfigBase,
   installConfigBaseFat,
   installConfigBaseLite,
   stdInstallConfigFat,
   stdInstallConfigLite,
-  asdfInstallConfigBase,
-  asdfInstallConfigFat,
-  asdfInstallConfigLite,
   installConfigFat,
   installConfigLite,
   installConfig,
@@ -187,8 +165,8 @@ const validators = {
   portsModuleConfigBase,
   portsModuleSecureConfig,
   portsModuleConfig,
-  theAsdfPortManifest,
   allowedPortDep,
+  string: zod.string(),
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
@@ -205,9 +183,6 @@ export type DenoWorkerPortManifest = zod.input<
 
 export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
->;
-export type TheAsdfPortManifest = zod.input<
-  typeof validators.theAsdfPortManifest
 >;
 
 // Describes the plugin itself
@@ -230,26 +205,13 @@ export type PortManifestX = zod.infer<
 export type PortDep = zod.infer<typeof validators.portDep>;
 
 export type InstallConfigSimple = zod.input<
-  typeof validators.installConfigBase
+  typeof validators.installConfigSimple
 >;
 export type InstallConfigBaseLite = zod.input<
   typeof validators.installConfigBaseLite
 >;
 export type InstallConfigBaseFat = zod.input<
   typeof validators.installConfigBaseFat
->;
-
-export type AsdfInstallConfigFat = zod.input<
-  typeof validators.asdfInstallConfigFat
->;
-export type AsdfInstallConfigFatX = zod.infer<
-  typeof validators.asdfInstallConfigFat
->;
-export type AsdfInstallConfigLite = zod.input<
-  typeof validators.asdfInstallConfigLite
->;
-export type AsdfInstallConfigLiteX = zod.infer<
-  typeof validators.asdfInstallConfigLite
 >;
 
 // Describes a single installation done by a specific plugin.

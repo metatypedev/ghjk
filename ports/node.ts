@@ -1,6 +1,6 @@
 import {
   $,
-  depBinShimPath,
+  depExecShimPath,
   DownloadArgs,
   dwnUrlOut,
   ExecEnvArgs,
@@ -105,7 +105,7 @@ export class Port extends PortBase {
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await $`${
-      depBinShimPath(tar_aa_id, "tar", args.depShims)
+      depExecShimPath(tar_aa_id, "tar", args.depShims)
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);

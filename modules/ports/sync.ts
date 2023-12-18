@@ -12,7 +12,6 @@ import validators, {
 } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
 import { AmbientAccessPort } from "./ambient.ts";
-import { AsdfPort } from "./asdf.ts";
 import { $, AVAIL_CONCURRENCY, getInstallHash } from "../../utils/mod.ts";
 
 async function writeLoader(
@@ -413,6 +412,8 @@ async function doInstall(
     instUnclean,
     port: manifest,
   });
+
+  // instantiate the right Port impl according to manifest.ty
   let port;
   let inst: InstallConfigLiteX;
   if (manifest.ty == "denoWorker@v1") {
@@ -425,11 +426,6 @@ async function doInstall(
     port = new AmbientAccessPort(
       manifest as AmbientAccessPortManifestX,
     );
-  } else if (manifest.ty == "asdf@v1") {
-    const asdfInst = validators.asdfInstallConfigLite.parse(instUnclean);
-    inst = asdfInst;
-    // FIXME: asdf needs a working dir
-    port = await AsdfPort.init(installsDir, asdfInst, depShims);
   } else {
     throw new Error(
       `unsupported plugin type "${(manifest as unknown as any).ty}": ${
@@ -437,13 +433,15 @@ async function doInstall(
       }`,
     );
   }
+
   const installId = await getInstallHash(inst);
   const installVersion = validators.string.parse(
-    inst.version ?? await port.latestStable({
-      depShims,
-      manifest,
-      config: inst,
-    }),
+    inst.version ??
+      await port.latestStable({
+        depShims,
+        manifest,
+        config: inst,
+      }),
   );
   const installPath = std_path.resolve(installsDir, installId);
   const downloadPath = std_path.resolve(downloadsDir, installId);

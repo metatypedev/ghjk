@@ -1,6 +1,6 @@
 import {
   $,
-  depBinShimPath,
+  depExecShimPath,
   DownloadArgs,
   dwnUrlOut,
   GithubReleasePort,
@@ -76,7 +76,7 @@ export class Port extends GithubReleasePort {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await $`${
-      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+      depExecShimPath(std_ports.tar_aa, "tar", args.depShims)
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);

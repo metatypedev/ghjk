@@ -8,7 +8,6 @@ export * from "./modules/ports/mod.ts";
 export * from "./utils/mod.ts";
 export * from "./deps/ports.ts";
 export { default as logger } from "./utils/logger.ts";
-export * as asdf from "./modules/ports/asdf.ts";
 export { GithubReleasePort } from "./modules/ports/ghrel.ts";
 export { PortBase } from "./modules/ports/base.ts";
 export * from "./utils/unarchive.ts";

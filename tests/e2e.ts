@@ -150,10 +150,10 @@ const cases: E2eTestCase[] = [
   //   name: "asdf-python",
   //   imports: `import port from "$ghjk/ports/asdf.ts"`,
   //   confFn: `async () => {
-  // port({
+  // install(port({
   //   portRepo: "https://github.com/asdf-community/asdf-python",
   //   installType: "version",
-  // });
+  // }));
   //   }`,
   //   ePoint: `python --version`,
   // },

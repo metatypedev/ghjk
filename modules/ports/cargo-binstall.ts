@@ -2,7 +2,7 @@ import { type DownloadArgs, type InstallArgs } from "./mod.ts";
 import { PortBase } from "./base.ts";
 import { std_fs, std_path } from "../../deps/ports.ts";
 import logger from "../../utils/logger.ts";
-import { $, depBinShimPath } from "../../utils/mod.ts";
+import { $, depExecShimPath } from "../../utils/mod.ts";
 import * as std_ports from "./std.ts";
 
 // TODO: convert to `AsdfPort` like abstraction
@@ -41,7 +41,7 @@ export abstract class CargoBinstallPort extends PortBase {
       return;
     }
     await $`${
-      depBinShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims)
+      depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims)
     }
       ${this.crateName} --version ${args.installVersion}
       --install-path ${args.tmpDirPath}

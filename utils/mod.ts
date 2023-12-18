@@ -23,20 +23,32 @@ export function pathWithDepShims(
   return `${[...set.keys()].join(":")}:${Deno.env.get("PATH")}`;
 }
 
-export function depBinShimPath(
+export function depExecShimPath(
   dep: PortDep,
-  binName: string,
+  execName: string,
+  depShims: DepShims,
+) {
+  const path = tryDepExecShimPath(dep, execName, depShims);
+  if (!path) {
+    throw new Error(
+      `unable to find shim path for bin "${execName}" of dep ${dep.name}`,
+    );
+  }
+  return path;
+}
+
+export function tryDepExecShimPath(
+  dep: PortDep,
+  execName: string,
   depShims: DepShims,
 ) {
   const shimPaths = depShims[dep.name];
   if (!shimPaths) {
-    throw new Error(`unable to find shims for dep ${dep.name}`);
+    return;
   }
-  const path = shimPaths[binName];
+  const path = shimPaths[execName];
   if (!path) {
-    throw new Error(
-      `unable to find shim path for bin "${binName}" of dep ${dep.name}`,
-    );
+    return;
   }
   return path;
 }

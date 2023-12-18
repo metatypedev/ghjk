@@ -24,18 +24,18 @@ ghjk.install(
   // wasm_tools(),
   // wasm_opt(),
   // cargo_insta(),
-  mold({
-    replaceLd: true,
-  }),
+  // mold({
+  //   replaceLd: true,
+  // }),
   // act(),
-  // asdf({
-  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-  //   installType: "version",
-  // }),
-  // asdf({
-  //   pluginRepo: "https://github.com/asdf-community/asdf-poetry",
-  //   installType: "version",
-  // }),
+  asdf({
+    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+    installType: "version",
+  }),
+  asdf({
+    pluginRepo: "https://github.com/asdf-community/asdf-poetry",
+    installType: "version",
+  }),
   // protoc(),
   // earthly(),
   // ruff(),
