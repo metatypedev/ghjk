@@ -13,6 +13,11 @@ const getHooksVfs = async () => ({
     await importRaw(import.meta.resolve("./hook.sh"))
   ),
 
+  // for non-interactive zsh, use ZDOTDIR and .zshenv
+  ".zshenv": (
+    await importRaw(import.meta.resolve("./noninteractive.zsh"))
+  ),
+
   "env.bash": [
     "# importing bash-preexec, see the ghjk hook at then end\n\n",
     await importRaw(
@@ -186,7 +191,7 @@ export async function install(
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
-GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}"
+GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR=${args.ghjkExecInstallDir}/cache
 ${args.ghjkExecDenoExec} run --unstable-worker-options -A ${lockFlag} ${
             import.meta.resolve("../main.ts")
           } $*`,
