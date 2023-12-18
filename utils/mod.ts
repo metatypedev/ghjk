@@ -7,7 +7,7 @@ import type {
 } from "../modules/ports/types.ts";
 
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug("inline", val, ...more);
+  logger().debug("DBG", val, ...more);
   return val;
 }
 
@@ -88,7 +88,10 @@ export const $ = dax.build$(
     })(),
     extras: {
       inspect(val: unknown) {
-        return Deno.inspect(val, { colors: isColorfulTty() });
+        return Deno.inspect(val, {
+          colors: isColorfulTty(),
+          iterableLimit: 500,
+        });
       },
       pathToString(path: dax.PathRef) {
         return path.toString();
@@ -170,4 +173,19 @@ export async function importRaw(spec: string) {
   throw new Error(
     `error importing raw from ${spec}: unrecognized protocol ${url.protocol}`,
   );
+}
+
+export function exponentialBackoff(initialDelayMs: number) {
+  let delay = initialDelayMs;
+  let attempt = 0;
+
+  return {
+    next() {
+      if (attempt > 0) {
+        delay *= 2;
+      }
+      attempt += 1;
+      return delay;
+    },
+  };
 }

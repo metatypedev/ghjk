@@ -21,6 +21,7 @@ function formatter(lr: log.LogRecord) {
         colors: isColorfulTty(),
         depth: 10,
         strAbbreviateSize: 256,
+        iterableLimit: 1000,
       })
     }`;
   });

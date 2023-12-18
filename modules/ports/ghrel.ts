@@ -1,4 +1,4 @@
-import { $ } from "../../utils/mod.ts";
+import { $, exponentialBackoff } from "../../utils/mod.ts";
 import { PortBase } from "./base.ts";
 
 export abstract class GithubReleasePort extends PortBase {
@@ -30,7 +30,7 @@ export abstract class GithubReleasePort extends PortBase {
   async listAll() {
     const metadata = await $.withRetries({
       count: 10,
-      delay: 100,
+      delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`,

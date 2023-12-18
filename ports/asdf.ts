@@ -119,6 +119,7 @@ export class Port extends PortBase {
     await $`${binPath}`
       .env({
         PATH: pathWithDepShims(args.depShims),
+        TMPDIR: args.tmpDirPath,
         ASDF_INSTALL_TYPE: conf.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,
@@ -132,6 +133,7 @@ export class Port extends PortBase {
     }`
       .env({
         PATH: pathWithDepShims(args.depShims),
+        TMPDIR: args.tmpDirPath,
         ASDF_INSTALL_TYPE: conf.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,

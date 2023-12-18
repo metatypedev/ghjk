@@ -15,6 +15,7 @@ import protoc from "./ports/protoc.ts";
 import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
+import python_bs from "./ports/python_bs.ts";
 
 ghjk.install(
   // node(),
@@ -28,17 +29,18 @@ ghjk.install(
   //   replaceLd: true,
   // }),
   // act(),
-  asdf({
-    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-    installType: "version",
-  }),
-  asdf({
-    pluginRepo: "https://github.com/asdf-community/asdf-poetry",
-    installType: "version",
-  }),
+  // asdf({
+  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+  //   installType: "version",
+  // }),
+  // asdf({
+  //   pluginRepo: "https://github.com/asdf-community/asdf-poetry",
+  //   installType: "version",
+  // }),
   // protoc(),
   // earthly(),
   // ruff(),
   // whiz(),
   // jco()[0],
+  python_bs(),
 );

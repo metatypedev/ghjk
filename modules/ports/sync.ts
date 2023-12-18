@@ -64,6 +64,8 @@ export async function sync(
   const [installsPath, downloadsPath, tmpPath] = (await Promise.all([
     ghjkPathR.join("installs").ensureDir(),
     ghjkPathR.join("downloads").ensureDir(),
+    // FIXME: only use `ghjkDir/tmp` when
+    // /tmp and `ghjkDir` are on different file systems
     ghjkPathR.join("tmp").ensureDir(),
   ])).map($.pathToString);
   const graph = await buildInstallGraph(cx);

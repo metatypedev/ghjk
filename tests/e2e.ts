@@ -145,18 +145,15 @@ const cases: E2eTestCase[] = [
     }`,
     ePoint: `cmake --version`,
   },
-  // // big
-  // {
-  //   name: "asdf-python",
-  //   imports: `import port from "$ghjk/ports/asdf.ts"`,
-  //   confFn: `async () => {
-  // install(port({
-  //   portRepo: "https://github.com/asdf-community/asdf-python",
-  //   installType: "version",
-  // }));
-  //   }`,
-  //   ePoint: `python --version`,
-  // },
+  // big
+  {
+    name: "python_bs",
+    imports: `import port from "$ghjk/ports/python_bs.ts"`,
+    confFn: `async () => {
+      install(port());
+    }`,
+    ePoint: `python3 --version`,
+  },
 ];
 
 if (Deno.env.get("GHJK_E2E_TYPE") == "both") {
