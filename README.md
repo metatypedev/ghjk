@@ -1,6 +1,6 @@
 # ghjk
 
-ghjk (jk) is a programmable runtime manager.
+ghjk /jk/ is a programmable runtime manager.
 
 ## Features
 
@@ -21,17 +21,18 @@ ghjk (jk) is a programmable runtime manager.
 
 ## Getting started
 
-Install ghjk:
-
 ```bash
-deno run -A https://raw.githubusercontent.com/metatypedev/ghjk/main/install.ts
+# stable
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | bash
+# latest (main)
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERISON=main bash
 ```
 
 In your project, create a configuration file `ghjk.ts`:
 
 ```ts
 export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
-import node from "https://raw.githubusercontent.com/metatypedev/ghjk/ports/node.ts";
+import node from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/node.ts";
 
 node({ version: "14.17.0" });
 ```
@@ -80,3 +81,9 @@ and looks as follows (abstracting away some implementation details):
   - [ ] untar
   - [ ] xz
   - [ ] git
+
+## Development
+
+```bash
+cat install.sh | GHJK_INSTALLER_URL=$(pwd)/install.ts bash
+```
