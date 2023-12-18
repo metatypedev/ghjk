@@ -12,7 +12,7 @@ import {
 } from "../port.ts";
 
 const git_aa_id = {
-  id: "git_aa",
+  name: "git_aa",
 };
 
 export const manifest = {

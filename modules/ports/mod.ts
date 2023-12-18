@@ -33,7 +33,6 @@ export class PortsModule extends ModuleBase {
             console.log(
               this.config.installs.map((install) => ({
                 install,
-                port: this.config.ports[install.portId],
               })),
             );
           }),

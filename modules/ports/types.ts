@@ -1,11 +1,11 @@
 import { semver, zod } from "../../deps/common.ts";
 
 // TODO: find a better identification scheme for ports
-const portId = zod.string().regex(/[^ @]*/);
+const portName = zod.string().regex(/[^ @]*/);
 // const portRef = zod.string().regex(/[^ ]*@[^ ]/);
 
 const portDep = zod.object({
-  id: portId,
+  name: portName,
 });
 
 export const ALL_OS = [
@@ -86,10 +86,11 @@ const portManifest = zod.discriminatedUnion("ty", [
 const installConfigBase = zod.object({
   version: zod.string()
     .nullish(),
-  conflictResolution: zod
-    .enum(["deferToNewer", "override"])
-    .nullish()
-    .default("deferToNewer"),
+  depConfigs: zod.record(
+    portName,
+    // FIXME: figure out cyclically putting `installConfigLite` here
+    zod.unknown(),
+  ).nullish(),
 }).passthrough();
 
 const installConfigBaseFat = installConfigBase.merge(zod.object({
@@ -97,7 +98,7 @@ const installConfigBaseFat = installConfigBase.merge(zod.object({
 })).passthrough();
 
 const installConfigBaseLite = installConfigBase.merge(zod.object({
-  portId: portId,
+  portName: portName,
 })).passthrough();
 
 const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
@@ -142,22 +143,30 @@ const installConfig = zod.union([
 ]);
 
 const portsModuleConfigBase = zod.object({
-  ports: zod.record(zod.string(), portManifest),
-  installs: zod.array(installConfigLite),
+  // ports: zod.record(zod.string(), portManifest),
+  installs: zod.array(installConfigFat),
+});
+
+const allowedPortDep = zod.object({
+  manifest: portManifest,
+  defaultInst: installConfigLite,
 });
 
 const portsModuleSecureConfig = zod.object({
-  allowedPortDeps: zod.array(portDep).nullish(),
+  allowedPortDeps: zod.array(allowedPortDep).nullish(),
 });
 
 const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
-  allowedDeps: zod.record(zod.string(), portManifest),
+  allowedDeps: zod.record(
+    zod.string(),
+    allowedPortDep,
+  ),
 }));
 
 const validators = {
   osEnum,
   archEnum,
-  portId,
+  portName,
   portDep,
   portManifestBase,
   denoWorkerPortManifest,
@@ -179,6 +188,7 @@ const validators = {
   portsModuleSecureConfig,
   portsModuleConfig,
   theAsdfPortManifest,
+  allowedPortDep,
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
@@ -219,8 +229,6 @@ export type PortManifestX = zod.infer<
 
 export type PortDep = zod.infer<typeof validators.portDep>;
 
-export type RegisteredPorts = Record<string, PortManifestX | undefined>;
-
 export type InstallConfigSimple = zod.input<
   typeof validators.installConfigBase
 >;
@@ -256,6 +264,8 @@ export type InstallConfigX = zod.infer<typeof validators.installConfig>;
 export type PortsModuleConfigBase = zod.infer<
   typeof validators.portsModuleConfigBase
 >;
+
+export type AllowedPortDep = zod.infer<typeof validators.allowedPortDep>;
 
 /// This is a secure sections of the config intended to be direct exports
 /// from the config script instead of the global variable approach the

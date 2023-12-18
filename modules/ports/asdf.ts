@@ -20,11 +20,11 @@ import { std_fs, std_path } from "../../deps/common.ts";
 // FIXME: find a better way to expose std_plug.plug_id s
 // that allows standard plugs to depend on each other
 const curl_aa_id = {
-  id: "curl_aa",
+  name: "curl_aa",
 };
 
 const git_aa_id = {
-  id: "git_aa",
+  name: "git_aa",
 };
 
 export const manifest: TheAsdfPortManifest = {

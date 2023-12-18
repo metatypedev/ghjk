@@ -113,6 +113,11 @@ async function serializeConfig(configPath: string) {
         `unrecognized ghjk config type provided at path: ${configPath}`,
       );
   }
-  const serializedConfig = validators.serializedConfig.parse(serializedJson);
-  return serializedConfig;
+  const res = validators.serializedConfig.safeParse(serializedJson);
+  if (!res.success) {
+    logger().error("zod error", res.error);
+    logger().error("serializedConf", serializedJson);
+    throw new Error(`error parsing seralized config from ${configPath}`);
+  }
+  return res.data;
 }

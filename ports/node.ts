@@ -15,7 +15,7 @@ import {
 
 // FIXME: circular module resolution when one std_port imports another
 const tar_aa_id = {
-  id: "tar_aa",
+  name: "tar_aa",
 };
 
 // TODO: sanity check exports of all ports

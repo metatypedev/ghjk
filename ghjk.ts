@@ -1,5 +1,5 @@
 export { ghjk } from "./mod.ts";
-import { install } from "./mod.ts";
+import * as ghjk from "./mod.ts";
 import node from "./ports/node.ts";
 import pnpm from "./ports/pnpm.ts";
 import cargo_binstall from "./ports/cargo-binstall.ts";
@@ -16,7 +16,7 @@ import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 
-install(
+ghjk.install(
   // node(),
   // wasmedge(),
   // pnpm(),
@@ -24,10 +24,10 @@ install(
   // wasm_tools(),
   // wasm_opt(),
   // cargo_insta(),
-  // mold({
-  //   replaceLd: true,
-  // }),
-  act(),
+  mold({
+    replaceLd: true,
+  }),
+  // act(),
   // asdf({
   //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
   //   installType: "version",

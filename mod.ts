@@ -3,14 +3,11 @@
 
 import "./setup_logger.ts";
 
-import { semver } from "./deps/common.ts";
 import portsValidators, {
   type InstallConfigFat,
-  type InstallConfigLite,
-  type PortManifest,
+  type PortsModuleConfig,
   type PortsModuleConfigBase,
   type PortsModuleSecureConfig,
-  type RegisteredPorts,
 } from "./modules/ports/types.ts";
 import type { SerializedConfig } from "./host/types.ts";
 import logger from "./utils/logger.ts";
@@ -18,83 +15,32 @@ import { $ } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
 import { std_modules } from "./modules/mod.ts";
 
-const portsConfig: PortsModuleConfigBase = { ports: {}, installs: [] };
-function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
-  let allowedDeps;
-  if (secureConfig?.allowedPortDeps) {
-    allowedDeps = {} as RegisteredPorts;
-    for (const depId of secureConfig.allowedPortDeps) {
-      const regPort = std_ports.map[depId.id];
-      if (!regPort) {
-        throw new Error(
-          `unrecognized dep "${depId.id}" found in "allowedPluginDeps"`,
-        );
-      }
-      allowedDeps[depId.id] = regPort;
-    }
-  } else {
-    allowedDeps = std_ports.map;
-  }
-  const config: SerializedConfig = {
-    modules: [{
-      id: std_modules.ports,
-      config: {
-        installs: portsConfig.installs,
-        ports: portsConfig.ports,
-        allowedDeps: allowedDeps,
-      },
-    }],
-  };
-  return config;
-}
+const portsConfig: PortsModuleConfigBase = { installs: [] };
 
 // freeze the object to prevent malicious tampering of the secureConfig
 export const ghjk = Object.freeze({
   getConfig: Object.freeze(getConfig),
 });
 
-export { $, logger };
+export { $, install, logger };
 
-export function install(...configs: (InstallConfigFat | InstallConfigLite)[]) {
+function install(...configs: InstallConfigFat[]) {
   const cx = portsConfig;
   for (const config of configs) {
-    if ("portId" in config) {
-      addInstall(cx, config as InstallConfigLite);
-    } else {
-      const {
-        port,
-        ...liteConfig
-      } = config;
-      const portId = registerPort(cx, port);
-      addInstall(cx, { ...liteConfig, portId });
-    }
-  }
-}
-
-export function port(...manifests: PortManifest[]) {
-  const cx = portsConfig;
-  for (const man of manifests) {
-    registerPort(cx, man);
+    addInstall(cx, config);
   }
 }
 
 function addInstall(
   cx: PortsModuleConfigBase,
-  configUnclean: InstallConfigLite,
+  configUnclean: InstallConfigFat,
 ) {
-  const config = portsValidators.installConfigLite.parse(configUnclean);
-  if (!cx.ports[config.portId]) {
-    throw new Error(
-      `unrecognized port "${config.portId}" specified by install ${
-        JSON.stringify(config)
-      }`,
-    );
-  }
+  const config = portsValidators.installConfigFat.parse(configUnclean);
   logger().debug("install added", config);
   cx.installs.push(config);
 }
 
-function registerPort(
+/* function registerPort(
   cx: PortsModuleConfigBase,
   manUnclean: PortManifest,
 ) {
@@ -169,4 +115,28 @@ function registerPort(
     cx.ports[id] = manifest;
   }
   return id;
+} */
+
+function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
+  let allowedDeps;
+  if (secureConfig?.allowedPortDeps) {
+    allowedDeps = Object.fromEntries([
+      ...secureConfig.allowedPortDeps.map((dep) =>
+        [dep.manifest.name, dep] as const
+      ),
+    ]);
+  } else {
+    allowedDeps = std_ports.map;
+  }
+  const fullPortsConfig: PortsModuleConfig = {
+    installs: portsConfig.installs,
+    allowedDeps: allowedDeps,
+  };
+  const config: SerializedConfig = {
+    modules: [{
+      id: std_modules.ports,
+      config: fullPortsConfig,
+    }],
+  };
+  return config;
 }

@@ -1,6 +1,10 @@
 //! This plugin exports the list of standard ports other
 //! plugins are allowed to depend on.
-import validators, { type PortDep, type PortManifest } from "./types.ts";
+import validators, {
+  type AllowedPortDep,
+  type PortDep,
+  type PortManifest,
+} from "./types.ts";
 import { manifest as man_tar_aa } from "../../ports/tar.ts";
 import { manifest as man_git_aa } from "../../ports/git.ts";
 import { manifest as man_curl_aa } from "../../ports/curl.ts";
@@ -22,41 +26,48 @@ const denoPorts: PortManifest[] = [
   man_pnpm_ghrel,
 ];
 
+const allowedDeps: AllowedPortDep[] = [
+  ...aaPorts,
+  ...denoPorts,
+]
+  .map((man) => validators.portManifest.parse(man))
+  .map((manifest) => ({
+    manifest,
+    defaultInst: {
+      portName: manifest.name,
+    },
+  }));
+
 export const map = Object.freeze(
   Object.fromEntries(
-    [
-      ...aaPorts,
-      ...denoPorts,
-    ]
-      .map((man) => validators.portManifest.parse(man))
-      .map((man) => [man.name, man]),
+    allowedDeps.map((dep) => [dep.manifest.name, dep]),
   ),
 );
 
 export const tar_aa = Object.freeze({
-  id: man_tar_aa.name,
+  name: man_tar_aa.name,
 } as PortDep);
 
 export const git_aa = Object.freeze({
-  id: man_git_aa.name,
+  name: man_git_aa.name,
 } as PortDep);
 
 export const curl_aa = Object.freeze({
-  id: man_curl_aa.name,
+  name: man_curl_aa.name,
 } as PortDep);
 
 export const unzip_aa = Object.freeze({
-  id: man_unzip_aa.name,
+  name: man_unzip_aa.name,
 } as PortDep);
 
 export const cbin_ghrel = Object.freeze({
-  id: man_cbin_ghrel.name,
+  name: man_cbin_ghrel.name,
 } as PortDep);
 
 export const node_org = Object.freeze({
-  id: man_node_org.name,
+  name: man_node_org.name,
 } as PortDep);
 
 export const pnpm_ghrel = Object.freeze({
-  id: man_pnpm_ghrel.name,
+  name: man_pnpm_ghrel.name,
 } as PortDep);

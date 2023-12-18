@@ -6,8 +6,8 @@ import type {
   PortDep,
 } from "../modules/ports/types.ts";
 
-export function dbg<T>(val: T) {
-  logger().debug("inline", val);
+export function dbg<T>(val: T, ...more: unknown[]) {
+  logger().debug("inline", val, ...more);
   return val;
 }
 
@@ -28,14 +28,14 @@ export function depBinShimPath(
   binName: string,
   depShims: DepShims,
 ) {
-  const shimPaths = depShims[dep.id];
+  const shimPaths = depShims[dep.name];
   if (!shimPaths) {
-    throw new Error(`unable to find shims for dep ${dep.id}`);
+    throw new Error(`unable to find shims for dep ${dep.name}`);
   }
   const path = shimPaths[binName];
   if (!path) {
     throw new Error(
-      `unable to find shim path for bin "${binName}" of dep ${dep.id}`,
+      `unable to find shim path for bin "${binName}" of dep ${dep.name}`,
     );
   }
   return path;
@@ -54,16 +54,24 @@ export function bufferToHex(buffer: ArrayBuffer): string {
 export async function getInstallHash(install: InstallConfigLite) {
   const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
   const hashHex = bufferToHex(hashBuf).slice(0, 8);
-  return `${install.portId}@${hashHex}`;
+  return `${install.portName}@${hashHex}`;
 }
 
 export const $ = dax.build$(
   {
     commandBuilder: (() => {
       const builder = new dax.CommandBuilder().printCommand(true);
-      builder.setPrintCommandLogger((...args) =>
-        logger().debug("spawning", args.splice(1))
-      );
+      builder.setPrintCommandLogger((_, cmd) => {
+        // clean up the already colorized print command logs
+        // TODO: remove when https://github.com/dsherret/dax/pull/203
+        // is merged
+        const ansiBlue = "\x1b[34m";
+        const ansiNoColor = "\x1b[39m";
+        return logger().debug(
+          "spawning",
+          cmd.replaceAll(ansiBlue, "").replaceAll(ansiNoColor, "").split(/\s/),
+        );
+      });
       return builder;
     })(),
     extras: {

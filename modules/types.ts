@@ -1,7 +1,7 @@
 import { zod } from "../deps/common.ts";
 
-// FIXME: better module ident/versioning
-const moduleId = zod.string();
+// TODO: better module ident/versioning
+const moduleId = zod.string().regex(/[^ @]*/);
 
 const moduleManifest = zod.object({
   id: moduleId,

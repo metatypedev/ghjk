@@ -22,8 +22,7 @@ for (const manUnclean of manifests) {
       depShims: {},
       manifest,
       config: {
-        portId: manifest.name,
-        conflictResolution: "deferToNewer",
+        portName: manifest.name,
       },
     });
     console.log(versions);
