@@ -1,18 +1,24 @@
 //! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
 //! avoid importing elsewhere at it has side-effects.
 
+// TODO: harden most of the items in here
+
 import "./setup_logger.ts";
 
-import portsValidators, {
-  type InstallConfigFat,
-  type PortsModuleConfig,
-  type PortsModuleConfigBase,
-  type PortsModuleSecureConfig,
+import portsValidators from "./modules/ports/types.ts";
+import type {
+  AllowedPortDep,
+  InstallConfigFat,
+  PortsModuleConfig,
+  PortsModuleConfigBase,
+  PortsModuleSecureConfig,
 } from "./modules/ports/types.ts";
 import type { SerializedConfig } from "./host/types.ts";
 import logger from "./utils/logger.ts";
 import { $ } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
+import * as cpy from "./ports/cpy_bs.ts";
+import * as node from "./ports/node.ts";
 import { std_modules } from "./modules/mod.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
@@ -22,7 +28,7 @@ export const ghjk = Object.freeze({
   getConfig: Object.freeze(getConfig),
 });
 
-export { $, install, logger };
+export { $, install, logger, secureConfig, stdDeps };
 
 function install(...configs: InstallConfigFat[]) {
   const cx = portsConfig;
@@ -40,26 +46,59 @@ function addInstall(
   cx.installs.push(config);
 }
 
-function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
-  let allowedDeps;
-  if (secureConfig?.allowedPortDeps) {
-    allowedDeps = Object.fromEntries([
-      ...secureConfig.allowedPortDeps.map((dep) =>
-        [dep.manifest.name, dep] as const
-      ),
-    ]);
-  } else {
-    allowedDeps = std_ports.map;
-  }
-  const fullPortsConfig: PortsModuleConfig = {
-    installs: portsConfig.installs,
-    allowedDeps: allowedDeps,
-  };
-  const config: SerializedConfig = {
-    modules: [{
-      id: std_modules.ports,
-      config: fullPortsConfig,
-    }],
-  };
+function secureConfig(
+  config: PortsModuleSecureConfig,
+) {
   return config;
+}
+
+function stdDeps(args = { enableRuntimes: false }) {
+  const out: AllowedPortDep[] = [
+    ...Object.values(std_ports.map),
+  ];
+  if (args.enableRuntimes) {
+    out.push(
+      ...[
+        node.default(),
+        cpy.default(),
+      ].map((fatInst) => {
+        const { port, ...liteInst } = fatInst;
+        return portsValidators.allowedPortDep.parse({
+          manifest: port,
+          defaultInst: {
+            portName: port.name,
+            ...liteInst,
+          },
+        });
+      }),
+    );
+  }
+  return out;
+}
+
+function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
+  try {
+    const allowedDeps = Object.fromEntries([
+      ...(secureConfig?.allowedPortDeps ?? stdDeps())
+        .map((dep) =>
+          [
+            dep.manifest.name,
+            portsValidators.allowedPortDep.parse(dep),
+          ] as const
+        ),
+    ]);
+    const fullPortsConfig: PortsModuleConfig = {
+      installs: portsConfig.installs,
+      allowedDeps: allowedDeps,
+    };
+    const config: SerializedConfig = {
+      modules: [{
+        id: std_modules.ports,
+        config: fullPortsConfig,
+      }],
+    };
+    return config;
+  } catch (cause) {
+    throw new Error(`error constructing config for serializatino`, { cause });
+  }
 }

@@ -7,11 +7,11 @@ export type E2eTestCase = {
   name: string;
   installConf: InstallConfigFat | InstallConfigFat[];
   envs?: Record<string, string>;
-  ePoint: string;
+  ePoints: string[];
 };
 
 export async function localE2eTest(testCase: E2eTestCase) {
-  const { envs: testEnvs, installConf, ePoint } = testCase;
+  const { envs: testEnvs, installConf, ePoints } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
       prefix: "ghjk_le2e_",
@@ -32,12 +32,16 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await tmpDir.join("ghjk.ts").writeText(
     `
 export { ghjk } from "$ghjk/mod.ts";
-import { install } from "$ghjk/mod.ts";
+import * as ghjk from "$ghjk/mod.ts";
 const confStr = \`
 ${JSON.stringify(installConfArray)}
 \`;
 const confObj = JSON.parse(confStr);
-install(...confObj)
+ghjk.install(...confObj)
+
+export const secureConfig = ghjk.secureConfig({
+  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
+});
 `
       .replaceAll(
         "$ghjk",
@@ -64,16 +68,16 @@ install(...confObj)
   await $`${ghjkDir.join("ghjk").toString()} ports sync`
     .cwd(tmpDir.toString())
     .env(env);
-
+  /*
   // print the contents of the ghjk dir for debugging purposes
   const ghjkDirLen = ghjkDir.toString().length;
   dbg((await Array.fromAsync(ghjkDir.walk())).map((entry) => [
     entry.isDirectory ? "dir " : entry.isSymlink ? "ln  " : "file",
     entry.path.toString().slice(ghjkDirLen),
   ]));
-
-  for (const shell of ["bash -c", "fish -c", "zsh -c"]) {
-    await $.raw`env ${shell} '${ePoint}'`
+  */
+  for (const ePoint of ePoints) {
+    await $.raw`${ePoint}`
       .cwd(tmpDir.toString())
       .env(env);
   }
@@ -87,7 +91,7 @@ const templateStrings = {
 };
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envs: testEnvs, ePoint, installConf } = testCase;
+  const { name, envs: testEnvs, ePoints, installConf } = testCase;
   const tag = `ghjk_e2e_${name}`;
   const env = {
     ...testEnvs,
@@ -103,12 +107,16 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
   );
   const configFile = `
 export { ghjk } from "$ghjk/mod.ts";
-import { install } from "$ghjk/mod.ts";
+import * as ghjk from "$ghjk/mod.ts";
 const confStr = \\\`
 ${serializedConf}
 \\\`;
 const confObj = JSON.parse(confStr);
-install(...confObj)
+ghjk.install(...confObj)
+
+export const secureConfig = ghjk.secureConfig({
+  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
+});
 `.replaceAll("$ghjk", "/ghjk");
 
   const dFile = dbg(dFileTemplate.replaceAll(
@@ -119,12 +127,12 @@ install(...confObj)
     .raw`${dockerCmd} buildx build --tag '${tag}' --network=host --output type=docker -f- .`
     .env(env)
     .stdinText(dFile);
-  for (const shell of ["bash", "fish", "zsh"]) {
+  for (const ePoint of ePoints) {
     await $
       .raw`${dockerCmd} run --rm ${
       Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
         .flat()
-    } ${tag} ${shell} -c '${ePoint}'`
+    } ${tag} ${ePoint}`
       .env(env);
   }
   await $

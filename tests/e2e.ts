@@ -18,8 +18,9 @@ import whiz from "../ports/whiz.ts";
 import cpython from "../ports/cpy_bs.ts";
 import pipi from "../ports/pipi.ts";
 
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & { ePoint: string };
 // order tests by download size to make failed runs less expensive
-const cases: E2eTestCase[] = [
+const cases: CustomE2eTestCase[] = [
   ...(Deno.build.os == "linux"
     ? [
       // 8 megs
@@ -133,7 +134,7 @@ const cases: E2eTestCase[] = [
 ];
 
 function testlManyE2e(
-  cases: E2eTestCase[],
+  cases: CustomE2eTestCase[],
   testFn: (inp: E2eTestCase) => Promise<void>,
   defaultEnvs: Record<string, string> = {},
 ) {
@@ -143,6 +144,9 @@ function testlManyE2e(
       () =>
         testFn({
           ...testCase,
+          ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) =>
+            `env ${sh} '${testCase.ePoint}'`
+          ),
           envs: {
             ...defaultEnvs,
             ...testCase.envs,

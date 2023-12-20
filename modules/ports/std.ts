@@ -1,7 +1,7 @@
 //! This plugin exports the list of standard ports other
 //! plugins are allowed to depend on.
 import validators, {
-  type AllowedPortDep,
+  type AllowedPortDepX,
   type PortDep,
   type PortManifest,
 } from "./types.ts";
@@ -26,27 +26,27 @@ const aaPorts: PortManifest[] = [
 
 const denoPorts: PortManifest[] = [
   man_cbin_ghrel,
-  man_node_org,
   man_pnpm_ghrel,
   man_asdf_plugin_git,
-  man_cpy_bs_ghrel,
+  // man_cpy_bs_ghrel,
+  // man_node_org,
 ];
 
-const allowedDeps: AllowedPortDep[] = [
+const defaultAllowedDeps: AllowedPortDepX[] = [
   ...aaPorts,
   ...denoPorts,
 ]
-  .map((man) => validators.portManifest.parse(man))
   .map((manifest) => ({
     manifest,
     defaultInst: {
       portName: manifest.name,
     },
-  }));
+  }))
+  .map((portDep) => validators.allowedPortDep.parse(portDep));
 
 export const map = Object.freeze(
   Object.fromEntries(
-    allowedDeps.map((dep) => [dep.manifest.name, dep]),
+    defaultAllowedDeps.map((dep) => [dep.manifest.name, dep]),
   ),
 );
 

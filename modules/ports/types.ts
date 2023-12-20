@@ -236,12 +236,16 @@ export type PortsModuleConfigBase = zod.infer<
   typeof validators.portsModuleConfigBase
 >;
 
-export type AllowedPortDep = zod.infer<typeof validators.allowedPortDep>;
+export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
+export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
 
 /// This is a secure sections of the config intended to be direct exports
 /// from the config script instead of the global variable approach the
 /// main [`GhjkConfig`] can take.
-export type PortsModuleSecureConfig = zod.infer<
+export type PortsModuleSecureConfig = zod.input<
+  typeof validators.portsModuleSecureConfig
+>;
+export type PortsModuleSecureConfigX = zod.input<
   typeof validators.portsModuleSecureConfig
 >;
 

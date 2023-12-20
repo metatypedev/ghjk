@@ -1,8 +1,6 @@
 //! this installs the different shell ghjk hooks in ~/.local/share/ghjk
 //! and a `ghjk` bin at ~/.local/share/bin
 
-// TODO: support for different environments to use different versions of ghjk
-
 import logger from "../utils/logger.ts";
 import { std_fs, std_path } from "../deps/cli.ts";
 import { $, dirs, importRaw } from "../utils/mod.ts";

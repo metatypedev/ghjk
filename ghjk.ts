@@ -47,3 +47,7 @@ ghjk.install(
   act(),
   ...pipi({ packageName: "pre-commit" }),
 );
+
+export const secureConfig = ghjk.secureConfig({
+  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
+});
