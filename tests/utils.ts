@@ -65,12 +65,14 @@ install(...confObj)
   await $`${ghjkDir.join("ghjk").toString()} ports sync`
     .cwd(tmpDir.toString())
     .env(env);
-  /* const ghjkDirLen = ghjkDir.toString().length;
-      for await (const entry of ghjkDir.walk()) {
-        logger().debug(entry.path.toString().slice(ghjkDirLen), {
-          ty: entry.isDirectory ? "dir" : entry.isSymlink ? "link" : "file",
-        });
-      } */
+
+  // print the contents of the ghjk dir for debugging purposes
+  const ghjkDirLen = ghjkDir.toString().length;
+  dbg((await Array.fromAsync(ghjkDir.walk())).map((entry) => [
+    entry.isDirectory ? "dir " : entry.isSymlink ? "ln  " : "file",
+    entry.path.toString().slice(ghjkDirLen),
+  ]));
+
   for (const shell of ["bash -c", "fish -c", "zsh -c"]) {
     await $.raw`env ${shell} '${ePoint}'`
       .cwd(tmpDir.toString())
