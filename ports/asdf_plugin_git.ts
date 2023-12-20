@@ -7,6 +7,7 @@ import {
   type ListAllArgs,
   osXarch,
   PortBase,
+  shimScript,
   std_fs,
   zod,
 } from "../port.ts";
@@ -43,7 +44,7 @@ export class Port extends PortBase {
   async listAll(args: ListAllArgs) {
     const conf = confValidator.parse(args.config);
     const fullOut = await $`${
-      depExecShimPath(git_aa_id, "git", args.depShims)
+      depExecShimPath(git_aa_id, "git", args.depArts)
     } ls-remote ${conf.pluginRepo} HEAD`.lines();
 
     return fullOut
@@ -54,11 +55,12 @@ export class Port extends PortBase {
 
   async download(args: DownloadArgs) {
     if (await $.path(args.downloadPath).exists()) {
+      // FIXME: remove this once download tracking is part of core
       return;
     }
     const conf = confValidator.parse(args.config);
     await $`${
-      depExecShimPath(git_aa_id, "git", args.depShims)
+      depExecShimPath(git_aa_id, "git", args.depArts)
     } clone ${conf.pluginRepo} --depth 1 ${args.tmpDirPath}`;
     await std_fs.copy(
       args.tmpDirPath,
@@ -67,32 +69,34 @@ export class Port extends PortBase {
   }
 
   async install(args: InstallArgs) {
-    const installPath = $.path(args.installPath);
-    if (await installPath.exists()) {
-      await installPath.remove({ recursive: true });
-    }
+    const tmpPath = $.path(args.tmpDirPath);
     // we copy the repo to a src dir
-    const srcDir = installPath.join("src");
+    const srcDir = (await tmpPath.ensureDir()).join("src");
     await std_fs.move(
       args.downloadPath,
       srcDir.toString(),
     );
+    const installPath = $.path(args.installPath);
     // we create shelShims since some asdf scripts will
     // source/exec some other scripts relatinv on their path
     // which doesn't work with symShims
-    const binDir = await installPath.join("bin").ensureDir();
+    const binDir = await tmpPath.join("bin").ensureDir();
     await Promise.all(
       (await Array.fromAsync(srcDir.join("bin").walk({ maxDepth: 1 })))
         .map(async (entry) => {
-          if (entry.isFile) {
-            // use exec to ensure the scripts executes in it's own shell
-            await binDir.join(entry.name).writeText(
-              `#!/usr/bin/env sh
-exec ${entry.path.toString()}`,
-              { mode: 0o700 },
-            );
-          }
+          if (entry.isDirectory) return;
+          await shimScript({
+            shimPath: binDir.join(entry.name).toString(),
+            // NOTE: we symlink into the installPath, not tmpPath
+            execPath: installPath.join("src", "bin", entry.path.basename())
+              .toString(),
+            os: args.platform.os,
+          });
         }),
     );
+    if (await installPath.exists()) {
+      await installPath.remove({ recursive: true });
+    }
+    await std_fs.move(tmpPath.toString(), installPath.toString());
   }
 }

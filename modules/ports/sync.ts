@@ -3,7 +3,7 @@ import logger from "../../utils/logger.ts";
 import validators, {
   AmbientAccessPortManifestX,
   DenoWorkerPortManifestX,
-  DepShims,
+  DepArts,
   InstallConfigLite,
   InstallConfigLiteX,
   PortArgsBase,
@@ -81,12 +81,12 @@ export async function sync(
     const inst = graph.all.get(installId)!;
 
     const manifest = graph.ports.get(inst.portRef)!;
-    const depShims: DepShims = {};
+    const depArts: DepArts = {};
 
     // create the shims for the deps
     const depShimsRootPath = await Deno.makeTempDir({
       dir: tmpPath,
-      prefix: `depShims_${installId}_`,
+      prefix: `shims_${installId}_`,
     });
     for (
       const [depInstallId, depPortName] of graph.depEdges.get(installId) ?? []
@@ -97,16 +97,35 @@ export async function sync(
           `artifacts not found for plug dep "${depInstallId}" when installing "${installId}"`,
         );
       }
-      const depShimDir = std_path.resolve(depShimsRootPath, depInstallId);
-      await $.path(depShimDir).ensureDir();
-      // TODO: expose LD_LIBRARY from deps
-
-      const { binPaths, installPath } = depArtifacts;
-      depShims[depPortName] = await shimLinkPaths(
-        binPaths,
-        installPath,
-        depShimDir,
+      const depShimDir = $.path(
+        std_path.resolve(depShimsRootPath, depInstallId),
       );
+
+      const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
+        depShimDir.join("bin").ensureDir(),
+        depShimDir.join("lib").ensureDir(),
+        depShimDir.join("include").ensureDir(),
+      ]);
+      const { binPaths, libPaths, includePaths, installPath, env } =
+        depArtifacts;
+      depArts[depPortName] = {
+        execs: await shimLinkPaths(
+          binPaths,
+          installPath,
+          binShimDir.toString(),
+        ),
+        libs: await shimLinkPaths(
+          libPaths,
+          installPath,
+          libShimDir.toString(),
+        ),
+        includes: await shimLinkPaths(
+          includePaths,
+          installPath,
+          includeShimDir.toString(),
+        ),
+        env,
+      };
     }
 
     let thisArtifacts;
@@ -117,13 +136,13 @@ export async function sync(
         tmpPath,
         inst.conf,
         manifest,
-        depShims,
+        depArts,
       );
     } catch (err) {
       throw new Error(`error installing ${installId}`, { cause: err });
     }
     artifacts.set(installId, thisArtifacts);
-    void $.path(depShimsRootPath).remove({ recursive: true });
+    void $.removeIfExists(depShimsRootPath);
 
     // mark where appropriate if some other install was depending on it
     const parents = graph.revDepEdges.get(installId) ?? [];
@@ -144,9 +163,8 @@ export async function sync(
   }
 
   const shimDir = $.path(envDir).join("shims");
-  if (await shimDir.exists()) {
-    await shimDir.remove({ recursive: true });
-  }
+  await $.removeIfExists(shimDir);
+
   // create shims for the environment
   const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
     shimDir.join("bin").ensureDir(),
@@ -221,7 +239,7 @@ export async function sync(
     ),
     pathVars,
   );
-  await $.path(tmpPath).remove({ recursive: true });
+  await $.removeIfExists(tmpPath);
 }
 
 async function buildInstallGraph(cx: PortsModuleConfig) {
@@ -406,7 +424,7 @@ async function doInstall(
   tmpDir: string,
   instUnclean: InstallConfigLite,
   manifest: PortManifestX,
-  depShims: DepShims,
+  depArts: DepArts,
 ) {
   logger().debug("installing", {
     installsDir,
@@ -440,7 +458,7 @@ async function doInstall(
   const installVersion = validators.string.parse(
     inst.version ??
       await port.latestStable({
-        depShims,
+        depArts,
         manifest,
         config: inst,
       }),
@@ -451,7 +469,7 @@ async function doInstall(
     installPath: installPath,
     // installType: "version",
     installVersion: installVersion,
-    depShims,
+    depArts,
     platform: Deno.build,
     config: inst,
     manifest,
@@ -460,14 +478,14 @@ async function doInstall(
     logger().info(`downloading ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({
       dir: tmpDir,
-      prefix: `download_${installId}:${installVersion}_`,
+      prefix: `download_${installId}@${installVersion}_`,
     });
     await port.download({
       ...baseArgs,
       downloadPath: downloadPath,
       tmpDirPath,
     });
-    void $.path(tmpDirPath).remove({ recursive: true });
+    void $.removeIfExists(tmpDirPath);
   }
   {
     logger().info(`installing ${installId}:${installVersion}`);
@@ -481,7 +499,7 @@ async function doInstall(
       downloadPath: downloadPath,
       tmpDirPath,
     });
-    void $.path(tmpDirPath).remove({ recursive: true });
+    void $.removeIfExists(tmpDirPath);
   }
   const binPaths = validators.stringArray.parse(
     await port.listBinPaths({

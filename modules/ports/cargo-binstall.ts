@@ -41,7 +41,7 @@ export abstract class CargoBinstallPort extends PortBase {
       return;
     }
     await $`${
-      depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims)
+      depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
     }
       ${this.crateName} --version ${args.installVersion}
       --install-path ${args.tmpDirPath}

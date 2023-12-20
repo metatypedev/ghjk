@@ -145,14 +145,23 @@ const cases: E2eTestCase[] = [
     }`,
     ePoint: `cmake --version`,
   },
-  // big
+  // 80 meg
   {
-    name: "python_bs",
-    imports: `import port from "$ghjk/ports/python_bs.ts"`,
+    name: "cpy_bs",
+    imports: `import port from "$ghjk/ports/cpy_bs.ts"`,
     confFn: `async () => {
       install(port());
     }`,
     ePoint: `python3 --version`,
+  },
+  // 80 meg +
+  {
+    name: "pipi-poetry",
+    imports: `import port from "$ghjk/ports/pipi.ts"`,
+    confFn: `async () => {
+      install(...port({ packageName: 'poetry' }));
+    }`,
+    ePoint: `poetry --version`,
   },
 ];
 

@@ -15,7 +15,8 @@ import protoc from "./ports/protoc.ts";
 import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
-import python_bs from "./ports/python_bs.ts";
+import cpython from "./ports/cpy_bs.ts";
+import pipi from "./ports/pipi.ts";
 
 ghjk.install(
   // node(),
@@ -37,10 +38,11 @@ ghjk.install(
   //   pluginRepo: "https://github.com/asdf-community/asdf-poetry",
   //   installType: "version",
   // }),
+  ...pipi({ packageName: "poetry" }),
   // protoc(),
   // earthly(),
   // ruff(),
   // whiz(),
   // jco()[0],
-  python_bs(),
+  // cpython(),
 );

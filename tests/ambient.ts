@@ -19,7 +19,7 @@ for (const manUnclean of manifests) {
   Deno.test(`ambient access ${manifest.name}`, async () => {
     const plug = new AmbientAccessPort(manifest);
     const versions = await plug.listAll({
-      depShims: {},
+      depArts: {},
       manifest,
       config: {
         portName: manifest.name,

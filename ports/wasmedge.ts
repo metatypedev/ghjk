@@ -121,7 +121,7 @@ export class Port extends GithubReleasePort {
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await $`${
-      depExecShimPath(std_ports.tar_aa, "tar", args.depShims)
+      depExecShimPath(std_ports.tar_aa, "tar", args.depArts)
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);

@@ -253,9 +253,16 @@ interface ASDF_CONFIG_EXAMPLE {
 }
 */
 
-export type DepShims = Record<
+export type DepArt = {
+  execs: Record<string, string>;
+  libs: Record<string, string>;
+  includes: Record<string, string>;
+  env: Record<string, string>;
+};
+
+export type DepArts = Record<
   string,
-  Record<string, string>
+  DepArt
 >;
 
 export type PlatformInfo = { os: OsEnum; arch: ArchEnum };
@@ -264,14 +271,14 @@ export interface PortArgsBase {
   // installType: "version" | "ref";
   installVersion: string;
   installPath: string;
-  depShims: DepShims;
+  depArts: DepArts;
   platform: PlatformInfo;
   config: InstallConfigLiteX;
   manifest: PortManifestX;
 }
 
 export interface ListAllArgs {
-  depShims: DepShims;
+  depArts: DepArts;
   manifest: PortManifestX;
   // FIXME: switch to X type when https://github.com/colinhacks/zod/issues/2864 is resolved
   config: InstallConfigLiteX;

@@ -7,9 +7,8 @@ import {
   dwnUrlOut,
   type InstallArgs,
   type InstallConfigSimple,
-  type ListAllArgs,
   osXarch,
-  pathWithDepShims,
+  pathsWithDepArts,
   PortBase,
   std_fs,
   std_path,
@@ -39,7 +38,7 @@ export default function conf(config: InstallConfigSimple = {}) {
 }
 
 export class Port extends PortBase {
-  async listAll(_env: ListAllArgs) {
+  async listAll() {
     const metadataRequest = await $.request(
       `https://registry.npmjs.org/@bytecodealliance/jco`,
     ).header(
@@ -82,14 +81,14 @@ export class Port extends PortBase {
       args.installPath,
     );
     await $`${
-      depExecShimPath(std_ports.node_org, "npm", args.depShims)
+      depExecShimPath(std_ports.node_org, "npm", args.depArts)
     } install --no-fund`
       .cwd(args.installPath)
-      .env({
-        PATH: pathWithDepShims(args.depShims),
-      });
+      .env(pathsWithDepArts(args.depArts, args.platform.os));
     await installPath.join("bin").ensureDir();
     await installPath.join("bin", "jco")
-      .createSymlinkTo(installPath.join("src", "jco.js").toString());
+      .createSymlinkTo(installPath.join("src", "jco.js").toString(), {
+        // kind: "relative",
+      });
   }
 }

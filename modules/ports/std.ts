@@ -14,7 +14,7 @@ import { manifest as man_cbin_ghrel } from "../../ports/cargo-binstall.ts";
 import { manifest as man_node_org } from "../../ports/node.ts";
 import { manifest as man_pnpm_ghrel } from "../../ports/pnpm.ts";
 import { manifest as man_asdf_plugin_git } from "../../ports/asdf_plugin_git.ts";
-import { manifest as man_python_bs_ghrel } from "../../ports/python_bs.ts";
+import { manifest as man_cpy_bs_ghrel } from "../../ports/cpy_bs.ts";
 
 const aaPorts: PortManifest[] = [
   man_tar_aa,
@@ -29,7 +29,7 @@ const denoPorts: PortManifest[] = [
   man_node_org,
   man_pnpm_ghrel,
   man_asdf_plugin_git,
-  man_python_bs_ghrel,
+  man_cpy_bs_ghrel,
 ];
 
 const allowedDeps: AllowedPortDep[] = [
@@ -82,8 +82,8 @@ export const pnpm_ghrel = Object.freeze({
   name: man_pnpm_ghrel.name,
 } as PortDep);
 
-export const python_bs_ghrel = Object.freeze({
-  name: man_python_bs_ghrel.name,
+export const cpy_bs_ghrel = Object.freeze({
+  name: man_cpy_bs_ghrel.name,
 } as PortDep);
 
 export const asdf_plugin_git = Object.freeze({

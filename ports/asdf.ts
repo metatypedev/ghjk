@@ -8,7 +8,7 @@ import {
   ListAllArgs,
   ListBinPathsArgs,
   osXarch,
-  pathWithDepShims,
+  pathsWithDepArts,
   PortBase,
   tryDepExecShimPath,
   zod,
@@ -22,7 +22,6 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [std_ports.curl_aa, std_ports.git_aa, std_ports.asdf_plugin_git],
-  // there should only be a single asdf port registered at any time
   platforms: osXarch(["linux", "darwin"], ["x86_64", "aarch64"]),
 };
 
@@ -58,7 +57,7 @@ export default function conf(
 export class Port extends PortBase {
   async listAll(args: ListAllArgs) {
     const out = await $`${
-      depExecShimPath(std_ports.asdf_plugin_git, "list-all", args.depShims)
+      depExecShimPath(std_ports.asdf_plugin_git, "list-all", args.depArts)
     }`
       .text();
     return out.split(/\s/).filter(Boolean).map((str) => str.trim());
@@ -68,7 +67,7 @@ export class Port extends PortBase {
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
       "latest-stable",
-      args.depShims,
+      args.depArts,
     );
     if (!binPath) {
       return super.latestStable(args);
@@ -76,7 +75,7 @@ export class Port extends PortBase {
     const conf = confValidator.parse(args.config);
     const out = await $`${binPath}`
       .env({
-        PATH: pathWithDepShims(args.depShims),
+        PATH: pathsWithDepArts(args.depArts, "linux").PATH,
         ASDF_INSTALL_TYPE: conf.installType,
         // FIXME: asdf requires these vars for latest-stable. this makes no sense!
         ASDF_INSTALL_VERSION: args.config.version ?? "",
@@ -89,7 +88,7 @@ export class Port extends PortBase {
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
       "list-bin-paths",
-      args.depShims,
+      args.depArts,
     );
     if (!binPath) {
       return super.listBinPaths(args);
@@ -97,7 +96,7 @@ export class Port extends PortBase {
     const conf = confValidator.parse(args.config);
     const out = await $`${binPath}`
       .env({
-        PATH: pathWithDepShims(args.depShims),
+        ...pathsWithDepArts(args.depArts, args.platform.os),
         ASDF_INSTALL_TYPE: conf.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
         ASDF_INSTALL_PATH: args.installPath,
@@ -110,7 +109,7 @@ export class Port extends PortBase {
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
       "download",
-      args.depShims,
+      args.depArts,
     );
     if (!binPath) {
       return;
@@ -118,7 +117,7 @@ export class Port extends PortBase {
     const conf = confValidator.parse(args.config);
     await $`${binPath}`
       .env({
-        PATH: pathWithDepShims(args.depShims),
+        ...pathsWithDepArts(args.depArts, args.platform.os),
         TMPDIR: args.tmpDirPath,
         ASDF_INSTALL_TYPE: conf.installType,
         ASDF_INSTALL_VERSION: args.installVersion,
@@ -129,10 +128,10 @@ export class Port extends PortBase {
   async install(args: InstallArgs) {
     const conf = confValidator.parse(args.config);
     await $`${
-      depExecShimPath(std_ports.asdf_plugin_git, "install", args.depShims)
+      depExecShimPath(std_ports.asdf_plugin_git, "install", args.depArts)
     }`
       .env({
-        PATH: pathWithDepShims(args.depShims),
+        ...pathsWithDepArts(args.depArts, args.platform.os),
         TMPDIR: args.tmpDirPath,
         ASDF_INSTALL_TYPE: conf.installType,
         ASDF_INSTALL_VERSION: args.installVersion,

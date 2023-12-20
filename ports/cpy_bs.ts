@@ -1,3 +1,4 @@
+import { PortArgsBase } from "../modules/ports/types.ts";
 import {
   $,
   depExecShimPath,
@@ -20,9 +21,10 @@ const zstd_aa_id = {
 
 export const manifest = {
   ty: "denoWorker@v1" as const,
-  name: "python_bs_ghrel",
+  name: "cpy_bs_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  // python-build-standalone use zstd tarballs
   deps: [tar_aa_id, zstd_aa_id],
   platforms: osXarch(["linux", "darwin", "windows"], ["x86_64", "aarch64"]),
 };
@@ -37,6 +39,15 @@ export default function conf(config: InstallConfigSimple = {}) {
 export class Port extends PortBase {
   repoOwner = "indygreg";
   repoName = "python-build-standalone";
+  execEnv(
+    args: PortArgsBase,
+  ): Record<string, string> | Promise<Record<string, string>> {
+    return {
+      REAL_PYTHON_EXEC_PATH: $.path(args.installPath).join("bin").join(
+        "python3",
+      ).toString(),
+    };
+  }
 
   async listAll() {
     // python-build-standalone builds all supported versions of python
@@ -62,7 +73,7 @@ export class Port extends PortBase {
       ).values(),
     ]
       // sort them numerically to make sure version 0.10.0 comes after 0.2.9
-      .sort((sa, sb) => sa.localeCompare(sb, undefined, { numeric: true }));
+      .sort((va, vb) => va.localeCompare(vb, undefined, { numeric: true }));
   }
 
   async downloadUrls(args: DownloadArgs) {
@@ -116,8 +127,8 @@ export class Port extends PortBase {
     );
     const fileDwnPath = fileDwnEntry.path.toString();
     await $`${
-      depExecShimPath(tar_aa_id, "tar", args.depShims)
-    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
+      depExecShimPath(tar_aa_id, "tar", args.depArts)
+    } -axf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {

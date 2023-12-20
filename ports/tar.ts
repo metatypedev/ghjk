@@ -4,6 +4,7 @@ import {
   osXarch,
 } from "../port.ts";
 
+// FIXME: replace with bsdtar
 export const manifest: AmbientAccessPortManifest = {
   ty: "ambientAccess@v1" as const,
   name: "tar_aa",
