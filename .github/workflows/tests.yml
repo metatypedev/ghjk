@@ -46,14 +46,23 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
+
       - if: "${{ matrix.os == 'macos-latest' }}"
         run: brew install fish zsh
+      - name: Cache deno dir
+        if: "${{ matrix.os == 'macos-latest' }}"
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.DENO_DIR }}
+          key: deno-mac-${{ hashFiles('**/deno.lock') }}
+
       - if: "${{ matrix.e2eType == 'docker' }}"
         uses: docker/setup-buildx-action@v3
       - if: "${{ matrix.e2eType == 'docker' }}"
         uses: actions-hub/docker/cli@master
         env:
           SKIP_LOGIN: true
+      
       - run: deno task test
 
   test-action:
