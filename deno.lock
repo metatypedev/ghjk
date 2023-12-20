@@ -1,5 +1,16 @@
 {
   "version": "3",
+  "packages": {
+    "specifiers": {
+      "npm:@types/node": "npm:@types/node@18.16.19"
+    },
+    "npm": {
+      "@types/node@18.16.19": {
+        "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==",
+        "dependencies": {}
+      }
+    }
+  },
   "redirects": {
     "https://deno.land/std/testing/asserts.ts": "https://deno.land/std@0.209.0/testing/asserts.ts",
     "https://x.nest.land/arithmetic4@0.1.1/mod.ts": "https://qkmhap62qwfaasqzew54nnbu7ar42u43y356rpojsrtm2ravz4uq.arweave.net/gphwP9qFigBKGSW7xrQ0-CPNU5vG--i9yZRmzUQVzyk/mod.ts"

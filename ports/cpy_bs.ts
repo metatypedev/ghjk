@@ -128,7 +128,7 @@ export class Port extends PortBase {
     const fileDwnPath = fileDwnEntry.path.toString();
     await $`${
       depExecShimPath(tar_aa_id, "tar", args.depArts)
-    } -axf ${fileDwnPath} --directory=${args.tmpDirPath}`;
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
