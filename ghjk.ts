@@ -19,6 +19,8 @@ import cpython from "./ports/cpy_bs.ts";
 import pipi from "./ports/pipi.ts";
 
 ghjk.install(
+  act(),
+  ...pipi({ packageName: "pre-commit" }),
   // node(),
   // wasmedge(),
   // pnpm(),
@@ -29,16 +31,10 @@ ghjk.install(
   // mold({
   //   replaceLd: true,
   // }),
-  // act(),
   // asdf({
   //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
   //   installType: "version",
   // }),
-  // asdf({
-  //   pluginRepo: "https://github.com/asdf-community/asdf-poetry",
-  //   installType: "version",
-  // }),
-  ...pipi({ packageName: "poetry" }),
   // protoc(),
   // earthly(),
   // ruff(),

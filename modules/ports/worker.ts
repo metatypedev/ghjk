@@ -30,6 +30,7 @@ async function onMsg(msg: MessageEvent<WorkerReq>) {
     throw new Error("unrecognized worker request type");
   }
 
+  // get the Port class exported from the module
   const { Port } = await import(req.moduleSpecifier);
   if (typeof Port != "function") {
     throw new Error(
@@ -142,6 +143,8 @@ type WorkerResp = {
   ty: "install";
 };
 
+/// This creates a new worker for every method
+/// invocation
 export class DenoWorkerPort extends PortBase {
   constructor(
     public manifest: DenoWorkerPortManifestX,
@@ -149,7 +152,7 @@ export class DenoWorkerPort extends PortBase {
     super();
   }
 
-  /// This creates a new worker on every call
+  /// create new worker and perform "RPC"
   async call(
     req: WorkerReq,
   ): Promise<WorkerResp> {
@@ -157,6 +160,7 @@ export class DenoWorkerPort extends PortBase {
       name: `${this.manifest.name}@${this.manifest.version}`,
       type: "module",
     });
+    // promise that resolves when worker replies
     const promise = new Promise<WorkerResp>((resolve, reject) => {
       worker.onmessage = (evt: MessageEvent<WorkerResp>) => {
         const res = evt.data;
@@ -169,13 +173,16 @@ export class DenoWorkerPort extends PortBase {
         reject(err);
       };
     });
+
+    // do "RPC"
     worker.postMessage(req);
     const resp = await promise;
+
     worker.terminate();
     return resp;
   }
 
-  async listAll(args: ListAllArgs): Promise<string[]> {
+  async listAll(args: ListAllArgs) {
     const req: WorkerReq = {
       ty: "listAll",
       // id: crypto.randomUUID(),
@@ -189,7 +196,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async latestStable(env: ListAllArgs): Promise<string> {
+  async latestStable(env: ListAllArgs) {
     const req: WorkerReq = {
       ty: "latestStable",
       arg: env,
@@ -204,7 +211,7 @@ export class DenoWorkerPort extends PortBase {
 
   async execEnv(
     args: ExecEnvArgs,
-  ): Promise<Record<string, string>> {
+  ) {
     const req: WorkerReq = {
       ty: "execEnv",
       arg: args,
@@ -218,7 +225,7 @@ export class DenoWorkerPort extends PortBase {
   }
   async listBinPaths(
     args: ListBinPathsArgs,
-  ): Promise<string[]> {
+  ) {
     const req: WorkerReq = {
       ty: "listBinPaths",
       arg: args,
@@ -233,7 +240,7 @@ export class DenoWorkerPort extends PortBase {
 
   async listLibPaths(
     args: ListBinPathsArgs,
-  ): Promise<string[]> {
+  ) {
     const req: WorkerReq = {
       ty: "listLibPaths",
       arg: args,
@@ -248,7 +255,7 @@ export class DenoWorkerPort extends PortBase {
 
   async listIncludePaths(
     args: ListBinPathsArgs,
-  ): Promise<string[]> {
+  ) {
     const req: WorkerReq = {
       ty: "listIncludePaths",
       arg: args,
@@ -261,7 +268,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async download(args: DownloadArgs): Promise<void> {
+  async download(args: DownloadArgs) {
     const req: WorkerReq = {
       ty: "download",
       arg: args,
@@ -273,7 +280,7 @@ export class DenoWorkerPort extends PortBase {
     }
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async install(args: InstallArgs): Promise<void> {
+  async install(args: InstallArgs) {
     const req: WorkerReq = {
       ty: "install",
       arg: args,

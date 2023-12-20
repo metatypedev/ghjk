@@ -18,13 +18,7 @@ for (const manUnclean of manifests) {
   const manifest = validators.ambientAccessPortManifest.parse(manUnclean);
   Deno.test(`ambient access ${manifest.name}`, async () => {
     const plug = new AmbientAccessPort(manifest);
-    const versions = await plug.listAll({
-      depArts: {},
-      manifest,
-      config: {
-        portName: manifest.name,
-      },
-    });
+    const versions = await plug.listAll();
     console.log(versions);
     std_assert.assertEquals(versions.length, 1);
   });

@@ -8,7 +8,7 @@ import type {
 } from "../modules/ports/types.ts";
 
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug("DBG", val, ...more);
+  logger().debug(() => val, ...more);
   return val;
 }
 

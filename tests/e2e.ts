@@ -1,4 +1,21 @@
 import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
+import node from "../ports/node.ts";
+import pnpm from "../ports/pnpm.ts";
+import cargo_binstall from "../ports/cargo-binstall.ts";
+import wasmedge from "../ports/wasmedge.ts";
+import wasm_tools from "../ports/wasm-tools.ts";
+import wasm_opt from "../ports/wasm-opt.ts";
+import cargo_insta from "../ports/cargo-insta.ts";
+import jco from "../ports/jco.ts";
+import mold from "../ports/mold.ts";
+import act from "../ports/act.ts";
+import asdf from "../ports/asdf.ts";
+import protoc from "../ports/protoc.ts";
+import earthly from "../ports/earthly.ts";
+import ruff from "../ports/ruff.ts";
+import whiz from "../ports/whiz.ts";
+import cpython from "../ports/cpy_bs.ts";
+import pipi from "../ports/pipi.ts";
 
 // order tests by download size to make failed runs less expensive
 const cases: E2eTestCase[] = [
@@ -7,10 +24,7 @@ const cases: E2eTestCase[] = [
       // 8 megs
       {
         name: "mold",
-        imports: `import port from "$ghjk/ports/mold.ts"`,
-        confFn: `async () => {
-    install(port());
-  }`,
+        installConf: mold(),
         ePoint: `mold -V`,
       },
     ]
@@ -19,162 +33,134 @@ const cases: E2eTestCase[] = [
   // 3 megs
   {
     name: "protoc",
-    imports: `import port from "$ghjk/ports/protoc.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: protoc(),
     ePoint: `protoc --version`,
   },
   // 6 megs
   {
     name: "ruff",
-    imports: `import port from "$ghjk/ports/ruff.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: ruff(),
     ePoint: `ruff --version`,
   },
   // 7 megs
   {
     name: "whiz",
-    imports: `import port from "$ghjk/ports/whiz.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: whiz(),
     ePoint: `whiz --version`,
   },
   // 7 megs
   {
     name: "act",
-    imports: `import port from "$ghjk/ports/act.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: act(),
     ePoint: `act --version`,
   },
   // 7 megs
   {
     name: "cargo-binstall",
-    imports: `import port from "$ghjk/ports/cargo-binstall.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: cargo_binstall(),
     ePoint: `cargo-binstall -V`,
   },
   // 16 megs
   {
     name: "wasmedge",
-    imports: `import port from "$ghjk/ports/wasmedge.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: wasmedge(),
     ePoint: `wasmedge --version`,
   },
   // cargo binstall +7 megs
   {
     name: "cargo-insta",
-    imports: `import port from "$ghjk/ports/cargo-insta.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: cargo_insta(),
     ePoint: `cargo-insta -V`,
   },
   // cargo binsatll 13 megs
   {
     name: "wasm-tools",
-    imports: `import port from "$ghjk/ports/wasm-tools.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: wasm_tools(),
     ePoint: `wasm-tools -V`,
   },
   // 25 megs
   {
     name: "node",
-    imports: `import port from "$ghjk/ports/node.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: node(),
     ePoint: `node --version`,
   },
   // cargo-binstall + 22 megs
   {
     name: "wasm-opt",
-    imports: `import port from "$ghjk/ports/wasm-opt.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: wasm_opt(),
     ePoint: `wasm-opt --version`,
   },
   // 42 megs
   {
     name: "earthly",
-    imports: `import port from "$ghjk/ports/earthly.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: earthly(),
     ePoint: `earthly --version`,
   },
   // 56 megs
   {
     name: "pnpm",
-    imports: `import port from "$ghjk/ports/pnpm.ts"`,
-    confFn: `async () => {
-    install(port());
-  }`,
+    installConf: pnpm(),
     ePoint: `pnpm --version`,
   },
   // node + more megs
   {
     name: "jco",
-    imports: `import port from "$ghjk/ports/jco.ts"`,
-    confFn: `async () => {
-    install(...port());
-  }`,
+    installConf: jco(),
     ePoint: `jco --version`,
   },
   // 77 meg +
   {
     name: "asdf-cmake",
-    imports: `import port from "$ghjk/ports/asdf.ts"`,
-    confFn: `async () => {
-  install(port({
-    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-    installType: "version",
-  }));
-    }`,
+    installConf: asdf({
+      pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+      installType: "version",
+    }),
     ePoint: `cmake --version`,
   },
   // 80 meg
   {
     name: "cpy_bs",
-    imports: `import port from "$ghjk/ports/cpy_bs.ts"`,
-    confFn: `async () => {
-      install(port());
-    }`,
+    installConf: cpython(),
     ePoint: `python3 --version`,
   },
   // 80 meg +
   {
     name: "pipi-poetry",
-    imports: `import port from "$ghjk/ports/pipi.ts"`,
-    confFn: `async () => {
-      install(...port({ packageName: 'poetry' }));
-    }`,
+    installConf: pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
   },
 ];
 
+function testlManyE2e(
+  cases: E2eTestCase[],
+  testFn: (inp: E2eTestCase) => Promise<void>,
+  defaultEnvs: Record<string, string> = {},
+) {
+  for (const testCase of cases) {
+    Deno.test(
+      `localE2eTest - ${testCase.name}`,
+      () =>
+        testFn({
+          ...testCase,
+          envs: {
+            ...defaultEnvs,
+            ...testCase.envs,
+          },
+        }),
+    );
+  }
+}
+
 if (Deno.env.get("GHJK_E2E_TYPE") == "both") {
-  localE2eTest(cases);
-  await dockerE2eTest(cases);
+  testlManyE2e(cases, dockerE2eTest);
+  testlManyE2e(cases, localE2eTest);
 } else if (Deno.env.get("GHJK_TEST_E2E_TYPE") == "local") {
-  localE2eTest(cases);
+  testlManyE2e(cases, localE2eTest);
 } else if (
   Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker" ||
   !Deno.env.has("GHJK_TEST_E2E_TYPE")
 ) {
-  await dockerE2eTest(cases);
+  testlManyE2e(cases, dockerE2eTest);
 } else {
   throw new Error(
     `unexpected GHJK_TEST_E2E_TYPE: ${Deno.env.get("GHJK_TEST_E2E_TYPE")}`,

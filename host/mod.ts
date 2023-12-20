@@ -28,7 +28,7 @@ export async function cli(args: CliArgs) {
   const ctx = { ghjkDir, configPath, envDir };
   let cmd = new cliffy_cmd.Command()
     .name("ghjk")
-    .version("0.1.0") // FIXME: better way to resolve version
+    .version("0.1.1") // FIXME: better way to resolve version
     .description("Programmable runtime manager.")
     .action(function () {
       this.showHelp();

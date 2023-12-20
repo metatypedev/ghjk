@@ -27,18 +27,21 @@ export class PortsModule extends ModuleBase {
           .action(() => sync(this.ctx.ghjkDir, this.ctx.envDir, this.config)),
       )
       .command(
-        "list",
-        new cliffy_cmd.Command().description("")
-          .action(() => {
-            console.log(
-              this.config.installs.map((install) => ({
-                install,
-              })),
-            );
+        "outdated",
+        new cliffy_cmd.Command()
+          .description("TODO")
+          .action(function () {
+            throw new Error("TODO");
           }),
       )
-      .command("outdated", new cliffy_cmd.Command())
-      .command("cleanup", new cliffy_cmd.Command())
+      .command(
+        "cleanup",
+        new cliffy_cmd.Command()
+          .description("TODO")
+          .action(function () {
+            throw new Error("TODO");
+          }),
+      )
       .command("completions", new cliffy_cmd.CompletionsCommand());
   }
 }

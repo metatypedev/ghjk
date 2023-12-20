@@ -1,13 +1,11 @@
-import { type DownloadArgs, type InstallArgs } from "./mod.ts";
+import type { DownloadArgs, InstallArgs } from "./mod.ts";
 import { PortBase } from "./base.ts";
 import { std_fs, std_path } from "../../deps/ports.ts";
 import logger from "../../utils/logger.ts";
 import { $, depExecShimPath } from "../../utils/mod.ts";
 import * as std_ports from "./std.ts";
 
-// TODO: convert to `AsdfPort` like abstraction
-// this is a temporarary DRY up
-
+/// TODO: convert this to an asdf/pipi kind of abstraction
 export abstract class CargoBinstallPort extends PortBase {
   abstract crateName: string;
 

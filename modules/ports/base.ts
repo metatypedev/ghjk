@@ -1,22 +1,25 @@
 import { std_path, std_url } from "../../deps/common.ts";
-import {
-  type DownloadArgs,
-  type DownloadUrlsOut,
-  type ExecEnvArgs,
-  type InstallArgs,
-  type ListAllArgs,
-  type ListBinPathsArgs,
+import type {
+  DownloadArgs,
+  DownloadUrlsOut,
+  ExecEnvArgs,
+  InstallArgs,
+  ListAllArgs,
+  ListBinPathsArgs,
 } from "./types.ts";
 import logger from "../../utils/logger.ts";
 import { $ } from "../../utils/mod.ts";
 
 export abstract class PortBase {
+  /// Enviroment variables for the install's environment
   execEnv(
     _args: ExecEnvArgs,
   ): Promise<Record<string, string>> | Record<string, string> {
     return {};
   }
 
+  /// Paths to all the executables provided by an install.
+  /// Glob paths will be expanded
   listBinPaths(
     args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
@@ -25,6 +28,8 @@ export abstract class PortBase {
     ];
   }
 
+  /// Paths to all the shared libraries provided by an install.
+  /// Glob paths will be expanded
   listLibPaths(
     args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
@@ -33,6 +38,8 @@ export abstract class PortBase {
     ];
   }
 
+  /// Paths to all the header files provided by an install.
+  /// Glob paths will be expanded
   listIncludePaths(
     args: ListBinPathsArgs,
   ): Promise<string[]> | string[] {
@@ -41,6 +48,9 @@ export abstract class PortBase {
     ];
   }
 
+  /// The latest version of a port to be used when no version
+  /// is specified by a user.
+  /// Will default to using the last itemr returned by [`listAll`]
   latestStable(args: ListAllArgs): Promise<string> | string {
     return (async () => {
       logger().warning(
@@ -54,8 +64,10 @@ export abstract class PortBase {
     })();
   }
 
+  /// List all the versions availbile to be installed by this port.
   abstract listAll(args: ListAllArgs): Promise<string[]> | string[];
 
+  /// FIXME: move this elsewhere
   downloadUrls(
     _args: DownloadArgs,
   ): Promise<DownloadUrlsOut> | DownloadUrlsOut {

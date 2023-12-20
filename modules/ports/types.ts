@@ -1,3 +1,5 @@
+//! NOTE: type FooX is a version of Type after zod processing/transformation
+
 import { semver, zod } from "../../deps/common.ts";
 
 // TODO: find a better identification scheme for ports
@@ -18,6 +20,7 @@ export const ALL_OS = [
   "solaris",
   "illumos",
 ] as const;
+
 export const ALL_ARCH = [
   "x86_64",
   "aarch64",
@@ -36,6 +39,7 @@ const portManifestBase = zod.object({
   conflictResolution: zod
     .enum(["deferToNewer", "override"])
     .nullish()
+    // default value set after transformation
     .default("deferToNewer"),
   deps: zod.array(portDep).nullish(),
 }).passthrough();
@@ -102,17 +106,17 @@ const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
 const stdInstallConfigLite = installConfigBaseLite.merge(zod.object({}))
   .passthrough();
 
-// NOTE: zod unions are tricky. It'll parse with the first schema
-// in the array that parses. And if this early schema is a subset
-// of its siblings (and it doesn't have `passthrough`), it will discard
-// fields meant for sibs.
-// Which's to say ordering matters
 const installConfigLite =
   // zod.union([
   stdInstallConfigLite;
 // ]);
 const installConfigFat = stdInstallConfigFat;
 
+// NOTE: zod unions are tricky. It'll parse with the first schema
+// in the array that parses. And if this early schema is a subset
+// of its siblings (and it doesn't have `passthrough`), it will discard
+// fields meant for sibs.
+// Which's to say ordering matters
 const installConfig = zod.union([
   // NOTE: generated types break if we make a union of other unions
   // so we get the schemas of those unions instead
@@ -174,7 +178,6 @@ export default validators;
 export type OsEnum = zod.infer<typeof osEnum>;
 export type ArchEnum = zod.infer<typeof archEnum>;
 
-// Describes the plugin itself
 export type PortManifestBase = zod.input<typeof validators.portManifestBase>;
 
 export type DenoWorkerPortManifest = zod.input<
@@ -185,7 +188,7 @@ export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
 >;
 
-// Describes the plugin itself
+// Describes the port itself
 export type PortManifest = zod.input<
   typeof validators.portManifest
 >;
@@ -197,11 +200,12 @@ export type DenoWorkerPortManifestX = zod.infer<
 export type AmbientAccessPortManifestX = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
-// This is the transformed version of PortManifest, ready for consumption
+/// This is the transformed version of PortManifest, ready for consumption
 export type PortManifestX = zod.infer<
   typeof validators.portManifest
 >;
 
+/// PortDeps are used during the port build/install process
 export type PortDep = zod.infer<typeof validators.portDep>;
 
 export type InstallConfigSimple = zod.input<
@@ -213,14 +217,17 @@ export type InstallConfigBaseLite = zod.input<
 export type InstallConfigBaseFat = zod.input<
   typeof validators.installConfigBaseFat
 >;
-
-// Describes a single installation done by a specific plugin.
-// export type InstallConfig = zod.input<typeof validators.installConfig>;
+/// Fat install configs include the port manifest within
 export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
+/// Fat install configs include the port manifest within
 export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
+/// Lite install configs refer to the port they use by name
 export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
+/// Lite install configs refer to the port they use by name
 export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
+// Describes a single installation done by a specific plugin.
 export type InstallConfig = zod.input<typeof validators.installConfig>;
+// Describes a single installation done by a specific plugin.
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
 
 export type PortsModuleConfigBase = zod.infer<

@@ -160,6 +160,8 @@ export class Port extends PortBase {
       await $`${
         depExecShimPath(std_ports.cpy_bs_ghrel, "python3", args.depArts)
       } -c ${printPkgFiles} ${conf.packageName}`
+        // NOTE: the python script is too much for debug logs
+        .printCommand(false)
         .env(
           {
             ...depPathEnvs,

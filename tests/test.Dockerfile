@@ -11,16 +11,13 @@ ARG XZ_V=5.2.9-r0
 ARG GTAR_V=1.34-r2
 ARG UNZIP_V=6.0-r13
 ARG ZSTD_V=1.5.5-r0
-ARG GLIBC_V=2.34-r0
-ARG LIBSTDCXX_V=12.2.1_git20220924-r4
+ARG GCOMPAT_V=1.1.0-r0
 
 RUN set -eux; \
     apk update; \
     apk add \
     # ambient deps \
     zstd=$ZSTD_V \
-    glibc=$GLIBC_V \
-    libstdc++=$LIBSTDCXX_V \
     tar=$GTAR_V \
     # test deps \
     bash=$BASH_V \

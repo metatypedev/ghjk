@@ -14,6 +14,10 @@ import { DenoWorkerPort } from "./worker.ts";
 import { AmbientAccessPort } from "./ambient.ts";
 import { $, AVAIL_CONCURRENCY, getInstallHash } from "../../utils/mod.ts";
 
+// create the loader scripts
+// loader scripts are responsible for exporting
+// different environment variables from the ports
+// and mainpulating the path strings
 async function writeLoader(
   envDir: string,
   env: Record<string, string>,
@@ -55,25 +59,49 @@ set --global --prepend ${k} ${v};
   ]);
 }
 
+/// this returns a tmp path that's guaranteed to be
+/// on the same file system as targetDir by
+/// checking if $TMPDIR satisfies that constraint
+/// or just pointing to targetDir/tmp
+/// This is handy for making moves atomics from
+/// tmp dirs to to locations within targetDir
+async function movebleTmpPath(targetDir: string, targetTmpDirName = "dir") {
+  const defaultTmp = Deno.env.get("TMPDIR");
+  const targetPath = $.path(targetDir);
+  if (!defaultTmp) {
+    return targetPath.join(targetTmpDirName);
+  }
+  const defaultTmpPath = $.path(defaultTmp);
+  if ((await targetPath.stat())?.dev != (await defaultTmpPath.stat())?.dev) {
+    return targetPath.join(targetTmpDirName);
+  }
+  return defaultTmpPath;
+}
+
 export async function sync(
   ghjkDir: string,
   envDir: string,
   cx: PortsModuleConfig,
 ) {
   const ghjkPathR = $.path(ghjkDir);
-  const [installsPath, downloadsPath, tmpPath] = (await Promise.all([
-    ghjkPathR.join("installs").ensureDir(),
-    ghjkPathR.join("downloads").ensureDir(),
-    // FIXME: only use `ghjkDir/tmp` when
-    // /tmp and `ghjkDir` are on different file systems
-    ghjkPathR.join("tmp").ensureDir(),
-  ])).map($.pathToString);
+  // ensure the req
+  const [installsPath, downloadsPath, tmpPath] = (
+    await Promise.all([
+      ghjkPathR.join("ports", "installs").ensureDir(),
+      ghjkPathR.join("ports", "downloads").ensureDir(),
+      (await movebleTmpPath(ghjkDir)).ensureDir(),
+    ])
+  ).map($.pathToString);
+
   const graph = await buildInstallGraph(cx);
+
   const artifacts = new Map<string, InstallArtifacts>();
+  //  start from the ports with no build deps
   const pendingInstalls = [...graph.indie];
+  // deep clone graph.depEdges for a list of deps for each port
+  // to tick of as we work through the graph
+  // initial graph.depEdges is needed intact for other purposes
   const pendingDepEdges = new Map(
-    // deep clone graph.depEdges for a list of deps to tick of as we
-    // install
     [...graph.depEdges.entries()].map(([key, val]) => [key, [...val]]),
   );
   while (pendingInstalls.length > 0) {
@@ -81,9 +109,10 @@ export async function sync(
     const inst = graph.all.get(installId)!;
 
     const manifest = graph.ports.get(inst.portRef)!;
-    const depArts: DepArts = {};
 
-    // create the shims for the deps
+    // make an object detailing all the artifacts
+    // that the port's deps exported
+    const totalDepArts: DepArts = {};
     const depShimsRootPath = await Deno.makeTempDir({
       dir: tmpPath,
       prefix: `shims_${installId}_`,
@@ -91,40 +120,36 @@ export async function sync(
     for (
       const [depInstallId, depPortName] of graph.depEdges.get(installId) ?? []
     ) {
-      const depArtifacts = artifacts.get(depInstallId);
-      if (!depArtifacts) {
+      const depArts = artifacts.get(depInstallId);
+      if (!depArts) {
         throw new Error(
           `artifacts not found for plug dep "${depInstallId}" when installing "${installId}"`,
         );
       }
-      const depShimDir = $.path(
-        std_path.resolve(depShimsRootPath, depInstallId),
-      );
-
-      const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
+      const depShimDir = $.path(depShimsRootPath).resolve(depInstallId);
+      const [binShimDir, libShimDir, includeShimDir] = (await Promise.all([
         depShimDir.join("bin").ensureDir(),
         depShimDir.join("lib").ensureDir(),
         depShimDir.join("include").ensureDir(),
-      ]);
-      const { binPaths, libPaths, includePaths, installPath, env } =
-        depArtifacts;
-      depArts[depPortName] = {
+      ])).map($.pathToString);
+
+      totalDepArts[depPortName] = {
         execs: await shimLinkPaths(
-          binPaths,
-          installPath,
-          binShimDir.toString(),
+          depArts.binPaths,
+          depArts.installPath,
+          binShimDir,
         ),
         libs: await shimLinkPaths(
-          libPaths,
-          installPath,
-          libShimDir.toString(),
+          depArts.libPaths,
+          depArts.installPath,
+          libShimDir,
         ),
         includes: await shimLinkPaths(
-          includePaths,
-          installPath,
-          includeShimDir.toString(),
+          depArts.includePaths,
+          depArts.installPath,
+          includeShimDir,
         ),
-        env,
+        env: depArts.env,
       };
     }
 
@@ -136,20 +161,22 @@ export async function sync(
         tmpPath,
         inst.conf,
         manifest,
-        depArts,
+        totalDepArts,
       );
     } catch (err) {
       throw new Error(`error installing ${installId}`, { cause: err });
     }
     artifacts.set(installId, thisArtifacts);
+
     void $.removeIfExists(depShimsRootPath);
 
-    // mark where appropriate if some other install was depending on it
+    // mark where appropriate if some other install was waiting on
+    // the current install
     const parents = graph.revDepEdges.get(installId) ?? [];
     for (const parentId of parents) {
       const parentDeps = pendingDepEdges.get(parentId)!;
 
-      // swap remove from parent deps
+      // swap remove from parent pending deps list
       const idx = parentDeps.findIndex(([instId, _]) => instId == installId);
       const last = parentDeps.pop()!;
       if (parentDeps.length > idx) {
@@ -157,20 +184,22 @@ export async function sync(
       }
 
       if (parentDeps.length == 0) {
+        // parent is ready for install
         pendingInstalls.push(parentId);
       }
     }
   }
 
+  // create the shims for the user's environment
   const shimDir = $.path(envDir).join("shims");
   await $.removeIfExists(shimDir);
 
-  // create shims for the environment
   const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
     shimDir.join("bin").ensureDir(),
     shimDir.join("lib").ensureDir(),
     shimDir.join("include").ensureDir(),
   ]);
+
   // FIXME: detect conflicts
   // FIXME: better support for multi installs
   for (const instId of graph.user) {
@@ -242,43 +271,54 @@ export async function sync(
   await $.removeIfExists(tmpPath);
 }
 
+// this returns a data structure containing all the info
+// required for installation including the dependency graph
 async function buildInstallGraph(cx: PortsModuleConfig) {
   type GraphInstConf = {
     portRef: string;
     conf: InstallConfigLite;
   };
+  // this is all referring to port dependencies
+  // TODO: runtime dependencies
   const graph = {
+    // maps from instHashId
     all: new Map<string, GraphInstConf>(),
+    // list of installs that don't have any dependencies
     indie: [] as string[],
+    // maps allowed deps ids to their install hash
+    allowed: new Map<string, string>(),
+    // list of installs specified by the user (excludes deps)
+    user: new Set<string>(),
     // edges from dependency to dependent
     revDepEdges: new Map<string, string[]>(),
     // edges from dependent to dependency [depInstId, portName]
     depEdges: new Map<string, [string, string][]>(),
-    user: new Set<string>(),
-    // allowed deps to their install hash
-    allowed: new Map<string, string>(),
+    // the manifests of the ports
     ports: new Map<string, PortManifestX>(),
   };
+  // add port to ports list
   const addPort = (manifest: PortManifestX) => {
     const portRef = `${manifest.name}@${manifest.version}`;
-    // add port to ports list
-    {
-      const conflict = graph.ports.get(portRef);
-      if (conflict) {
-        if (!equal.equal(conflict, manifest)) {
-          throw new Error(
-            `differing port manifests found for "${portRef}: ${
-              $.inspect(manifest)
-            }" != ${$.inspect(conflict)}`,
-          );
-        }
-      } else {
-        graph.ports.set(portRef, manifest);
+
+    const conflict = graph.ports.get(portRef);
+    if (conflict) {
+      if (!equal.equal(conflict, manifest)) {
+        throw new Error(
+          `differing port manifests found for "${portRef}: ${
+            $.inspect(manifest)
+          }" != ${$.inspect(conflict)}`,
+        );
       }
+    } else {
+      graph.ports.set(portRef, manifest);
     }
+
     return portRef;
   };
+
   const foundInstalls: GraphInstConf[] = [];
+
+  // collect the user specified insts first
   for (const inst of cx.installs) {
     const { port, ...instLiteBase } = inst;
     const portRef = addPort(port);
@@ -300,8 +340,11 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
     foundInstalls.push({ portRef, conf: instLite });
   }
 
+  // process each port's dependency trees
+  // starting from the user specified insts
   while (foundInstalls.length > 0) {
     const inst = foundInstalls.pop()!;
+
     const manifest = graph.ports.get(inst.portRef);
     if (!manifest) {
       throw new Error(
@@ -310,10 +353,11 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
         }`,
       );
     }
+
     const installId = await getInstallHash(inst.conf);
 
-    // we might get multiple instances of an install at this point
-    // due to a plugin being a dependency to multiple others
+    // there might be multiple instances of an install at this point
+    // due to a single plugin being a dependency to multiple others
     const conflict = graph.all.get(installId);
     if (conflict) {
       continue;
@@ -324,7 +368,8 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
     if (!manifest.deps || manifest.deps.length == 0) {
       graph.indie.push(installId);
     } else {
-      const deps = [];
+      // this goes into graph.depEdges
+      const deps: [string, string][] = [];
       for (const depId of manifest.deps) {
         const { manifest: depPort, defaultInst: defaultDepInstall } =
           cx.allowedDeps[depId.name];
@@ -333,8 +378,12 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
             `unrecognized dependency "${depId.name}" specified by plug "${manifest.name}@${manifest.version}"`,
           );
         }
+
+        // get the install config of dependency
         let depInstall;
         {
+          // install configuration of allowed dep ports
+          // can be overriden by dependent ports
           const res = validators.installConfigLite.safeParse(
             inst.conf.depConfigs?.[depId.name] ?? defaultDepInstall,
           );
@@ -357,11 +406,14 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
           }
         }
 
+        // only add the install configuration for this dep port
+        // if specific hash hasn't seen before
         if (!graph.all.has(depInstallId)) {
           const portRef = addPort(depPort);
           foundInstalls.push({ conf: depInstall, portRef });
         }
-        deps.push([depInstallId, depPort.name] as [string, string]);
+
+        deps.push([depInstallId, depPort.name]);
 
         // make sure the dependency knows this install depends on it
         const reverseDeps = graph.revDepEdges.get(depInstallId) ?? [];
@@ -375,22 +427,26 @@ async function buildInstallGraph(cx: PortsModuleConfig) {
   return graph;
 }
 
+/// This expands globs found in the targetPaths
 async function shimLinkPaths(
   targetPaths: string[],
   installPath: string,
   shimDir: string,
 ) {
+  // map of filename to shimPath
   const shims: Record<string, string> = {};
+  // a work sack to append to incase there are globs expanded
   const foundTargetPaths = [...targetPaths];
   while (foundTargetPaths.length > 0) {
     const file = foundTargetPaths.pop()!;
     if (std_path.isGlob(file)) {
-      const glob = file.startsWith("/")
+      const glob = std_path.isAbsolute(file)
         ? file
         : std_path.joinGlobs([installPath, file], { extended: true });
-      for await (const entry of std_fs.expandGlob(glob)) {
-        foundTargetPaths.push(entry.path);
-      }
+      foundTargetPaths.push(
+        ...(await Array.fromAsync(std_fs.expandGlob(glob)))
+          .map((entry) => entry.path),
+      );
       continue;
     }
     const filePath = std_path.resolve(installPath, file);
@@ -418,6 +474,7 @@ async function shimLinkPaths(
 type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
 type InstallArtifacts = DePromisify<ReturnType<typeof doInstall>>;
 
+/// Drive a port implementation so that it does its thing
 async function doInstall(
   installsDir: string,
   downloadsDir: string,
@@ -467,7 +524,6 @@ async function doInstall(
   const downloadPath = std_path.resolve(downloadsDir, installId);
   const baseArgs: PortArgsBase = {
     installPath: installPath,
-    // installType: "version",
     installVersion: installVersion,
     depArts,
     platform: Deno.build,
