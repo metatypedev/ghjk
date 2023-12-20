@@ -1,3 +1,4 @@
+import "../setup_logger.ts";
 import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
 import node from "../ports/node.ts";
 import pnpm from "../ports/pnpm.ts";

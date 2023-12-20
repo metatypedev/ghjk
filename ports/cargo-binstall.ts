@@ -1,7 +1,7 @@
+import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 import {
   $,
   DownloadArgs,
-  DownloadUrlsOut,
   dwnUrlOut,
   GithubReleasePort,
   InstallArgs,
@@ -20,8 +20,11 @@ export const manifest = {
   platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
-export default function conf(config: InstallConfigSimple = {}) {
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf = {},
+) {
   return {
+    ...readGhVars(),
     ...config,
     port: manifest,
   };
@@ -33,7 +36,7 @@ export class Port extends GithubReleasePort {
 
   downloadUrls(
     args: DownloadArgs,
-  ): DownloadUrlsOut {
+  ) {
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {

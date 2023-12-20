@@ -1,12 +1,15 @@
+import type {
+  DownloadArgs,
+  InstallArgs,
+  InstallConfigSimple,
+} from "../port.ts";
 import {
   $,
   ALL_ARCH,
   ALL_OS,
   depExecShimPath,
-  type DownloadArgs,
+  downloadFile,
   dwnUrlOut,
-  type InstallArgs,
-  type InstallConfigSimple,
   osXarch,
   pathsWithDepArts,
   PortBase,
@@ -60,6 +63,13 @@ export class Port extends PortBase {
     return [
       `https://registry.npmjs.org/@bytecodealliance/jco/-/jco-${installVersion}.tgz`,
     ].map(dwnUrlOut);
+  }
+
+  async download(args: DownloadArgs) {
+    const urls = this.downloadUrls(args);
+    await Promise.all(
+      urls.map((obj) => downloadFile({ ...args, ...obj })),
+    );
   }
 
   async install(args: InstallArgs) {

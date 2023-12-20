@@ -12,15 +12,13 @@ import mold from "./ports/mold.ts";
 import act from "./ports/act.ts";
 import asdf from "./ports/asdf.ts";
 import protoc from "./ports/protoc.ts";
-import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 import cpython from "./ports/cpy_bs.ts";
 import pipi from "./ports/pipi.ts";
 
+// these are just for quick testing
 ghjk.install(
-  act(),
-  ...pipi({ packageName: "pre-commit" }),
   // node(),
   // wasmedge(),
   // pnpm(),
@@ -32,13 +30,20 @@ ghjk.install(
   //   replaceLd: true,
   // }),
   // asdf({
+  // act(),
   //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
   //   installType: "version",
   // }),
+  // ...pipi({ packageName: "pre-commit" }),
   // protoc(),
-  // earthly(),
   // ruff(),
   // whiz(),
   // jco()[0],
   // cpython(),
+);
+
+// these are used for developing ghjk
+ghjk.install(
+  act(),
+  ...pipi({ packageName: "pre-commit" }),
 );

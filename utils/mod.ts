@@ -1,7 +1,9 @@
-import { dax, jsonHash, std_fs, std_path } from "../deps/common.ts";
+import { dax, jsonHash, std_fs, std_path, std_url } from "../deps/common.ts";
 import logger, { isColorfulTty } from "./logger.ts";
+// NOTE: only use type imports only when getting stuff from "./modules"
 import type {
   DepArts,
+  DownloadArgs,
   InstallConfigLite,
   OsEnum,
   PortDep,
@@ -275,4 +277,38 @@ exec ${execPath}${defArgs ? ` ${defArgs}` : ""} $*`,
     // pass all args to shim to the exec
     { mode: 0o700 },
   );
+}
+
+export type DownloadFileArgs = DownloadArgs & {
+  url: string;
+  name?: string;
+  mode?: number;
+  headers?: Record<string, string>;
+};
+/// This avoid re-downloading a file if it's already successfully downloaded before.
+export async function downloadFile(
+  args: DownloadFileArgs,
+) {
+  const { name, mode, url, downloadPath, tmpDirPath, headers } = {
+    name: std_url.basename(args.url),
+    mode: 0o666,
+    headers: {},
+    ...args,
+  };
+
+  const fileDwnPath = $.path(downloadPath).join(name);
+  if (await fileDwnPath.exists()) {
+    logger().debug(`file ${name} already downloaded, skipping`);
+    return;
+  }
+  const tmpFilePath = $.path(tmpDirPath).join(name);
+
+  await $.request(url)
+    .header(headers)
+    .showProgress()
+    .pipeToPath(tmpFilePath, { create: true, mode });
+
+  await $.path(downloadPath).ensureDir();
+
+  await tmpFilePath.copyFile(fileDwnPath);
 }

@@ -11,6 +11,7 @@ import {
   std_path,
 } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
+import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -24,11 +25,16 @@ const manifest = {
   platforms: osXarch(["linux"], ["aarch64", "x86_64"]),
 };
 
-export type MoldInstallConfig = InstallConfigSimple & {
+export type MoldInstallConfig = {
   replaceLd: boolean;
 };
-export default function conf(config: MoldInstallConfig = { replaceLd: true }) {
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf & MoldInstallConfig = {
+    replaceLd: true,
+  },
+) {
   return {
+    ...readGhVars(),
     ...config,
     port: manifest,
   };

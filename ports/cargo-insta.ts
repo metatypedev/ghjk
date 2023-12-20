@@ -1,6 +1,7 @@
 import { ALL_ARCH, ALL_OS, InstallConfigSimple, osXarch } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
 import { CargoBinstallPort } from "../modules/ports/cargo-binstall.ts";
+import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -13,8 +14,11 @@ const manifest = {
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };
 
-export default function conf(config: InstallConfigSimple = {}) {
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf = {},
+) {
   return {
+    ...readGhVars(),
     ...config,
     port: manifest,
   };

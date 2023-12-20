@@ -1,4 +1,5 @@
 import type { DownloadArgs, InstallArgs } from "./mod.ts";
+import { ghConfValidator } from "./ghrel.ts";
 import { PortBase } from "./base.ts";
 import { std_fs, std_path } from "../../deps/ports.ts";
 import logger from "../../utils/logger.ts";
@@ -38,13 +39,14 @@ export abstract class CargoBinstallPort extends PortBase {
       );
       return;
     }
+    const conf = ghConfValidator.parse(args.config);
     await $`${
       depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
     }
       ${this.crateName} --version ${args.installVersion}
       --install-path ${args.tmpDirPath}
       --no-confirm --disable-strategies compile --no-track
-    `;
+    `.env(conf.ghToken ? { GITHUB_TOKEN: conf.ghToken } : {});
     await std_fs.copy(
       args.tmpDirPath,
       args.downloadPath,

@@ -1,15 +1,23 @@
+import {
+  ghHeaders,
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../modules/ports/ghrel.ts";
 import { PortArgsBase } from "../modules/ports/types.ts";
 import {
   $,
   depExecShimPath,
-  DownloadArgs,
+  downloadFile,
   dwnUrlOut,
   exponentialBackoff,
-  InstallArgs,
-  InstallConfigSimple,
   osXarch,
   PortBase,
   std_fs,
+} from "../port.ts";
+import type {
+  DownloadArgs,
+  InstallArgs,
+  InstallConfigSimple,
 } from "../port.ts";
 
 const tar_aa_id = {
@@ -29,8 +37,11 @@ export const manifest = {
   platforms: osXarch(["linux", "darwin", "windows"], ["x86_64", "aarch64"]),
 };
 
-export default function conf(config: InstallConfigSimple = {}) {
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf = {},
+) {
   return {
+    ...readGhVars(),
     ...config,
     port: manifest,
   };
@@ -76,19 +87,22 @@ export class Port extends PortBase {
       .sort((va, vb) => va.localeCompare(vb, undefined, { numeric: true }));
   }
 
-  async downloadUrls(args: DownloadArgs) {
+  async download(args: DownloadArgs) {
+    const headers = ghHeaders(args.config);
     const latestMeta = await $.withRetries({
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/latest-release/latest-release.json`,
-        ).json() as {
-          "version": number;
-          "tag": string;
-          "release_url": string;
-          "asset_url_prefix": string;
-        },
+        )
+          .header(headers)
+          .json() as {
+            "version": number;
+            "tag": string;
+            "release_url": string;
+            "asset_url_prefix": string;
+          },
     });
     if (latestMeta.version != 1) {
       throw new Error(
@@ -116,9 +130,13 @@ export class Port extends PortBase {
       default:
         throw new Error(`unsupported: ${platform}`);
     }
-    return [
+    const urls = [
       `${latestMeta.asset_url_prefix}/cpython-${installVersion}+${latestMeta.tag}-${arch}-${os}-pgo+lto-full.tar.zst`,
-    ].map(dwnUrlOut);
+    ];
+    await Promise.all(
+      urls.map(dwnUrlOut)
+        .map((obj) => downloadFile({ ...args, ...obj, headers })),
+    );
   }
 
   async install(args: InstallArgs) {

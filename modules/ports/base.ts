@@ -1,14 +1,12 @@
-import { std_path, std_url } from "../../deps/common.ts";
+import { std_path } from "../../deps/common.ts";
 import type {
   DownloadArgs,
-  DownloadUrlsOut,
   ExecEnvArgs,
   InstallArgs,
   ListAllArgs,
   ListBinPathsArgs,
 } from "./types.ts";
 import logger from "../../utils/logger.ts";
-import { $ } from "../../utils/mod.ts";
 
 export abstract class PortBase {
   /// Enviroment variables for the install's environment
@@ -67,56 +65,9 @@ export abstract class PortBase {
   /// List all the versions availbile to be installed by this port.
   abstract listAll(args: ListAllArgs): Promise<string[]> | string[];
 
-  /// FIXME: move this elsewhere
-  downloadUrls(
-    _args: DownloadArgs,
-  ): Promise<DownloadUrlsOut> | DownloadUrlsOut {
-    return [];
-  }
+  /// Download all files necessary for installation
+  abstract download(args: DownloadArgs): Promise<void> | void;
 
-  async download(args: DownloadArgs): Promise<void> {
-    const urls = await this.downloadUrls(args);
-    if (urls.length == 0) {
-      throw new Error(
-        `"downloadUrls" returned empty array when using default download impl: ` +
-          `override "download" to an empty function if your port has no download step`,
-      );
-    }
-    await Promise.all(urls.map(async (item) => {
-      await downloadFile(args, item);
-    }));
-  }
-
+  /// Do.
   abstract install(args: InstallArgs): Promise<void> | void;
-}
-
-/// This avoid re-downloading a file if it's already successfully downloaded before.
-export async function downloadFile(
-  env: DownloadArgs,
-  args: {
-    url: string;
-    name?: string;
-    mode?: number;
-  },
-) {
-  const { name, mode, url } = {
-    name: std_url.basename(args.url),
-    mode: 0o666,
-    ...args,
-  };
-
-  const fileDwnPath = $.path(env.downloadPath).join(name);
-  if (await fileDwnPath.exists()) {
-    logger().debug(`file ${name} already downloaded, skipping`);
-    return;
-  }
-  const tmpFilePath = $.path(env.tmpDirPath).join(name);
-
-  await $.request(url)
-    .showProgress()
-    .pipeToPath(tmpFilePath, { create: true, mode });
-
-  await $.path(env.downloadPath).ensureDir();
-
-  await tmpFilePath.copyFile(fileDwnPath);
 }

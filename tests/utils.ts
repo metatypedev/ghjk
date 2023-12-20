@@ -1,4 +1,3 @@
-import "../setup_logger.ts";
 import { defaultInstallArgs, install } from "../install/mod.ts";
 import type { InstallConfigFat } from "../modules/ports/types.ts";
 import { std_url } from "../deps/common.ts";

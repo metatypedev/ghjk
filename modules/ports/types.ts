@@ -83,6 +83,8 @@ const portManifest = zod.discriminatedUnion("ty", [
 const installConfigSimple = zod.object({
   version: zod.string()
     .nullish(),
+  // /// A place to put captured env vars
+  // envVars: zod.record(zod.string(), zod.string()).nullish().default({}),
 }).passthrough();
 
 const installConfigBase = installConfigSimple.merge(zod.object({
@@ -298,7 +300,6 @@ export interface DownloadArgs extends PortArgsBase {
   downloadPath: string;
   tmpDirPath: string;
 }
-export type DownloadUrlsOut = { url: string; name: string; mode?: number }[];
 
 export interface InstallArgs extends PortArgsBase {
   availConcurrency: number;

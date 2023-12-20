@@ -33,16 +33,20 @@ RUN set -eux; \
 
 WORKDIR /ghjk
 
-COPY deno.lock ./
+COPY deno.lock deno.jsonc ./
 COPY deps/* ./deps/
-RUN deno cache deps/*
+RUN deno task cache
+
 COPY . ./
+
 RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
 ENV GHJK_INSTALL_EXE_DIR=/usr/bin
 ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
+# share the module cache of the image
+ENV GHJK_INSTALL_DENO_DIR=$DENO_DIR
 RUN deno run -A /ghjk/install.ts
 
 RUN cat > ghjk.ts <<EOT
@@ -50,6 +54,8 @@ RUN cat > ghjk.ts <<EOT
 EOT
 
 RUN <<EOT
+    set -eux
+    cat $(which ghjk)
     export CLICOLOR_FORCE=1 
     ghjk print config
     ghjk ports sync

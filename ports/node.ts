@@ -1,16 +1,19 @@
 import {
   $,
   depExecShimPath,
-  DownloadArgs,
+  downloadFile,
   dwnUrlOut,
-  ExecEnvArgs,
-  InstallArgs,
-  InstallConfigSimple,
-  ListAllArgs,
   osXarch,
   PortBase,
   std_fs,
   std_path,
+} from "../port.ts";
+import type {
+  DownloadArgs,
+  ExecEnvArgs,
+  InstallArgs,
+  InstallConfigSimple,
+  ListAllArgs,
 } from "../port.ts";
 
 // FIXME: circular module resolution when one std_port imports another
@@ -95,9 +98,17 @@ export class Port extends PortBase {
       default:
         throw new Error(`unsupported: ${platform}`);
     }
+
     return [
       `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.${ext}`,
     ].map(dwnUrlOut);
+  }
+
+  async download(args: DownloadArgs) {
+    const urls = this.downloadUrls(args);
+    await Promise.all(
+      urls.map((obj) => downloadFile({ ...args, ...obj })),
+    );
   }
 
   async install(args: InstallArgs) {
