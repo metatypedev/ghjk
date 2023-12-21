@@ -75,7 +75,7 @@ async function movebleTmpPath(targetDir: string, targetTmpDirName = "tmp") {
   if ((await targetPath.stat())?.dev != (await defaultTmpPath.stat())?.dev) {
     return targetPath.join(targetTmpDirName);
   }
-  return await defaultTmpPath.join("ghjkTmp").ensureDir();
+  return defaultTmpPath;
 }
 
 export async function sync(

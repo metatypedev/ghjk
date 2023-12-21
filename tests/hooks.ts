@@ -5,10 +5,11 @@ import dummy from "../ports/dummy.ts";
 // avoid using single quotes in this script
 const posixInteractiveScript = `
 set -eux
+[ "$DUMMY_ENV" = "dummy" ] || exit 101
 dummy
 pushd ../
 # it shouldn't be avail here
-[ $(set +e; dummy) ] && exit 123
+[ $(set +e; dummy) ] && exit 102
 # cd back in
 popd
 # now it should be avail
@@ -20,31 +21,38 @@ const posixNonInteractiveScript = `
 set -eux
 # test that ghjk_reload is avail because BASH_ENV exposed by the suite
 ghjk_reload
+[ "$DUMMY_ENV" = "dummy" ] || exit 101
 dummy
 pushd ../
 # no reload so it's stil avail
 dummy
 ghjk_reload
 # it shouldn't be avail now
-[ $(set +e; dummy) ] && exit 123
+[ $(set +e; dummy) ] && exit 102
+[ "$DUMMY_ENV" = "dummy" ] && exit 103
 # cd back in
 popd
 # not avail yet
-[ $(set +e;  dummy) ] && exit 123
+[ $(set +e;  dummy) ] && exit 104
+[ "$DUMMY_ENV" = "dummy" ] && exit 105
 ghjk_reload
 # now it should be avail
 dummy
+[ "$DUMMY_ENV" = "dummy" ] || exit 106
 `;
 
 const fishScript = `
-dummy; or exit 123
+dummy; or exit 101
+test $DUMMY_ENV = "dummy"; or exit 102
 pushd ../
 # it shouldn't be avail here
-dummy; and exit 123
+dummy; and exit 103
+test $DUMMY_ENV = "dummy"; and exit 104
 # cd back in
 popd
 # now it should be avail
 dummy; or exit 123
+test $DUMMY_ENV = "dummy"; or exit 105
 `;
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
