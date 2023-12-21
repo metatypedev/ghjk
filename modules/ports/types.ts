@@ -1,16 +1,37 @@
+//! NOTE: type FooX is a version of Type after zod processing/transformation
+
 import { semver, zod } from "../../deps/common.ts";
-import logger from "../../utils/logger.ts";
-import { std_path } from "../../deps/common.ts";
 
 // TODO: find a better identification scheme for ports
+const portName = zod.string().regex(/[^ @]*/);
+// const portRef = zod.string().regex(/[^ ]*@[^ ]/);
 
 const portDep = zod.object({
-  id: zod.string(),
+  name: portName,
 });
+
+export const ALL_OS = [
+  "linux",
+  "darwin",
+  "windows",
+  "freebsd",
+  "netbsd",
+  "aix",
+  "solaris",
+  "illumos",
+] as const;
+
+export const ALL_ARCH = [
+  "x86_64",
+  "aarch64",
+] as const;
+const osEnum = zod.enum(ALL_OS);
+const archEnum = zod.enum(ALL_ARCH);
 
 const portManifestBase = zod.object({
   ty: zod.string(),
   name: zod.string().min(1),
+  platforms: zod.tuple([osEnum, archEnum]).array(),
   version: zod.string()
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
@@ -18,20 +39,21 @@ const portManifestBase = zod.object({
   conflictResolution: zod
     .enum(["deferToNewer", "override"])
     .nullish()
+    // default value set after transformation
     .default("deferToNewer"),
   deps: zod.array(portDep).nullish(),
 }).passthrough();
 
 const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
-    ty: zod.literal("denoWorker"),
+    ty: zod.literal("denoWorker@v1"),
     moduleSpecifier: zod.string().url(),
   }),
 );
 
 const ambientAccessPortManifest = portManifestBase.merge(
   zod.object({
-    ty: zod.literal("ambientAccess"),
+    ty: zod.literal("ambientAccess@v1"),
     execName: zod.string().min(1),
     versionExtractFlag: zod.enum([
       "version",
@@ -52,38 +74,45 @@ const ambientAccessPortManifest = portManifestBase.merge(
     // TODO: custom shell shims
   }),
 );
-const theAsdfPortManifest = portManifestBase.merge(
-  zod.object({
-    ty: zod.literal("asdf"),
-    moduleSpecifier: zod.string().url(),
-  }),
-);
 
 const portManifest = zod.discriminatedUnion("ty", [
   denoWorkerPortManifest,
   ambientAccessPortManifest,
-  theAsdfPortManifest,
 ]);
 
-const installConfigBase = zod.object({
+const installConfigSimple = zod.object({
   version: zod.string()
     .nullish(),
-  conflictResolution: zod
-    .enum(["deferToNewer", "override"])
-    .nullish()
-    .default("deferToNewer"),
-  portName: zod.string().min(1),
+  // /// A place to put captured env vars
+  // envVars: zod.record(zod.string(), zod.string()).nullish().default({}),
 }).passthrough();
 
-const stdInstallConfig = installConfigBase.merge(zod.object({})).passthrough();
+const installConfigBase = installConfigSimple.merge(zod.object({
+  depConfigs: zod.record(
+    portName,
+    // FIXME: figure out cyclically putting `installConfigLite` here
+    zod.unknown(),
+  ).nullish(),
+})).passthrough();
 
-const asdfInstallConfig = installConfigBase.merge(
-  zod.object({
-    pluginRepo: zod.string().url(),
-    installType: zod
-      .enum(["version", "ref"]),
-  }),
-);
+const installConfigBaseFat = installConfigBase.merge(zod.object({
+  port: portManifest,
+})).passthrough();
+
+const installConfigBaseLite = installConfigBase.merge(zod.object({
+  portName: portName,
+})).passthrough();
+
+const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
+  .passthrough();
+const stdInstallConfigLite = installConfigBaseLite.merge(zod.object({}))
+  .passthrough();
+
+const installConfigLite =
+  // zod.union([
+  stdInstallConfigLite;
+// ]);
+const installConfigFat = stdInstallConfigFat;
 
 // NOTE: zod unions are tricky. It'll parse with the first schema
 // in the array that parses. And if this early schema is a subset
@@ -91,43 +120,66 @@ const asdfInstallConfig = installConfigBase.merge(
 // fields meant for sibs.
 // Which's to say ordering matters
 const installConfig = zod.union([
-  asdfInstallConfig,
-  stdInstallConfig,
+  // NOTE: generated types break if we make a union of other unions
+  // so we get the schemas of those unions instead
+  // https://github.com/colinhacks/zod/discussions/3010
+  // ...installConfigLite.options,
+  // ...installConfigFat.options,
+  stdInstallConfigLite,
+  stdInstallConfigFat,
 ]);
 
 const portsModuleConfigBase = zod.object({
-  ports: zod.record(zod.string(), portManifest),
-  installs: zod.array(installConfig),
+  // ports: zod.record(zod.string(), portManifest),
+  installs: zod.array(installConfigFat),
+});
+
+const allowedPortDep = zod.object({
+  manifest: portManifest,
+  defaultInst: installConfigLite,
 });
 
 const portsModuleSecureConfig = zod.object({
-  allowedPortDeps: zod.array(portDep).nullish(),
+  allowedPortDeps: zod.array(allowedPortDep).nullish(),
 });
 
 const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
-  allowedDeps: zod.record(zod.string(), portManifest),
+  allowedDeps: zod.record(
+    zod.string(),
+    allowedPortDep,
+  ),
 }));
 
 const validators = {
+  osEnum,
+  archEnum,
+  portName,
   portDep,
   portManifestBase,
   denoWorkerPortManifest,
   ambientAccessPortManifest,
-  string: zod.string(),
+  installConfigSimple,
   installConfigBase,
-  stdInstallConfig,
+  installConfigBaseFat,
+  installConfigBaseLite,
+  stdInstallConfigFat,
+  stdInstallConfigLite,
+  installConfigFat,
+  installConfigLite,
   installConfig,
-  asdfInstallConfig,
   portManifest,
   portsModuleConfigBase,
   portsModuleSecureConfig,
   portsModuleConfig,
-  theAsdfPortManifest,
+  allowedPortDep,
+  string: zod.string(),
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
 
-// Describes the plugin itself
+export type OsEnum = zod.infer<typeof osEnum>;
+export type ArchEnum = zod.infer<typeof archEnum>;
+
 export type PortManifestBase = zod.input<typeof validators.portManifestBase>;
 
 export type DenoWorkerPortManifest = zod.input<
@@ -137,11 +189,8 @@ export type DenoWorkerPortManifest = zod.input<
 export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
 >;
-export type TheAsdfPortManifest = zod.input<
-  typeof validators.theAsdfPortManifest
->;
 
-// Describes the plugin itself
+// Describes the port itself
 export type PortManifest = zod.input<
   typeof validators.portManifest
 >;
@@ -153,94 +202,56 @@ export type DenoWorkerPortManifestX = zod.infer<
 export type AmbientAccessPortManifestX = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
-// This is the transformed version of PortManifest, ready for consumption
+/// This is the transformed version of PortManifest, ready for consumption
 export type PortManifestX = zod.infer<
   typeof validators.portManifest
 >;
 
+/// PortDeps are used during the port build/install process
 export type PortDep = zod.infer<typeof validators.portDep>;
 
-export type RegisteredPorts = Record<string, PortManifestX | undefined>;
-
-export type InstallConfigBase = zod.input<
-  typeof validators.installConfigBase
+export type InstallConfigSimple = zod.input<
+  typeof validators.installConfigSimple
 >;
-export type InstallConfigSimple = Omit<InstallConfigBase, "portName">;
-
-export type AsdfInstallConfig = zod.input<typeof validators.asdfInstallConfig>;
-export type AsdfInstallConfigX = zod.infer<typeof validators.asdfInstallConfig>;
-
+export type InstallConfigBaseLite = zod.input<
+  typeof validators.installConfigBaseLite
+>;
+export type InstallConfigBaseFat = zod.input<
+  typeof validators.installConfigBaseFat
+>;
+/// Fat install configs include the port manifest within
+export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
+/// Fat install configs include the port manifest within
+export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
+/// Lite install configs refer to the port they use by name
+export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
+/// Lite install configs refer to the port they use by name
+export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
 // Describes a single installation done by a specific plugin.
-// export type InstallConfig = zod.input<typeof validators.installConfig>;
 export type InstallConfig = zod.input<typeof validators.installConfig>;
+// Describes a single installation done by a specific plugin.
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
 
 export type PortsModuleConfigBase = zod.infer<
   typeof validators.portsModuleConfigBase
 >;
 
+export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
+export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
+
 /// This is a secure sections of the config intended to be direct exports
 /// from the config script instead of the global variable approach the
 /// main [`GhjkConfig`] can take.
-export type PortsModuleSecureConfig = zod.infer<
+export type PortsModuleSecureConfig = zod.input<
+  typeof validators.portsModuleSecureConfig
+>;
+export type PortsModuleSecureConfigX = zod.input<
   typeof validators.portsModuleSecureConfig
 >;
 
 export type PortsModuleConfig = zod.infer<typeof validators.portsModuleConfig>;
 
-export abstract class PortBase {
-  abstract manifest: PortManifest;
-
-  execEnv(
-    _args: ExecEnvArgs,
-  ): Promise<Record<string, string>> | Record<string, string> {
-    return {};
-  }
-
-  listBinPaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "bin"), "*"]),
-    ];
-  }
-
-  listLibPaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "lib"), "*"]),
-    ];
-  }
-
-  listIncludePaths(
-    args: ListBinPathsArgs,
-  ): Promise<string[]> | string[] {
-    return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "include"), "*"]),
-    ];
-  }
-
-  latestStable(args: ListAllArgs): Promise<string> | string {
-    return (async () => {
-      logger().warning(
-        `using default implementation of latestStable for port ${this.manifest.name}`,
-      );
-      const allVers = await this.listAll(args);
-      if (allVers.length == 0) {
-        throw new Error("no versions found");
-      }
-      return allVers[allVers.length - 1];
-    })();
-  }
-
-  abstract listAll(args: ListAllArgs): Promise<string[]> | string[];
-
-  abstract download(args: DownloadArgs): Promise<void> | void;
-
-  abstract install(args: InstallArgs): Promise<void> | void;
-}
-
+/*
 interface ASDF_CONFIG_EXAMPLE {
   ASDF_INSTALL_TYPE: "version" | "ref";
   ASDF_INSTALL_VERSION: string; //	full version number or Git Ref depending on ASDF_INSTALL_TYPE
@@ -253,25 +264,37 @@ interface ASDF_CONFIG_EXAMPLE {
   ASDF_PLUGIN_POST_REF: string; //	updated git-ref of the plugin repo
   ASDF_CMD_FILE: string; // resolves to the full path of the file being sourced
 }
+*/
 
-export type DepShims = Record<
+export type DepArt = {
+  execs: Record<string, string>;
+  libs: Record<string, string>;
+  includes: Record<string, string>;
+  env: Record<string, string>;
+};
+
+export type DepArts = Record<
   string,
-  Record<string, string>
+  DepArt
 >;
 
-export type PlatformInfo = Omit<typeof Deno.build, "target">;
+export type PlatformInfo = { os: OsEnum; arch: ArchEnum };
 
 export interface PortArgsBase {
   // installType: "version" | "ref";
   installVersion: string;
   installPath: string;
-  depShims: DepShims;
+  depArts: DepArts;
   platform: PlatformInfo;
-  config: InstallConfigX;
+  config: InstallConfigLiteX;
+  manifest: PortManifestX;
 }
 
 export interface ListAllArgs {
-  depShims: DepShims;
+  depArts: DepArts;
+  manifest: PortManifestX;
+  // FIXME: switch to X type when https://github.com/colinhacks/zod/issues/2864 is resolved
+  config: InstallConfigLiteX;
 }
 
 export type ListBinPathsArgs = PortArgsBase;

@@ -32,9 +32,12 @@ In your project, create a configuration file `ghjk.ts`:
 
 ```ts
 export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
+import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
 import node from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/node.ts";
 
-node({ version: "14.17.0" });
+ghjk.install(
+  node({ version: "14.17.0" }),
+);
 ```
 
 ## How it works
@@ -55,32 +58,17 @@ and looks as follows (abstracting away some implementation details):
     loaded ones (if any)
 - you can then
   - sync your runtime with `ghjk ports sync` which
-    - installs the missing tools at `$HOME/.local/share/ghjk/envs/$PWD/installs`
+    - installs the missing tools at `$HOME/.local/share/ghjk/ports/installs`
     - regenerates the shims with symlinks and environment variables
     - detects any violation of the enforced rules
-  - [ ] `ghjk list`: list installed tools and versions
-  - [ ] `ghjk outdated`: list outdated tools
-  - [ ] `ghjk cleanup`: remove unused tools and versions
+  - [ ] `ghjk ports list`: list installed tools and versions
+  - [ ] `ghjk ports outdated`: list outdated tools
+  - [ ] `ghjk ports cleanup`: remove unused tools and versions
 
 ## Extending `ghjk`
 
 ```ts
 ```
-
-## todo
-
-- multiple version of the same package (e.g. rust stable and rust nighted)
-- [ ] python with virtual env dir
-  - poetry
-  - pre-commit
-- [ ] rust toolchain
-- hash verifiable dependencies (timestamp)
-- hide the `Deno` object in an abstraction
-- support windows
-- [ ] installation tools
-  - [ ] untar
-  - [ ] xz
-  - [ ] git
 
 ## Development
 

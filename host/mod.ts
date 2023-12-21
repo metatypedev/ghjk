@@ -21,15 +21,14 @@ export async function cli(args: CliArgs) {
   );
   const envDir = envDirFromConfig(ghjkDir, configPath);
 
-  logger().debug({ configPath });
-  logger().debug({ envDir });
+  logger().debug({ configPath, envDir });
 
   const serializedConfig = await serializeConfig(configPath);
 
-  const ctx = { configPath, envDir };
+  const ctx = { ghjkDir, configPath, envDir };
   let cmd = new cliffy_cmd.Command()
     .name("ghjk")
-    .version("0.1.0") // FIXME: better way to resolve version
+    .version("0.1.1") // FIXME: better way to resolve version
     .description("Programmable runtime manager.")
     .action(function () {
       this.showHelp();
@@ -114,6 +113,11 @@ async function serializeConfig(configPath: string) {
         `unrecognized ghjk config type provided at path: ${configPath}`,
       );
   }
-  const serializedConfig = validators.serializedConfig.parse(serializedJson);
-  return serializedConfig;
+  const res = validators.serializedConfig.safeParse(serializedJson);
+  if (!res.success) {
+    logger().error("zod error", res.error);
+    logger().error("serializedConf", serializedJson);
+    throw new Error(`error parsing seralized config from ${configPath}`);
+  }
+  return res.data;
 }

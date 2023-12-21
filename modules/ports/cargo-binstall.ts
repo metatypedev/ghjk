@@ -1,12 +1,12 @@
-import { type DownloadArgs, type InstallArgs, PortBase } from "./mod.ts";
+import type { DownloadArgs, InstallArgs } from "./mod.ts";
+import { ghConfValidator } from "./ghrel.ts";
+import { PortBase } from "./base.ts";
 import { std_fs, std_path } from "../../deps/ports.ts";
 import logger from "../../utils/logger.ts";
-import { $, depBinShimPath } from "../../utils/mod.ts";
+import { $, depExecShimPath } from "../../utils/mod.ts";
 import * as std_ports from "./std.ts";
 
-// TODO: convert to `AsdfPort` like abstraction
-// this is a temporarary DRY up
-
+/// TODO: convert this to an asdf/pipi kind of abstraction
 export abstract class CargoBinstallPort extends PortBase {
   abstract crateName: string;
 
@@ -39,13 +39,14 @@ export abstract class CargoBinstallPort extends PortBase {
       );
       return;
     }
+    const conf = ghConfValidator.parse(args.config);
     await $`${
-      depBinShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depShims)
+      depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
     }
       ${this.crateName} --version ${args.installVersion}
       --install-path ${args.tmpDirPath}
       --no-confirm --disable-strategies compile --no-track
-    `;
+    `.env(conf.ghToken ? { GITHUB_TOKEN: conf.ghToken } : {});
     await std_fs.copy(
       args.tmpDirPath,
       args.downloadPath,

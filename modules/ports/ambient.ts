@@ -1,23 +1,18 @@
-import {
-  type AmbientAccessPortManifest,
-  type DownloadArgs,
-  type InstallArgs,
-  type ListAllArgs,
-  type ListBinPathsArgs,
-  PortBase,
-} from "./types.ts";
+import type { AmbientAccessPortManifestX } from "./types.ts";
 import { $ } from "../../utils/mod.ts";
+import { PortBase } from "./base.ts";
 
 export class AmbientAccessPort extends PortBase {
-  constructor(public manifest: AmbientAccessPortManifest) {
+  constructor(public manifest: AmbientAccessPortManifestX) {
     super();
+    // dependencies make no sense for ambient ports
     if (manifest.deps && manifest.deps.length > 0) {
       throw new Error(
         `ambient access plugin has deps ${JSON.stringify(manifest)}`,
       );
     }
   }
-  async latestStable(_env: ListAllArgs): Promise<string> {
+  async latestStable() {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
@@ -45,22 +40,22 @@ export class AmbientAccessPort extends PortBase {
     return matches[0];
   }
 
-  async listAll(env: ListAllArgs): Promise<string[]> {
-    return [await this.latestStable(env)];
+  async listAll() {
+    return [await this.latestStable()];
   }
 
-  async listBinPaths(
-    _env: ListBinPathsArgs,
-  ): Promise<string[]> {
+  async listBinPaths(): Promise<string[]> {
     return [await this.pathToExec()];
   }
 
-  download(_env: DownloadArgs): void | Promise<void> {
+  async download() {
     // no op
   }
-  install(_env: InstallArgs): void | Promise<void> {
+
+  install() {
     // no op
   }
+
   async pathToExec(): Promise<string> {
     try {
       const out = await $.which(this.manifest.execName);

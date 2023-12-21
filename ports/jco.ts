@@ -1,48 +1,47 @@
+import type {
+  DownloadArgs,
+  InstallArgs,
+  InstallConfigSimple,
+} from "../port.ts";
 import {
   $,
-  addInstallGlobal,
-  depBinShimPath,
-  type DownloadArgs,
+  ALL_ARCH,
+  ALL_OS,
+  depExecShimPath,
   downloadFile,
-  type InstallArgs,
-  type InstallConfigSimple,
-  type ListAllArgs,
-  pathWithDepShims,
-  type PlatformInfo,
+  dwnUrlOut,
+  osXarch,
+  pathsWithDepArts,
   PortBase,
-  registerDenoPortGlobal,
   std_fs,
   std_path,
-  std_url,
   unarchive,
 } from "../port.ts";
 import node from "./node.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "jco@npm",
+  ty: "denoWorker@v1" as const,
+  name: "jco_npm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     std_ports.node_org,
   ],
+  // NOTE: enable all platforms. Restrictions will apply based
+  // node support this way
+  platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };
-registerDenoPortGlobal(manifest, () => new Port());
 
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: InstallConfigSimple = {}) {
+  return [{
     ...config,
-  });
-  // FIXME: conflict flags for install configs
-  node({});
+    port: manifest,
+  }, node()];
 }
 
-class Port extends PortBase {
-  manifest = manifest;
-
-  async listAll(_env: ListAllArgs) {
+export class Port extends PortBase {
+  async listAll() {
     const metadataRequest = await $.request(
       `https://registry.npmjs.org/@bytecodealliance/jco`,
     ).header(
@@ -59,17 +58,22 @@ class Port extends PortBase {
     return versions;
   }
 
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion } = args;
+    return [
+      `https://registry.npmjs.org/@bytecodealliance/jco/-/jco-${installVersion}.tgz`,
+    ].map(dwnUrlOut);
+  }
+
   async download(args: DownloadArgs) {
-    await downloadFile(
-      args,
-      artifactUrl(args.installVersion, args.platform),
+    const urls = this.downloadUrls(args);
+    await Promise.all(
+      urls.map((obj) => downloadFile({ ...args, ...obj })),
     );
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      artifactUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await unarchive(fileDwnPath, args.tmpDirPath);
@@ -87,18 +91,14 @@ class Port extends PortBase {
       args.installPath,
     );
     await $`${
-      depBinShimPath(std_ports.node_org, "npm", args.depShims)
+      depExecShimPath(std_ports.node_org, "npm", args.depArts)
     } install --no-fund`
       .cwd(args.installPath)
-      .env({
-        PATH: pathWithDepShims(args.depShims),
-      });
+      .env(pathsWithDepArts(args.depArts, args.platform.os));
     await installPath.join("bin").ensureDir();
     await installPath.join("bin", "jco")
-      .createSymlinkTo(installPath.join("src", "jco.js").toString());
+      .createSymlinkTo(installPath.join("src", "jco.js").toString(), {
+        // kind: "relative",
+      });
   }
-}
-
-function artifactUrl(installVersion: string, _platform: PlatformInfo) {
-  return `https://registry.npmjs.org/@bytecodealliance/jco/-/jco-${installVersion}.tgz`;
 }

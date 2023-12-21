@@ -1,7 +1,7 @@
 import "../setup_logger.ts";
 import { std_assert } from "../deps/dev.ts";
 import { AmbientAccessPort } from "../modules/ports/ambient.ts";
-import { type AmbientAccessPortManifest } from "../modules/ports/types.ts";
+import validators, {} from "../modules/ports/types.ts";
 
 import * as tar from "../ports/tar.ts";
 import * as git from "../ports/git.ts";
@@ -14,10 +14,11 @@ const manifests = [
   curl.manifest,
   unzip.manifest,
 ];
-for (const manifest of manifests) {
+for (const manUnclean of manifests) {
+  const manifest = validators.ambientAccessPortManifest.parse(manUnclean);
   Deno.test(`ambient access ${manifest.name}`, async () => {
-    const plug = new AmbientAccessPort(manifest as AmbientAccessPortManifest);
-    const versions = await plug.listAll({ depShims: {} });
+    const plug = new AmbientAccessPort(manifest);
+    const versions = await plug.listAll();
     console.log(versions);
     std_assert.assertEquals(versions.length, 1);
   });

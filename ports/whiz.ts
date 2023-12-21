@@ -1,60 +1,86 @@
 import {
   $,
-  addInstallGlobal,
-  depBinShimPath,
+  depExecShimPath,
   DownloadArgs,
-  downloadFile,
+  dwnUrlOut,
   GithubReleasePort,
   InstallArgs,
   type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  osXarch,
   std_fs,
   std_path,
-  std_url,
 } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
+import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "whiz@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "whiz_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     // we have to use tar because their tarballs for darwin use gnu sparse
     std_ports.tar_aa,
   ],
+  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
-
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf = {},
+) {
+  return {
+    ...readGhVars(),
     ...config,
-  });
+    port: manifest,
+  };
 }
 
-const repoOwner = "zifeo";
-const repoName = "whiz";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
-
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "zifeo";
+  repoName = "whiz";
 
-  async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let arch;
+    switch (platform.arch) {
+      case "x86_64":
+        arch = "x86_64";
+        break;
+      case "aarch64":
+        arch = "aarch64";
+        break;
+      default:
+        throw new Error(`unsupported arch: ${platform.arch}`);
+    }
+    let os;
+    const ext = "tar.gz";
+    switch (platform.os) {
+      case "linux":
+        os = "unknown-linux-musl";
+        break;
+      case "darwin":
+        os = "apple-darwin";
+        break;
+      case "windows":
+        os = "pc-windows-msvc";
+        break;
+      default:
+        throw new Error(`unsupported arch: ${platform.arch}`);
+    }
+
+    return [
+      this.releaseArtifactUrl(
+        installVersion,
+        `${this.repoName}-${installVersion}-${arch}-${os}.${ext}`,
+      ),
+    ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await $`${
-      depBinShimPath(std_ports.tar_aa, "tar", args.depShims)
+      depExecShimPath(std_ports.tar_aa, "tar", args.depArts)
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
@@ -66,34 +92,4 @@ export class Port extends GithubReleasePort {
       installPath.join("bin").toString(),
     );
   }
-}
-
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  let arch;
-  switch (platform.arch) {
-    case "x86_64":
-      arch = "x86_64";
-      break;
-    case "aarch64":
-      arch = "aarch64";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  let os;
-  const ext = "tar.gz";
-  switch (platform.os) {
-    case "linux":
-      os = "unknown-linux-musl";
-      break;
-    case "darwin":
-      os = "apple-darwin";
-      break;
-    case "windows":
-      os = "pc-windows-msvc";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}-${installVersion}-${arch}-${os}.${ext}`;
 }

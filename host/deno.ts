@@ -7,24 +7,13 @@ import { std_url } from "../deps/common.ts";
 
 import { inWorker } from "../utils/mod.ts";
 import logger, { setup as setupLogger } from "../utils/logger.ts";
-import type { PortsModuleConfigBase } from "../modules/ports/mod.ts";
 
 if (inWorker()) {
   initWorker();
 }
 
-declare global {
-  interface Window {
-    ports: PortsModuleConfigBase;
-  }
-}
-
 function initWorker() {
   setupLogger();
-  self.ports = {
-    ports: {},
-    installs: [],
-  };
 
   self.onmessage = onMsg;
 }

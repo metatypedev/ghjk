@@ -1,59 +1,153 @@
-import { dax, std_fs, std_path } from "../deps/common.ts";
-import logger from "./logger.ts";
+import { dax, jsonHash, std_fs, std_path, std_url } from "../deps/common.ts";
+import logger, { isColorfulTty } from "./logger.ts";
+// NOTE: only use type imports only when getting stuff from "./modules"
 import type {
-  DepShims,
-  InstallConfig,
+  DepArts,
+  DownloadArgs,
+  InstallConfigLite,
+  OsEnum,
   PortDep,
 } from "../modules/ports/types.ts";
 
-export function dbg<T>(val: T) {
-  logger().debug("inline", val);
+export function dbg<T>(val: T, ...more: unknown[]) {
+  logger().debug(() => val, ...more);
   return val;
 }
 
-export function pathWithDepShims(
-  depShims: DepShims,
+export function pathsWithDepArts(
+  depArts: DepArts,
+  os: OsEnum,
 ) {
-  const set = new Set();
-  for (const [_, bins] of Object.entries(depShims)) {
-    for (const [_, binPath] of Object.entries(bins)) {
-      set.add(std_path.dirname(binPath));
+  const pathSet = new Set();
+  const libSet = new Set();
+  const includesSet = new Set();
+  for (const [_, { execs, libs, includes }] of Object.entries(depArts)) {
+    for (const [_, binPath] of Object.entries(execs)) {
+      pathSet.add(std_path.dirname(binPath));
+    }
+    for (const [_, libPath] of Object.entries(libs)) {
+      libSet.add(std_path.dirname(libPath));
+    }
+    for (const [_, incPath] of Object.entries(includes)) {
+      includesSet.add(std_path.dirname(incPath));
     }
   }
-  return `${[...set.keys()].join(":")}:${Deno.env.get("PATH")}`;
+
+  let LD_LIBRARY_ENV: string;
+  switch (os) {
+    case "darwin":
+      LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
+      break;
+    case "linux":
+      LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
+      break;
+    default:
+      throw new Error(`unsupported os ${os}`);
+  }
+  return {
+    PATH: `${[...pathSet.keys()].join(":")}:${Deno.env.get("PATH") ?? ""}`,
+    LIBRARY_PATH: `${[...libSet.keys()].join(":")}:${
+      Deno.env.get("LIBRARY_PATH") ?? ""
+    }`,
+    C_INCLUDE_PATH: `${[...includesSet.keys()].join(":")}:${
+      Deno.env.get("C_INCLUDE_PATH") ?? ""
+    }`,
+    CPLUS_INCLUDE_PATH: `${[...includesSet.keys()].join(":")}:${
+      Deno.env.get("CPLUS_INCLUDE_PATH") ?? ""
+    }`,
+    [LD_LIBRARY_ENV]: `${[...libSet.keys()].join(":")}:${
+      Deno.env.get(LD_LIBRARY_ENV) ?? ""
+    }`,
+  };
 }
 
-export function depBinShimPath(
+export function depExecShimPath(
   dep: PortDep,
-  binName: string,
-  depShims: DepShims,
+  execName: string,
+  depArts: DepArts,
 ) {
-  const shimPaths = depShims[dep.id];
-  if (!shimPaths) {
-    throw new Error(`unable to find shims for dep ${dep.id}`);
-  }
-  const path = shimPaths[binName];
+  const path = tryDepExecShimPath(dep, execName, depArts);
   if (!path) {
     throw new Error(
-      `unable to find shim path for bin "${binName}" of dep ${dep.id}`,
+      `unable to find shim path for bin "${execName}" of dep ${dep.name}`,
     );
   }
   return path;
 }
 
-export function getInstallId(install: InstallConfig) {
-  if ("pluginRepo" in install && install.portName == "asdf@asdf") {
-    const url = new URL(install.pluginRepo as string);
-    const pluginId = `${url.hostname}-${url.pathname.replaceAll("/", ".")}`;
-    return `asdf-${pluginId}`;
+export function depEnv(
+  dep: PortDep,
+  depArts: DepArts,
+) {
+  return depArts[dep.name]?.env ?? {};
+}
+
+export function tryDepExecShimPath(
+  dep: PortDep,
+  execName: string,
+  depArts: DepArts,
+) {
+  const shimPaths = depArts[dep.name];
+  if (!shimPaths) {
+    return;
   }
-  return install.portName;
+  const path = shimPaths.execs[execName];
+  if (!path) {
+    return;
+  }
+  return path;
+}
+
+// Lifted from https://deno.land/x/hextools@v1.0.0
+// MIT License
+// Copyright (c) 2020 Santiago Aguilar Hernández
+export function bufferToHex(buffer: ArrayBuffer): string {
+  return Array.prototype.map.call(
+    new Uint8Array(buffer),
+    (b) => b.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+export async function getInstallHash(install: InstallConfigLite) {
+  const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
+  const hashHex = bufferToHex(hashBuf).slice(0, 8);
+  return `${install.portName}@${hashHex}`;
 }
 
 export const $ = dax.build$(
-  {},
+  {
+    commandBuilder: (() => {
+      const builder = new dax.CommandBuilder().printCommand(true);
+      builder.setPrintCommandLogger((_, cmd) => {
+        // clean up the already colorized print command logs
+        // TODO: remove when https://github.com/dsherret/dax/pull/203
+        // is merged
+        return logger().debug(
+          "spawning",
+          $.stripAnsi(cmd).split(/\s/),
+        );
+      });
+      return builder;
+    })(),
+    extras: {
+      inspect(val: unknown) {
+        return Deno.inspect(val, {
+          colors: isColorfulTty(),
+          iterableLimit: 500,
+        });
+      },
+      pathToString(path: dax.PathRef) {
+        return path.toString();
+      },
+      async removeIfExists(path: dax.PathRef | string) {
+        const pathRef = $.path(path);
+        if (await pathRef.exists()) {
+          await pathRef.remove({ recursive: true });
+        }
+      },
+    },
+  },
 );
-$.setPrintCommand(true);
 
 export function inWorker() {
   return typeof WorkerGlobalScope !== "undefined" &&
@@ -128,4 +222,93 @@ export async function importRaw(spec: string) {
   throw new Error(
     `error importing raw from ${spec}: unrecognized protocol ${url.protocol}`,
   );
+}
+
+export function exponentialBackoff(initialDelayMs: number) {
+  let delay = initialDelayMs;
+  let attempt = 0;
+
+  return {
+    next() {
+      if (attempt > 0) {
+        delay *= 2;
+      }
+      attempt += 1;
+      return delay;
+    },
+  };
+}
+
+export async function shimScript(
+  { shimPath, execPath, os, defArgs, envOverrides, envDefault }: {
+    shimPath: string;
+    execPath: string;
+    os: OsEnum;
+    defArgs?: string;
+    envOverrides?: Record<string, string>;
+    envDefault?: Record<string, string>;
+  },
+) {
+  if (os == "windows") {
+    throw new Error("not yet supported");
+  }
+  await $.path(
+    shimPath,
+  ).writeText(
+    `#!/bin/sh 
+${
+      [
+        ...Object.entries(envDefault ?? {})
+          // we let the values be overriden if there's an already set variable of that name
+          // also we single quote vals in the first line to avoid expansion
+          .map(([key, val]) =>
+            `default_${key}='${val}'
+${key}="$\{${key}:-$default_${key}}"`
+          ),
+        ...Object.entries(envOverrides ?? {})
+          // single quote vals to avoid expansion
+          .map(([key, val]) => `
+${key}='${val}'`),
+      ]
+        .join("\n")
+    }
+exec ${execPath}${defArgs ? ` ${defArgs}` : ""} $*`,
+    // use exec to ensure the scripts executes in it's own shell
+    // pass all args to shim to the exec
+    { mode: 0o700 },
+  );
+}
+
+export type DownloadFileArgs = DownloadArgs & {
+  url: string;
+  name?: string;
+  mode?: number;
+  headers?: Record<string, string>;
+};
+/// This avoid re-downloading a file if it's already successfully downloaded before.
+export async function downloadFile(
+  args: DownloadFileArgs,
+) {
+  const { name, mode, url, downloadPath, tmpDirPath, headers } = {
+    name: std_url.basename(args.url),
+    mode: 0o666,
+    headers: {},
+    ...args,
+  };
+
+  const fileDwnPath = $.path(downloadPath).join(name);
+  if (await fileDwnPath.exists()) {
+    logger().debug(`file ${name} already downloaded, skipping`);
+    return;
+  }
+  const tmpFilePath = $.path(tmpDirPath).join(name);
+
+  await $.request(url)
+    .header(headers)
+    .showProgress()
+    .pipeToPath(tmpFilePath, { create: true, mode });
+
+  await $.path(downloadPath).ensureDir();
+
+  await tmpFilePath.copyFile(fileDwnPath);
 }

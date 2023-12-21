@@ -1,52 +1,81 @@
+import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 import {
   $,
-  addInstallGlobal,
-  DownloadArgs,
-  downloadFile,
+  type DownloadArgs,
+  dwnUrlOut,
   GithubReleasePort,
-  InstallArgs,
+  type InstallArgs,
   type InstallConfigSimple,
-  type PlatformInfo,
-  registerDenoPortGlobal,
+  osXarch,
   std_fs,
   std_path,
-  std_url,
   unarchive,
 } from "../port.ts";
 
 const manifest = {
-  ty: "denoWorker" as const,
-  name: "act@ghrel",
+  ty: "denoWorker@v1" as const,
+  name: "act_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
-
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(
+  config: InstallConfigSimple & GithubReleasesInstConf = {},
+) {
+  return {
+    ...readGhVars(),
     ...config,
-  });
+    port: manifest,
+  };
 }
 
-const repoOwner = "nektos";
-const repoName = "act";
-const repoAddress = `https://github.com/${repoOwner}/${repoName}`;
-
 export class Port extends GithubReleasePort {
-  manifest = manifest;
-  repoName = repoName;
-  repoOwner = repoOwner;
+  repoOwner = "nektos";
+  repoName = "act";
 
-  async download(args: DownloadArgs) {
-    await downloadFile(args, downloadUrl(args.installVersion, args.platform));
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let arch;
+    switch (platform.arch) {
+      case "x86_64":
+        arch = "x86_64";
+        break;
+      case "aarch64":
+        arch = "arm64";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+    let os;
+    let ext;
+    switch (platform.os) {
+      case "linux":
+        os = "Linux";
+        ext = "tar.gz";
+        break;
+      case "darwin":
+        os = "Darwin";
+        ext = "tar.gz";
+        break;
+      case "windows":
+        os = "Windows";
+        ext = "zip";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+
+    return [
+      this.releaseArtifactUrl(
+        installVersion,
+        `${this.repoName}_${os}_${arch}.${ext}`,
+      ),
+    ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      downloadUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 
     await unarchive(fileDwnPath, args.tmpDirPath);
@@ -60,37 +89,4 @@ export class Port extends GithubReleasePort {
       installPath.join("bin").toString(),
     );
   }
-}
-
-function downloadUrl(installVersion: string, platform: PlatformInfo) {
-  let arch;
-  switch (platform.arch) {
-    case "x86_64":
-      arch = "x86_64";
-      break;
-    case "aarch64":
-      arch = "arm64";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  let os;
-  let ext;
-  switch (platform.os) {
-    case "linux":
-      os = "Linux";
-      ext = "tar.gz";
-      break;
-    case "darwin":
-      os = "Darwin";
-      ext = "tar.gz";
-      break;
-    case "windows":
-      os = "Windows";
-      ext = "zip";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  return `${repoAddress}/releases/download/${installVersion}/${repoName}_${os}_${arch}.${ext}`;
 }

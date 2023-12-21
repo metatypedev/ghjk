@@ -1,20 +1,18 @@
 import {
-  ALL_ARCH,
-  ALL_OS,
   type AmbientAccessPortManifest,
-  type InstallConfigSimple,
+  InstallConfigSimple,
   osXarch,
 } from "../port.ts";
 
 export const manifest: AmbientAccessPortManifest = {
   ty: "ambientAccess@v1" as const,
-  name: "curl_aa",
+  name: "zstd_aa",
   version: "0.1.0",
-  execName: "curl",
+  execName: "zstd",
   versionExtractFlag: "--version",
-  versionExtractRegex: "(\\d+\\.\\d+\\.\\d+)",
+  versionExtractRegex: "v(\\d+\\.\\d+\\.\\d+),",
   versionExtractRegexFlags: "",
-  platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
+  platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
 export default function conf(config: InstallConfigSimple = {}) {

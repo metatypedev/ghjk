@@ -100,7 +100,7 @@ export async function unzip(
   dest = "./",
 ) {
   const zipArc = await jszip.readZip(path);
-  await Promise.allSettled(
+  await Promise.all(
     Object.entries(zipArc.files()).map(async ([_, entry]) => {
       const filePath = std_path.resolve(dest, entry.name);
       if (entry.dir) {

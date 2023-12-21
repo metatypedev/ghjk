@@ -1,47 +1,48 @@
 import {
   $,
-  addInstallGlobal,
-  depBinShimPath,
-  DownloadArgs,
+  depExecShimPath,
   downloadFile,
-  ExecEnvArgs,
-  InstallArgs,
-  type InstallConfigSimple,
-  ListAllArgs,
-  type PlatformInfo,
+  dwnUrlOut,
+  osXarch,
   PortBase,
-  registerDenoPortGlobal,
   std_fs,
   std_path,
-  std_url,
+} from "../port.ts";
+import type {
+  DownloadArgs,
+  ExecEnvArgs,
+  InstallArgs,
+  InstallConfigSimple,
+  ListAllArgs,
 } from "../port.ts";
 
 // FIXME: circular module resolution when one std_port imports another
 const tar_aa_id = {
-  id: "tar@aa",
+  name: "tar_aa",
 };
+
 // TODO: sanity check exports of all ports
 export const manifest = {
-  ty: "denoWorker" as const,
-  name: "node@org",
+  ty: "denoWorker@v1" as const,
+  name: "node_org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  // FIXME: tar doens't support windows
+  // TODO: platform disambiguated deps
   deps: [tar_aa_id],
+  // NOTE: node supports more archs than deno but we can't include it here
+  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-registerDenoPortGlobal(manifest, () => new Port());
-
 // FIXME: improve multi platform support story
-export default function install(config: InstallConfigSimple = {}) {
-  addInstallGlobal({
-    portName: manifest.name,
+export default function conf(config: InstallConfigSimple = {}) {
+  return {
     ...config,
-  });
+    port: manifest,
+  };
 }
 
 export class Port extends PortBase {
-  manifest = manifest;
-
   execEnv(args: ExecEnvArgs) {
     return {
       NODE_PATH: args.installPath,
@@ -65,17 +66,57 @@ export class Port extends PortBase {
     );
   }
 
+  // node distribute archives that contain the binary, ecma source for npm/npmx/corepack, include source files and more
+  downloadUrls(args: DownloadArgs) {
+    const { installVersion, platform } = args;
+    let arch;
+    switch (platform.arch) {
+      case "x86_64":
+        arch = "x64";
+        break;
+      case "aarch64":
+        arch = "arm64";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+    let os;
+    let ext;
+    switch (platform.os) {
+      case "linux":
+        os = "linux";
+        ext = "tar.gz";
+        break;
+      case "darwin":
+        os = "darwin";
+        ext = "tar.gz";
+        break;
+      case "windows":
+        os = "win";
+        ext = "zip";
+        break;
+      default:
+        throw new Error(`unsupported: ${platform}`);
+    }
+
+    return [
+      `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.${ext}`,
+    ].map(dwnUrlOut);
+  }
+
   async download(args: DownloadArgs) {
-    await downloadFile(args, artifactUrl(args.installVersion, args.platform));
+    const urls = this.downloadUrls(args);
+    await Promise.all(
+      urls.map((obj) => downloadFile({ ...args, ...obj })),
+    );
   }
 
   async install(args: InstallArgs) {
-    const fileName = std_url.basename(
-      artifactUrl(args.installVersion, args.platform),
-    );
+    const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
+
     await $`${
-      depBinShimPath(tar_aa_id, "tar", args.depShims)
+      depExecShimPath(tar_aa_id, "tar", args.depArts)
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
@@ -83,39 +124,20 @@ export class Port extends PortBase {
       await installPath.remove({ recursive: true });
     }
 
+    const dirs = [];
+    for await (
+      const entry of std_fs.expandGlob(
+        std_path.joinGlobs([args.tmpDirPath, "*"]),
+      )
+    ) {
+      dirs.push(entry);
+    }
+    if (dirs.length != 1 || !dirs[0].isDirectory) {
+      throw new Error("unexpected archive contents");
+    }
     await std_fs.copy(
-      std_path.resolve(
-        args.tmpDirPath,
-        std_path.basename(fileDwnPath, ".tar.gz"),
-      ),
+      dirs[0].path,
       args.installPath,
     );
   }
-}
-
-// node distribute archives that contain the binary, ecma source for npm/npmx/corepack, include source files and more
-function artifactUrl(installVersion: string, platform: PlatformInfo) {
-  let arch;
-  let os;
-  switch (platform.arch) {
-    case "x86_64":
-      arch = "x64";
-      break;
-    case "aarch64":
-      arch = "arm64";
-      break;
-    default:
-      throw new Error(`unsupported arch: ${platform.arch}`);
-  }
-  switch (platform.os) {
-    case "linux":
-      os = "linux";
-      break;
-    case "darwin":
-      os = "darwin";
-      break;
-    default:
-      throw new Error(`unsupported os: ${platform.arch}`);
-  }
-  return `https://nodejs.org/dist/${installVersion}/node-${installVersion}-${os}-${arch}.tar.gz`;
 }

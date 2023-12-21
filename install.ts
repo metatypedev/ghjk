@@ -26,6 +26,8 @@ if (import.meta.main) {
     shellHookMarker: Deno.env.get("GHJK_INSTALL_HOOK_MARKER") ??
       defaultInstallArgs.shellHookMarker,
     noLockfile: !!noLockfile && noLockfile != "0" && noLockfile != "false",
+    ghjkDenoCacheDir: Deno.env.get("GHJK_INSTALL_DENO_DIR") ??
+      defaultInstallArgs.ghjkDenoCacheDir,
   });
 } else {
   throw new Error(

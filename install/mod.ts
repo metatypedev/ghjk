@@ -1,8 +1,6 @@
 //! this installs the different shell ghjk hooks in ~/.local/share/ghjk
 //! and a `ghjk` bin at ~/.local/share/bin
 
-// TODO: support for different environments to use different versions of ghjk
-
 import logger from "../utils/logger.ts";
 import { std_fs, std_path } from "../deps/cli.ts";
 import { $, dirs, importRaw } from "../utils/mod.ts";
@@ -111,6 +109,8 @@ interface InstallArgs {
   /// the deno exec to be used by the ghjk executable
   /// by default will be "deno" i.e. whatever the shell resolves that to
   ghjkExecDenoExec: string;
+  /// The cache dir to use by the ghjk deno installation
+  ghjkDenoCacheDir?: string;
   // Disable using a lockfile for the ghjk command
   noLockfile: boolean;
 }
@@ -124,6 +124,8 @@ export const defaultInstallArgs: InstallArgs = {
   // TODO: respect xdg dirs
   ghjkExecInstallDir: std_path.resolve(dirs().homeDir, ".local", "bin"),
   ghjkExecDenoExec: Deno.execPath(),
+  // the default behvaior kicks in with ghjkDenoCacheDir is falsy
+  // ghjkDenoCacheDir: undefined,
   noLockfile: false,
 };
 
@@ -188,10 +190,13 @@ export async function install(
           ? "--no-lock"
           : `--lock $GHJK_DIR/deno.lock`;
 
+        // use an isolated cache by default
+        const denoCacheDir = args.ghjkDenoCacheDir ??
+          std_path.resolve(ghjkDir, "deno");
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
-GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR=${args.ghjkExecInstallDir}/cache
+GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
 ${args.ghjkExecDenoExec} run --unstable-worker-options -A ${lockFlag} ${
             import.meta.resolve("../main.ts")
           } $*`,

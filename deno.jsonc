@@ -5,10 +5,10 @@
     "check": "deno run -A check.ts"
   },
   "fmt": {
-    "exclude": ["gh_action/*.js"]
+    "exclude": []
   },
   "lint": {
-    "exclude": ["gh_action/*", "ghjk.ts", "play.ts"],
+    "exclude": ["ghjk.ts", "play.ts"],
     "rules": {
       "exclude": ["no-explicit-any"]
     }

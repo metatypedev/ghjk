@@ -1,4 +1,5 @@
 export { ghjk } from "./mod.ts";
+import * as ghjk from "./mod.ts";
 import node from "./ports/node.ts";
 import pnpm from "./ports/pnpm.ts";
 import cargo_binstall from "./ports/cargo-binstall.ts";
@@ -11,27 +12,42 @@ import mold from "./ports/mold.ts";
 import act from "./ports/act.ts";
 import asdf from "./ports/asdf.ts";
 import protoc from "./ports/protoc.ts";
-import earthly from "./ports/earthly.ts";
 import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
+import cpython from "./ports/cpy_bs.ts";
+import pipi from "./ports/pipi.ts";
 
-// node({});
-// wasmedge({});
-// pnpm({});
-// cargo_binstall({});
-// wasm_tools({});
-// wasm_opt({});
-// cargo_insta({});
-// jco({});
-// mold({
-//   replaceLd: true,
-// });
-act({});
-// asdf({
-//   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-//   installType: "version",
-// });
-// protoc({});
-// earthly({});
-// ruff({});
-// whiz({});
+// these are just for quick testing
+ghjk.install(
+  // node(),
+  // wasmedge(),
+  // pnpm(),
+  // cargo_binstall(),
+  // wasm_tools(),
+  // wasm_opt(),
+  // cargo_insta(),
+  // mold({
+  //   replaceLd: true,
+  // }),
+  // asdf({
+  // act(),
+  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+  //   installType: "version",
+  // }),
+  // ...pipi({ packageName: "pre-commit" }),
+  // protoc(),
+  // ruff(),
+  // whiz(),
+  // jco()[0],
+  // cpython(),
+);
+
+// these are used for developing ghjk
+ghjk.install(
+  act(),
+  ...pipi({ packageName: "pre-commit" }),
+);
+
+export const secureConfig = ghjk.secureConfig({
+  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
+});
