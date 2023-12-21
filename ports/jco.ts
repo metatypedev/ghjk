@@ -58,12 +58,12 @@ export class Port extends PortBase {
     if (await $.path(args.downloadPath).exists()) {
       return;
     }
-    await $`${
+    await $.raw`${
       depExecShimPath(std_ports.node_org, "npm", args.depArts)
-    } install --no-fund jco@${args.installVersion}`
+    } install --no-fund @bytecodealliance/jco@${args.installVersion}`
       .cwd(args.tmpDirPath)
       .env(pathsWithDepArts(args.depArts, args.platform.os));
-    std_fs.move(args.tmpDirPath, args.downloadPath);
+    await std_fs.move(args.tmpDirPath, args.downloadPath);
   }
 
   // FIXME: replace shebangs with the runtime dep node path

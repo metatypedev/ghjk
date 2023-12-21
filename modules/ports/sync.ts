@@ -495,13 +495,7 @@ async function doInstall(
   manifest: PortManifestX,
   depArts: DepArts,
 ) {
-  logger().debug("installing", {
-    installsDir,
-    downloadsDir,
-    instUnclean,
-    port: manifest,
-  });
-
+  logger().debug("installing", instUnclean);
   // instantiate the right Port impl according to manifest.ty
   let port;
   let inst: InstallConfigLiteX;
@@ -542,6 +536,8 @@ async function doInstall(
     config: inst,
     manifest,
   };
+  logger().debug("baseArgs", installId, baseArgs);
+
   {
     logger().info(`downloading ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({
