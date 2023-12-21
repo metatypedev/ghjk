@@ -14,6 +14,8 @@ function ghjk_reload --on-variable PWD
                 # load the shim
                 . $envDir/loader.fish
 
+                # FIXME: older versions of fish don't recognize -ot
+                # those in debian
                 if test $envDir/loader.fish -ot $cur_dir/ghjk.ts
                     set_color FF4500
                     echo "[ghjk] Detected changes, please sync..."

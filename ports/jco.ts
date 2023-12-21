@@ -79,9 +79,7 @@ export class Port extends PortBase {
     await unarchive(fileDwnPath, args.tmpDirPath);
 
     const installPath = $.path(args.installPath);
-    if (await installPath.exists()) {
-      await installPath.remove({ recursive: true });
-    }
+    await $.removeIfExists(installPath);
 
     await std_fs.copy(
       std_path.resolve(

@@ -152,9 +152,9 @@ function testMany(
       () =>
         testFn({
           ...testCase,
-          ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) =>
-            `env ${sh} '${testCase.ePoint}'`
-          ),
+          ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+            cmd: `env ${sh} '${testCase.ePoint}'`,
+          })),
           envs: {
             ...defaultEnvs,
             ...testCase.envs,
