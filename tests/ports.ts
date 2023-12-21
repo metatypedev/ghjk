@@ -1,4 +1,5 @@
 import "../setup_logger.ts";
+import { secureConfig, stdDeps } from "../mod.ts";
 import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
 import node from "../ports/node.ts";
 import pnpm from "../ports/pnpm.ts";
@@ -109,6 +110,9 @@ const cases: CustomE2eTestCase[] = [
     name: "jco",
     installConf: jco(),
     ePoint: `jco --version`,
+    secureConf: secureConfig({
+      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+    }),
   },
   // 77 meg +
   {
@@ -130,17 +134,21 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
+    secureConf: secureConfig({
+      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+    }),
   },
 ];
 
-function testlManyE2e(
+function testMany(
+  testGroup: string,
   cases: CustomE2eTestCase[],
   testFn: (inp: E2eTestCase) => Promise<void>,
   defaultEnvs: Record<string, string> = {},
 ) {
   for (const testCase of cases) {
     Deno.test(
-      `localE2eTest - ${testCase.name}`,
+      `${testGroup} - ${testCase.name}`,
       () =>
         testFn({
           ...testCase,
@@ -156,18 +164,19 @@ function testlManyE2e(
   }
 }
 
-if (Deno.env.get("GHJK_E2E_TYPE") == "both") {
-  testlManyE2e(cases, dockerE2eTest);
-  testlManyE2e(cases, localE2eTest);
-} else if (Deno.env.get("GHJK_TEST_E2E_TYPE") == "local") {
-  testlManyE2e(cases, localE2eTest);
+const e2eType = Deno.env.get("GHJK_E2E_TYPE");
+if (e2eType == "both") {
+  testMany("portsDockerE2eTest", cases, dockerE2eTest);
+  testMany(`portsLocalE2eTest`, cases, localE2eTest);
+} else if (e2eType == "local") {
+  testMany("portsLocalE2eTest", cases, localE2eTest);
 } else if (
-  Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker" ||
-  !Deno.env.has("GHJK_TEST_E2E_TYPE")
+  e2eType == "docker" ||
+  !e2eType
 ) {
-  testlManyE2e(cases, dockerE2eTest);
+  testMany("portsDockerE2eTest", cases, dockerE2eTest);
 } else {
   throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${Deno.env.get("GHJK_TEST_E2E_TYPE")}`,
+    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
   );
 }

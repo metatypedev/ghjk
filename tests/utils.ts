@@ -1,17 +1,21 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
-import type { InstallConfigFat } from "../modules/ports/types.ts";
+import type {
+  InstallConfigFat,
+  PortsModuleSecureConfig,
+} from "../modules/ports/types.ts";
 import { std_url } from "../deps/common.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
 
 export type E2eTestCase = {
   name: string;
   installConf: InstallConfigFat | InstallConfigFat[];
+  secureConf?: PortsModuleSecureConfig;
   envs?: Record<string, string>;
   ePoints: string[];
 };
 
 export async function localE2eTest(testCase: E2eTestCase) {
-  const { envs: testEnvs, installConf, ePoints } = testCase;
+  const { envs: testEnvs, installConf, ePoints, secureConf } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
       prefix: "ghjk_le2e_",
@@ -39,9 +43,11 @@ ${JSON.stringify(installConfArray)}
 const confObj = JSON.parse(confStr);
 ghjk.install(...confObj)
 
-export const secureConfig = ghjk.secureConfig({
-  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
-});
+const secConfStr = \`
+${JSON.stringify(secureConf)}
+\`;
+export const secureConfig = = JSON.parse(secConfStr);
+;
 `
       .replaceAll(
         "$ghjk",
@@ -91,7 +97,7 @@ const templateStrings = {
 };
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envs: testEnvs, ePoints, installConf } = testCase;
+  const { name, envs: testEnvs, ePoints, installConf, secureConf } = testCase;
   const tag = `ghjk_e2e_${name}`;
   const env = {
     ...testEnvs,
@@ -99,24 +105,49 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
   const installConfArray = Array.isArray(installConf)
     ? installConf
     : [installConf];
+  // replace all file urls that point to the ghjk
+  // repo in the host fs to point to the copy of the
+  // repo in the image
   const devGhjkPath = import.meta.resolve("../");
-  const serializedConf = JSON.stringify(
+  const serializedPortsInsts = JSON.stringify(
     installConfArray,
     (_, val) =>
-      typeof val == "string" ? val.replace(devGhjkPath, "file://$ghjk/") : val,
+      typeof val == "string"
+        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
+          /\\/g,
+          // we need to escape a js string embedded js file in Dockerfile
+          // in js file. 4x
+          "\\\\\\\\",
+        )
+        : val,
+  ).replaceAll(/\\/g, "\\\\");
+  const serializedSecConf = JSON.stringify(
+    // undefined is not recognized by JSON.parse
+    // so we stub it with null
+    secureConf ?? null,
+    (_, val) =>
+      typeof val == "string"
+        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
+          /\\/g,
+          "\\\\\\\\",
+        )
+        : val,
+    1,
   );
+
   const configFile = `
 export { ghjk } from "$ghjk/mod.ts";
 import * as ghjk from "$ghjk/mod.ts";
 const confStr = \\\`
-${serializedConf}
+${serializedPortsInsts}
 \\\`;
 const confObj = JSON.parse(confStr);
 ghjk.install(...confObj)
 
-export const secureConfig = ghjk.secureConfig({
-  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
-});
+const secConfStr = \\\`
+${serializedSecConf}
+\\\`;
+export const secureConfig = JSON.parse(secConfStr);
 `.replaceAll("$ghjk", "/ghjk");
 
   const dFile = dbg(dFileTemplate.replaceAll(
@@ -124,7 +155,9 @@ export const secureConfig = ghjk.secureConfig({
     configFile,
   ));
   await $
-    .raw`${dockerCmd} buildx build --tag '${tag}' --network=host --output type=docker -f- .`
+    .raw`${dockerCmd} buildx build ${
+    Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
+  } --tag '${tag}' --network=host --output type=docker -f- .`
     .env(env)
     .stdinText(dFile);
   for (const ePoint of ePoints) {
