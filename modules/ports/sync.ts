@@ -65,7 +65,7 @@ set --global --prepend ${k} ${v};
 /// or just pointing to targetDir/tmp
 /// This is handy for making moves atomics from
 /// tmp dirs to to locations within targetDir
-async function movebleTmpPath(targetDir: string, targetTmpDirName = "dir") {
+async function movebleTmpPath(targetDir: string, targetTmpDirName = "tmp") {
   const defaultTmp = Deno.env.get("TMPDIR");
   const targetPath = $.path(targetDir);
   if (!defaultTmp) {
