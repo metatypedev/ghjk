@@ -164,7 +164,7 @@ function testMany(
   }
 }
 
-const e2eType = Deno.env.get("GHJK_E2E_TYPE");
+const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
 if (e2eType == "both") {
   testMany("portsDockerE2eTest", cases, dockerE2eTest);
   testMany(`portsLocalE2eTest`, cases, localE2eTest);

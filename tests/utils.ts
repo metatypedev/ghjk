@@ -14,6 +14,89 @@ export type E2eTestCase = {
   ePoints: string[];
 };
 
+const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
+const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
+const templateStrings = {
+  addConfig: `#{{CMD_ADD_CONFIG}}`,
+};
+
+export async function dockerE2eTest(testCase: E2eTestCase) {
+  const { name, envs: testEnvs, ePoints, installConf, secureConf } = testCase;
+  const tag = `ghjk_e2e_${name}`;
+  const env = {
+    ...testEnvs,
+  };
+  const installConfArray = Array.isArray(installConf)
+    ? installConf
+    : [installConf];
+  // replace all file urls that point to the ghjk
+  // repo in the host fs to point to the copy of the
+  // repo in the image
+  const devGhjkPath = import.meta.resolve("../");
+  const serializedPortsInsts = JSON.stringify(
+    installConfArray,
+    (_, val) =>
+      typeof val == "string"
+        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
+          /\\/g,
+          // we need to escape from a json string embedded js string
+          // embedded embeded in a js file embedded in a Dockerfile
+          // 4x
+          "\\\\\\\\",
+        )
+        : val,
+  );
+  const serializedSecConf = JSON.stringify(
+    // undefined is not recognized by JSON.parse
+    // so we stub it with null
+    secureConf ?? null,
+    (_, val) =>
+      typeof val == "string"
+        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
+          /\\/g,
+          "\\\\\\\\",
+        )
+        : val,
+  );
+
+  const configFile = `
+export { ghjk } from "$ghjk/mod.ts";
+import * as ghjk from "$ghjk/mod.ts";
+const confStr = \\\`
+${serializedPortsInsts}
+\\\`;
+const confObj = JSON.parse(confStr);
+ghjk.install(...confObj)
+
+const secConfStr = \\\`
+${serializedSecConf}
+\\\`;
+export const secureConfig = JSON.parse(secConfStr);
+`.replaceAll("$ghjk", "/ghjk");
+
+  const dFile = dbg(dFileTemplate.replaceAll(
+    templateStrings.addConfig,
+    configFile,
+  ));
+  await $
+    .raw`${dockerCmd} buildx build ${
+    Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
+  } --tag '${tag}' --network=host --output type=docker -f- .`
+    .env(env)
+    .stdinText(dFile);
+  for (const ePoint of ePoints) {
+    await $
+      .raw`${dockerCmd} run --rm ${
+      Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
+        .flat()
+    } ${tag} ${ePoint}`
+      .env(env);
+  }
+  await $
+    .raw`${dockerCmd} rmi '${tag}'`
+    .env(env);
+}
+
 export async function localE2eTest(testCase: E2eTestCase) {
   const { envs: testEnvs, installConf, ePoints, secureConf } = testCase;
   const tmpDir = $.path(
@@ -33,20 +116,36 @@ export async function localE2eTest(testCase: E2eTestCase) {
   const installConfArray = Array.isArray(installConf)
     ? installConf
     : [installConf];
+
+  const serializedPortsInsts = JSON.stringify(
+    installConfArray,
+    (_, val) =>
+      typeof val == "string"
+        // we need to escape a json string embedded in a js string
+        // 2x
+        ? val.replaceAll(/\\/g, "\\\\")
+        : val,
+  );
+  const serializedSecConf = JSON.stringify(
+    // undefined is not recognized by JSON.parse
+    // so we stub it with null
+    secureConf ?? null,
+    (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+  );
   await tmpDir.join("ghjk.ts").writeText(
     `
 export { ghjk } from "$ghjk/mod.ts";
 import * as ghjk from "$ghjk/mod.ts";
 const confStr = \`
-${JSON.stringify(installConfArray)}
+${serializedPortsInsts}
 \`;
 const confObj = JSON.parse(confStr);
 ghjk.install(...confObj)
 
 const secConfStr = \`
-${JSON.stringify(secureConf)}
+${serializedSecConf}
 \`;
-export const secureConfig = = JSON.parse(secConfStr);
+export const secureConfig = JSON.parse(secConfStr);
 ;
 `
       .replaceAll(
@@ -88,87 +187,4 @@ export const secureConfig = = JSON.parse(secConfStr);
       .env(env);
   }
   await tmpDir.remove({ recursive: true });
-}
-
-const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
-const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
-const templateStrings = {
-  addConfig: `#{{CMD_ADD_CONFIG}}`,
-};
-
-export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envs: testEnvs, ePoints, installConf, secureConf } = testCase;
-  const tag = `ghjk_e2e_${name}`;
-  const env = {
-    ...testEnvs,
-  };
-  const installConfArray = Array.isArray(installConf)
-    ? installConf
-    : [installConf];
-  // replace all file urls that point to the ghjk
-  // repo in the host fs to point to the copy of the
-  // repo in the image
-  const devGhjkPath = import.meta.resolve("../");
-  const serializedPortsInsts = JSON.stringify(
-    installConfArray,
-    (_, val) =>
-      typeof val == "string"
-        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
-          /\\/g,
-          // we need to escape a js string embedded js file in Dockerfile
-          // in js file. 4x
-          "\\\\\\\\",
-        )
-        : val,
-  ).replaceAll(/\\/g, "\\\\");
-  const serializedSecConf = JSON.stringify(
-    // undefined is not recognized by JSON.parse
-    // so we stub it with null
-    secureConf ?? null,
-    (_, val) =>
-      typeof val == "string"
-        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
-          /\\/g,
-          "\\\\\\\\",
-        )
-        : val,
-    1,
-  );
-
-  const configFile = `
-export { ghjk } from "$ghjk/mod.ts";
-import * as ghjk from "$ghjk/mod.ts";
-const confStr = \\\`
-${serializedPortsInsts}
-\\\`;
-const confObj = JSON.parse(confStr);
-ghjk.install(...confObj)
-
-const secConfStr = \\\`
-${serializedSecConf}
-\\\`;
-export const secureConfig = JSON.parse(secConfStr);
-`.replaceAll("$ghjk", "/ghjk");
-
-  const dFile = dbg(dFileTemplate.replaceAll(
-    templateStrings.addConfig,
-    configFile,
-  ));
-  await $
-    .raw`${dockerCmd} buildx build ${
-    Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
-  } --tag '${tag}' --network=host --output type=docker -f- .`
-    .env(env)
-    .stdinText(dFile);
-  for (const ePoint of ePoints) {
-    await $
-      .raw`${dockerCmd} run --rm ${
-      Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
-        .flat()
-    } ${tag} ${ePoint}`
-      .env(env);
-  }
-  await $
-    .raw`${dockerCmd} rmi '${tag}'`
-    .env(env);
 }
