@@ -19,20 +19,12 @@ import whiz from "../ports/whiz.ts";
 import cpython from "../ports/cpy_bs.ts";
 import pipi from "../ports/pipi.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & { ePoint: string };
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
+  ePoint: string;
+  ignore?: boolean;
+};
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
-  ...(Deno.build.os == "linux"
-    ? [
-      // 8 megs
-      {
-        name: "mold",
-        installConf: mold(),
-        ePoint: `mold -V`,
-      },
-    ]
-    : []),
-
   // 3 megs
   {
     name: "protoc",
@@ -62,6 +54,13 @@ const cases: CustomE2eTestCase[] = [
     name: "cargo-binstall",
     installConf: cargo_binstall(),
     ePoint: `cargo-binstall -V`,
+  },
+  // 8 megs
+  {
+    name: "mold",
+    installConf: mold(),
+    ePoint: `mold -V`,
+    ignore: Deno.build.os != "linux",
   },
   // 16 megs
   {
@@ -148,18 +147,21 @@ function testMany(
 ) {
   for (const testCase of cases) {
     Deno.test(
-      `${testGroup} - ${testCase.name}`,
-      () =>
-        testFn({
-          ...testCase,
-          ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-            cmd: `env ${sh} '${testCase.ePoint}'`,
-          })),
-          envs: {
-            ...defaultEnvs,
-            ...testCase.envs,
-          },
-        }),
+      {
+        name: `${testGroup} - ${testCase.name}`,
+        ignore: testCase.ignore,
+        fn: () =>
+          testFn({
+            ...testCase,
+            ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+              cmd: `env ${sh} '${testCase.ePoint}'`,
+            })),
+            envs: {
+              ...defaultEnvs,
+              ...testCase.envs,
+            },
+          }),
+      },
     );
   }
 }

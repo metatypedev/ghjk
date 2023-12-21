@@ -114,18 +114,8 @@ export async function localE2eTest(testCase: E2eTestCase) {
       prefix: "ghjk_le2e_",
     }),
   );
-
   const ghjkDir = await tmpDir.join("ghjk").ensureDir();
-  await install({
-    ...defaultInstallArgs,
-    skipExecInstall: false,
-    ghjkExecInstallDir: ghjkDir.toString(),
-    // share the system's deno cache
-    ghjkDenoCacheDir: Deno.env.get("DENO_DIR"),
-    ghjkDir: ghjkDir.toString(),
-    // don't modify system shell configs
-    shellsToHook: [],
-  });
+
   const installConfArray = Array.isArray(installConf)
     ? installConf
     : [installConf];
@@ -172,14 +162,17 @@ export const secureConfig = JSON.parse(secConfStr);
     ZDOTDIR: ghjkDir.toString(),
     GHJK_DIR: ghjkDir.toString(),
   };
-  {
-    const confHome = await ghjkDir.join(".config").ensureDir();
-    const fishConfDir = await confHome.join("fish").ensureDir();
-    await fishConfDir.join("config.fish").createSymlinkTo(
-      ghjkDir.join("env.fish").toString(),
-    );
-    env["XDG_CONFIG_HOME"] = confHome.toString();
-  }
+  // install ghjk
+  await install({
+    ...defaultInstallArgs,
+    skipExecInstall: false,
+    ghjkExecInstallDir: ghjkDir.toString(),
+    // share the system's deno cache
+    ghjkDenoCacheDir: Deno.env.get("DENO_DIR"),
+    ghjkDir: ghjkDir.toString(),
+    // don't modify system shell configs
+    shellsToHook: [],
+  });
   await $`${ghjkDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
     .env(env);
@@ -194,6 +187,14 @@ export const secureConfig = JSON.parse(secConfStr);
     entry.path.toString().slice(ghjkDirLen),
   ]));
   */
+  {
+    const confHome = await ghjkDir.join(".config").ensureDir();
+    const fishConfDir = await confHome.join("fish").ensureDir();
+    await fishConfDir.join("config.fish").createSymlinkTo(
+      ghjkDir.join("env.fish").toString(),
+    );
+    env["XDG_CONFIG_HOME"] = confHome.toString();
+  }
   for (const ePoint of ePoints) {
     let cmd = $.raw`${ePoint.cmd}`
       .cwd(tmpDir.toString())
