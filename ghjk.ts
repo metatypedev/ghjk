@@ -16,6 +16,7 @@ import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 import cpython from "./ports/cpy_bs.ts";
 import pipi from "./ports/pipi.ts";
+import emscripten from "./ports/emscripten.ts";
 
 // these are just for quick testing
 ghjk.install(
@@ -40,6 +41,7 @@ ghjk.install(
   // whiz(),
   // jco()[0],
   // cpython(),
+  // emscripten(),
 );
 
 // these are used for developing ghjk
