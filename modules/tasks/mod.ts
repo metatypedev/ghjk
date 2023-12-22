@@ -19,3 +19,54 @@ It just so happens our programs are Workers and the both the tasks
 and configs are defined in a single file. The current design should
 hopefully make it extensible if that's ever desired.
 */
+export * from "./types.ts";
+
+import { cliffy_cmd, std_path } from "../../deps/cli.ts";
+
+import type { TasksModuleConfig } from "./types.ts";
+import type { GhjkCtx } from "../types.ts";
+import { ModuleBase } from "../mod.ts";
+import logger from "../../utils/logger.ts";
+import { execTaskDeno } from "./deno.ts";
+
+export class TasksModule extends ModuleBase {
+  constructor(
+    public ctx: GhjkCtx,
+    public config: TasksModuleConfig,
+  ) {
+    super();
+  }
+  command() {
+    const tasks = Object.entries(this.config.commands).map(
+      ([name, taskCmd]) => {
+        let cliffyCmd = new cliffy_cmd.Command()
+          .name(name)
+          .useRawArgs()
+          .action(async (_, ...args) => {
+            await execTask(this.ctx, name, args);
+          });
+        if (taskCmd.description) {
+          cliffyCmd = cliffyCmd.description(taskCmd.description);
+        }
+
+        return cliffyCmd;
+      },
+    );
+    let root: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
+      .alias("run")
+      .alias("r")
+      .action(function () {
+        this.showHelp();
+      })
+      .description("Tasks module.");
+    for (const cmd of tasks) {
+      root = root.command(cmd.getName(), cmd);
+    }
+    return root;
+  }
+}
+
+export async function execTask(ctx: GhjkCtx, name: string, args: string[]) {
+  logger().info("executing", name);
+  await execTaskDeno(std_path.toFileUrl(ctx.configPath).href, name, args);
+}

@@ -1,4 +1,4 @@
-//! NOTE: type FooX is a version of Type after zod processing/transformation
+//! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
 

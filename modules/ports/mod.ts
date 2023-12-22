@@ -2,8 +2,8 @@ export * from "./types.ts";
 
 import { cliffy_cmd } from "../../deps/cli.ts";
 
-import { type PortsModuleConfig } from "./types.ts";
-import { type GhjkCtx } from "../types.ts";
+import type { PortsModuleConfig } from "./types.ts";
+import type { GhjkCtx } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import { sync } from "./sync.ts";
 
@@ -41,7 +41,6 @@ export class PortsModule extends ModuleBase {
           .action(function () {
             throw new Error("TODO");
           }),
-      )
-      .command("completions", new cliffy_cmd.CompletionsCommand());
+      );
   }
 }

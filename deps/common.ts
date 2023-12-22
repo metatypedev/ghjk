@@ -1,6 +1,11 @@
 //! dependencies used by all
+//! FIXME: move files in this module to files called deps.ts
+//! and located close to their users
 
-export { z as zod } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+// export { z as zod } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+export * as zcli from "https://deno.land/x/zcli@1.3.3/mod.ts";
+export * as zcli_json from "https://deno.land/x/zcli@1.3.3/zcli-json.ts";
+export { z as zod } from "https://deno.land/x/zcli@1.3.3/mod.ts";
 export * as semver from "https://deno.land/std@0.205.0/semver/mod.ts";
 export * as std_log from "https://deno.land/std@0.205.0/log/mod.ts";
 export * as std_log_levels from "https://deno.land/std@0.205.0/log/levels.ts";

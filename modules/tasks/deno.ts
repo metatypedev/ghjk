@@ -1,12 +1,13 @@
-//! this loads the ghjk.ts module and provides a program for it
+//! this loads the ghjk.ts module and executes
+//! a task command
 
 //// <reference no-default-lib="true" />
 /// <reference lib="deno.worker" />
 
-import { std_url } from "../deps/common.ts";
+import { std_url } from "../../deps/common.ts";
 
-import { inWorker } from "../utils/mod.ts";
-import logger, { setup as setupLogger } from "../utils/logger.ts";
+import { inWorker } from "../../utils/mod.ts";
+import logger, { setup as setupLogger } from "../../utils/logger.ts";
 
 if (inWorker()) {
   initWorker();
@@ -19,13 +20,17 @@ function initWorker() {
 }
 
 export type DriverRequests = {
-  ty: "serialize";
+  ty: "exec";
+  name: string;
   uri: string;
+  args: string[];
 };
+
 export type DriverResponse = {
-  ty: "serialize";
-  payload: unknown;
+  ty: "exec";
+  payload: boolean;
 };
+
 async function onMsg(msg: MessageEvent<DriverRequests>) {
   const req = msg.data;
   if (!req.ty) {
@@ -33,10 +38,10 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
     throw new Error(`unrecognized event data`);
   }
   let res: DriverResponse;
-  if (req.ty == "serialize") {
+  if (req.ty == "exec") {
     res = {
       ty: req.ty,
-      payload: await serializeConfig(req.uri),
+      payload: await importAndExec(req.uri, req.name, req.args),
     };
   } else {
     logger().error(`invalid DriverRequest type`, req);
@@ -45,21 +50,10 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   self.postMessage(res);
 }
 
-async function serializeConfig(uri: string) {
+async function importAndExec(uri: string, name: string, args: string[]) {
   const mod = await import(uri);
-  const config = await mod.ghjk.getConfig(mod.secureConfig);
-  return JSON.parse(JSON.stringify(config));
-}
-
-export async function getSerializedConfig(configUri: string) {
-  const resp = await rpc(configUri, {
-    ty: "serialize",
-    uri: configUri,
-  });
-  if (resp.ty != "serialize") {
-    throw new Error(`invalid response type: ${resp.ty}`);
-  }
-  return resp.payload;
+  await mod.ghjk.execTask(name, args);
+  return true;
 }
 
 async function rpc(moduleUri: string, req: DriverRequests) {
@@ -100,4 +94,20 @@ async function rpc(moduleUri: string, req: DriverRequests) {
   const resp = await promise;
   worker.terminate();
   return resp;
+}
+
+export async function execTaskDeno(
+  configUri: string,
+  name: string,
+  args: string[],
+) {
+  const resp = await rpc(configUri, {
+    ty: "exec",
+    uri: configUri,
+    name,
+    args,
+  });
+  if (resp.ty != "exec") {
+    throw new Error(`invalid response type: ${resp.ty}`);
+  }
 }

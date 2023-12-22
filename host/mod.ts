@@ -23,10 +23,11 @@ export async function cli(args: CliArgs) {
 
   logger().debug({ configPath, envDir });
 
+  const ctx = { ghjkDir, configPath, envDir };
+
   const serializedConfig = await serializeConfig(configPath);
 
-  const ctx = { ghjkDir, configPath, envDir };
-  let cmd = new cliffy_cmd.Command()
+  let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
     .name("ghjk")
     .version("0.1.1") // FIXME: better way to resolve version
     .description("Programmable runtime manager.")
@@ -88,7 +89,7 @@ export async function cli(args: CliArgs) {
     const instance = mod.ctor(ctx, man);
     cmd = cmd.command(man.id, instance.command());
   }
-  cmd
+  await cmd
     .command("completions", new cliffy_cmd.CompletionsCommand())
     .parse(Deno.args);
 }

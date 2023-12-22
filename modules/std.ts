@@ -1,7 +1,8 @@
-import logger from "../utils/logger.ts";
 import { PortsModule } from "./ports/mod.ts";
 import portsValidators from "./ports/types.ts";
-import { type GhjkCtx, type ModuleManifest } from "./types.ts";
+import { TasksModule } from "./tasks/mod.ts";
+import tasksValidators from "./tasks/types.ts";
+import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
 export const ports = "ports";
 
@@ -12,8 +13,12 @@ export const map = {
     ctor: (ctx: GhjkCtx, manifest: ModuleManifest) => {
       const res = portsValidators.portsModuleConfig.safeParse(manifest.config);
       if (!res.success) {
-        logger().error("error parsing ports module config", manifest.config);
-        throw res.error;
+        throw new Error("error parsing ports module config", {
+          cause: {
+            config: manifest.config,
+            zodErr: res.error,
+          },
+        });
       }
       return new PortsModule(
         ctx,
@@ -22,11 +27,20 @@ export const map = {
     },
   },
   [tasks as string]: {
-    // TODO: impl tasks module
-    ctor: (ctx: GhjkCtx, manifest: ModuleManifest) =>
-      new PortsModule(
+    ctor: (ctx: GhjkCtx, manifest: ModuleManifest) => {
+      const res = tasksValidators.tasksModuleConfig.safeParse(manifest.config);
+      if (!res.success) {
+        throw new Error("error parsing tasks module config", {
+          cause: {
+            config: manifest.config,
+            zodErr: res.error,
+          },
+        });
+      }
+      return new TasksModule(
         ctx,
-        portsValidators.portsModuleConfig.parse(manifest.config),
-      ),
+        res.data,
+      );
+    },
   },
 };
