@@ -86,7 +86,7 @@ export async function cli(args: CliArgs) {
     if (!mod) {
       throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
     }
-    const instance = mod.ctor(ctx, man);
+    const instance = mod.init(ctx, man);
     cmd = cmd.command(man.id, instance.command());
   }
   await cmd

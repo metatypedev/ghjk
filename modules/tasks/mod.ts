@@ -23,13 +23,29 @@ export * from "./types.ts";
 
 import { cliffy_cmd, std_path } from "../../deps/cli.ts";
 
+import validators from "./types.ts";
 import type { TasksModuleConfig } from "./types.ts";
-import type { GhjkCtx } from "../types.ts";
+import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import logger from "../../utils/logger.ts";
 import { execTaskDeno } from "./deno.ts";
 
 export class TasksModule extends ModuleBase {
+  public static init(
+    ctx: GhjkCtx,
+    manifest: ModuleManifest,
+  ) {
+    const res = validators.tasksModuleConfig.safeParse(manifest.config);
+    if (!res.success) {
+      throw new Error("error parsing ports module config", {
+        cause: {
+          config: manifest.config,
+          zodErr: res.error,
+        },
+      });
+    }
+    return new TasksModule(ctx, res.data);
+  }
   constructor(
     public ctx: GhjkCtx,
     public config: TasksModuleConfig,

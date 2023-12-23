@@ -15,6 +15,7 @@ import { manifest as man_node_org } from "../../ports/node.ts";
 import { manifest as man_pnpm_ghrel } from "../../ports/pnpm.ts";
 import { manifest as man_asdf_plugin_git } from "../../ports/asdf_plugin_git.ts";
 import { manifest as man_cpy_bs_ghrel } from "../../ports/cpy_bs.ts";
+import { getPortRef } from "../../utils/mod.ts";
 
 const aaPorts: PortManifest[] = [
   man_tar_aa,
@@ -39,7 +40,7 @@ const defaultAllowedDeps: AllowedPortDepX[] = [
   .map((manifest) => ({
     manifest,
     defaultInst: {
-      portName: manifest.name,
+      portRef: getPortRef(manifest),
     },
   }))
   .map((portDep) => validators.allowedPortDep.parse(portDep));

@@ -2,18 +2,21 @@ import {
   std_fmt_colors,
   std_log,
   std_log_levels,
-  std_path,
   std_url,
   zod,
 } from "../deps/common.ts";
 
-const defaultLogLevel = "INFO" as const;
+const defaultLogLevel = "DEBUG" as const;
 
 // This parses the GHJK_LOG env var
 function confFromEnv() {
+  const loggerConfs = { "": defaultLogLevel } as Record<
+    string,
+    zod.infer<typeof levelValidator>
+  >;
   const confStr = Deno.env.get("GHJK_LOG");
   if (!confStr) {
-    return { "": defaultLogLevel };
+    return loggerConfs;
   }
   const levelValidator = zod.enum(
     ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -24,7 +27,6 @@ function confFromEnv() {
   let defaultLevel = levelValidator.parse(defaultLogLevel);
   const confs = confStr.toUpperCase().split(",");
   // configure specific named loggers
-  const loggerConfs = {} as Record<string, zod.infer<typeof levelValidator>>;
   for (const confSection of confs) {
     const [left, right] = confSection.split("=");
     // this is a plain level name, thus configuring the default logger
@@ -110,7 +112,7 @@ export class TestConsoleErrHandler extends ConsoleErrHandler {
   }
 }
 const loggers = new Map<string, std_log.Logger>();
-let loggerLevelsConf = confFromEnv();
+const loggerLevelsConf = confFromEnv();
 
 const panicLevelName = Deno.env.get("GHJK_LOG_PANIC_LEVEL");
 const consoleHandler = panicLevelName
@@ -127,8 +129,9 @@ export default function logger(
   name: ImportMeta | string = self.name,
 ) {
   if (typeof name === "object") {
-    name = std_url.basename(name.url);
-    name = name.replace(std_path.extname(name), "");
+    const baseName = std_url.basename(name.url);
+    const dirName = std_url.basename(std_url.dirname(name.url));
+    name = `${dirName}/${baseName}`;
   }
   let logger = loggers.get(name);
   if (!logger) {
@@ -141,11 +144,8 @@ export default function logger(
 }
 
 export function setup() {
-  loggerLevelsConf = {
-    ...loggerLevelsConf,
-  };
   const defaultLogger = new std_log.Logger("default", loggerLevelsConf[""], {
-    handlers: [],
+    handlers: [consoleHandler],
   });
   loggers.set("", defaultLogger);
 }

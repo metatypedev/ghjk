@@ -4,7 +4,11 @@ import { semver, zod } from "../../deps/common.ts";
 
 // TODO: find a better identification scheme for ports
 const portName = zod.string().regex(/[^ @]*/);
-// const portRef = zod.string().regex(/[^ ]*@[^ ]/);
+// FIXME: get rid of semantic minor.patch version from portRef
+// to allow install hashes to be equivalent as long as major
+// version is the same
+// Or alternatively, drop semnatic versioning ports
+const portRef = zod.string().regex(/[^ ]*@\d+\.\d+\.\d+/);
 
 const portDep = zod.object({
   name: portName,
@@ -100,7 +104,7 @@ const installConfigBaseFat = installConfigBase.merge(zod.object({
 })).passthrough();
 
 const installConfigBaseLite = installConfigBase.merge(zod.object({
-  portName: portName,
+  portRef,
 })).passthrough();
 
 const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
@@ -310,3 +314,18 @@ export interface InstallArgs extends PortArgsBase {
   downloadPath: string;
   tmpDirPath: string;
 }
+
+export type DownloadArtifacts = {
+  installVersion: string;
+  downloadPath: string;
+};
+
+export type InstallArtifacts = {
+  env: Record<string, string>;
+  installVersion: string;
+  binPaths: string[];
+  libPaths: string[];
+  includePaths: string[];
+  installPath: string;
+  downloadPath: string;
+};

@@ -2,6 +2,7 @@ import {
   $,
   depExecShimPath,
   DownloadArgs,
+  getPortRef,
   InstallArgs,
   InstallConfigFat,
   InstallConfigSimple,
@@ -39,7 +40,7 @@ export default function conf(
   config: AsdfInstallConf,
 ): InstallConfigFat {
   // we only need the lite version of the InstConf here
-  const { port, ...liteConf } = asdf_plugin_git({
+  const { port: pluginPort, ...liteConf } = asdf_plugin_git({
     pluginRepo: config.pluginRepo,
   });
   return {
@@ -48,7 +49,7 @@ export default function conf(
     depConfigs: {
       [std_ports.asdf_plugin_git.name]: {
         ...liteConf,
-        portName: port.name,
+        portRef: getPortRef(pluginPort),
       },
     },
   };

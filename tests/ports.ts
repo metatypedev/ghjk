@@ -153,9 +153,13 @@ function testMany(
         fn: () =>
           testFn({
             ...testCase,
-            ePoints: ["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-              cmd: `env ${sh} '${testCase.ePoint}'`,
-            })),
+            ePoints: [
+              ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+                cmd: `env ${sh} '${testCase.ePoint}'`,
+              })),
+              // installs db means this shouldn't take too log
+              { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
+            ],
             envs: {
               ...defaultEnvs,
               ...testCase.envs,

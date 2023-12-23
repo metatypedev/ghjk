@@ -197,7 +197,7 @@ export async function install(
           exePath,
           `#!/bin/sh 
 GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
-${args.ghjkExecDenoExec} run --unstable-worker-options -A ${lockFlag} ${
+${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A ${lockFlag} ${
             import.meta.resolve("../main.ts")
           } $*`,
           { mode: 0o700 },

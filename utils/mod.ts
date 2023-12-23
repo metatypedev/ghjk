@@ -7,7 +7,10 @@ import type {
   InstallConfigLite,
   OsEnum,
   PortDep,
+  PortManifest,
 } from "../modules/ports/types.ts";
+
+export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
 
 export function dbg<T>(val: T, ...more: unknown[]) {
   logger().debug(() => val, ...more);
@@ -108,10 +111,14 @@ export function bufferToHex(buffer: ArrayBuffer): string {
   ).join("");
 }
 
+export function getPortRef(manifest: PortManifest) {
+  return `${manifest.name}@${manifest.version}`;
+}
+
 export async function getInstallHash(install: InstallConfigLite) {
   const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
   const hashHex = bufferToHex(hashBuf).slice(0, 8);
-  return `${install.portName}@${hashHex}`;
+  return `${install.portRef}+${hashHex}`;
 }
 
 export const $ = dax.build$(

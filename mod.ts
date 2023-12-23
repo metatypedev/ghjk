@@ -15,7 +15,7 @@ import type {
   PortsModuleSecureConfig,
 } from "./modules/ports/types.ts";
 import logger from "./utils/logger.ts";
-import { $ } from "./utils/mod.ts";
+import { $, getPortRef } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
 import * as cpy from "./ports/cpy_bs.ts";
 import * as node from "./ports/node.ts";
@@ -108,7 +108,7 @@ function stdDeps(args = { enableRuntimes: false }) {
         return portsValidators.allowedPortDep.parse({
           manifest: port,
           defaultInst: {
-            portName: port.name,
+            portRef: getPortRef(port),
             ...liteInst,
           },
         });
