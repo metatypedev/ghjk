@@ -161,6 +161,7 @@ export const secureConfig = JSON.parse(secConfStr);
     BASH_ENV: `${ghjkDir.toString()}/env.bash`,
     ZDOTDIR: ghjkDir.toString(),
     GHJK_DIR: ghjkDir.toString(),
+    PATH: `${ghjkDir.toString()}:${Deno.env.get("PATH")}`,
   };
   // install ghjk
   await install({
