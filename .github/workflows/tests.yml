@@ -50,7 +50,8 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - if: "${{ matrix.os == 'macos-latest' }}"
-        run: brew install fish zsh
+        # we need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils
       - name: Cache deno dir
         if: "${{ matrix.os == 'macos-latest' }}"
         uses: actions/cache@v3
