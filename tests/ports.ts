@@ -157,7 +157,9 @@ function testMany(
               ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
                 cmd: `env ${sh} '${testCase.ePoint}'`,
               })),
-              // installs db means this shouldn't take too log
+              // FIXME: better tests for the `InstallDb`
+              // installs db means this shouldn't take too long
+              // as it's the second sync
               { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
             ],
             envs: {
