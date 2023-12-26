@@ -68,6 +68,5 @@ export abstract class Port extends PortBase {
 
     const emsdk = installPath.join("bin", "emsdk").toString();
     await $`${emsdk} install latest`;
-    await $`${emsdk} activate latest`;
   }
 }
