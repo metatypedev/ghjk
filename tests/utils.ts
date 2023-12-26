@@ -11,7 +11,7 @@ export type E2eTestCase = {
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: PortsModuleSecureConfig;
   envs?: Record<string, string>;
-  ePoints: string[];
+  ePoints: { cmd: string; stdin?: string }[];
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
@@ -29,21 +29,23 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
   const installConfArray = Array.isArray(installConf)
     ? installConf
     : [installConf];
-  // replace all file urls that point to the ghjk
-  // repo in the host fs to point to the copy of the
-  // repo in the image
   const devGhjkPath = import.meta.resolve("../");
   const serializedPortsInsts = JSON.stringify(
     installConfArray,
     (_, val) =>
       typeof val == "string"
-        ? val.replace(devGhjkPath, "file://$ghjk/").replaceAll(
-          /\\/g,
-          // we need to escape from a json string embedded js string
-          // embedded embeded in a js file embedded in a Dockerfile
-          // 4x
-          "\\\\\\\\",
-        )
+        ? val
+          // replace all file urls that point to the ghjk
+          // repo in the host fs to point to the copy of the
+          // repo in the image
+          .replace(devGhjkPath, "file://$ghjk/")
+          .replaceAll(
+            /\\/g,
+            // we need to escape from a json string embedded js string
+            // embedded embeded in a js file embedded in a Dockerfile
+            // 4x
+            "\\\\\\\\",
+          )
         : val,
   );
   const serializedSecConf = JSON.stringify(
@@ -84,13 +86,21 @@ export const secureConfig = JSON.parse(secConfStr);
   } --tag '${tag}' --network=host --output type=docker -f- .`
     .env(env)
     .stdinText(dFile);
+
   for (const ePoint of ePoints) {
-    await $
-      .raw`${dockerCmd} run --rm ${
-      Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
-        .flat()
-    } ${tag} ${ePoint}`
+    let cmd = $.raw`${dockerCmd} run --rm ${[
+      /* we want to enable interactivity when piping in */
+      ePoint.stdin ? "-i " : "",
+      ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
+        .flat(),
+      tag,
+      ePoint.cmd,
+    ]}`
       .env(env);
+    if (ePoint.stdin) {
+      cmd = cmd.stdinText(ePoint.stdin);
+    }
+    await cmd;
   }
   await $
     .raw`${dockerCmd} rmi '${tag}'`
@@ -104,15 +114,8 @@ export async function localE2eTest(testCase: E2eTestCase) {
       prefix: "ghjk_le2e_",
     }),
   );
-
   const ghjkDir = await tmpDir.join("ghjk").ensureDir();
-  await install({
-    ...defaultInstallArgs,
-    skipExecInstall: false,
-    ghjkExecInstallDir: ghjkDir.toString(),
-    ghjkDir: ghjkDir.toString(),
-    shellsToHook: [],
-  });
+
   const installConfArray = Array.isArray(installConf)
     ? installConf
     : [installConf];
@@ -159,14 +162,17 @@ export const secureConfig = JSON.parse(secConfStr);
     ZDOTDIR: ghjkDir.toString(),
     GHJK_DIR: ghjkDir.toString(),
   };
-  {
-    const confHome = await ghjkDir.join(".config").ensureDir();
-    const fishConfDir = await confHome.join("fish").ensureDir();
-    await fishConfDir.join("config.fish").createSymlinkTo(
-      ghjkDir.join("env.fish").toString(),
-    );
-    env["XDG_CONFIG_HOME"] = confHome.toString();
-  }
+  // install ghjk
+  await install({
+    ...defaultInstallArgs,
+    skipExecInstall: false,
+    ghjkExecInstallDir: ghjkDir.toString(),
+    // share the system's deno cache
+    ghjkDenoCacheDir: Deno.env.get("DENO_DIR"),
+    ghjkDir: ghjkDir.toString(),
+    // don't modify system shell configs
+    shellsToHook: [],
+  });
   await $`${ghjkDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
     .env(env);
@@ -181,10 +187,22 @@ export const secureConfig = JSON.parse(secConfStr);
     entry.path.toString().slice(ghjkDirLen),
   ]));
   */
+  {
+    const confHome = await ghjkDir.join(".config").ensureDir();
+    const fishConfDir = await confHome.join("fish").ensureDir();
+    await fishConfDir.join("config.fish").createSymlinkTo(
+      ghjkDir.join("env.fish").toString(),
+    );
+    env["XDG_CONFIG_HOME"] = confHome.toString();
+  }
   for (const ePoint of ePoints) {
-    await $.raw`${ePoint}`
+    let cmd = $.raw`${ePoint.cmd}`
       .cwd(tmpDir.toString())
       .env(env);
+    if (ePoint.stdin) {
+      cmd = cmd.stdinText(ePoint.stdin);
+    }
+    await cmd;
   }
   await tmpDir.remove({ recursive: true });
 }
