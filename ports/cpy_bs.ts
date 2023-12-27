@@ -54,9 +54,10 @@ export class Port extends PortBase {
     args: PortArgsBase,
   ): Record<string, string> | Promise<Record<string, string>> {
     return {
-      REAL_PYTHON_EXEC_PATH: $.path(args.installPath).join("bin").join(
-        "python3",
-      ).toString(),
+      REAL_PYTHON_EXEC_PATH: $.path(args.installPath)
+        .join("bin")
+        .join("python3")
+        .toString(),
     };
   }
 
@@ -67,24 +68,25 @@ export class Port extends PortBase {
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
-        await $.request(
+        (await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
-        ).json() as {
+        ).json()) as {
           assets: { name: string }[];
         },
     });
-    return [
-      // we put all the asset versions found in a set
-      // to dedupe
-      ...new Set(
-        metadata
-          .assets
-          .map((ass) => ass.name.match(/cpython-([\d.]*)\+/)?.[1])
-          .filter((str): str is string => !!str && str.length > 0),
-      ).values(),
-    ]
-      // sort them numerically to make sure version 0.10.0 comes after 0.2.9
-      .sort((va, vb) => va.localeCompare(vb, undefined, { numeric: true }));
+    return (
+      [
+        // we put all the asset versions found in a set
+        // to dedupe
+        ...new Set(
+          metadata.assets
+            .map((ass) => ass.name.match(/cpython-([\d.]*)\+/)?.[1])
+            .filter((str): str is string => !!str && str.length > 0),
+        ).values(),
+      ]
+        // sort them numerically to make sure version 0.10.0 comes after 0.2.9
+        .sort((va, vb) => va.localeCompare(vb, undefined, { numeric: true }))
+    );
   }
 
   async download(args: DownloadArgs) {
@@ -93,21 +95,23 @@ export class Port extends PortBase {
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
-        await $.request(
+        (await $.request(
           `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/latest-release/latest-release.json`,
         )
           .header(headers)
-          .json() as {
-            "version": number;
-            "tag": string;
-            "release_url": string;
-            "asset_url_prefix": string;
+          .json()) as {
+            version: number;
+            tag: string;
+            release_url: string;
+            asset_url_prefix: string;
           },
     });
     if (latestMeta.version != 1) {
       throw new Error(
         `${this.repoOwner}/${this.repoName} have changed their latest release tag json version ${
-          $.inspect(latestMeta)
+          $.inspect(
+            latestMeta,
+          )
         }`,
       );
     }
@@ -134,7 +138,8 @@ export class Port extends PortBase {
       `${latestMeta.asset_url_prefix}/cpython-${installVersion}+${latestMeta.tag}-${arch}-${os}-pgo+lto-full.tar.zst`,
     ];
     await Promise.all(
-      urls.map(dwnUrlOut)
+      urls
+        .map(dwnUrlOut)
         .map((obj) => downloadFile({ ...args, ...obj, headers })),
     );
   }
@@ -145,7 +150,11 @@ export class Port extends PortBase {
     );
     const fileDwnPath = fileDwnEntry.path.toString();
     await $`${
-      depExecShimPath(tar_aa_id, "tar", args.depArts)
+      depExecShimPath(
+        tar_aa_id,
+        "tar",
+        args.depArts,
+      )
     } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
@@ -155,6 +164,10 @@ export class Port extends PortBase {
     await std_fs.move(
       $.path(args.tmpDirPath).join("python", "install").toString(),
       installPath.toString(),
+    );
+    await Deno.symlink(
+      installPath.resolve("bin/python3").toString(),
+      installPath.resolve("bin/python").toString(),
     );
   }
 }

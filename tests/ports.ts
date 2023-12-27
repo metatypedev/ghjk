@@ -18,6 +18,7 @@ import ruff from "../ports/ruff.ts";
 import whiz from "../ports/whiz.ts";
 import cpython from "../ports/cpy_bs.ts";
 import pipi from "../ports/pipi.ts";
+import emscripten from "../ports/emscripten.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
   ePoint: string;
@@ -136,6 +137,11 @@ const cases: CustomE2eTestCase[] = [
     secureConf: secureConfig({
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
     }),
+  },
+  {
+    name: "emscripten",
+    installConf: emscripten(),
+    ePoint: `emcc --version`,
   },
 ];
 

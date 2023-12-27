@@ -43,7 +43,7 @@ ghjk.install(
   // whiz(),
   ...jco(),
   // cpython(),
-  emscripten(),
+  // emscripten(),
 );
 
 // these are used for developing ghjk
