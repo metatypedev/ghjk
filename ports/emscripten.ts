@@ -25,7 +25,7 @@ export const manifest = {
   name: "emsdk",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_ports.git_aa, std_ports.cpy_bs_ghrel],
+  deps: [std_ports.git_aa],
   platforms: osXarch(["linux", "darwin", "windows"], ["x86_64", "aarch64"]),
 };
 
