@@ -24,6 +24,7 @@ export type DriverRequests = {
   name: string;
   uri: string;
   args: string[];
+  envVars: Record<string, string>;
 };
 
 export type DriverResponse = {
@@ -41,7 +42,7 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   if (req.ty == "exec") {
     res = {
       ty: req.ty,
-      payload: await importAndExec(req.uri, req.name, req.args),
+      payload: await importAndExec(req.uri, req.name, req.args, req.envVars),
     };
   } else {
     logger().error(`invalid DriverRequest type`, req);
@@ -50,9 +51,14 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   self.postMessage(res);
 }
 
-async function importAndExec(uri: string, name: string, args: string[]) {
+async function importAndExec(
+  uri: string,
+  name: string,
+  args: string[],
+  envVars: Record<string, string>,
+) {
   const mod = await import(uri);
-  await mod.ghjk.execTask(name, args);
+  await mod.ghjk.execTask(name, args, envVars);
   return true;
 }
 
@@ -100,12 +106,14 @@ export async function execTaskDeno(
   configUri: string,
   name: string,
   args: string[],
+  envVars: Record<string, string>,
 ) {
   const resp = await rpc(configUri, {
     ty: "exec",
     uri: configUri,
     name,
     args,
+    envVars,
   });
   if (resp.ty != "exec") {
     throw new Error(`invalid response type: ${resp.ty}`);

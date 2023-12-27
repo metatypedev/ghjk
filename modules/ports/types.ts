@@ -253,7 +253,8 @@ export type PortsModuleSecureConfigX = zod.input<
   typeof validators.portsModuleSecureConfig
 >;
 
-export type PortsModuleConfig = zod.infer<typeof validators.portsModuleConfig>;
+export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
+export type PortsModuleConfigX = zod.infer<typeof validators.portsModuleConfig>;
 
 /*
 interface ASDF_CONFIG_EXAMPLE {

@@ -245,6 +245,10 @@ export class Port extends PortBase {
   }
 }
 
+// Modified from
+// https://github.com/mitsuhiko/rye/blob/73e639eae83ebb48d9c8748ea79096f96ae52cf9/rye/src/installer.rs#L23
+// MIT License
+// Copyright (c) 2023, Armin Ronacher
 const printPkgFiles = `import os
 import sys
 import json

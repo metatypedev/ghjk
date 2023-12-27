@@ -1,19 +1,31 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { zod } from "../../deps/common.ts";
+import portsValidators from "../ports/types.ts";
 
-const taskCmd = zod.object({
-  description: zod.string().nullish(),
+const taskEnv = zod.object({
+  installs: portsValidators.installConfigFat.array(),
+  allowedPortDeps: zod.record(
+    zod.string(),
+    portsValidators.allowedPortDep,
+  ),
+  vars: zod.record(zod.string(), zod.string()),
+});
+const taskDef = zod.object({
+  env: taskEnv,
+  desc: zod.string().nullish(),
 });
 const tasksModuleConfig = zod.object({
-  commands: zod.record(zod.string(), taskCmd),
+  tasks: zod.record(zod.string(), taskDef),
 });
 export default {
-  taskCmd,
+  taskDef,
   tasksModuleConfig,
 };
 
-export type TaskCmd = zod.input<typeof taskCmd>;
-export type TaskCmdX = zod.infer<typeof taskCmd>;
+export type TaskEnv = zod.input<typeof taskEnv>;
+export type TaskEnvX = zod.infer<typeof taskEnv>;
+export type TaskDef = zod.input<typeof taskDef>;
+export type TaskDefX = zod.infer<typeof taskDef>;
 export type TasksModuleConfig = zod.input<typeof tasksModuleConfig>;
 export type TasksModuleConfigX = zod.infer<typeof tasksModuleConfig>;

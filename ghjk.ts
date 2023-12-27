@@ -5,15 +5,15 @@ import protoc from "./ports/protoc.ts";
 import pipi from "./ports/pipi.ts";
 
 ghjk
-  .task("ha")
-  .run(async () => {
-    await ghjk.$`echo hey`;
-  });
-
-ghjk
-  .task2("hello")
-  .action(async () => {
-    await ghjk.$`echo haii`;
+  .task("ha", {
+    installs: [
+      protoc(),
+    ],
+    vars: { STUFF: "hello" },
+    async fn({ $ }) {
+      await $`echo $STUFF`;
+      await $`protoc --version`;
+    },
   });
 
 // these are just for quick testing

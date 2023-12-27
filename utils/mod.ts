@@ -11,6 +11,15 @@ import type {
 } from "../modules/ports/types.ts";
 
 export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONObject
+  | JSONArray;
+export type JSONObject = { [key: string]: JSONValue };
+export type JSONArray = JSONValue[];
 
 export function dbg<T>(val: T, ...more: unknown[]) {
   logger().debug(() => val, ...more);
@@ -121,21 +130,26 @@ export async function getInstallHash(install: InstallConfigLite) {
   return `${install.portRef}+${hashHex}`;
 }
 
+export type PathRef = dax.PathRef;
+
+export function defaultCommandBuilder() {
+  const builder = new dax.CommandBuilder()
+    .printCommand(true);
+  builder.setPrintCommandLogger((_, cmd) => {
+    // clean up the already colorized print command logs
+    // TODO: remove when https://github.com/dsherret/dax/pull/203
+    // is merged
+    return logger().debug(
+      "spawning",
+      $.stripAnsi(cmd).split(/\s/),
+    );
+  });
+  return builder;
+}
+
 export const $ = dax.build$(
   {
-    commandBuilder: (() => {
-      const builder = new dax.CommandBuilder().printCommand(true);
-      builder.setPrintCommandLogger((_, cmd) => {
-        // clean up the already colorized print command logs
-        // TODO: remove when https://github.com/dsherret/dax/pull/203
-        // is merged
-        return logger().debug(
-          "spawning",
-          $.stripAnsi(cmd).split(/\s/),
-        );
-      });
-      return builder;
-    })(),
+    commandBuilder: defaultCommandBuilder(),
     extras: {
       inspect(val: unknown) {
         return Deno.inspect(val, {

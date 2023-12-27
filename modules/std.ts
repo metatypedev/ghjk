@@ -7,9 +7,9 @@ export const tasks = "tasks";
 
 export const map = {
   [ports as string]: {
-    init: PortsModule.init,
+    ctor: PortsModule,
   },
   [tasks as string]: {
-    init: TasksModule.init,
+    ctor: TasksModule,
   },
 };
