@@ -19,6 +19,7 @@ import whiz from "../ports/whiz.ts";
 import cpython from "../ports/cpy_bs.ts";
 import pipi from "../ports/pipi.ts";
 import emscripten from "../ports/emscripten.ts";
+import tree_sitter from "../ports/tree-sitter.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
   ePoint: string;
@@ -142,6 +143,11 @@ const cases: CustomE2eTestCase[] = [
     name: "emscripten",
     installConf: emscripten(),
     ePoint: `emcc --version`,
+  },
+  {
+    name: "tree-sitter",
+    installConf: tree_sitter(),
+    ePoint: `tree-sitter --version`,
   },
 ];
 
