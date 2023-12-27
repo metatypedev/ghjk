@@ -1,12 +1,7 @@
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - ready_for_review
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
 env:
   DENO_VERSION: "1.39.0"
@@ -14,22 +9,6 @@ env:
   GHJK_LOG_PANIC_LEVEL: error
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@v4
-
-  test-pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
-      - uses: pre-commit/action@v3.0.0
-
   test-e2e:
     runs-on: "${{ matrix.os }}"
     strategy:

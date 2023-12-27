@@ -34,7 +34,7 @@ export ${k}='${v}';`
       ...Object.entries(pathVars).map(([k, v]) =>
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}"';
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}";';
 export ${k}="${v}:$${k}";
 `
       ),
@@ -59,23 +59,35 @@ set --global --prepend ${k} ${v};
   ]);
 }
 
-/// this returns a tmp path that's guaranteed to be
-/// on the same file system as targetDir by
-/// checking if $TMPDIR satisfies that constraint
-/// or just pointing to targetDir/tmp
-/// This is handy for making moves atomics from
-/// tmp dirs to to locations within targetDir
-async function movebleTmpPath(targetDir: string, targetTmpDirName = "dir") {
+/* *
+ * This returns a tmp path that's guaranteed to be
+ * on the same file system as targetDir by
+ * checking if $TMPDIR satisfies that constraint
+ * or just pointing to targetDir/tmp
+ * This is handy for making moves atomics from
+ * tmp dirs to to locations within targetDir
+ *
+ * Make sure to remove the dir after use
+ */
+async function movebleTmpRoot(targetDir: string, targetTmpDirName = "dir") {
   const defaultTmp = Deno.env.get("TMPDIR");
   const targetPath = $.path(targetDir);
   if (!defaultTmp) {
-    return targetPath.join(targetTmpDirName);
+    // this doens't return a unique tmp dir on every sync
+    // this allows subsequent syncs to clean up after
+    // some previously failing sync as this is not a system managed
+    // tmp dir but this means two concurrent syncing  will clash
+    // TODO: mutex file to prevent block concurrent syncinc
+    return await targetPath.join(targetTmpDirName).ensureDir();
   }
   const defaultTmpPath = $.path(defaultTmp);
   if ((await targetPath.stat())?.dev != (await defaultTmpPath.stat())?.dev) {
-    return targetPath.join(targetTmpDirName);
+    return await targetPath.join(targetTmpDirName).ensureDir();
   }
-  return defaultTmpPath.join("ghjkTmp");
+  // when using the system managed tmp dir, we create a new tmp dir in it
+  // we don't care if the sync fails before it cleans as the system will
+  // take care of it
+  return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
 }
 
 export async function sync(
@@ -89,7 +101,7 @@ export async function sync(
     await Promise.all([
       ghjkPathR.join("ports", "installs").ensureDir(),
       ghjkPathR.join("ports", "downloads").ensureDir(),
-      (await movebleTmpPath(ghjkDir)).ensureDir(),
+      movebleTmpRoot(ghjkDir),
     ])
   ).map($.pathToString);
 
@@ -483,13 +495,7 @@ async function doInstall(
   manifest: PortManifestX,
   depArts: DepArts,
 ) {
-  logger().debug("installing", {
-    installsDir,
-    downloadsDir,
-    instUnclean,
-    port: manifest,
-  });
-
+  logger().debug("installing", instUnclean);
   // instantiate the right Port impl according to manifest.ty
   let port;
   let inst: InstallConfigLiteX;
@@ -530,6 +536,8 @@ async function doInstall(
     config: inst,
     manifest,
   };
+  logger().debug("baseArgs", installId, baseArgs);
+
   {
     logger().info(`downloading ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({

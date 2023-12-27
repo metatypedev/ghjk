@@ -1,4 +1,10 @@
-import { log, std_fmt_colors, std_path, std_url } from "../deps/common.ts";
+import {
+  std_fmt_colors,
+  std_log,
+  std_log_levels,
+  std_path,
+  std_url,
+} from "../deps/common.ts";
 
 // TODO: consult GHJK_LOG variable
 export default function logger(
@@ -8,10 +14,10 @@ export default function logger(
     name = std_url.basename(name.url);
     name = name.replace(std_path.extname(name), "");
   }
-  return log.getLogger(name);
+  return std_log.getLogger(name);
 }
 
-function formatter(lr: log.LogRecord) {
+function formatter(lr: std_log.LogRecord) {
   const loggerName = lr.loggerName !== "default" ? " " + lr.loggerName : "";
   let msg = `[${lr.levelName}${loggerName}] ${lr.msg}`;
 
@@ -29,10 +35,19 @@ function formatter(lr: log.LogRecord) {
   return msg;
 }
 
-export function setup() {
-  log.setup({
+export function setup(handler = new ConsoleErrHandler("NOTSET")) {
+  const panicLevelName = Deno.env.get("GHJK_LOG_PANIC_LEVEL");
+  if (panicLevelName) {
+    handler = new TestConsoleErrHandler(
+      std_log_levels.getLevelByName(
+        panicLevelName.toUpperCase() as std_log_levels.LevelName,
+      ),
+      "NOTSET",
+    );
+  }
+  std_log.setup({
     handlers: {
-      console: new ConsoleErrHandler("NOTSET"),
+      console: handler,
     },
 
     loggers: {
@@ -48,33 +63,33 @@ export function setup() {
   });
 }
 
-export class ConsoleErrHandler extends log.handlers.BaseHandler {
+export class ConsoleErrHandler extends std_log.handlers.BaseHandler {
   constructor(
-    levelName: log.LevelName,
-    options: log.HandlerOptions = { formatter },
+    levelName: std_log.LevelName,
+    options: std_log.HandlerOptions = { formatter },
   ) {
     super(levelName, options);
   }
   override log(msg: string): void {
     console.error(msg);
   }
-  override format(logRecord: log.LogRecord): string {
+  override format(logRecord: std_log.LogRecord): string {
     let msg = super.format(logRecord);
 
     switch (logRecord.level) {
-      case log.LogLevels.INFO:
+      case std_log.LogLevels.INFO:
         msg = std_fmt_colors.green(msg);
         break;
-      case log.LogLevels.WARNING:
+      case std_log.LogLevels.WARNING:
         msg = std_fmt_colors.yellow(msg);
         break;
-      case log.LogLevels.ERROR:
+      case std_log.LogLevels.ERROR:
         msg = std_fmt_colors.red(msg);
         break;
-      case log.LogLevels.CRITICAL:
+      case std_log.LogLevels.CRITICAL:
         msg = std_fmt_colors.bold(std_fmt_colors.red(msg));
         break;
-      case log.LogLevels.DEBUG:
+      case std_log.LogLevels.DEBUG:
         msg = std_fmt_colors.dim(msg);
         break;
       default:
@@ -82,6 +97,23 @@ export class ConsoleErrHandler extends log.handlers.BaseHandler {
     }
 
     return msg;
+  }
+}
+
+export class TestConsoleErrHandler extends ConsoleErrHandler {
+  constructor(
+    public throwLevel: number,
+    levelName: std_log.LevelName,
+    options: std_log.HandlerOptions = { formatter },
+  ) {
+    super(levelName, options);
+  }
+
+  handle(lr: std_log.LogRecord): void {
+    if (lr.level >= this.throwLevel) {
+      throw new Error(`detected ${lr.levelName} log record:`, { cause: lr });
+    }
+    super.handle(lr);
   }
 }
 

@@ -8,14 +8,10 @@ import {
   ALL_ARCH,
   ALL_OS,
   depExecShimPath,
-  downloadFile,
-  dwnUrlOut,
   osXarch,
   pathsWithDepArts,
   PortBase,
   std_fs,
-  std_path,
-  unarchive,
 } from "../port.ts";
 import node from "./node.ts";
 import * as std_ports from "../modules/ports/std.ts";
@@ -58,47 +54,38 @@ export class Port extends PortBase {
     return versions;
   }
 
-  downloadUrls(args: DownloadArgs) {
-    const { installVersion } = args;
-    return [
-      `https://registry.npmjs.org/@bytecodealliance/jco/-/jco-${installVersion}.tgz`,
-    ].map(dwnUrlOut);
-  }
-
   async download(args: DownloadArgs) {
-    const urls = this.downloadUrls(args);
-    await Promise.all(
-      urls.map((obj) => downloadFile({ ...args, ...obj })),
-    );
+    if (await $.path(args.downloadPath).exists()) {
+      return;
+    }
+    await $.raw`${
+      depExecShimPath(std_ports.node_org, "npm", args.depArts)
+    } install --no-fund @bytecodealliance/jco@${args.installVersion}`
+      .cwd(args.tmpDirPath)
+      .env(pathsWithDepArts(args.depArts, args.platform.os));
+    await std_fs.move(args.tmpDirPath, args.downloadPath);
   }
 
+  // FIXME: replace shebangs with the runtime dep node path
+  // default shebangs just use #!/bin/env node
   async install(args: InstallArgs) {
-    const [{ name: fileName }] = this.downloadUrls(args);
-    const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await std_fs.copy(
+      args.downloadPath,
+      args.tmpDirPath,
+      { overwrite: true },
+    );
 
     const installPath = $.path(args.installPath);
-    if (await installPath.exists()) {
-      await installPath.remove({ recursive: true });
-    }
 
-    await std_fs.copy(
-      std_path.resolve(
-        args.tmpDirPath,
-        "package",
-      ),
-      args.installPath,
-    );
-    await $`${
-      depExecShimPath(std_ports.node_org, "npm", args.depArts)
-    } install --no-fund`
-      .cwd(args.installPath)
-      .env(pathsWithDepArts(args.depArts, args.platform.os));
-    await installPath.join("bin").ensureDir();
-    await installPath.join("bin", "jco")
-      .createSymlinkTo(installPath.join("src", "jco.js").toString(), {
-        // kind: "relative",
-      });
+    const tmpDirPath = $.path(args.tmpDirPath);
+    await tmpDirPath.join("bin").ensureDir();
+    await tmpDirPath.join("bin", "jco")
+      .createSymlinkTo(
+        installPath
+          .join("node_modules", ".bin", "jco")
+          .toString(),
+      );
+    await $.removeIfExists(installPath);
+    await std_fs.move(tmpDirPath.toString(), installPath.toString());
   }
 }

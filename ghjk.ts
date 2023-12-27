@@ -41,15 +41,15 @@ ghjk.install(
   // protoc(),
   // ruff(),
   // whiz(),
-  // jco()[0],
+  ...jco(),
   // cpython(),
   emscripten(),
 );
 
 // these are used for developing ghjk
 ghjk.install(
-  act(),
-  ...pipi({ packageName: "pre-commit" }),
+  // act(),
+  // ...pipi({ packageName: "pre-commit" }),
 );
 
 export const secureConfig = ghjk.secureConfig({
