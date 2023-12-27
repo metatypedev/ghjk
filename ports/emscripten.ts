@@ -38,9 +38,9 @@ export default function conf(config: InstallConfigSimple = {}) {
 export abstract class Port extends PortBase {
   listBinPaths(args: ListBinPathsArgs): Promise<string[]> | string[] {
     return [
-      std_path.joinGlobs([std_path.resolve(args.installPath, "bin"), "*"]),
+      std_path.joinGlobs([std_path.resolve(args.installPath), "*"]),
       std_path.joinGlobs([
-        std_path.resolve(args.installPath, "bin", "upstream", "emscripten"),
+        std_path.resolve(args.installPath, "upstream", "emscripten"),
         "em*",
       ]),
     ];
@@ -53,9 +53,12 @@ export abstract class Port extends PortBase {
 
   async download(args: DownloadArgs) {
     const cmd = depExecShimPath(git_aa_id, "git", args.depArts);
-    if (await $.path(args.downloadPath).exists()) {
+    if (await $.path(args.downloadPath).join(".git").exists()) {
       await $`${cmd} pull`;
     } else {
+      await $.path(args.downloadPath).remove({ recursive: true }).catch(
+        () => {},
+      );
       await $`${cmd} clone ${repo} --depth 1 ${args.downloadPath} `;
     }
   }
@@ -63,10 +66,10 @@ export abstract class Port extends PortBase {
   async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     if (!await installPath.exists()) {
-      await std_fs.copy(args.downloadPath, installPath.join("bin").toString());
+      await std_fs.copy(args.downloadPath, installPath.toString());
     }
 
-    const emsdk = installPath.join("bin", "emsdk").toString();
+    const emsdk = installPath.join("emsdk").toString();
     await $`${emsdk} install latest`;
   }
 }
