@@ -14,6 +14,11 @@ const portDep = zod.object({
   name: portName,
 });
 
+const portDepFat = portDep.merge(zod.object({
+  // FIXME: figure out cyclically putting `installConfigLite` here
+  config: zod.unknown(),
+}));
+
 export const ALL_OS = [
   "linux",
   "darwin",
@@ -40,12 +45,13 @@ const portManifestBase = zod.object({
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
     }),
-  conflictResolution: zod
-    .enum(["deferToNewer", "override"])
-    .nullish()
-    // default value set after transformation
-    .default("deferToNewer"),
+  // conflictResolution: zod
+  //   .enum(["deferToNewer", "override"])
+  //   .nullish()
+  //   // default value set after transformation
+  //   .default("deferToNewer"),
   deps: zod.array(portDep).nullish(),
+  resolutionDeps: zod.array(portDep).nullish(),
 }).passthrough();
 
 const denoWorkerPortManifest = portManifestBase.merge(
@@ -97,6 +103,10 @@ const installConfigBase = installConfigSimple.merge(zod.object({
     // FIXME: figure out cyclically putting `installConfigLite` here
     zod.unknown(),
   ).nullish(),
+  resolutionDepConfigs: zod.record(
+    portName,
+    zod.unknown(),
+  ).nullish(),
 })).passthrough();
 
 const installConfigBaseFat = installConfigBase.merge(zod.object({
@@ -117,6 +127,16 @@ const installConfigLite =
   stdInstallConfigLite;
 // ]);
 const installConfigFat = stdInstallConfigFat;
+
+const installConfigResolved = installConfigLite.merge(zod.object({
+  // NOTE: version is no longer nullish
+  version: zod.string(),
+  // depConfigs: zod.record(
+  //   portName,
+  //   // FIXME: figure out cyclically putting `installConfigResolved` here
+  //   zod.object({ version: zod.string() }).passthrough(),
+  // ),
+})).passthrough();
 
 // NOTE: zod unions are tricky. It'll parse with the first schema
 // in the array that parses. And if this early schema is a subset
@@ -159,6 +179,7 @@ const validators = {
   archEnum,
   portName,
   portDep,
+  portDepFat,
   portManifestBase,
   denoWorkerPortManifest,
   ambientAccessPortManifest,
@@ -171,6 +192,7 @@ const validators = {
   installConfigFat,
   installConfigLite,
   installConfig,
+  installConfigResolved,
   portManifest,
   portsModuleConfigBase,
   portsModuleSecureConfig,
@@ -213,6 +235,7 @@ export type PortManifestX = zod.infer<
 
 /// PortDeps are used during the port build/install process
 export type PortDep = zod.infer<typeof validators.portDep>;
+export type PortDepFat = zod.infer<typeof validators.portDepFat>;
 
 export type InstallConfigSimple = zod.input<
   typeof validators.installConfigSimple
@@ -235,6 +258,12 @@ export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
 export type InstallConfig = zod.input<typeof validators.installConfig>;
 // Describes a single installation done by a specific plugin.
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+export type InstallConfigResolved = zod.input<
+  typeof validators.installConfigResolved
+>;
+export type InstallConfigResolvedX = zod.infer<
+  typeof validators.installConfigResolved
+>;
 
 export type PortsModuleConfigBase = zod.infer<
   typeof validators.portsModuleConfigBase

@@ -4,7 +4,7 @@ import logger, { isColorfulTty } from "./logger.ts";
 import type {
   DepArts,
   DownloadArgs,
-  InstallConfigLite,
+  InstallConfigResolvedX,
   OsEnum,
   PortDep,
   PortManifest,
@@ -22,7 +22,7 @@ export type JSONObject = { [key: string]: JSONValue };
 export type JSONArray = JSONValue[];
 
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug(() => val, ...more);
+  logger().debug("DBG", val, ...more);
   return val;
 }
 
@@ -124,7 +124,7 @@ export function getPortRef(manifest: PortManifest) {
   return `${manifest.name}@${manifest.version}`;
 }
 
-export async function getInstallHash(install: InstallConfigLite) {
+export async function getInstallHash(install: InstallConfigResolvedX) {
   const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
   const hashHex = bufferToHex(hashBuf).slice(0, 8);
   return `${install.portRef}+${hashHex}`;
@@ -332,4 +332,38 @@ export async function downloadFile(
   await $.path(downloadPath).ensureDir();
 
   await tmpFilePath.copyFile(fileDwnPath);
+}
+
+/* *
+ * This returns a tmp path that's guaranteed to be
+ * on the same file system as targetDir by
+ * checking if $TMPDIR satisfies that constraint
+ * or just pointing to targetDir/tmp
+ * This is handy for making moves atomics from
+ * tmp dirs to to locations within targetDir
+ *
+ * Make sure to remove the dir after use
+ */
+export async function sameFsTmpRoot(
+  targetDir: string,
+  targetTmpDirName = "tmp",
+) {
+  const defaultTmp = Deno.env.get("TMPDIR");
+  const targetPath = $.path(targetDir);
+  if (!defaultTmp) {
+    // this doens't return a unique tmp dir on every sync
+    // this allows subsequent syncs to clean up after
+    // some previously failing sync as this is not a system managed
+    // tmp dir but this means two concurrent syncing  will clash
+    // TODO: mutex file to prevent block concurrent syncinc
+    return await targetPath.join(targetTmpDirName).ensureDir();
+  }
+  const defaultTmpPath = $.path(defaultTmp);
+  if ((await targetPath.stat())?.dev != (await defaultTmpPath.stat())?.dev) {
+    return await targetPath.join(targetTmpDirName).ensureDir();
+  }
+  // when using the system managed tmp dir, we create a new tmp dir in it
+  // we don't care if the sync fails before it cleans as the system will
+  // take care of it
+  return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
 }

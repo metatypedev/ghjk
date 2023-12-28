@@ -14,8 +14,8 @@ import {
   buildInstallGraph,
   installAndShimEnv,
   InstallGraph,
+  syncCtxFromGhjk,
 } from "../ports/sync.ts";
-import { installsDbKv } from "../ports/db.ts";
 
 export type TaskModuleManifest = {
   config: TasksModuleConfigX;
@@ -23,7 +23,7 @@ export type TaskModuleManifest = {
 };
 export class TasksModule extends ModuleBase<TaskModuleManifest> {
   async processManifest(
-    _ctx: GhjkCtx,
+    ctx: GhjkCtx,
     manifest: ModuleManifest,
   ) {
     const res = validators.tasksModuleConfig.safeParse(manifest.config);
@@ -35,6 +35,7 @@ export class TasksModule extends ModuleBase<TaskModuleManifest> {
         },
       });
     }
+    await using syncCx = await syncCtxFromGhjk(ctx);
     return {
       config: res.data,
       installGraphs: Object.fromEntries(
@@ -42,10 +43,13 @@ export class TasksModule extends ModuleBase<TaskModuleManifest> {
           Object.entries(res.data.tasks)
             .map(async ([name, task]) => [
               name,
-              await buildInstallGraph({
-                installs: task.env.installs,
-                allowedDeps: task.env.allowedPortDeps,
-              }),
+              await buildInstallGraph(
+                syncCx,
+                {
+                  installs: task.env.installs,
+                  allowedDeps: task.env.allowedPortDeps,
+                },
+              ),
             ]),
         ),
       ),
@@ -119,18 +123,13 @@ export async function execTask(
   taskEnv: TaskEnvX,
   installGraph: InstallGraph,
 ): Promise<void> {
-  const portsDir = await $.path(ctx.ghjkDir).resolve("ports")
-    .ensureDir();
-  using db = await installsDbKv(
-    portsDir.resolve("installs.db").toString(),
-  );
+  await using syncCx = await syncCtxFromGhjk(ctx);
   const taskEnvDir = await Deno.makeTempDir({
     prefix: `ghjkTaskEnv_${name}_`,
   });
   const { env: installEnvs } = await installAndShimEnv(
-    portsDir.toString(),
+    syncCx,
     taskEnvDir,
-    db,
     installGraph,
   );
   logger().info("executing", name);

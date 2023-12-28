@@ -1,13 +1,18 @@
 export * from "./types.ts";
 
 import { cliffy_cmd } from "../../deps/cli.ts";
-import { $, JSONValue } from "../../utils/mod.ts";
+import { JSONValue } from "../../utils/mod.ts";
+import logger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type { PortsModuleConfigX } from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
-import { buildInstallGraph, installAndShimEnv, InstallGraph } from "./sync.ts";
-import { installsDbKv } from "./db.ts";
+import {
+  buildInstallGraph,
+  installAndShimEnv,
+  InstallGraph,
+  syncCtxFromGhjk,
+} from "./sync.ts";
 
 export type PortsModuleManifest = {
   config: PortsModuleConfigX;
@@ -16,7 +21,7 @@ export type PortsModuleManifest = {
 
 export class PortsModule extends ModuleBase<PortsModuleManifest> {
   async processManifest(
-    _ctx: GhjkCtx,
+    ctx: GhjkCtx,
     manifest: ModuleManifest,
   ) {
     const res = validators.portsModuleConfig.safeParse(manifest.config);
@@ -28,9 +33,11 @@ export class PortsModule extends ModuleBase<PortsModuleManifest> {
         },
       });
     }
+    await using syncCx = await syncCtxFromGhjk(ctx);
+    const graph = await buildInstallGraph(syncCx, res.data);
     return {
       config: res.data,
-      graph: await buildInstallGraph(res.data),
+      graph,
     };
   }
   command(
@@ -47,15 +54,11 @@ export class PortsModule extends ModuleBase<PortsModuleManifest> {
         "sync",
         new cliffy_cmd.Command().description("Syncs the environment.")
           .action(async () => {
-            const portsDir = await $.path(ctx.ghjkDir).resolve("ports")
-              .ensureDir();
-            using db = await installsDbKv(
-              portsDir.resolve("installs.db").toString(),
-            );
+            logger().debug("syncing ports");
+            await using syncCx = await syncCtxFromGhjk(ctx);
             void await installAndShimEnv(
-              portsDir.toString(),
+              syncCx,
               ctx.envDir,
-              db,
               manifest.graph,
             );
           }),
