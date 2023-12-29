@@ -332,6 +332,7 @@ export async function downloadFile(
   await $.path(downloadPath).ensureDir();
 
   await tmpFilePath.copyFile(fileDwnPath);
+  return downloadPath.toString();
 }
 
 /* *

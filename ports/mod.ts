@@ -14,6 +14,7 @@ export { default as pnpm } from "../ports/pnpm.ts";
 export { default as protoc } from "../ports/protoc.ts";
 export { default as ruff } from "../ports/ruff.ts";
 export { default as tar } from "../ports/tar.ts";
+export { default as terraform } from "../ports/terraform.ts";
 export { default as unzip } from "../ports/unzip.ts";
 export { default as wasm_opt } from "../ports/wasm-opt.ts";
 export { default as wasm_tools } from "../ports/wasm-tools.ts";

@@ -1,23 +1,26 @@
 import "../setup_logger.ts";
 import { secureConfig, stdDeps } from "../mod.ts";
 import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
-import node from "../ports/node.ts";
-import pnpm from "../ports/pnpm.ts";
-import cargo_binstall from "../ports/cargo-binstall.ts";
-import wasmedge from "../ports/wasmedge.ts";
-import wasm_tools from "../ports/wasm-tools.ts";
-import wasm_opt from "../ports/wasm-opt.ts";
-import cargo_insta from "../ports/cargo-insta.ts";
-import jco from "../ports/jco.ts";
-import mold from "../ports/mold.ts";
-import act from "../ports/act.ts";
-import asdf from "../ports/asdf.ts";
-import protoc from "../ports/protoc.ts";
-import earthly from "../ports/earthly.ts";
-import ruff from "../ports/ruff.ts";
-import whiz from "../ports/whiz.ts";
-import cpython from "../ports/cpy_bs.ts";
-import pipi from "../ports/pipi.ts";
+import {
+  act,
+  asdf,
+  cargo_binstall,
+  cargo_insta,
+  cpy_bs,
+  earthly,
+  jco,
+  mold,
+  node,
+  pipi,
+  pnpm,
+  protoc,
+  ruff,
+  terraform,
+  wasm_opt,
+  wasm_tools,
+  wasmedge,
+  whiz,
+} from "../ports/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
   ePoint: string;
@@ -80,6 +83,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: wasm_tools(),
     ePoint: `wasm-tools -V`,
   },
+  // 24 megs
+  {
+    name: "terraform",
+    installConf: terraform(),
+    ePoint: `terraform --version`,
+  },
   // 25 megs
   {
     name: "node",
@@ -125,7 +134,7 @@ const cases: CustomE2eTestCase[] = [
   // 80 meg
   {
     name: "cpy_bs",
-    installConf: cpython(),
+    installConf: cpy_bs(),
     ePoint: `python3 --version`,
   },
   // 80 meg +
