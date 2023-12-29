@@ -25,8 +25,6 @@ import * as std_modules from "./modules/std.ts";
 // tasks
 import type { TaskEnv, TasksModuleConfig } from "./modules/tasks/types.ts";
 import { dax } from "./deps/common.ts";
-// import { zcli } from "./deps/common.ts";
-// import { cliffy_cmd } from "./deps/cli.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
 
@@ -48,7 +46,7 @@ const tasks = {} as Record<
   UserTask
 >;
 
-// FIXME: use harden.js to deep freeze primoridials
+// FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
 export const ghjk = Object.freeze({
   getConfig: Object.freeze(getConfig),
@@ -70,7 +68,7 @@ function task(name: string, config: TaskConfig) {
     ...config,
     env: {
       installs: [],
-      vars: {},
+      env: {},
       allowedPortDeps: {},
       ...config,
     },

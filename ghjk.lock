@@ -665,9 +665,6 @@
                   }
                 }
               ],
-              "vars": {
-                "STUFF": "hello"
-              },
               "env": {
                 "installs": [
                   {
@@ -697,7 +694,7 @@
                     }
                   }
                 ],
-                "vars": {
+                "env": {
                   "STUFF": "hello"
                 },
                 "allowedPortDeps": {}
@@ -1696,7 +1693,7 @@
                 }
               ],
               "allowedPortDeps": {},
-              "vars": {
+              "env": {
                 "STUFF": "hello"
               }
             }

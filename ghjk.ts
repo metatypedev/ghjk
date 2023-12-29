@@ -9,10 +9,11 @@ ghjk
     installs: [
       protoc(),
     ],
-    vars: { STUFF: "hello" },
+    env: { STUFF: "hello" },
     async fn({ $ }) {
-      await $`echo $STUFF`;
-      await $`protoc --version`;
+      await $`echo $STUFFY;
+      protoc --version
+      `;
     },
   });
 

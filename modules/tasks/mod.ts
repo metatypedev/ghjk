@@ -139,7 +139,7 @@ export async function execTask(
     args,
     {
       ...installEnvs,
-      ...taskEnv.vars,
+      ...taskEnv.env,
     },
   );
   $.removeIfExists(taskEnvDir);

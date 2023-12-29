@@ -9,7 +9,7 @@ const taskEnv = zod.object({
     zod.string(),
     portsValidators.allowedPortDep,
   ),
-  vars: zod.record(zod.string(), zod.string()),
+  env: zod.record(zod.string(), zod.string()),
 });
 const taskDef = zod.object({
   env: taskEnv,
