@@ -61,15 +61,14 @@ export async function syncCtxFromGhjk(ctx: GhjkCtx) {
     },
   };
 }
-/*
- */
-export async function installAndShimEnv(
+
+export async function installFromGraphAndShimEnv(
   cx: SyncCtx,
   envDir: string,
   graph: InstallGraph,
   createShellLoaders = true,
 ) {
-  const installArts = await installAll(
+  const installArts = await installFromGraph(
     cx,
     graph,
   );
@@ -166,7 +165,7 @@ export async function installAndShimEnv(
   };
 }
 
-export async function installAll(
+export async function installFromGraph(
   cx: SyncCtx,
   graph: InstallGraph,
 ) {

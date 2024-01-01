@@ -197,7 +197,21 @@ export async function install(
           exePath,
           `#!/bin/sh 
 GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
-${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A ${lockFlag} ${
+cur_dir=$PWD
+while [ "$cur_dir" != "/" ]; do
+    if [ -f "$cur_dir/ghjk.ts" ]; then
+        export GHJK_CONFIG="$cur_dir/ghjk.ts"
+        localLockFile="$cur_dir/ghjk.deno.lock"
+    fi
+    # recursively look in parent directory
+    cur_dir="$(dirname "$cur_dir")"
+done
+if [ -n "\${localLockFile+x}" ]; then
+  lockFlag="--lock $localLockFile"
+else
+  lockFlag="${lockFlag}"
+fi
+${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lockFlag ${
             import.meta.resolve("../main.ts")
           } $*`,
           { mode: 0o700 },

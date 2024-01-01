@@ -9,7 +9,7 @@ import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
-  installAndShimEnv,
+  installFromGraphAndShimEnv,
   InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts";
@@ -56,7 +56,7 @@ export class PortsModule extends ModuleBase<PortsModuleManifest> {
           .action(async () => {
             logger().debug("syncing ports");
             await using syncCx = await syncCtxFromGhjk(ctx);
-            void await installAndShimEnv(
+            void await installFromGraphAndShimEnv(
               syncCx,
               ctx.envDir,
               manifest.graph,

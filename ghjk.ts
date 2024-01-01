@@ -11,9 +11,41 @@ ghjk
     ],
     env: { STUFF: "hello" },
     async fn({ $ }) {
-      await $`echo $STUFFY;
+      await $`echo $STUFF;
       protoc --version
       `;
+    },
+  });
+
+ghjk
+  .task("ho", {
+    dependsOn: ["ha"],
+    async fn({ $ }) {
+      await $`echo ho`;
+    },
+  });
+
+ghjk
+  .task("hum", {
+    dependsOn: ["ho"],
+    async fn({ $ }) {
+      await $`echo ho`;
+    },
+  });
+
+ghjk
+  .task("hii", {
+    dependsOn: ["ho"],
+    async fn({ $ }) {
+      await $`echo haii`;
+    },
+  });
+
+ghjk
+  .task("hey", {
+    dependsOn: ["hii", "ho"],
+    async fn({ $ }) {
+      await $`echo hey`;
     },
   });
 

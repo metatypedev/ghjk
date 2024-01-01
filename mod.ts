@@ -23,7 +23,11 @@ import * as node from "./ports/node.ts";
 import type { SerializedConfig } from "./host/types.ts";
 import * as std_modules from "./modules/std.ts";
 // tasks
-import type { TaskEnv, TasksModuleConfig } from "./modules/tasks/types.ts";
+import type {
+  TaskDef,
+  TaskEnv,
+  TasksModuleConfig,
+} from "./modules/tasks/types.ts";
 import { dax } from "./deps/common.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
@@ -35,9 +39,7 @@ export type TaskFnArgs = {
 };
 export type TaskFn = (args: TaskFnArgs) => Promise<void>;
 
-export type UserTask = {
-  env: TaskEnv;
-  desc?: string;
+export type UserTask = TaskDef & {
   fn: TaskFn;
   // command: cliffy_cmd.Command;
 };
@@ -62,10 +64,11 @@ function install(...configs: InstallConfigFat[]) {
   }
 }
 
-export type TaskConfig = Omit<UserTask, "env"> & Partial<TaskEnv>;
+export type TaskConfig = Omit<UserTask, "env" | "name"> & Partial<TaskEnv>;
 function task(name: string, config: TaskConfig) {
   tasks[name] = {
     ...config,
+    name,
     env: {
       installs: [],
       env: {},
@@ -153,7 +156,6 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
     const cmdJsons2 = await Promise.all(
       Object.entries(tasks).map(
         ([name, task]) => [name, {
-          name,
           ...task,
         }],
       ),

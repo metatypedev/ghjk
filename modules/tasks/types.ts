@@ -3,6 +3,8 @@
 import { zod } from "../../deps/common.ts";
 import portsValidators from "../ports/types.ts";
 
+const taskName = zod.string().regex(/[^\s]/);
+
 const taskEnv = zod.object({
   installs: portsValidators.installConfigFat.array(),
   allowedPortDeps: zod.record(
@@ -11,12 +13,16 @@ const taskEnv = zod.object({
   ),
   env: zod.record(zod.string(), zod.string()),
 });
+
 const taskDef = zod.object({
+  name: zod.string(),
   env: taskEnv,
+  dependsOn: taskName.array().nullish(),
   desc: zod.string().nullish(),
 });
+
 const tasksModuleConfig = zod.object({
-  tasks: zod.record(zod.string(), taskDef),
+  tasks: zod.record(taskName, taskDef),
 });
 export default {
   taskDef,
