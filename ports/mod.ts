@@ -6,6 +6,7 @@ export { default as cargo_insta } from "../ports/cargo-insta.ts";
 export { default as curl } from "../ports/curl.ts";
 export { default as earthly } from "../ports/earthly.ts";
 export { default as git } from "../ports/git.ts";
+export { default as infisical } from "../ports/infisical.ts";
 export { default as jco } from "../ports/jco.ts";
 export { default as mold } from "../ports/mold.ts";
 export { default as node } from "../ports/node.ts";

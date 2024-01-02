@@ -1,26 +1,7 @@
 import "../setup_logger.ts";
 import { secureConfig, stdDeps } from "../mod.ts";
 import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
-import {
-  act,
-  asdf,
-  cargo_binstall,
-  cargo_insta,
-  cpy_bs,
-  earthly,
-  jco,
-  mold,
-  node,
-  pipi,
-  pnpm,
-  protoc,
-  ruff,
-  terraform,
-  wasm_opt,
-  wasm_tools,
-  wasmedge,
-  whiz,
-} from "../ports/mod.ts";
+import * as ports from "../ports/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
   ePoint: string;
@@ -31,92 +12,98 @@ const cases: CustomE2eTestCase[] = [
   // 3 megs
   {
     name: "protoc",
-    installConf: protoc(),
+    installConf: ports.protoc(),
     ePoint: `protoc --version`,
   },
   // 6 megs
   {
     name: "ruff",
-    installConf: ruff(),
+    installConf: ports.ruff(),
     ePoint: `ruff --version`,
   },
   // 7 megs
   {
     name: "whiz",
-    installConf: whiz(),
+    installConf: ports.whiz(),
     ePoint: `whiz --version`,
   },
   // 7 megs
   {
     name: "act",
-    installConf: act(),
+    installConf: ports.act(),
     ePoint: `act --version`,
   },
   // 7 megs
   {
     name: "cargo-binstall",
-    installConf: cargo_binstall(),
+    installConf: ports.cargo_binstall(),
     ePoint: `cargo-binstall -V`,
   },
   // 8 megs
   {
     name: "mold",
-    installConf: mold(),
+    installConf: ports.mold(),
     ePoint: `mold -V`,
     ignore: Deno.build.os != "linux",
+  },
+  // 9 megs
+  {
+    name: "infisical",
+    installConf: ports.infisical(),
+    ePoint: `infisical --version`,
   },
   // 16 megs
   {
     name: "wasmedge",
-    installConf: wasmedge(),
+    installConf: ports.wasmedge(),
     ePoint: `wasmedge --version`,
   },
   // cargo binstall +7 megs
   {
     name: "cargo-insta",
-    installConf: cargo_insta(),
+    installConf: ports.cargo_insta(),
     ePoint: `cargo-insta -V`,
   },
   // cargo binsatll 13 megs
   {
     name: "wasm-tools",
-    installConf: wasm_tools(),
+    installConf: ports.wasm_tools(),
     ePoint: `wasm-tools -V`,
   },
   // 24 megs
   {
     name: "terraform",
-    installConf: terraform(),
+    installConf: ports.terraform(),
     ePoint: `terraform --version`,
   },
   // 25 megs
   {
     name: "node",
-    installConf: node(),
+    installConf: ports.node(),
     ePoint: `node --version`,
   },
   // cargo-binstall + 22 megs
   {
     name: "wasm-opt",
-    installConf: wasm_opt(),
+    installConf: ports.wasm_opt(),
     ePoint: `wasm-opt --version`,
   },
   // 42 megs
   {
     name: "earthly",
-    installConf: earthly(),
+    installConf: ports.earthly(),
     ePoint: `earthly --version`,
   },
   // 56 megs
   {
     name: "pnpm",
-    installConf: pnpm(),
+    installConf: ports.pnpm(),
     ePoint: `pnpm --version`,
   },
   // node + more megs
   {
     name: "jco",
-    installConf: jco(),
+    installConf: ports.jco(),
     ePoint: `jco --version`,
     secureConf: secureConfig({
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
@@ -125,7 +112,7 @@ const cases: CustomE2eTestCase[] = [
   // 77 meg +
   {
     name: "asdf-cmake",
-    installConf: asdf({
+    installConf: ports.asdf({
       pluginRepo: "https://github.com/asdf-community/asdf-cmake",
       installType: "version",
     }),
@@ -134,13 +121,13 @@ const cases: CustomE2eTestCase[] = [
   // 80 meg
   {
     name: "cpy_bs",
-    installConf: cpy_bs(),
+    installConf: ports.cpy_bs(),
     ePoint: `python3 --version`,
   },
   // 80 meg +
   {
     name: "pipi-poetry",
-    installConf: pipi({ packageName: "poetry" }),
+    installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
     secureConf: secureConfig({
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
