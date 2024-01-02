@@ -7,6 +7,10 @@ import { $, dirs, importRaw } from "../utils/mod.ts";
 
 // null means it should be removed (for cleaning up old versions)
 const getHooksVfs = async () => ({
+  "env.sh": (
+    await importRaw(import.meta.resolve("./hook.sh"))
+  ),
+
   "env.zsh": (
     await importRaw(import.meta.resolve("./hook.sh"))
   ),
