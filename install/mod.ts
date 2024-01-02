@@ -202,20 +202,22 @@ export async function install(
           `#!/bin/sh 
 export GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" 
 export DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}" 
-cur_dir=$PWD
-while [ "$cur_dir" != "/" ]; do
-    if [ -f "$cur_dir/ghjk.ts" ]; then
-        found_config="$cur_dir/ghjk.ts"
-        local_lockfile="$cur_dir/ghjk.deno.lock"
-        break
-    fi
-    # recursively look in parent directory
-    cur_dir="$(dirname "$cur_dir")"
-done
+
+if [ -z "$\{GHJK_CONFIG+x}" ]; then
+  cur_dir=$PWD
+  while [ "$cur_dir" != "/" ]; do
+      if [ -f "$cur_dir/ghjk.ts" ]; then
+          found_config="$cur_dir/ghjk.ts"
+          break
+      fi
+      # recursively look in parent directory
+      cur_dir="$(dirname "$cur_dir")"
+  done
+fi
 
 export GHJK_CONFIG="$\{GHJK_CONFIG:-$found_config}"
-
-if [ -n "\${local_lockfile+x}" ]; then
+if [ -n "\${GHJK_CONFIG+x}" ]; then
+  local_lockfile="$(dirname "$GHJK_CONFIG")/ghjk.deno.lock"
   lock_flag="--lock $local_lockfile"
 else
   lock_flag="${lockFlag}"
