@@ -551,12 +551,16 @@ async function resolveConfig(
   };
   if (config.version) {
     const allVersions = await port.listAll(listAllArgs);
-    if (!allVersions.includes(config.version)) {
+    // TODO: fuzzy matching
+    const match = allVersions.find((version) =>
+      version.match(new RegExp(`^v?${config.version}`))
+    );
+    if (!match) {
       throw new Error(`error resolving verison: not found`, {
         cause: { config, manifest },
       });
     }
-    version = config.version;
+    version = match;
   } else {
     const latestStable = await port.latestStable(listAllArgs);
     version = latestStable;

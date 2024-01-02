@@ -6,7 +6,7 @@ import {
   zod,
 } from "../deps/common.ts";
 
-const defaultLogLevel = "DEBUG" as const;
+const defaultLogLevel = "INFO" as const;
 
 // This parses the GHJK_LOG env var
 function confFromEnv() {

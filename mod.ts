@@ -82,7 +82,16 @@ function addInstall(
   cx: PortsModuleConfigBase,
   configUnclean: InstallConfigFat,
 ) {
-  const config = portsValidators.installConfigFat.parse(configUnclean);
+  const res = portsValidators.installConfigFat.safeParse(configUnclean);
+  if (!res.success) {
+    throw new Error(`error parsing InstallConfig`, {
+      cause: {
+        config: configUnclean,
+        zodErr: res.error,
+      },
+    });
+  }
+  const config = res.data;
   logger().debug("install added", config);
   cx.installs.push(config);
 }

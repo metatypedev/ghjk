@@ -25,7 +25,8 @@ export async function cli(args: CliArgs) {
   );
   const envDir = envDirFromConfig(ghjkDir, configPath);
 
-  logger().debug({ configPath, envDir });
+  // logger().debug({ configPath, envDir });
+  logger().info("ghjkfile", configPath);
 
   const ctx = { ghjkDir, configPath, envDir };
 
