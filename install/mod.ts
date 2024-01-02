@@ -197,15 +197,19 @@ export async function install(
           exePath,
           `#!/bin/sh 
 GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
-cur_dir=$PWD
+curDir=$PWD
 while [ "$cur_dir" != "/" ]; do
     if [ -f "$cur_dir/ghjk.ts" ]; then
-        export GHJK_CONFIG="$cur_dir/ghjk.ts"
+        foundConfig="$cur_dir/ghjk.ts"
         localLockFile="$cur_dir/ghjk.deno.lock"
+        break
     fi
     # recursively look in parent directory
-    cur_dir="$(dirname "$cur_dir")"
+    curDir="$(dirname "$curDir")"
 done
+
+GHJK_CONFIG="$\{GHJK_CONFIG:-foundConfig}"
+
 if [ -n "\${localLockFile+x}" ]; then
   lockFlag="--lock $localLockFile"
 else
