@@ -45,7 +45,7 @@ export class PortsModule extends ModuleBase<PortsModuleManifest> {
     manifest: PortsModuleManifest,
   ) {
     return new cliffy_cmd.Command()
-      // .alias("port")
+      .alias("p")
       .action(function () {
         this.showHelp();
       })

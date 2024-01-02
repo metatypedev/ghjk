@@ -196,26 +196,27 @@ export async function install(
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
-GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
-curDir=$PWD
+export GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" 
+export DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}" 
+cur_dir=$PWD
 while [ "$cur_dir" != "/" ]; do
     if [ -f "$cur_dir/ghjk.ts" ]; then
-        foundConfig="$cur_dir/ghjk.ts"
-        localLockFile="$cur_dir/ghjk.deno.lock"
+        found_config="$cur_dir/ghjk.ts"
+        local_lockfile="$cur_dir/ghjk.deno.lock"
         break
     fi
     # recursively look in parent directory
-    curDir="$(dirname "$curDir")"
+    cur_dir="$(dirname "$cur_dir")"
 done
 
-GHJK_CONFIG="$\{GHJK_CONFIG:-foundConfig}"
+export GHJK_CONFIG="$\{GHJK_CONFIG:-$found_config}"
 
-if [ -n "\${localLockFile+x}" ]; then
-  lockFlag="--lock $localLockFile"
+if [ -n "\${local_lockfile+x}" ]; then
+  lock_flag="--lock $local_lockfile"
 else
-  lockFlag="${lockFlag}"
+  lock_flag="${lockFlag}"
 fi
-${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lockFlag ${
+${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lock_flag ${
             import.meta.resolve("../main.ts")
           } $*`,
           { mode: 0o700 },
