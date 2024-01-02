@@ -73,7 +73,7 @@ export abstract class GithubReleasePort extends PortBase {
   async latestStable() {
     const metadata = await $.withRetries({
       count: 10,
-      delay: 100,
+      delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
