@@ -16,7 +16,9 @@ repos:
         # exclude all generated files
         exclude: |
             (?x)^(
+                ghjk.lock|
                 deno.lock|
+                ghjk.deno.lock|
                 gh_action/.*.js
             )$
   - repo: https://github.com/python-jsonschema/check-jsonschema

@@ -14,6 +14,8 @@ export interface CliArgs {
   configPath: string;
 }
 
+// FIXME: subset of ghjk commands should be functional
+// even if config file not found
 export async function cli(args: CliArgs) {
   const configPath = std_path.normalize(
     std_path.resolve(Deno.cwd(), args.configPath),
@@ -131,6 +133,17 @@ export async function cli(args: CliArgs) {
               console.log(envDir);
             }),
         ),
+    )
+    .command(
+      "deno",
+      new cliffy_cmd.Command()
+        .description("Access the deno cli used by ghjk.")
+        .useRawArgs()
+        .action(async function (_, ...args) {
+          logger().debug(args);
+          await $.raw`${Deno.execPath()} ${args}`
+            .env("DENO_EXEC_PATH", Deno.execPath());
+        }),
     );
 
   for (const [name, subcmd] of Object.entries(subCommands)) {
