@@ -2,6 +2,7 @@ import {
   $,
   ALL_ARCH,
   ALL_OS,
+  defaultLatestStable,
   depExecShimPath,
   DownloadArgs,
   type InstallArgs,
@@ -55,6 +56,10 @@ export class Port extends PortBase {
       };
 
     return metadata.versions;
+  }
+
+  latestStable(args: ListAllArgs): Promise<string> {
+    return defaultLatestStable(this, args);
   }
 
   // this creates the venv and install the package into it

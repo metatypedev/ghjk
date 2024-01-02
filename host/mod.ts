@@ -25,8 +25,7 @@ export async function cli(args: CliArgs) {
   );
   const envDir = envDirFromConfig(ghjkDir, configPath);
 
-  // logger().debug({ configPath, envDir });
-  logger().info("ghjkfile", configPath);
+  logger().debug({ configPath, envDir });
 
   const ctx = { ghjkDir, configPath, envDir };
 
@@ -44,6 +43,7 @@ export async function cli(args: CliArgs) {
   const subCommands = {} as Record<string, cliffy_cmd.Command>;
   // if no lockfile found or if it's older than the config file
   if (!lockFileStat || lockFileStat.mtime! < configFileStat.mtime!) {
+    logger().info("serializing ghjkfile", configPath);
     const serializedConfig = await serializeConfig(configPath);
     const lockObj: zod.infer<typeof lockObjValidator> = {
       version: "0",
@@ -65,6 +65,7 @@ export async function cli(args: CliArgs) {
       JSON.stringify(lockObj, undefined, 2),
     );
   } else {
+    logger().info("using lockfile", lockFilePath);
     const lockObj = await readLockFile(lockFilePath);
     serializedConfig = lockObj.source;
     for (const [id, entry] of Object.entries(lockObj.moduleEntries)) {
@@ -191,7 +192,6 @@ const lockObjValidator = zod.object({
 });
 
 async function readLockFile(lockFilePath: PathRef) {
-  logger().debug("reading lockfile", lockFilePath);
   const raw = await lockFilePath.readJson();
   const res = lockObjValidator.safeParse(raw);
   if (!res.success) {
