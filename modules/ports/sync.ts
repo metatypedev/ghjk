@@ -550,6 +550,10 @@ async function resolveConfig(
     manifest,
   };
   if (config.version) {
+    logger.info(
+      "resoliving given version",
+      config.version,
+    );
     const allVersions = await port.listAll(listAllArgs);
     // TODO: fuzzy matching
     const match = allVersions.find((version) =>
@@ -562,6 +566,7 @@ async function resolveConfig(
     }
     version = match;
   } else {
+    logger.info("resolving latest version", config);
     const latestStable = await port.latestStable(listAllArgs);
     version = latestStable;
   }
