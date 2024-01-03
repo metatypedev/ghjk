@@ -32,6 +32,7 @@ export async function installsDbKv(path: string): Promise<InstallsDb> {
 
 class DenoKvInstallsDb extends InstallsDb {
   prefix = "installs";
+  closed = false;
   constructor(public kv: Deno.Kv) {
     super();
   }
@@ -54,6 +55,9 @@ class DenoKvInstallsDb extends InstallsDb {
     await this.kv.delete([this.prefix, id]);
   }
   [Symbol.dispose](): void {
-    this.kv.close();
+    if (!this.closed) {
+      this.closed = true;
+      this.kv.close();
+    }
   }
 }

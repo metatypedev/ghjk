@@ -22,7 +22,7 @@ export async function cli(args: CliArgs) {
 
   logger().debug({ configPath, envDir });
 
-  const ctx = { ghjkDir, configPath, envDir };
+  const ctx = { ghjkDir, configPath, envDir, state: new Map() };
 
   const { subCommands, serializedConfig } = await readConfig(ctx);
 

@@ -124,6 +124,15 @@ export function getPortRef(manifest: PortManifest) {
   return `${manifest.name}@${manifest.version}`;
 }
 
+export async function objectHashHex(
+  object: jsonHash.Tree,
+  algo: jsonHash.DigestAlgorithmType = "SHA-256",
+) {
+  const hashBuf = await jsonHash.digest(algo, object);
+  const hashHex = bufferToHex(hashBuf).slice(0, 8);
+  return hashHex;
+}
+
 export async function getInstallHash(install: InstallConfigResolvedX) {
   const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
   const hashHex = bufferToHex(hashBuf).slice(0, 8);

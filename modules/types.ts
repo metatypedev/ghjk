@@ -14,6 +14,7 @@ export type GhjkCtx = {
   configPath: string;
   envDir: string;
   ghjkDir: string;
+  state: Map<string, unknown>;
 };
 
 export default {

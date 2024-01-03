@@ -1,4 +1,4 @@
-import { equal, std_fs, std_path, zod } from "../../deps/cli.ts";
+import { equal, jsonHash, std_fs, std_path, zod } from "../../deps/cli.ts";
 import getLogger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type {
@@ -22,6 +22,7 @@ import {
   DePromisify,
   getInstallHash,
   getPortRef,
+  objectHashHex,
   sameFsTmpRoot,
 } from "../../utils/mod.ts";
 import { type InstallsDb, installsDbKv } from "./db.ts";
@@ -29,17 +30,12 @@ import type { GhjkCtx } from "../types.ts";
 
 const logger = getLogger(import.meta);
 
-type SyncCtx = {
-  installsPath: string;
-  downloadsPath: string;
-  tmpPath: string;
-  db: InstallsDb;
-};
+export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolvedX>>;
+export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 
 export async function syncCtxFromGhjk(ctx: GhjkCtx) {
   const portsPath = await $.path(ctx.ghjkDir).resolve("ports")
     .ensureDir();
-  // ensure the req
   const [installsPath, downloadsPath, tmpPath] = (
     await Promise.all([
       portsPath.join("installs").ensureDir(),
@@ -47,16 +43,30 @@ export async function syncCtxFromGhjk(ctx: GhjkCtx) {
       sameFsTmpRoot(portsPath.toString()),
     ])
   ).map($.pathToString);
-  const db = await installsDbKv(
-    portsPath.resolve("installs.db").toString(),
-  );
+  let db = ctx.state.get("installsDb") as
+    | InstallsDb
+    | undefined;
+  if (!db) {
+    db = await installsDbKv(
+      portsPath.resolve("installs.db").toString(),
+    );
+    ctx.state.set("installsDb", db);
+  }
+  let memoStore = ctx.state.get("resolutionMemoStore") as
+    | ResolutionMemoStore
+    | undefined;
+  if (!memoStore) {
+    memoStore = new Map();
+    ctx.state.set("resolutionMemoStore", memoStore);
+  }
   return {
     db,
     installsPath,
     downloadsPath,
     tmpPath,
+    memoStore,
     async [Symbol.asyncDispose]() {
-      db[Symbol.dispose]();
+      db![Symbol.dispose]();
       await $.removeIfExists(tmpPath);
     },
   };
@@ -508,94 +518,103 @@ async function resolveConfig(
   manifest: PortManifestX,
   config: InstallConfigLiteX,
 ) {
-  // resolve and install the resolutionDeps first so that we
-  // can invoke listAll and latestStable
-  const resolvedResolutionDeps = [] as [string, string][];
-  for (const dep of manifest.resolutionDeps ?? []) {
-    const { manifest: depMan, config: depConf } = getDepConfig(
-      portsConfig,
-      manifest,
-      config,
-      dep,
-      true,
-    );
-
-    // get the version resolved config of the dependency
-    const depInstId = await resolveAndInstall(
-      cx,
-      portsConfig,
-      depMan,
-      depConf,
-    );
-    resolvedResolutionDeps.push([depInstId.installId, depMan.name]);
+  const hash = await objectHashHex(config as jsonHash.Tree);
+  let promise = cx.memoStore.get(hash);
+  if (!promise) {
+    promise = inner();
+    cx.memoStore.set(hash, promise);
   }
+  return promise;
+  async function inner() {
+    // resolve and install the resolutionDeps first so that we
+    // can invoke listAll and latestStable
+    const resolvedResolutionDeps = [] as [string, string][];
+    for (const dep of manifest.resolutionDeps ?? []) {
+      const { manifest: depMan, config: depConf } = getDepConfig(
+        portsConfig,
+        manifest,
+        config,
+        dep,
+        true,
+      );
 
-  const depShimsRootPath = await Deno.makeTempDir({
-    dir: cx.tmpPath,
-    prefix: `shims_resDeps_${manifest.name}_`,
-  });
-  const resolutionDepArts = await getShimmedDepArts(
-    cx,
-    depShimsRootPath,
-    resolvedResolutionDeps,
-  );
-
-  // finally resolve the versino
-  let version;
-  // TODO: fuzzy matching
-  const port = getPortImpl(manifest);
-  const listAllArgs = {
-    depArts: resolutionDepArts,
-    config,
-    manifest,
-  };
-  if (config.version) {
-    logger.info("resoliving given version", config);
-    const allVersions = await port.listAll(listAllArgs);
-    // TODO: fuzzy matching
-    const match = allVersions.find((version) =>
-      version.match(new RegExp(`^v?${config.version}$`))
-    );
-    if (!match) {
-      throw new Error(`error resolving verison: not found`, {
-        cause: { config, manifest },
-      });
+      // get the version resolved config of the dependency
+      const depInstId = await resolveAndInstall(
+        cx,
+        portsConfig,
+        depMan,
+        depConf,
+      );
+      resolvedResolutionDeps.push([depInstId.installId, depMan.name]);
     }
-    version = match;
-  } else {
-    logger.info("resolving latest version", config);
-    const latestStable = await port.latestStable(listAllArgs);
-    version = latestStable;
-  }
-  await $.removeIfExists(depShimsRootPath);
 
-  // now we resolve the remaning deps
-  // TODO: port version dependent portDep resolution
-  // e.g. use python-2.7 if foo is resolved to <1.0 or use
-  // python-3.x if foo is resolved to >1.0
-  const resolveDepConfigs = {} as Record<string, InstallConfigResolvedX>;
-  for (const dep of manifest.deps ?? []) {
-    const { manifest: depMan, config: depConf } = getDepConfig(
-      portsConfig,
-      manifest,
-      config,
-      dep,
-    );
-    // get the version resolved config of the dependency
-    const depInstall = await resolveConfig(
+    const depShimsRootPath = await Deno.makeTempDir({
+      dir: cx.tmpPath,
+      prefix: `shims_resDeps_${manifest.name}_`,
+    });
+    const resolutionDepArts = await getShimmedDepArts(
       cx,
-      portsConfig,
-      depMan,
-      depConf,
+      depShimsRootPath,
+      resolvedResolutionDeps,
     );
-    resolveDepConfigs[dep.name] = depInstall;
-  }
 
-  return validators.installConfigResolved.parse({
-    ...config,
-    depConfigs: resolveDepConfigs,
-    version,
-  });
+    // finally resolve the versino
+    let version;
+    // TODO: fuzzy matching
+    const port = getPortImpl(manifest);
+    const listAllArgs = {
+      depArts: resolutionDepArts,
+      config,
+      manifest,
+    };
+    if (config.version) {
+      logger.info("resoliving given version", config);
+      const allVersions = await port.listAll(listAllArgs);
+      // TODO: fuzzy matching
+      const match = allVersions.find((version) =>
+        version.match(new RegExp(`^v?${config.version}$`))
+      );
+      if (!match) {
+        throw new Error(`error resolving verison: not found`, {
+          cause: { config, manifest },
+        });
+      }
+      version = match;
+    } else {
+      logger.info("resolving latest version", config);
+      const latestStable = await port.latestStable(listAllArgs);
+      version = latestStable;
+    }
+    await $.removeIfExists(depShimsRootPath);
+
+    // now we resolve the remaning deps
+    // TODO: port version dependent portDep resolution
+    // e.g. use python-2.7 if foo is resolved to <1.0 or use
+    // python-3.x if foo is resolved to >1.0
+    const resolveDepConfigs = {} as Record<string, InstallConfigResolvedX>;
+    for (const dep of manifest.deps ?? []) {
+      const { manifest: depMan, config: depConf } = getDepConfig(
+        portsConfig,
+        manifest,
+        config,
+        dep,
+      );
+      // get the version resolved config of the dependency
+      const depInstall = await resolveConfig(
+        cx,
+        portsConfig,
+        depMan,
+        depConf,
+      );
+      resolveDepConfigs[dep.name] = depInstall;
+    }
+
+    return validators.installConfigResolved.parse({
+      ...config,
+      depConfigs: resolveDepConfigs,
+      version,
+    });
+  }
 }
 
 // This gets either the dependency InstallConfig as specified by
