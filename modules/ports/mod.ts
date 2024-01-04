@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { JSONValue } from "../../utils/mod.ts";
+import { Json } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type { PortsModuleConfigX } from "./types.ts";
@@ -20,10 +20,20 @@ type PortsCtx = {
   installGraph: InstallGraph;
 };
 
-export class PortsModule extends ModuleBase<PortsCtx> {
+const lockValidator = zod.object({
+  version: zod.string(),
+  configResolutions: zod.record(
+    zod.string(),
+    validators.installConfigResolved,
+  ),
+});
+type PortsLockEnt = zod.infer<typeof lockValidator>;
+
+export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   async processManifest(
     gcx: GhjkCtx,
     manifest: ModuleManifest,
+    _lockEnt: PortsLockEnt | undefined,
   ) {
     const res = validators.portsModuleConfig.safeParse(manifest.config);
     if (!res.success) {
@@ -81,37 +91,22 @@ export class PortsModule extends ModuleBase<PortsCtx> {
           }),
       );
   }
-  async loadLockEntry(
+  loadLockEntry(
     gcx: GhjkCtx,
-    manifest: ModuleManifest,
-    raw: JSONValue,
+    raw: Json,
   ) {
-    const res = validators.portsModuleConfig.safeParse(manifest.config);
-    if (!res.success) {
-      throw new Error("error parsing ports module config", {
-        cause: {
-          config: manifest.config,
-          zodErr: res.error,
-        },
-      });
-    }
-    const config = res.data;
-    const lockValidator = zod.object({
-      version: zod.string(),
-      configResolutions: zod.record(
-        zod.string(),
-        validators.installConfigResolved,
-      ),
-    });
-    const { version, configResolutions } = lockValidator.parse(raw);
+    const entry = lockValidator.parse(raw);
 
-    if (version != "0") {
+    if (entry.version != "0") {
       throw new Error(`unexepected version tag deserializing lockEntry`);
     }
+    const memoStore = getResolutionMemo(gcx);
+    for (const [hash, config] of Object.entries(entry.configResolutions)) {
+      logger().debug("restoring resolution from lockfile", config);
+      memoStore.set(hash, Promise.resolve(config));
+    }
 
-    await using syncCx = await syncCtxFromGhjk(gcx, configResolutions);
-    const installGraph = await buildInstallGraph(syncCx, config);
-    return { config, installGraph };
+    return entry;
   }
 
   async genLockEntry(

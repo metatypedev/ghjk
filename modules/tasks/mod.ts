@@ -1,10 +1,9 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { JSONValue } from "../../utils/mod.ts";
+import { Json } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
-import portValidators from "../ports/types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
@@ -15,17 +14,21 @@ import {
   execTask,
   type TaskGraph,
 } from "./exec.ts";
-import { getResolutionMemo } from "../ports/sync.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;
   taskGraph: TaskGraph;
 };
+const lockValidator = zod.object({
+  version: zod.string(),
+});
+type TasksLockEnt = zod.infer<typeof lockValidator>;
 
-export class TasksModule extends ModuleBase<TasksCtx> {
+export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
   async processManifest(
     ctx: GhjkCtx,
     manifest: ModuleManifest,
+    _lockEnt: TasksLockEnt | undefined,
   ) {
     const res = validators.tasksModuleConfig.safeParse(manifest.config);
     if (!res.success) {
@@ -84,53 +87,24 @@ export class TasksModule extends ModuleBase<TasksCtx> {
     return root;
   }
 
-  async loadLockEntry(
-    ctx: GhjkCtx,
-    manifest: ModuleManifest,
-    raw: JSONValue,
+  loadLockEntry(
+    _gcx: GhjkCtx,
+    raw: Json,
   ) {
-    const res = validators.tasksModuleConfig.safeParse(manifest.config);
-    if (!res.success) {
-      throw new Error("error parsing module config", {
-        cause: {
-          config: manifest.config,
-          zodErr: res.error,
-        },
-      });
-    }
-    const config = res.data;
+    const entry = lockValidator.parse(raw);
 
-    const lockValidator = zod.object({
-      version: zod.string(),
-      configResolutions: zod.record(
-        zod.string(),
-        portValidators.installConfigResolved,
-      ),
-    });
-    const { version, configResolutions } = lockValidator.parse(raw);
-
-    if (version != "0") {
+    if (entry.version != "0") {
       throw new Error(`unexepected version tag deserializing lockEntry`);
     }
 
-    await using execCx = await execCtxFromGhjk(ctx, configResolutions);
-    const taskGraph = await buildTaskGraph(execCx, config);
-    return { config, taskGraph };
+    return entry;
   }
-
-  async genLockEntry(
-    gcx: GhjkCtx,
+  genLockEntry(
+    _gcx: GhjkCtx,
     _tcx: TasksCtx,
   ) {
-    const memo = getResolutionMemo(gcx);
-    const configResolutions = Object.fromEntries(
-      await Array.fromAsync(
-        [...memo.entries()].map(async ([key, prom]) => [key, await prom]),
-      ),
-    );
     return {
       version: "0",
-      configResolutions: JSON.parse(JSON.stringify(configResolutions)),
     };
   }
 }

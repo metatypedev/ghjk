@@ -66,18 +66,7 @@ programmability so we prefer to err on the side of modularity.
 
 #### `ghjk.lock.json`
 
-- Will be searched for in the same directory as the ghjkfile.
-- If found and if the `mtime` is after the config file's `mtime`, will be
-  treated as valid.
-- [ ] Move to non-json format
-- [ ] Avoid discarding whole lockfile just because of `mtime`. Reuse what's
-      possible.
-- If no lockfile is found:
-  - Each module declared in the config file processes its specific config and
-    generates a lock entry
-  - The lock entries are then used as input when driving the module
-- If lockfile is found:
-  - The lock entries of each module are used to drive the module.
+- TODO
 
 ### Host
 

@@ -9,7 +9,7 @@ ghjk
     installs: [
       protoc(),
     ],
-    env: { STUFF: "hello" },
+    env: { STUFF: "stuffier" },
     async fn({ $ }) {
       await $`echo $STUFF;
       protoc --version
@@ -29,7 +29,7 @@ ghjk
   .task("hum", {
     dependsOn: ["ho"],
     async fn({ $ }) {
-      await $`echo ho`;
+      await $`echo hum`;
     },
   });
 

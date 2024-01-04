@@ -1,11 +1,11 @@
-import { cliffy_cmd, zod } from "../deps/cli.ts";
+import { cliffy_cmd, equal, zod } from "../deps/cli.ts";
 import logger, { isColorfulTty } from "../utils/logger.ts";
 
 import {
   $,
   bufferHashHex,
   envDirFromConfig,
-  JSONValue,
+  Json,
   PathRef,
 } from "../utils/mod.ts";
 import validators from "./types.ts";
@@ -126,16 +126,14 @@ async function readConfig(ctx: GhjkCtx) {
   const subCommands = {} as Record<string, cliffy_cmd.Command>;
 
   const foundLockObj = await readLockFile(lockFilePath);
+  const lockEntries = {} as Record<string, unknown>;
   // TODO: figure out cross platform lockfiles :O
+  let serializedConfig;
   if (
     foundLockObj && // lockfile found
-    foundLockObj.version == "0" &&
-    foundLockObj.ghjkfileHash == ghjkfileHash &&
-    foundLockObj.platform[0] == Deno.build.os &&
-    foundLockObj.platform[1] == Deno.build.arch
+    foundLockObj.version == "0"
   ) {
-    logger().info("using lockfile", lockFilePath);
-    const serializedConfig = foundLockObj.config;
+    logger().debug("loading lockfile", lockFilePath);
     for (const man of foundLockObj.config.modules) {
       const mod = std_modules.map[man.id];
       if (!mod) {
@@ -149,19 +147,30 @@ async function readConfig(ctx: GhjkCtx) {
           `no lock entry found for module specified by lockfile config: ${man.id}`,
         );
       }
-      const instance: ModuleBase<unknown> = new mod.ctor();
-      const pMan = await instance.loadLockEntry(
+      const instance: ModuleBase<unknown, unknown> = new mod.ctor();
+      lockEntries[man.id] = await instance.loadLockEntry(
         ctx,
-        man,
-        entry as JSONValue,
+        entry as Json,
       );
-      subCommands[man.id] = instance.command(ctx, pMan);
     }
-    return { subCommands, serializedConfig };
+
+    // avoid reserlizing the config if
+    // the ghjkfile and environment is _satisfcatorily_
+    // similar
+    if (
+      foundLockObj.ghjkfileHash == ghjkfileHash &&
+      foundLockObj.platform[0] == Deno.build.os &&
+      foundLockObj.platform[1] == Deno.build.arch
+    ) {
+      serializedConfig = foundLockObj.config;
+    }
   }
 
-  logger().info("serializing ghjkfile", configPath);
-  const serializedConfig = await readAndSerializeConfig(configPath);
+  if (!serializedConfig) {
+    logger().info("serializing ghjkfile", configPath);
+    serializedConfig = await readAndSerializeConfig(configPath);
+  }
+
   const newLockObj: zod.infer<typeof lockObjValidator> = {
     version: "0",
     platform: [Deno.build.os, Deno.build.arch],
@@ -175,12 +184,12 @@ async function readConfig(ctx: GhjkCtx) {
     if (!mod) {
       throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
     }
-    const instance: ModuleBase<unknown> = new mod.ctor();
-    const pMan = await instance.processManifest(ctx, man);
+    const instance: ModuleBase<unknown, unknown> = new mod.ctor();
+    const pMan = await instance.processManifest(ctx, man, lockEntries[man.id]);
     instances.push([man.id, instance, pMan] as const);
     subCommands[man.id] = instance.command(ctx, pMan);
   }
-  // generate the lockfile after all the modules
+  // generate the lock entries after *all* the modules
   // are done processing their config to allow
   // any shared stores to be properly populated
   // e.g. the resolution memo store
@@ -193,9 +202,12 @@ async function readConfig(ctx: GhjkCtx) {
       ),
     ),
   );
-  await lockFilePath.writeText(
-    JSON.stringify(newLockObj, undefined, 2),
-  );
+  // avoid writing lockfile if nothing's changed
+  if (!foundLockObj || !equal.equal(newLockObj, foundLockObj)) {
+    await lockFilePath.writeText(
+      JSON.stringify(newLockObj, undefined, 2),
+    );
+  }
   return { subCommands, serializedConfig };
 }
 

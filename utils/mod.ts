@@ -1,4 +1,11 @@
-import { dax, jsonHash, std_fs, std_path, std_url } from "../deps/common.ts";
+import {
+  dax,
+  jsonHash,
+  std_fs,
+  std_path,
+  std_url,
+  zod,
+} from "../deps/common.ts";
 import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./modules"
 import type {
@@ -11,15 +18,19 @@ import type {
 } from "../modules/ports/types.ts";
 
 export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
-export type JSONValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JSONObject
-  | JSONArray;
-export type JSONObject = { [key: string]: JSONValue };
-export type JSONArray = JSONValue[];
+const literalSchema = zod.union([
+  zod.string(),
+  zod.number(),
+  zod.boolean(),
+  zod.null(),
+]);
+export type JsonLiteral = zod.infer<typeof literalSchema>;
+export type JsonObject = { [key: string]: Json };
+export type JsonArray = Json[];
+export type Json = JsonLiteral | JsonObject | JsonArray;
+export const jsonSchema: zod.ZodType<Json> = zod.lazy(() =>
+  zod.union([literalSchema, zod.array(jsonSchema), zod.record(jsonSchema)])
+);
 
 export function dbg<T>(val: T, ...more: unknown[]) {
   logger().debug("DBG", val, ...more);

@@ -11,15 +11,13 @@ import {
   installFromGraphAndShimEnv,
   syncCtxFromGhjk,
 } from "../ports/sync.ts";
-import type { InstallConfigResolvedX } from "../ports/types.ts";
 
 export type ExecCtx = DePromisify<ReturnType<typeof execCtxFromGhjk>>;
 
 export async function execCtxFromGhjk(
   gcx: GhjkCtx,
-  memoPreload: Record<string, InstallConfigResolvedX> = {},
 ) {
-  const syncCx = await syncCtxFromGhjk(gcx, memoPreload);
+  const syncCx = await syncCtxFromGhjk(gcx);
   return {
     ghjkCx: gcx,
     syncCx,

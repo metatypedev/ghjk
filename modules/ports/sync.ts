@@ -50,7 +50,6 @@ export function getResolutionMemo(
 
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
-  memoPreload: Record<string, InstallConfigResolvedX> = {},
 ) {
   const portsPath = await $.path(gcx.ghjkDir).resolve("ports")
     .ensureDir();
@@ -81,9 +80,6 @@ export async function syncCtxFromGhjk(
     db = db.clone();
   }
   const memoStore = getResolutionMemo(gcx);
-  for (const [hash, config] of Object.entries(memoPreload)) {
-    memoStore.set(hash, Promise.resolve(config));
-  }
   return {
     db,
     installsPath,

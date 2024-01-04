@@ -1,23 +1,24 @@
 import { cliffy_cmd } from "../deps/cli.ts";
-import type { JSONValue } from "../utils/mod.ts";
+import type { Json } from "../utils/mod.ts";
 import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
-export abstract class ModuleBase<PMan> {
+export abstract class ModuleBase<Ctx, LockEnt> {
   abstract processManifest(
     ctx: GhjkCtx,
     manifest: ModuleManifest,
-  ): Promise<PMan> | PMan;
+    lockEnt: LockEnt | undefined,
+  ): Promise<Ctx> | Ctx;
+  // returns undefined if previous lock entry is no longer valid
   abstract loadLockEntry(
     ctx: GhjkCtx,
-    manifest: ModuleManifest,
-    raw: JSONValue,
-  ): Promise<PMan> | PMan;
+    raw: Json,
+  ): Promise<LockEnt | undefined> | LockEnt | undefined;
   abstract genLockEntry(
     ctx: GhjkCtx,
-    manifest: PMan,
-  ): Promise<JSONValue> | JSONValue;
+    manifest: Ctx,
+  ): Promise<Json> | Json;
   abstract command(
     ctx: GhjkCtx,
-    pman: PMan,
+    pman: Ctx,
   ): cliffy_cmd.Command<any, any, any, any>;
 }
