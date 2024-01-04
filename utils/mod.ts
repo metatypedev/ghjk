@@ -120,8 +120,12 @@ export function bufferToHex(buffer: ArrayBuffer): string {
   ).join("");
 }
 
-export function getPortRef(manifest: PortManifest) {
-  return `${manifest.name}@${manifest.version}`;
+export async function bufferHashHex(
+  buf: ArrayBuffer,
+  algo: AlgorithmIdentifier = "SHA-256",
+) {
+  const hashBuf = await crypto.subtle.digest(algo, buf);
+  return bufferToHex(hashBuf);
 }
 
 export async function objectHashHex(
@@ -129,13 +133,17 @@ export async function objectHashHex(
   algo: jsonHash.DigestAlgorithmType = "SHA-256",
 ) {
   const hashBuf = await jsonHash.digest(algo, object);
-  const hashHex = bufferToHex(hashBuf).slice(0, 8);
+  const hashHex = bufferToHex(hashBuf);
   return hashHex;
 }
 
+export function getPortRef(manifest: PortManifest) {
+  return `${manifest.name}@${manifest.version}`;
+}
+
 export async function getInstallHash(install: InstallConfigResolvedX) {
-  const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
-  const hashHex = bufferToHex(hashBuf).slice(0, 8);
+  const fullHashHex = await objectHashHex(install as jsonHash.Tree);
+  const hashHex = fullHashHex.slice(0, 8);
   return `${install.portRef}+${hashHex}`;
 }
 
@@ -376,4 +384,53 @@ export async function sameFsTmpRoot(
   // we don't care if the sync fails before it cleans as the system will
   // take care of it
   return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
+}
+export type Rc<T> = ReturnType<typeof rc<T>>;
+
+export function rc<T>(val: T, onDrop: (val: T) => void) {
+  const rc = {
+    counter: 1,
+    val,
+    clone() {
+      rc.counter += 1;
+      return rc;
+    },
+    [Symbol.dispose]() {
+      rc.counter -= 1;
+      if (rc.counter < 0) {
+        throw new Error("reference count is negative", {
+          cause: rc,
+        });
+      }
+      if (rc.counter == 0) {
+        onDrop(val);
+      }
+    },
+  };
+  return rc;
+}
+
+export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
+
+export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
+  const rc = {
+    counter: 1,
+    val,
+    clone() {
+      rc.counter += 1;
+      return rc;
+    },
+    async [Symbol.asyncDispose]() {
+      rc.counter -= 1;
+      if (rc.counter < 0) {
+        throw new Error("reference count is negative", {
+          cause: rc,
+        });
+      }
+      if (rc.counter == 0) {
+        await onDrop(val);
+      }
+    },
+  };
+  return rc;
 }

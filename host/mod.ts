@@ -1,8 +1,13 @@
-import { zod } from "../deps/common.ts";
-import { cliffy_cmd } from "../deps/cli.ts";
+import { cliffy_cmd, zod } from "../deps/cli.ts";
 import logger, { isColorfulTty } from "../utils/logger.ts";
 
-import { $, envDirFromConfig, JSONValue, PathRef } from "../utils/mod.ts";
+import {
+  $,
+  bufferHashHex,
+  envDirFromConfig,
+  JSONValue,
+  PathRef,
+} from "../utils/mod.ts";
 import validators from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
@@ -114,48 +119,57 @@ async function readConfig(ctx: GhjkCtx) {
     .parentOrThrow()
     .join("ghjk.lock");
 
+  const ghjkfileHash = await bufferHashHex(
+    await configPath.readBytes(),
+  );
+
   const subCommands = {} as Record<string, cliffy_cmd.Command>;
 
-  const lockFileStat = await lockFilePath.stat();
-  // if no lockfile found or if it's older than the config file
-  if (lockFileStat && lockFileStat.mtime! > configFileStat.mtime!) {
+  const foundLockObj = await readLockFile(lockFilePath);
+  // TODO: figure out cross platform lockfiles :O
+  if (
+    foundLockObj && // lockfile found
+    foundLockObj.version == "0" &&
+    foundLockObj.ghjkfileHash == ghjkfileHash &&
+    foundLockObj.platform[0] == Deno.build.os &&
+    foundLockObj.platform[1] == Deno.build.arch
+  ) {
     logger().info("using lockfile", lockFilePath);
-    const lockObj = await readLockFile(lockFilePath);
-    // TODO: figure out cross platform lockfiles :O
-    if (
-      lockObj.version == "0" &&
-      lockObj.platform[0] == Deno.build.os &&
-      lockObj.platform[1] == Deno.build.arch
-    ) {
-      const serializedConfig = lockObj.source;
-      for (const [id, entry] of Object.entries(lockObj.moduleEntries)) {
-        const mod = std_modules.map[id];
-        if (!mod) {
-          throw new Error(`unrecognized module specified by lockfile: ${id}`);
-        }
-        const instance: ModuleBase<unknown> = new mod.ctor();
-        const pMan = await instance.loadLockEntry(
-          ctx,
-          entry as JSONValue,
+    const serializedConfig = foundLockObj.config;
+    for (const man of foundLockObj.config.modules) {
+      const mod = std_modules.map[man.id];
+      if (!mod) {
+        throw new Error(
+          `unrecognized module specified by lockfile config: ${man.id}`,
         );
-        subCommands[id] = instance.command(ctx, pMan);
       }
-      return { subCommands, serializedConfig };
-    } else {
-      logger().warning(
-        "lockfile not fit for curreng ghjk build, reserializing",
+      const entry = foundLockObj.moduleEntries[man.id];
+      if (!entry) {
+        throw new Error(
+          `no lock entry found for module specified by lockfile config: ${man.id}`,
+        );
+      }
+      const instance: ModuleBase<unknown> = new mod.ctor();
+      const pMan = await instance.loadLockEntry(
+        ctx,
+        man,
+        entry as JSONValue,
       );
+      subCommands[man.id] = instance.command(ctx, pMan);
     }
+    return { subCommands, serializedConfig };
   }
 
   logger().info("serializing ghjkfile", configPath);
   const serializedConfig = await readAndSerializeConfig(configPath);
-  const lockObj: zod.infer<typeof lockObjValidator> = {
+  const newLockObj: zod.infer<typeof lockObjValidator> = {
     version: "0",
     platform: [Deno.build.os, Deno.build.arch],
-    source: serializedConfig,
+    ghjkfileHash,
+    config: serializedConfig,
     moduleEntries: {} as Record<string, unknown>,
   };
+  const instances = [];
   for (const man of serializedConfig.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
@@ -163,12 +177,24 @@ async function readConfig(ctx: GhjkCtx) {
     }
     const instance: ModuleBase<unknown> = new mod.ctor();
     const pMan = await instance.processManifest(ctx, man);
-    const lockEntry = await instance.genLockEntry(ctx, pMan);
-    lockObj.moduleEntries[man.id] = lockEntry;
+    instances.push([man.id, instance, pMan] as const);
     subCommands[man.id] = instance.command(ctx, pMan);
   }
+  // generate the lockfile after all the modules
+  // are done processing their config to allow
+  // any shared stores to be properly populated
+  // e.g. the resolution memo store
+  newLockObj.moduleEntries = Object.fromEntries(
+    await Array.fromAsync(
+      instances.map(
+        async (
+          [id, instance, pMan],
+        ) => [id, await instance.genLockEntry(ctx, pMan)],
+      ),
+    ),
+  );
   await lockFilePath.writeText(
-    JSON.stringify(lockObj, undefined, 2),
+    JSON.stringify(newLockObj, undefined, 2),
   );
   return { subCommands, serializedConfig };
 }
@@ -205,12 +231,14 @@ async function readAndSerializeConfig(configPath: PathRef) {
 const lockObjValidator = zod.object({
   version: zod.string(),
   platform: zod.tuple([portValidators.osEnum, portValidators.archEnum]),
-  source: validators.serializedConfig,
+  ghjkfileHash: zod.string(),
+  config: validators.serializedConfig,
   moduleEntries: zod.record(zod.string(), zod.unknown()),
 });
 
 async function readLockFile(lockFilePath: PathRef) {
-  const raw = await lockFilePath.readJson();
+  const raw = await lockFilePath.readMaybeJson();
+  if (!raw) return;
   const res = lockObjValidator.safeParse(raw);
   if (!res.success) {
     logger().error("zod error", res.error);

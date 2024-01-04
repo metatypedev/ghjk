@@ -23,6 +23,8 @@ import {
   getInstallHash,
   getPortRef,
   objectHashHex,
+  type Rc,
+  rc,
   sameFsTmpRoot,
 } from "../../utils/mod.ts";
 import { type InstallsDb, installsDbKv } from "./db.ts";
@@ -33,8 +35,24 @@ const logger = getLogger(import.meta);
 export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolvedX>>;
 export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 
-export async function syncCtxFromGhjk(ctx: GhjkCtx) {
-  const portsPath = await $.path(ctx.ghjkDir).resolve("ports")
+export function getResolutionMemo(
+  gcx: GhjkCtx,
+) {
+  let memoStore = gcx.state.get("resolutionMemoStore") as
+    | ResolutionMemoStore
+    | undefined;
+  if (!memoStore) {
+    memoStore = new Map();
+    gcx.state.set("resolutionMemoStore", memoStore);
+  }
+  return memoStore;
+}
+
+export async function syncCtxFromGhjk(
+  gcx: GhjkCtx,
+  memoPreload: Record<string, InstallConfigResolvedX> = {},
+) {
+  const portsPath = await $.path(gcx.ghjkDir).resolve("ports")
     .ensureDir();
   const [installsPath, downloadsPath, tmpPath] = (
     await Promise.all([
@@ -43,21 +61,28 @@ export async function syncCtxFromGhjk(ctx: GhjkCtx) {
       sameFsTmpRoot(portsPath.toString()),
     ])
   ).map($.pathToString);
-  let db = ctx.state.get("installsDb") as
-    | InstallsDb
+  let db = gcx.state.get("installsDb") as
+    | Rc<InstallsDb>
     | undefined;
   if (!db) {
-    db = await installsDbKv(
-      portsPath.resolve("installs.db").toString(),
+    // db needs to be closed when done
+    // so put it behind a reference counter
+    db = rc(
+      await installsDbKv(
+        portsPath.resolve("installs.db").toString(),
+      ),
+      (db) => {
+        db[Symbol.dispose]();
+        gcx.state.delete("installsDb");
+      },
     );
-    ctx.state.set("installsDb", db);
+    gcx.state.set("installsDb", db);
+  } else {
+    db = db.clone();
   }
-  let memoStore = ctx.state.get("resolutionMemoStore") as
-    | ResolutionMemoStore
-    | undefined;
-  if (!memoStore) {
-    memoStore = new Map();
-    ctx.state.set("resolutionMemoStore", memoStore);
+  const memoStore = getResolutionMemo(gcx);
+  for (const [hash, config] of Object.entries(memoPreload)) {
+    memoStore.set(hash, Promise.resolve(config));
   }
   return {
     db,
@@ -73,13 +98,13 @@ export async function syncCtxFromGhjk(ctx: GhjkCtx) {
 }
 
 export async function installFromGraphAndShimEnv(
-  cx: SyncCtx,
+  scx: SyncCtx,
   envDir: string,
   graph: InstallGraph,
   createShellLoaders = true,
 ) {
   const installArts = await installFromGraph(
-    cx,
+    scx,
     graph,
   );
   // create the shims for the user's environment
@@ -176,7 +201,7 @@ export async function installFromGraphAndShimEnv(
 }
 
 export async function installFromGraph(
-  cx: SyncCtx,
+  scx: SyncCtx,
   graph: InstallGraph,
 ) {
   const installCtx = {
@@ -267,7 +292,7 @@ export async function installFromGraph(
   const pendingInstalls = [...graph.indie];
   while (pendingInstalls.length > 0) {
     const installId = pendingInstalls.pop()!;
-    const cached = await cx.db.get(installId);
+    const cached = await scx.db.val.get(installId);
 
     let thisArtifacts;
     // we skip it if it's already installed
@@ -283,15 +308,15 @@ export async function installFromGraph(
       // shims for their exports
       const { totalDepArts, depShimsRootPath } = await installCtx
         .readyDepArts(
-          cx.tmpPath,
+          scx.tmpPath,
           installId,
         );
 
       const stageArgs = {
         installId,
-        installPath: std_path.resolve(cx.installsPath, installId),
-        downloadPath: std_path.resolve(cx.downloadsPath, installId),
-        tmpPath: cx.tmpPath,
+        installPath: std_path.resolve(scx.installsPath, installId),
+        downloadPath: std_path.resolve(scx.downloadsPath, installId),
+        tmpPath: scx.tmpPath,
         config: inst.config,
         manifest,
         depArts: totalDepArts,
@@ -315,7 +340,7 @@ export async function installFromGraph(
         } catch (err) {
           throw new Error(`error downloading ${installId}`, { cause: err });
         }
-        await cx.db.set(installId, {
+        await scx.db.val.set(installId, {
           ...dbRow,
           progress: "downloaded",
           downloadArts,
@@ -332,7 +357,7 @@ export async function installFromGraph(
       } catch (err) {
         throw new Error(`error installing ${installId}`, { cause: err });
       }
-      await cx.db.set(installId, {
+      await scx.db.val.set(installId, {
         ...dbRow,
         progress: "installed",
         downloadArts,
@@ -351,7 +376,7 @@ export type InstallGraph = DePromisify<ReturnType<typeof buildInstallGraph>>;
 // this returns a data structure containing all the info
 // required for installation including the dependency graph
 export async function buildInstallGraph(
-  cx: SyncCtx,
+  scx: SyncCtx,
   portsConfig: PortsModuleConfigX,
 ) {
   type GraphInstConf = {
@@ -410,7 +435,7 @@ export async function buildInstallGraph(
       portRef: getPortRef(manifest),
     });
     const resolvedConfig = await resolveConfig(
-      cx,
+      scx,
       portsConfig,
       manifest,
       instLite,
@@ -513,16 +538,16 @@ export async function buildInstallGraph(
 // their versions to a known, installable version
 // It also resolves any dependencies that the config specifies
 async function resolveConfig(
-  cx: SyncCtx,
+  scx: SyncCtx,
   portsConfig: PortsModuleConfigX,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
 ) {
   const hash = await objectHashHex(config as jsonHash.Tree);
-  let promise = cx.memoStore.get(hash);
+  let promise = scx.memoStore.get(hash);
   if (!promise) {
     promise = inner();
-    cx.memoStore.set(hash, promise);
+    scx.memoStore.set(hash, promise);
   }
   return promise;
   async function inner() {
@@ -540,7 +565,7 @@ async function resolveConfig(
 
       // get the version resolved config of the dependency
       const depInstId = await resolveAndInstall(
-        cx,
+        scx,
         portsConfig,
         depMan,
         depConf,
@@ -549,11 +574,11 @@ async function resolveConfig(
     }
 
     const depShimsRootPath = await Deno.makeTempDir({
-      dir: cx.tmpPath,
+      dir: scx.tmpPath,
       prefix: `shims_resDeps_${manifest.name}_`,
     });
     const resolutionDepArts = await getShimmedDepArts(
-      cx,
+      scx,
       depShimsRootPath,
       resolvedResolutionDeps,
     );
@@ -601,7 +626,7 @@ async function resolveConfig(
       );
       // get the version resolved config of the dependency
       const depInstall = await resolveConfig(
-        cx,
+        scx,
         portsConfig,
         depMan,
         depConf,
@@ -666,27 +691,27 @@ function getDepConfig(
 /// will be redone if a config specfied by different resolutionDeps
 /// Consider introducing a memoization scheme
 async function resolveAndInstall(
-  cx: SyncCtx,
+  scx: SyncCtx,
   portsConfig: PortsModuleConfigX,
   manifest: PortManifestX,
   configLite: InstallConfigLiteX,
 ) {
-  const config = await resolveConfig(cx, portsConfig, manifest, configLite);
+  const config = await resolveConfig(scx, portsConfig, manifest, configLite);
   const installId = await getInstallHash(config);
 
-  const cached = await cx.db.get(installId);
+  const cached = await scx.db.val.get(installId);
   // we skip it if it's already installed
   if (cached && cached.progress == "installed") {
     logger.debug("already installed, skipping", installId);
   } else {
     const depShimsRootPath = await Deno.makeTempDir({
-      dir: cx.tmpPath,
+      dir: scx.tmpPath,
       prefix: `shims_${installId}`,
     });
     // readies all the exports of the port's deps including
     // shims for their exports
     const totalDepArts = await getShimmedDepArts(
-      cx,
+      scx,
       depShimsRootPath,
       await Promise.all(
         manifest.deps?.map(
@@ -694,7 +719,7 @@ async function resolveAndInstall(
             const depConfig = getDepConfig(portsConfig, manifest, config, dep);
             // we not only resolve but install the dep here
             const { installId } = await resolveAndInstall(
-              cx,
+              scx,
               portsConfig,
               depConfig.manifest,
               depConfig.config,
@@ -707,9 +732,9 @@ async function resolveAndInstall(
 
     const stageArgs = {
       installId,
-      installPath: std_path.resolve(cx.installsPath, installId),
-      downloadPath: std_path.resolve(cx.installsPath, installId),
-      tmpPath: cx.tmpPath,
+      installPath: std_path.resolve(scx.installsPath, installId),
+      downloadPath: std_path.resolve(scx.installsPath, installId),
+      tmpPath: scx.tmpPath,
       config: config,
       manifest,
       depArts: totalDepArts,
@@ -733,7 +758,7 @@ async function resolveAndInstall(
       } catch (err) {
         throw new Error(`error downloading ${installId}`, { cause: err });
       }
-      await cx.db.set(installId, {
+      await scx.db.val.set(installId, {
         ...dbRow,
         progress: "downloaded",
         downloadArts,
@@ -751,7 +776,7 @@ async function resolveAndInstall(
     } catch (err) {
       throw new Error(`error installing ${installId}`, { cause: err });
     }
-    await cx.db.set(installId, {
+    await scx.db.val.set(installId, {
       ...dbRow,
       progress: "installed",
       downloadArts,
@@ -764,7 +789,7 @@ async function resolveAndInstall(
 
 // This assumes that the installs are already in the db
 async function getShimmedDepArts(
-  cx: SyncCtx,
+  scx: SyncCtx,
   shimsRootPath: string,
   installs: [string, string][],
 ) {
@@ -772,7 +797,7 @@ async function getShimmedDepArts(
   for (
     const [installId, portName] of installs
   ) {
-    const installRow = await cx.db.get(installId);
+    const installRow = await scx.db.val.get(installId);
     if (!installRow || !installRow.installArts) {
       throw new Error(
         `artifacts not found for "${installId}" not found in db when shimming totalDepArts`,

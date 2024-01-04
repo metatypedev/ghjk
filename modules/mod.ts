@@ -9,7 +9,8 @@ export abstract class ModuleBase<PMan> {
   ): Promise<PMan> | PMan;
   abstract loadLockEntry(
     ctx: GhjkCtx,
-    manifest: JSONValue,
+    manifest: ModuleManifest,
+    raw: JSONValue,
   ): Promise<PMan> | PMan;
   abstract genLockEntry(
     ctx: GhjkCtx,
