@@ -44,18 +44,129 @@ async function serializeConfig(uri: string, envVars: Record<string, string>) {
   return {
     config,
     accessedEnvKeys: shimHandle.getAccessedEnvKeys(),
+    readFiles: shimHandle.getReadFiles(),
+    listedFiles: shimHandle.getListedFiles(),
   };
 }
 
 function shimDenoNamespace(envVars: Record<string, string>) {
-  const { envShim, getAccessedEnvKeys } = DenoEnvShim(envVars);
+  const { envShim, getAccessedEnvKeys } = denoEnvShim(envVars);
   Object.defineProperty(Deno, "env", {
     value: envShim,
   });
-  return { getAccessedEnvKeys };
+  const { fsShims, getReadFiles, getListedFiles } = denoFsReadShim();
+  for (const [name, shim] of fsShims) {
+    Object.defineProperty(Deno, name, {
+      value: shim,
+    });
+  }
+  return { getAccessedEnvKeys, getReadFiles, getListedFiles };
 }
 
-function DenoEnvShim(vars: Record<string, string>) {
+function denoFsReadShim() {
+  const readFiles = new Set<string>();
+  const listedFiles = new Set<string>();
+
+  const fsShims = [
+    ["watchFs", () => {
+      throw new Error("Deno.watchFs API is disabled");
+    }] as const,
+    ...[
+      Deno.readFile,
+      Deno.readTextFileSync,
+      Deno.readTextFile,
+      Deno.readTextFileSync,
+      Deno.stat,
+      Deno.statSync,
+      Deno.lstat,
+      Deno.lstatSync,
+      Deno.readLink,
+      Deno.readLinkSync,
+      Deno.open,
+      Deno.openSync,
+      Deno.readDir,
+      Deno.readDirSync,
+    ].map((old) => {
+      const replace = (
+        path: string | URL,
+        opts: Deno.ReadFileOptions | Deno.OpenOptions | undefined,
+      ) => {
+        readFiles.add(typeof path == "string" ? path : path.pathname);
+        return (old as any)(path, opts);
+      };
+      return [old.name, replace] as const;
+    }),
+  ];
+  {
+    const old = Deno.readDir;
+    const replace: typeof old = (
+      path: string | URL,
+    ) => {
+      let parent = typeof path === "string" ? path : path.pathname;
+      readFiles.add(parent);
+      if (!parent.endsWith("/")) {
+        parent = path + "/";
+      }
+      const oldIteratorFn = old(path)[Symbol.asyncIterator];
+      return {
+        [Symbol.asyncIterator]: () => {
+          const iter = oldIteratorFn();
+          return {
+            throw: iter.throw,
+            return: iter.return,
+            async next() {
+              const val = await iter.next();
+              if (val.done) return val;
+              listedFiles.add(parent + val.value.name);
+              return val;
+            },
+          };
+        },
+      };
+    };
+    fsShims.push(["readDir", replace]);
+  }
+  {
+    const old = Deno.readDirSync;
+    const replace: typeof old = (
+      path: string | URL,
+    ) => {
+      let parent = typeof path === "string" ? path : path.pathname;
+      readFiles.add(parent);
+      if (!parent.endsWith("/")) {
+        parent = path + "/";
+      }
+      const oldIteratorFn = old(path)[Symbol.iterator];
+      return {
+        [Symbol.iterator]: () => {
+          const iter = oldIteratorFn();
+          return {
+            throw: iter.throw,
+            return: iter.return,
+            next() {
+              const val = iter.next();
+              if (val.done) return val;
+              listedFiles.add(parent + val.value.name);
+              return val;
+            },
+          };
+        },
+      };
+    };
+    fsShims.push(["readDirSync", replace]);
+  }
+  return {
+    fsShims,
+    getReadFiles() {
+      return [...readFiles.keys()];
+    },
+    getListedFiles() {
+      return [...listedFiles.keys()];
+    },
+  };
+}
+
+function denoEnvShim(vars: Record<string, string>) {
   const map = new Map<string, string>([...Object.entries(vars)]);
   const accessedEnvKeys = new Set<string>();
   const envShim: Deno.Env = {

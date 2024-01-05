@@ -2,6 +2,7 @@ export { ghjk } from "./mod.ts";
 import * as ghjk from "./mod.ts";
 import act from "./ports/act.ts";
 import protoc from "./ports/protoc.ts";
+
 import pipi from "./ports/pipi.ts";
 
 ghjk
@@ -61,3 +62,14 @@ ghjk.install(
 export const secureConfig = ghjk.secureConfig({
   allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
 });
+
+const $ = ghjk.$;
+void await Array.fromAsync($.path("./install").readDir());
+void await Array.fromAsync($.path("./modules").walk());
+void Deno.readFile("./LICENSE");
+void await $.path("./play.ts").readText();
+void $.path("./deno.lock").readTextSync();
+void await $.path("./ghjk.lock").stat();
+void $.path("./mod.ts").statSync();
+void await $.path("./main.ts").lstat();
+void $.path("./setup_logger.ts").lstatSync();

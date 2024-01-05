@@ -12,6 +12,8 @@ export type DriverResponse = {
   payload: {
     config: unknown;
     accessedEnvKeys: string[];
+    readFiles: string[];
+    listedFiles: string[];
   };
 };
 

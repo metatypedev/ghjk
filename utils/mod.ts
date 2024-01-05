@@ -138,6 +138,13 @@ export async function bufferHashHex(
   const hashBuf = await crypto.subtle.digest(algo, buf);
   return bufferToHex(hashBuf);
 }
+export async function stringHashHex(
+  val: string,
+  algo: AlgorithmIdentifier = "SHA-256",
+) {
+  const arr = new TextEncoder().encode(val);
+  return await bufferHashHex(arr, algo);
+}
 
 export async function objectHashHex(
   object: jsonHash.Tree,

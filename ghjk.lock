@@ -4,15 +4,6 @@
     "linux",
     "x86_64"
   ],
-  "ghjkfileHash": "3764edbd05ae396664476fbd3c7e44e544e369739d72df3c0d57d5ec12bdd524",
-  "envVarHashes": {
-    "GHJK_LOG": "06271baf49532c879aa3c58b48671884bcc858f09197412d682750496c33e1e1",
-    "GHJK_LOG_PANIC_LEVEL": null,
-    "CLICOLOR_FORCE": null,
-    "DENO_JOBS": null,
-    "GITHUB_TOKEN": null,
-    "GH_TOKEN": null
-  },
   "moduleEntries": {
     "ports": {
       "version": "0",
