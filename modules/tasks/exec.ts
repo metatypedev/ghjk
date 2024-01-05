@@ -1,7 +1,7 @@
 import { std_path } from "../../deps/cli.ts";
 import { $, DePromisify } from "../../utils/mod.ts";
 
-import type { TasksModuleConfigX } from "./types.ts";
+import type { TaskDefX, TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
 import logger from "../../utils/logger.ts";
 import { execTaskDeno } from "./deno.ts";
@@ -61,20 +61,37 @@ export async function buildTaskGraph(
       graph.indie.push(name);
     } else {
       for (const depTaskName of task.dependsOn) {
-        const depTask = portsConfig.tasks[name];
-        if (!depTask) {
-          throw new Error(`specified dependency task doesn't exist`, {
-            cause: task,
-          });
-        }
-        const depTaskDeps = graph.depEdges[depTaskName];
-        if (depTaskDeps?.includes(name)) {
+        const testCycle = (
+          name: string,
+          depName: string,
+        ): TaskDefX | undefined => {
+          const depTask = portsConfig.tasks[depName];
+          if (!depTask) {
+            throw new Error(`specified dependency task doesn't exist`, {
+              cause: {
+                depTaskName,
+                task,
+              },
+            });
+          }
+          const depDeps = depTask.dependsOn ?? [];
+          if (depDeps.includes(name)) return depTask;
+          for (const depDep of depDeps) {
+            const hit = testCycle(name, depDep);
+            if (hit) return hit;
+          }
+        };
+
+        const cycleSource = testCycle(name, depTaskName);
+        if (
+          cycleSource
+        ) {
           throw new Error(
-            `cycling dependency detected between tasks ${name} & ${depTaskName}`,
+            `cyclic dependency detected building task graph`,
             {
               cause: {
                 task,
-                depTask,
+                cycleSource,
               },
             },
           );

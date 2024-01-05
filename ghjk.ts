@@ -12,7 +12,7 @@ ghjk
     env: { STUFF: "stuffier" },
     async fn({ $ }) {
       await $`echo $STUFF;
-      protoc --version
+      protoc --version;
       `;
     },
   });
@@ -35,7 +35,7 @@ ghjk
 
 ghjk
   .task("hii", {
-    dependsOn: ["ho"],
+    dependsOn: ["hum"],
     async fn({ $ }) {
       await $`echo haii`;
     },

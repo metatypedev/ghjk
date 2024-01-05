@@ -276,6 +276,7 @@ export async function installFromGraph(
         }
 
         if (parentDeps.length == 0) {
+          installCtx.pendingDepEdges.delete(parentId);
           // parent is ready for install
           readyParents.push(parentId);
         }
@@ -363,6 +364,11 @@ export async function installFromGraph(
     }
     installCtx.artifacts.set(installId, thisArtifacts);
     pendingInstalls.push(...installCtx.installDone(installId));
+  }
+  if (installCtx.pendingDepEdges.size > 0) {
+    throw Error(
+      "something went wrong, install graph working graph is not empty",
+    );
   }
   return installCtx.artifacts;
 }
@@ -496,16 +502,6 @@ export async function buildInstallGraph(
         );
         const depInstallId = await getInstallHash(depInstall);
 
-        // check for cycles
-        {
-          const thisDeps = graph.revDepEdges[installId];
-          if (thisDeps && thisDeps.includes(depInstallId)) {
-            throw new Error(
-              `cyclic dependency detected between "${installId}" and  "${depInstallId}"`,
-            );
-          }
-        }
-
         // only add the install configuration for this dep port
         // if specific hash hasn't seen before
         if (!graph.all[depInstallId]) {
@@ -524,6 +520,36 @@ export async function buildInstallGraph(
         graph.revDepEdges[depInstallId] = reverseDeps;
       }
       graph.depEdges[installId] = deps;
+    }
+  }
+  // check for cycles
+  const testCycle = (
+    instId: string,
+    depInstId: string,
+  ): GraphInstConf | undefined => {
+    const depDeps = graph.depEdges[depInstId] ?? [];
+    if (depDeps.some(([depInstId, _]) => depInstId == instId)) {
+      return graph.all[depInstId];
+    }
+    for (const [depDep, _] of depDeps) {
+      const hit = testCycle(instId, depDep);
+      if (hit) return hit;
+    }
+  };
+  for (const [instId, deps] of Object.entries(graph.depEdges)) {
+    for (const [depId, _] of deps!) {
+      const cycleCause = testCycle(instId, depId);
+      if (cycleCause) {
+        throw new Error(
+          `cyclic dependency detected`,
+          {
+            cause: {
+              inst: graph.all[instId],
+              cycleCause,
+            },
+          },
+        );
+      }
     }
   }
 

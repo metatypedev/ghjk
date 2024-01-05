@@ -4,7 +4,84 @@
     "linux",
     "x86_64"
   ],
-  "ghjkfileHash": "663a6cae402f9598b676aabfe74edd57f572a72bf3d3b8ec8eb94581e3b57ad2",
+  "ghjkfileHash": "3764edbd05ae396664476fbd3c7e44e544e369739d72df3c0d57d5ec12bdd524",
+  "envVarHashes": {
+    "GHJK_LOG": "06271baf49532c879aa3c58b48671884bcc858f09197412d682750496c33e1e1",
+    "GHJK_LOG_PANIC_LEVEL": null,
+    "CLICOLOR_FORCE": null,
+    "DENO_JOBS": null,
+    "GITHUB_TOKEN": null,
+    "GH_TOKEN": null
+  },
+  "moduleEntries": {
+    "ports": {
+      "version": "0",
+      "configResolutions": {
+        "95dbc2b8c604a5996b88c5b1b4fb0c10b3e0d9cac68f57eb915b012c44288e93": {
+          "version": "v0.2.57",
+          "depConfigs": {},
+          "portRef": "act_ghrel@0.1.0"
+        },
+        "076a5b8ee3bdc68ebf20a696378458465042bb7dc1e49ac2dc98e5fa0dab3e25": {
+          "version": "3.6.0",
+          "depConfigs": {
+            "cpy_bs_ghrel": {
+              "version": "3.12.0",
+              "depConfigs": {
+                "tar_aa": {
+                  "version": "1.35",
+                  "depConfigs": {},
+                  "portRef": "tar_aa@0.1.0"
+                },
+                "zstd_aa": {
+                  "version": "v1.5.5,",
+                  "depConfigs": {},
+                  "portRef": "zstd_aa@0.1.0"
+                }
+              },
+              "portRef": "cpy_bs_ghrel@0.1.0"
+            }
+          },
+          "portRef": "pipi_pypi@0.1.0",
+          "packageName": "pre-commit"
+        },
+        "84ecde630296f01e7cb8443c58d1596d668c357a0d9837c0a678b8a541ed0a39": {
+          "version": "3.12.0",
+          "depConfigs": {
+            "tar_aa": {
+              "version": "1.35",
+              "depConfigs": {},
+              "portRef": "tar_aa@0.1.0"
+            },
+            "zstd_aa": {
+              "version": "v1.5.5,",
+              "depConfigs": {},
+              "portRef": "zstd_aa@0.1.0"
+            }
+          },
+          "portRef": "cpy_bs_ghrel@0.1.0"
+        },
+        "9e3fa7742c431c34ae7ba8d1e907e50c937ccfb631fb4dcfb7a1773742abe267": {
+          "version": "1.35",
+          "depConfigs": {},
+          "portRef": "tar_aa@0.1.0"
+        },
+        "4f16c72030e922711abf15474d30e3cb232b18144beb73322b297edecfcdb86f": {
+          "version": "v1.5.5,",
+          "depConfigs": {},
+          "portRef": "zstd_aa@0.1.0"
+        },
+        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
+          "version": "v25.1",
+          "depConfigs": {},
+          "portRef": "protoc_ghrel@0.1.0"
+        }
+      }
+    },
+    "tasks": {
+      "version": "0"
+    }
+  },
   "config": {
     "modules": [
       {
@@ -735,7 +812,7 @@
             },
             "hii": {
               "dependsOn": [
-                "ho"
+                "hum"
               ],
               "name": "hii",
               "env": {
@@ -743,7 +820,7 @@
                 "env": {},
                 "allowedPortDeps": {},
                 "dependsOn": [
-                  "ho"
+                  "hum"
                 ]
               }
             },
@@ -767,74 +844,5 @@
         }
       }
     ]
-  },
-  "moduleEntries": {
-    "ports": {
-      "version": "0",
-      "configResolutions": {
-        "95dbc2b8c604a5996b88c5b1b4fb0c10b3e0d9cac68f57eb915b012c44288e93": {
-          "version": "v0.2.57",
-          "depConfigs": {},
-          "portRef": "act_ghrel@0.1.0"
-        },
-        "076a5b8ee3bdc68ebf20a696378458465042bb7dc1e49ac2dc98e5fa0dab3e25": {
-          "version": "3.6.0",
-          "depConfigs": {
-            "cpy_bs_ghrel": {
-              "version": "3.12.0",
-              "depConfigs": {
-                "tar_aa": {
-                  "version": "1.35",
-                  "depConfigs": {},
-                  "portRef": "tar_aa@0.1.0"
-                },
-                "zstd_aa": {
-                  "version": "v1.5.5,",
-                  "depConfigs": {},
-                  "portRef": "zstd_aa@0.1.0"
-                }
-              },
-              "portRef": "cpy_bs_ghrel@0.1.0"
-            }
-          },
-          "portRef": "pipi_pypi@0.1.0",
-          "packageName": "pre-commit"
-        },
-        "84ecde630296f01e7cb8443c58d1596d668c357a0d9837c0a678b8a541ed0a39": {
-          "version": "3.12.0",
-          "depConfigs": {
-            "tar_aa": {
-              "version": "1.35",
-              "depConfigs": {},
-              "portRef": "tar_aa@0.1.0"
-            },
-            "zstd_aa": {
-              "version": "v1.5.5,",
-              "depConfigs": {},
-              "portRef": "zstd_aa@0.1.0"
-            }
-          },
-          "portRef": "cpy_bs_ghrel@0.1.0"
-        },
-        "9e3fa7742c431c34ae7ba8d1e907e50c937ccfb631fb4dcfb7a1773742abe267": {
-          "version": "1.35",
-          "depConfigs": {},
-          "portRef": "tar_aa@0.1.0"
-        },
-        "4f16c72030e922711abf15474d30e3cb232b18144beb73322b297edecfcdb86f": {
-          "version": "v1.5.5,",
-          "depConfigs": {},
-          "portRef": "zstd_aa@0.1.0"
-        },
-        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
-          "version": "v25.1",
-          "depConfigs": {},
-          "portRef": "protoc_ghrel@0.1.0"
-        }
-      }
-    },
-    "tasks": {
-      "version": "0"
-    }
   }
 }
