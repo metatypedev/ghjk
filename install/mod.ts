@@ -190,9 +190,6 @@ export async function install(
         await std_fs.ensureDir(args.ghjkExecInstallDir);
         const exePath = std_path.resolve(args.ghjkExecInstallDir, `ghjk`);
         logger().debug("installing executable", { exePath });
-        const lockFlag = args.noLockfile
-          ? "--no-lock"
-          : `--lock $GHJK_DIR/deno.lock`;
 
         // use an isolated cache by default
         const denoCacheDir = args.ghjkDenoCacheDir ??
@@ -222,12 +219,12 @@ elif [ -n "$\{GHJK_DIR+x}" ]; then
 fi
 
 if [ -n "$\{GHJK_DIR+x}" ]; then
+  echo "$GHJK_DIR"
   export GHJK_DIR
   mkdir -p "$GHJK_DIR"
   lock_flag="--lock $GHJK_DIR/deno.lock"
 else
-  # use the default flag if ghjk dir not found
-  lock_flag="${lockFlag}"
+  lock_flag="--no-lock"
 fi
 
 ${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lock_flag ${

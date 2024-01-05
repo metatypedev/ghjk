@@ -44,7 +44,10 @@ async function rpc(moduleUri: string, req: DriverRequests) {
       permissions: {
         sys: true,
         net: true,
-        read: ["."],
+        // read: ["."],
+        // FIXME: importing js file from disk triggers read perms
+        // shim it as well
+        read: true,
         env: true,
         hrtime: false,
         write: false,
