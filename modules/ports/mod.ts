@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { Json } from "../../utils/mod.ts";
+import { $, Json } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type { PortsModuleConfigX } from "./types.ts";
@@ -69,7 +69,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
             await using syncCx = await syncCtxFromGhjk(gcx);
             void await installFromGraphAndShimEnv(
               syncCx,
-              gcx.envDir,
+              $.path(gcx.ghjkDir).join("envs", "default").toString(),
               pcx.installGraph,
             );
           }),

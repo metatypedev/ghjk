@@ -99,7 +99,7 @@ async function filterAddContent(
 
 interface InstallArgs {
   homeDir: string;
-  ghjkDir: string;
+  ghjkShareDir: string;
   shellsToHook: string[];
   /// The mark used when adding the hook to the user's shell rcs
   /// Override t
@@ -120,7 +120,7 @@ interface InstallArgs {
 }
 
 export const defaultInstallArgs: InstallArgs = {
-  ghjkDir: std_path.resolve(dirs().shareDir, "ghjk"),
+  ghjkShareDir: std_path.resolve(dirs().shareDir, "ghjk"),
   homeDir: dirs().homeDir,
   shellsToHook: [],
   shellHookMarker: "ghjk-hook-default",
@@ -147,16 +147,16 @@ export async function install(
   if (Deno.build.os == "windows") {
     throw new Error("windows is not yet supported, please use wsl");
   }
-  const ghjkDir = std_path.resolve(
+  const ghjkShareDir = std_path.resolve(
     Deno.cwd(),
-    std_path.normalize(args.ghjkDir),
+    std_path.normalize(args.ghjkShareDir),
   );
 
-  logger().debug("unpacking vfs", { ghjkDir });
+  logger().debug("unpacking vfs", { ghjkShareDir });
   await unpackVFS(
     await getHooksVfs(),
-    ghjkDir,
-    [[/__GHJK_DIR__/g, ghjkDir]],
+    ghjkShareDir,
+    [[/__GHJK_SHARE_DIR__/g, ghjkShareDir]],
   );
 
   for (const shell of args.shellsToHook) {
@@ -168,7 +168,7 @@ export async function install(
 
     const rcPath = std_path.resolve(homeDir, shellConfig[shell]);
     logger().debug("installing hook", {
-      ghjkDir,
+      ghjkShareDir,
       shell,
       marker: args.shellHookMarker,
       rcPath,
@@ -176,7 +176,7 @@ export async function install(
     await filterAddContent(
       rcPath,
       new RegExp(args.shellHookMarker, "g"),
-      `. ${ghjkDir}/env.${shell} # ${args.shellHookMarker}`,
+      `. ${ghjkShareDir}/env.${shell} # ${args.shellHookMarker}`,
     );
   }
 
@@ -196,18 +196,24 @@ export async function install(
 
         // use an isolated cache by default
         const denoCacheDir = args.ghjkDenoCacheDir ??
-          std_path.resolve(ghjkDir, "deno");
+          std_path.resolve(ghjkShareDir, "deno");
         await Deno.writeTextFile(
           exePath,
           `#!/bin/sh 
-export GHJK_DIR="$\{GHJK_DIR:-${ghjkDir}}" 
+export GHJK_SHARE_DIR="$\{GHJK_SHARE_DIR:-${ghjkShareDir}}" 
 export DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}" 
 
-if [ -z "$\{GHJK_CONFIG+x}" ]; then
+# if ghjkfile var is set, set the GHJK_DIR overriding
+# any set by the user
+if [ -n "\${GHJKFILE+x}" ]; then
+  GHJK_DIR="$(dirname "$GHJKFILE")/.ghjk"
+# if both GHJKFILE and GHJK_DIR are unset
+elif [ -n "$\{GHJK_DIR+x}" ]; then
+  # look for ghjk dirs in parents
   cur_dir=$PWD
   while [ "$cur_dir" != "/" ]; do
-      if [ -f "$cur_dir/ghjk.ts" ]; then
-          found_config="$cur_dir/ghjk.ts"
+      if [ -d "$cur_dir/.ghjk" ]; then
+          export GHJK_DIR="$cur_dir/.ghjk"
           break
       fi
       # recursively look in parent directory
@@ -215,16 +221,18 @@ if [ -z "$\{GHJK_CONFIG+x}" ]; then
   done
 fi
 
-export GHJK_CONFIG="$\{GHJK_CONFIG:-$found_config}"
-if [ -n "\${GHJK_CONFIG+x}" ]; then
-  local_lockfile="$(dirname "$GHJK_CONFIG")/ghjk.deno.lock"
-  lock_flag="--lock $local_lockfile"
+if [ -n "$\{GHJK_DIR+x}" ]; then
+  export GHJK_DIR
+  mkdir -p "$GHJK_DIR"
+  lock_flag="--lock $GHJK_DIR/deno.lock"
 else
+  # use the default flag if ghjk dir not found
   lock_flag="${lockFlag}"
 fi
+
 ${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lock_flag ${
             import.meta.resolve("../main.ts")
-          } $*`,
+          } "$@"`,
           { mode: 0o700 },
         );
         break;

@@ -212,22 +212,18 @@ export function inWorker() {
 
 export async function findConfig(path: string) {
   let current = path;
-  while (current !== "/") {
-    const location = `${path}/ghjk.ts`;
+  while (true) {
+    const location = `${current}/ghjk.ts`;
     if (await std_fs.exists(location)) {
       return location;
     }
-    current = std_path.dirname(current);
+    const nextCurrent = std_path.dirname(current);
+    if (nextCurrent == "/" && current == "/") {
+      break;
+    }
+    current = nextCurrent;
   }
   return null;
-}
-
-export function envDirFromConfig(ghjkDir: string, configPath: string) {
-  return std_path.resolve(
-    ghjkDir,
-    "envs",
-    std_path.dirname(configPath).replaceAll("/", "."),
-  );
 }
 
 export function home_dir(): string | null {

@@ -5,7 +5,6 @@ import {
   $,
   bufferHashHex,
   dbg,
-  envDirFromConfig,
   Json,
   objectHashHex,
   PathRef,
@@ -19,8 +18,8 @@ import { GhjkCtx } from "../modules/types.ts";
 import portValidators from "../modules/ports/types.ts";
 
 export interface CliArgs {
-  ghjkDir: string;
-  configPath: string;
+  ghjkShareDir: string;
+  ghjkfilePath: string;
 }
 
 type HostCtx = {
@@ -28,13 +27,15 @@ type HostCtx = {
 };
 
 export async function cli(args: CliArgs) {
-  const configPath = $.path(args.configPath).resolve().normalize().toString();
-  const ghjkDir = $.path(args.ghjkDir).resolve().normalize().toString();
-  const envDir = envDirFromConfig(ghjkDir, configPath);
+  const ghjkfilePath = $.path(args.ghjkfilePath).resolve().normalize()
+    .toString();
+  const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize()
+    .toString();
+  const ghjkDir = $.path(ghjkfilePath).parentOrThrow().join(".ghjk").toString();
 
-  logger().debug({ configPath, envDir });
+  logger().debug({ ghjkfilePath, ghjkDir });
 
-  const gcx = { ghjkDir, configPath, envDir, state: new Map() };
+  const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, state: new Map() };
   const hcx = { fileHashMemoStore: new Map() };
 
   const { subCommands, serializedConfig } = await readConfig(gcx, hcx);
@@ -58,7 +59,7 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path where ghjk is installed in.")
             .action(function () {
-              console.log(ghjkDir);
+              console.log(ghjkShareDir);
             }),
         )
         .command(
@@ -66,7 +67,7 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path of the ghjk.ts used")
             .action(function () {
-              console.log(configPath);
+              console.log(ghjkfilePath);
             }),
         )
         .command(
@@ -89,7 +90,7 @@ export async function cli(args: CliArgs) {
               "Print the directory the current config's env is housed in.",
             )
             .action(function () {
-              console.log(envDir);
+              console.log(ghjkDir);
             }),
         ),
     )
@@ -114,7 +115,7 @@ export async function cli(args: CliArgs) {
 }
 
 async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
-  const configPath = $.path(gcx.configPath);
+  const configPath = $.path(gcx.ghjkfilePath);
   const configFileStat = await configPath.stat();
   // FIXME: subset of ghjk commands should be functional
   // even if config file not found
@@ -123,12 +124,19 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       cause: gcx,
     });
   }
-  const lockFilePath = configPath
-    .parentOrThrow()
-    .join("ghjk.lock");
-  const hashFilePath = $.path(gcx.ghjkDir).join("hashes").join(
-    await stringHashHex(configPath.toString()),
-  );
+  const ghjkDirPath = $.path(gcx.ghjkDir);
+  const envVarBirth = (await ghjkDirPath.lstat())?.birthtime?.valueOf();
+  // onlry write .gitignore if the ghjkdir is recent
+  if (
+    Math.abs(Date.now() - (envVarBirth ?? 0)) < 1000
+  ) {
+    await ghjkDirPath.ensureDir();
+    ghjkDirPath.join(".gitignore").writeText($.dedent`
+        envs
+        hash.json`);
+  }
+  const lockFilePath = ghjkDirPath.join("lock.json");
+  const hashFilePath = ghjkDirPath.join("hash.json");
 
   const subCommands = {} as Record<string, cliffy_cmd.Command>;
   const lockEntries = {} as Record<string, unknown>;
@@ -269,14 +277,10 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
   );
   // avoid writing lockfile if nothing's changed
   if (!foundLockObj || !equal.equal(newLockObj, foundLockObj)) {
-    await lockFilePath.writeText(
-      JSON.stringify(newLockObj, undefined, 2),
-    );
+    await lockFilePath.writeJsonPretty(newLockObj);
   }
   if (!foundHashObj || !equal.equal(newHashObj, foundHashObj)) {
-    await hashFilePath.writeText(
-      JSON.stringify(newHashObj, undefined, 2),
-    );
+    await hashFilePath.writeJsonPretty(newHashObj);
   }
   return { subCommands, serializedConfig };
 }

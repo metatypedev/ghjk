@@ -13,7 +13,7 @@
 
 Ghjk is made up of a set of modules that each implement and encapsulate a set of
 related features. The program is primarily consumed through the provided CLI. It
-as an argument a path to a ghjkfile (through `$GHJK_CONFIG`) and if no such
+as an argument a path to a ghjkfile (through `$GHJKFILE`) and if no such
 argument is provided, it'll look for a file named `ghjk.ts` in the current or
 any of the parent directories and treat it as the config file. It then loads the
 config file in a `WebWorker` to obtain a config object which is expected to

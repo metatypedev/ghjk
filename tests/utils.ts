@@ -114,7 +114,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
       prefix: "ghjk_le2e_",
     }),
   );
-  const ghjkDir = await tmpDir.join("ghjk").ensureDir();
+  const ghjkShareDir = await tmpDir.join("ghjk").ensureDir();
 
   const installConfArray = Array.isArray(installConf)
     ? installConf
@@ -158,41 +158,41 @@ export const secureConfig = JSON.parse(secConfStr);
   );
   const env: Record<string, string> = {
     ...testEnvs,
-    BASH_ENV: `${ghjkDir.toString()}/env.bash`,
-    ZDOTDIR: ghjkDir.toString(),
-    GHJK_DIR: ghjkDir.toString(),
-    PATH: `${ghjkDir.toString()}:${Deno.env.get("PATH")}`,
+    BASH_ENV: `${ghjkShareDir.toString()}/env.bash`,
+    ZDOTDIR: ghjkShareDir.toString(),
+    GHJK_SHARE_DIR: ghjkShareDir.toString(),
+    PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
   };
   // install ghjk
   await install({
     ...defaultInstallArgs,
     skipExecInstall: false,
-    ghjkExecInstallDir: ghjkDir.toString(),
+    ghjkExecInstallDir: ghjkShareDir.toString(),
     // share the system's deno cache
     ghjkDenoCacheDir: Deno.env.get("DENO_DIR"),
-    ghjkDir: ghjkDir.toString(),
+    ghjkShareDir: ghjkShareDir.toString(),
     // don't modify system shell configs
     shellsToHook: [],
   });
-  await $`${ghjkDir.join("ghjk").toString()} print config`
+  await $`${ghjkShareDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
     .env(env);
-  await $`${ghjkDir.join("ghjk").toString()} ports sync`
+  await $`${ghjkShareDir.join("ghjk").toString()} ports sync`
     .cwd(tmpDir.toString())
     .env(env);
   /*
   // print the contents of the ghjk dir for debugging purposes
   const ghjkDirLen = ghjkDir.toString().length;
-  dbg((await Array.fromAsync(ghjkDir.walk())).map((entry) => [
+  dbg((await Array.fromAsync(ghjkShareDir.walk())).map((entry) => [
     entry.isDirectory ? "dir " : entry.isSymlink ? "ln  " : "file",
     entry.path.toString().slice(ghjkDirLen),
   ]));
   */
   {
-    const confHome = await ghjkDir.join(".config").ensureDir();
+    const confHome = await ghjkShareDir.join(".config").ensureDir();
     const fishConfDir = await confHome.join("fish").ensureDir();
     await fishConfDir.join("config.fish").createSymlinkTo(
-      ghjkDir.join("env.fish").toString(),
+      ghjkShareDir.join("env.fish").toString(),
     );
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }

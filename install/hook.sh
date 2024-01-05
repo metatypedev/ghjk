@@ -9,27 +9,33 @@ ghjk_reload() {
     unset GHJK_CLEANUP_POSIX
 
     cur_dir=$PWD
-    while [ "$cur_dir" != "/" ]; do
-        if [ -f "$cur_dir/ghjk.ts" ]; then
-            # locate the shim
-            env_dir="__GHJK_DIR__/envs/$(printf "%s" "$cur_dir" | tr '/' '.')"
-            if [ -d "$env_dir" ]; then
+    # FIXME: this doesn't detect ghjkdirs in root
+    while true; do
+        if [ -d "$cur_dir/.ghjk" ]; then
+            export GHJK_DIR="$cur_dir/.ghjk"
+            # locate the default env
+            default_env="$GHJK_DIR/envs/default"
+            if [ -d "$default_env" ]; then
                 # load the shim
                 # shellcheck source=/dev/null
-                . "$env_dir/loader.sh"
+                . "$default_env/loader.sh"
 
                 # FIXME: -ot not valid in POSIX
+                # FIXME: this assumes ghjkfile is of kind ghjk.ts
                 # shellcheck disable=SC3000-SC4000
-                if [ "$env_dir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
-                    printf "\033[0;33m[ghjk] Detected changes, please sync...\033[0m\n"
+                if [ "$default_env/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
+                    printf "\033[0;33m[ghjk] Detected drift from default environment, please sync...\033[0m\n"
                 fi
             else
-                printf "\033[0;31m[ghjk] Uninstalled runtime found, please sync...\033[0m\n"
+                printf "\033[0;31m[ghjk] No default runtime found, please sync...\033[0m\n"
             fi
             return
         fi
         # recursively look in parent directory
-        cur_dir="$(dirname "$cur_dir")"
+        next_cur_dir="$(dirname "$cur_dir")"
+        if [ "$next_cur_dir" = / ] && [ "$cur_dir" = "/" ]; then
+            break
+        fi
     done
 }
 

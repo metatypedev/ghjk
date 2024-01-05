@@ -2,9 +2,9 @@
 
 set -e -u
 
-GHJK_VERSION="${GHJK_VERSIkON:-v0.1.0-alpha}"
+GHJK_VERSION="${GHJK_VERSION:-v0.1.0-alpha}"
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.ts}"
-GHJK_DIR="${GHJK_DIR:-$HOME/.local/share/ghjk}"
+GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-$HOME/.local/share/ghjk}"
 DENO_VERSION="${DENO_VERSION:-v1.38.5}"
 
 # make sure the version is prepended with v
@@ -29,6 +29,6 @@ if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
     fi
 fi
 
-export GHJK_DIR="$GHJK_DIR"
-export GHJK_INSTALL_DENO_EXEC="$GHJK_INSTALL_DENO_EXEC"
+export GHJK_SHARE_DIR
+export GHJK_INSTALL_DENO_EXEC
 "$GHJK_INSTALL_DENO_EXEC" run -A "$GHJK_INSTALLER_URL"

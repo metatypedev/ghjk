@@ -11,9 +11,9 @@ const moduleManifest = zod.object({
 export type ModuleId = zod.infer<typeof moduleId>;
 export type ModuleManifest = zod.infer<typeof moduleManifest>;
 export type GhjkCtx = {
-  configPath: string;
-  envDir: string;
+  ghjkfilePath: string;
   ghjkDir: string;
+  ghjkShareDir: string;
   state: Map<string, unknown>;
 };
 

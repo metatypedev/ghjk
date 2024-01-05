@@ -51,7 +51,7 @@ export function getResolutionMemo(
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
 ) {
-  const portsPath = await $.path(gcx.ghjkDir).resolve("ports")
+  const portsPath = await $.path(gcx.ghjkShareDir).resolve("ports")
     .ensureDir();
   const [installsPath, downloadsPath, tmpPath] = (
     await Promise.all([

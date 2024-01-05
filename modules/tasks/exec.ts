@@ -148,7 +148,7 @@ export async function execTask(
     );
     logger().info("executing", taskName);
     await execTaskDeno(
-      std_path.toFileUrl(ecx.ghjkCx.configPath).href,
+      std_path.toFileUrl(ecx.ghjkCx.ghjkfilePath).href,
       taskName,
       args,
       {
