@@ -16,6 +16,8 @@ import ruff from "./ports/ruff.ts";
 import whiz from "./ports/whiz.ts";
 import cpython from "./ports/cpy_bs.ts";
 import pipi from "./ports/pipi.ts";
+import emscripten from "./ports/emscripten.ts";
+import tree_sitter from "./ports/tree-sitter.ts";
 
 // these are just for quick testing
 ghjk.install(
@@ -23,6 +25,7 @@ ghjk.install(
   // wasmedge(),
   // pnpm(),
   // cargo_binstall(),
+  // tree_sitter(),
   // wasm_tools(),
   // wasm_opt(),
   // cargo_insta(),
@@ -40,6 +43,7 @@ ghjk.install(
   // whiz(),
   ...jco(),
   // cpython(),
+  // emscripten(),
 );
 
 // these are used for developing ghjk

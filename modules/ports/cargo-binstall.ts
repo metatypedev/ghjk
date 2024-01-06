@@ -47,6 +47,7 @@ export abstract class CargoBinstallPort extends PortBase {
       --install-path ${args.tmpDirPath}
       --no-confirm --disable-strategies compile --no-track
     `.env(conf.ghToken ? { GITHUB_TOKEN: conf.ghToken } : {});
+    await $.path(args.downloadPath).remove({ recursive: true }).catch(() => {});
     await std_fs.copy(
       args.tmpDirPath,
       args.downloadPath,
