@@ -17,7 +17,7 @@ const taskEnv = zod.object({
 const taskDef = zod.object({
   name: zod.string(),
   env: taskEnv,
-  dependsOn: taskName.array().nullish(),
+  dependsOn: taskName.array(),
   desc: zod.string().nullish(),
 });
 

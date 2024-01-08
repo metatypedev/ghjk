@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "deno test --fail-fast --parallel --unstable -A tests/*",
+    "test": "GHJK_LOG=debug deno test --fail-fast --parallel --unstable -A tests/*",
     "cache": "deno cache deps/*",
     "check": "deno run -A check.ts"
   },
@@ -8,9 +8,14 @@
     "exclude": []
   },
   "lint": {
-    "exclude": ["ghjk.ts", "play.ts"],
+    "exclude": [
+      "ghjk.ts",
+      "play.ts"
+    ],
     "rules": {
-      "exclude": ["no-explicit-any"]
+      "exclude": [
+        "no-explicit-any"
+      ]
     }
   }
 }

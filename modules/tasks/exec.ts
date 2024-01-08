@@ -57,7 +57,7 @@ export async function buildTaskGraph(
     ),
   };
   for (const [name, task] of Object.entries(portsConfig.tasks)) {
-    if (!task.dependsOn) {
+    if (task.dependsOn.length == 0) {
       graph.indie.push(name);
     } else {
       for (const depTaskName of task.dependsOn) {
@@ -122,8 +122,8 @@ export async function execTask(
     while (stack.length > 0) {
       const taskName = stack.pop()!;
       const taskDef = tasksConfig.tasks[taskName];
-      stack.push(...taskDef.dependsOn ?? []);
-      workSet = new Set([...workSet.keys(), ...taskDef.dependsOn ?? []]);
+      stack.push(...taskDef.dependsOn);
+      workSet = new Set([...workSet.keys(), ...taskDef.dependsOn]);
     }
   }
   const pendingDepEdges = new Map(
@@ -146,7 +146,7 @@ export async function execTask(
       taskEnvDir,
       installGraph,
     );
-    logger().info("executing", taskName);
+    logger().info("executing", taskName, args);
     await execTaskDeno(
       std_path.toFileUrl(ecx.ghjkCx.ghjkfilePath).href,
       taskName,

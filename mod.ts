@@ -39,13 +39,13 @@ export type TaskFnArgs = {
 };
 export type TaskFn = (args: TaskFnArgs) => Promise<void>;
 
-export type UserTask = TaskDef & {
+export type TaskFnDef = TaskDef & {
   fn: TaskFn;
   // command: cliffy_cmd.Command;
 };
 const tasks = {} as Record<
   string,
-  UserTask
+  TaskFnDef
 >;
 
 // FIXME: ses.lockdown to freeze primoridials
@@ -55,25 +55,32 @@ export const ghjk = Object.freeze({
   execTask: Object.freeze(execTask),
 });
 
-export { $, install, logger, secureConfig, stdDeps, task };
+export { $, logger };
 
-function install(...configs: InstallConfigFat[]) {
+export function install(...configs: InstallConfigFat[]) {
   const cx = portsConfig;
   for (const config of configs) {
     addInstall(cx, config);
   }
 }
 
-export type TaskConfig = Omit<UserTask, "env" | "name"> & Partial<TaskEnv>;
-function task(name: string, config: TaskConfig) {
+/*
+ * A nicer form of TaskFnDef for better ergonomics in the ghjkfile
+ */
+export type TaskDefNice =
+  & Omit<TaskFnDef, "env" | "name" | "dependsOn">
+  & Partial<Pick<TaskFnDef, "dependsOn">>
+  & Partial<TaskEnv>;
+export function task(name: string, config: TaskDefNice) {
   tasks[name] = {
-    ...config,
     name,
+    fn: config.fn,
+    desc: config.desc,
+    dependsOn: config.dependsOn ?? [],
     env: {
-      installs: [],
-      env: {},
-      allowedPortDeps: {},
-      ...config,
+      installs: config.installs ?? [],
+      env: config.env ?? {},
+      allowedPortDeps: config.allowedPortDeps ?? {},
     },
   };
 }
@@ -96,13 +103,13 @@ function addInstall(
   cx.installs.push(config);
 }
 
-function secureConfig(
+export function secureConfig(
   config: PortsModuleSecureConfig,
 ) {
   return config;
 }
 
-function stdDeps(args = { enableRuntimes: false }) {
+export function stdDeps(args = { enableRuntimes: false }) {
   const out: AllowedPortDep[] = [
     ...Object.values(std_ports.map),
   ];

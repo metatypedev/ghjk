@@ -27,7 +27,7 @@ ghjk_reload() {
                     printf "\033[0;33m[ghjk] Detected drift from default environment, please sync...\033[0m\n"
                 fi
             else
-                printf "\033[0;31m[ghjk] No default runtime found, please sync...\033[0m\n"
+                printf "\033[0;31m[ghjk] No default environment found, please sync...\033[0m\n"
             fi
             return
         fi
@@ -36,6 +36,7 @@ ghjk_reload() {
         if [ "$next_cur_dir" = / ] && [ "$cur_dir" = "/" ]; then
             break
         fi
+        cur_dir="$next_cur_dir"
     done
 }
 

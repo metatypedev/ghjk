@@ -4,7 +4,6 @@ import logger, { isColorfulTty } from "../utils/logger.ts";
 import {
   $,
   bufferHashHex,
-  dbg,
   Json,
   objectHashHex,
   PathRef,
@@ -391,7 +390,6 @@ async function hashEnvVars(all: Record<string, string>, accessed: string[]) {
 }
 
 async function hashFiles(hcx: HostCtx, readFiles: string[], cwd: PathRef) {
-  dbg({ readFiles });
   const cwdStr = cwd.toString();
   const readFileHashes = {} as Record<string, string | null>;
   for (const path of readFiles) {

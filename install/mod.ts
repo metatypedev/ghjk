@@ -219,7 +219,6 @@ elif [ -n "$\{GHJK_DIR+x}" ]; then
 fi
 
 if [ -n "$\{GHJK_DIR+x}" ]; then
-  echo "$GHJK_DIR"
   export GHJK_DIR
   mkdir -p "$GHJK_DIR"
   lock_flag="--lock $GHJK_DIR/deno.lock"

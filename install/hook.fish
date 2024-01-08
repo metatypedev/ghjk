@@ -25,7 +25,7 @@ function ghjk_reload --on-variable PWD
                 end
             else
                 set_color FF4500
-                echo "[ghjk] No default runtime found, please sync..."
+                echo "[ghjk] No default environment found, please sync..."
                 set_color normal
             end
             return

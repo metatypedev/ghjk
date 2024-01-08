@@ -53,7 +53,9 @@ RUN deno run -A /ghjk/install.ts
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
-RUN cat > ghjk.ts <<EOT
+# avoid variable expansion in the contents of the
+# here-document by quoting the tag
+COPY <<"EOT" /app/ghjk.ts 
 #{{CMD_ADD_CONFIG}}
 EOT
 

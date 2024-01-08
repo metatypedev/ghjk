@@ -6,6 +6,13 @@ import protoc from "./ports/protoc.ts";
 import pipi from "./ports/pipi.ts";
 
 ghjk
+  .task("greet", {
+    fn: async ({ $, argv: [name] }) => {
+      await $`echo Hello ${name}!`;
+    },
+  });
+
+ghjk
   .task("ha", {
     installs: [
       protoc(),

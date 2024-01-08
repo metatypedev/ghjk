@@ -1,10 +1,21 @@
 import "../setup_logger.ts";
 import { secureConfig, stdDeps } from "../mod.ts";
-import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
+import {
+  dockerE2eTest,
+  E2eTestCase,
+  localE2eTest,
+  tsGhjkFileFromInstalls,
+} from "./utils.ts";
 import * as ports from "../ports/mod.ts";
+import type {
+  InstallConfigFat,
+  PortsModuleSecureConfig,
+} from "../modules/ports/types.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
+  installConf: InstallConfigFat | InstallConfigFat[];
+  secureConf?: PortsModuleSecureConfig;
   ignore?: boolean;
 };
 // order tests by download size to make failed runs less expensive
@@ -149,6 +160,13 @@ function testMany(
         fn: () =>
           testFn({
             ...testCase,
+            tsGhjkfileStr: tsGhjkFileFromInstalls(
+              {
+                installConf: testCase.installConf,
+                secureConf: testCase.secureConf,
+                taskDefs: [],
+              },
+            ),
             ePoints: [
               ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
                 cmd: `env ${sh} '${testCase.ePoint}'`,
