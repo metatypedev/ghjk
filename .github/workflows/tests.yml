@@ -73,14 +73,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@83de83dc443caefb9aa22dc3042f32106ed46272
+      - uses: metatypedev/setup-ghjk@d74ec75d9771f286d2d9b0ae6732bbe89f931376
         with:
           installer-url: ./install.ts
         env: 
           GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/protoc
-          echo $GHJK_DIR
-          echo $BASH_ENV
-          . $BASH_ENV
+          . $(ghjk print share-dir-path)/env.sh
           protoc --version

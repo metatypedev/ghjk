@@ -1,4 +1,4 @@
-import { cliffy_cmd, equal, jsonHash, zod } from "../deps/cli.ts";
+import { cliffy_cmd, deep_eql, jsonHash, zod } from "../deps/cli.ts";
 import logger, { isColorfulTty } from "../utils/logger.ts";
 
 import {
@@ -179,7 +179,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       const newHashes = await hashEnvVars(curEnvVars, [
         ...Object.keys(oldHashes),
       ]);
-      return equal.equal(oldHashes, newHashes);
+      return deep_eql(oldHashes, newHashes);
     };
 
     const cwd = $.path(Deno.cwd());
@@ -188,7 +188,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       const newHashes = await hashFiles(hcx, [
         ...Object.keys(oldHashes),
       ], cwd);
-      return equal.equal(oldHashes, newHashes);
+      return deep_eql(oldHashes, newHashes);
     };
 
     const fileListingsMatch = async () => {
@@ -268,10 +268,10 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     ),
   );
   // avoid writing lockfile if nothing's changed
-  if (!foundLockObj || !equal.equal(newLockObj, foundLockObj)) {
+  if (!foundLockObj || !deep_eql(newLockObj, foundLockObj)) {
     await lockFilePath.writeJsonPretty(newLockObj);
   }
-  if (!foundHashObj || !equal.equal(newHashObj, foundHashObj)) {
+  if (!foundHashObj || !deep_eql(newHashObj, foundHashObj)) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
   return { subCommands, serializedConfig };

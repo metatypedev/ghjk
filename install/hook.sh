@@ -37,6 +37,8 @@ ghjk_reload() {
     fi
 
     if [ -n "$local_ghjk_dir" ]; then
+        echo "ghjk $local_ghjk_dir"
+        echo "cur $cur_dir"
         # export GHJK_DIR
         # locate the default env
         default_env="$local_ghjk_dir/envs/default"

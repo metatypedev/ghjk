@@ -1,4 +1,4 @@
-import { equal, jsonHash, std_fs, std_path, zod } from "../../deps/cli.ts";
+import { deep_eql, jsonHash, std_fs, std_path, zod } from "../../deps/cli.ts";
 import getLogger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type {
@@ -411,7 +411,7 @@ export async function buildInstallGraph(
 
     const conflict = graph.ports[portRef];
     if (conflict) {
-      if (!equal.equal(conflict, manifest)) {
+      if (!deep_eql(conflict, manifest)) {
         throw new Error(
           `differing port manifests found for "${portRef}: ${
             $.inspect(manifest)
