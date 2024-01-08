@@ -66,7 +66,23 @@ export class Port extends PortBase {
     return defaultLatestStable(this, args);
   }
 
-  async listAll() {
+  async listAll(args: ListAllArgs) {
+    const headers = ghHeaders(args.config);
+    const latestMeta = await $.withRetries({
+      count: 10,
+      delay: exponentialBackoff(1000),
+      action: async () =>
+        await $.request(
+          `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/latest-release/latest-release.json`,
+        )
+          .header(headers)
+          .json() as {
+            "version": number;
+            "tag": string;
+            "release_url": string;
+            "asset_url_prefix": string;
+          },
+    });
     // python-build-standalone builds all supported versions of python
     // on every release
     const metadata = await $.withRetries({
@@ -74,10 +90,12 @@ export class Port extends PortBase {
       delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
-          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
-        ).json() as {
-          assets: { name: string }[];
-        },
+          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/tags/${latestMeta.tag}`,
+        )
+          .header(headers)
+          .json() as {
+            assets: { name: string }[];
+          },
     });
     return [
       // we put all the asset versions found in a set

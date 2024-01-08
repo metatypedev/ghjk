@@ -80,5 +80,7 @@ jobs:
           GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/protoc
+          echo $GHJK_DIR
+          echo $BASH_ENV
           . $BASH_ENV
           protoc --version

@@ -196,39 +196,23 @@ export async function install(
           std_path.resolve(ghjkShareDir, "deno");
         await Deno.writeTextFile(
           exePath,
-          `#!/bin/sh 
-export GHJK_SHARE_DIR="$\{GHJK_SHARE_DIR:-${ghjkShareDir}}" 
-export DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}" 
-
-# if ghjkfile var is set, set the GHJK_DIR overriding
-# any set by the user
-if [ -n "\${GHJKFILE+x}" ]; then
-  GHJK_DIR="$(dirname "$GHJKFILE")/.ghjk"
-# if both GHJKFILE and GHJK_DIR are unset
-elif [ -z "$\{GHJK_DIR+x}" ]; then
-  # look for ghjk dirs in parents
-  cur_dir=$PWD
-  while [ "$cur_dir" != "/" ]; do
-      if [ -d "$cur_dir/.ghjk" ]; then
-          export GHJK_DIR="$cur_dir/.ghjk"
-          break
-      fi
-      # recursively look in parent directory
-      cur_dir="$(dirname "$cur_dir")"
-  done
-fi
-
-if [ -n "$\{GHJK_DIR+x}" ]; then
-  export GHJK_DIR
-  mkdir -p "$GHJK_DIR"
-  lock_flag="--lock $GHJK_DIR/deno.lock"
-else
-  lock_flag="--no-lock"
-fi
-
-${args.ghjkExecDenoExec} run --unstable-kv --unstable-worker-options -A $lock_flag ${
-            import.meta.resolve("../main.ts")
-          } "$@"`,
+          (await importRaw(import.meta.resolve("./ghjk.sh")))
+            .replaceAll(
+              "__GHJK_SHARE_DIR__",
+              ghjkShareDir,
+            )
+            .replaceAll(
+              "__DENO_CACHE_DIR",
+              denoCacheDir,
+            )
+            .replaceAll(
+              "__DENO_EXEC__",
+              args.ghjkExecDenoExec,
+            )
+            .replaceAll(
+              "__MAIN_TS_URL__",
+              import.meta.resolve("../main.ts"),
+            ),
           { mode: 0o700 },
         );
         break;
