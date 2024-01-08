@@ -58,11 +58,19 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path where ghjk is installed in.")
             .action(function () {
+              console.log(ghjkDir);
+            }),
+        )
+        .command(
+          "share-dir-path",
+          new cliffy_cmd.Command()
+            .description("Print the path where ghjk is installed in.")
+            .action(function () {
               console.log(ghjkShareDir);
             }),
         )
         .command(
-          "config-path",
+          "ghjkfile-path",
           new cliffy_cmd.Command()
             .description("Print the path of the ghjk.ts used")
             .action(function () {
@@ -73,23 +81,13 @@ export async function cli(args: CliArgs) {
           "config",
           new cliffy_cmd.Command()
             .description(
-              "Print the extracted ans serialized config from the ghjk.ts file",
+              "Print the extracted ans serialized config from the ghjkfile",
             )
             .action(function () {
               console.log(Deno.inspect(serializedConfig, {
                 depth: 10,
                 colors: isColorfulTty(),
               }));
-            }),
-        )
-        .command(
-          "env-dir-path",
-          new cliffy_cmd.Command()
-            .description(
-              "Print the directory the current config's env is housed in.",
-            )
-            .action(function () {
-              console.log(ghjkDir);
             }),
         ),
     )
@@ -124,12 +122,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     });
   }
   const ghjkDirPath = $.path(gcx.ghjkDir);
-  const envVarBirth = (await ghjkDirPath.lstat())?.birthtime?.valueOf();
-  // onlry write .gitignore if the ghjkdir is recent
-  if (
-    Math.abs(Date.now() - (envVarBirth ?? 0)) < 1000
-  ) {
-    await ghjkDirPath.ensureDir();
+  if (!await ghjkDirPath.join(".gitignore").exists()) {
     ghjkDirPath.join(".gitignore").writeText($.dedent`
         envs
         hash.json`);

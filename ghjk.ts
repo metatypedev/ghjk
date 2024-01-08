@@ -12,7 +12,7 @@ ghjk
     },
   });
 
-ghjk
+const ha = ghjk
   .task("ha", {
     installs: [
       protoc(),
@@ -25,25 +25,25 @@ ghjk
     },
   });
 
-ghjk
+const ho = ghjk
   .task("ho", {
-    dependsOn: ["ha"],
+    dependsOn: [ha],
     async fn({ $ }) {
       await $`echo ho`;
     },
   });
 
-ghjk
+const hum = ghjk
   .task("hum", {
-    dependsOn: ["ho"],
+    dependsOn: [ho],
     async fn({ $ }) {
       await $`echo hum`;
     },
   });
 
-ghjk
+const hii = ghjk
   .task("hii", {
-    dependsOn: ["hum"],
+    dependsOn: [hum],
     async fn({ $ }) {
       await $`echo haii`;
     },
@@ -51,7 +51,7 @@ ghjk
 
 ghjk
   .task("hey", {
-    dependsOn: ["hii", "ho"],
+    dependsOn: [hii, ho],
     async fn({ $ }) {
       await $`echo hey`;
     },

@@ -205,7 +205,7 @@ export DENO_DIR="$\{GHJK_DENO_DIR:-${denoCacheDir}}"
 if [ -n "\${GHJKFILE+x}" ]; then
   GHJK_DIR="$(dirname "$GHJKFILE")/.ghjk"
 # if both GHJKFILE and GHJK_DIR are unset
-elif [ -n "$\{GHJK_DIR+x}" ]; then
+elif [ -z "$\{GHJK_DIR+x}" ]; then
   # look for ghjk dirs in parents
   cur_dir=$PWD
   while [ "$cur_dir" != "/" ]; do

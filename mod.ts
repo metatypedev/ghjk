@@ -83,6 +83,7 @@ export function task(name: string, config: TaskDefNice) {
       allowedPortDeps: config.allowedPortDeps ?? {},
     },
   };
+  return name;
 }
 
 function addInstall(
