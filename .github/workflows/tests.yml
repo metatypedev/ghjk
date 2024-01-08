@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@v1
+      - uses: metatypedev/setup-ghjk@83de83dc443caefb9aa22dc3042f32106ed46272
         with:
           installer-url: ./install.ts
         env: 
