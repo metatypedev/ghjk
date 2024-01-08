@@ -77,7 +77,7 @@ jobs:
         with:
           installer-url: ./install.ts
         env: 
-          GHJK_CONFIG: ./examples/protoc/ghjk.ts
+          GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/protoc
           . $(dirname $BASH_ENV)/env.bash
