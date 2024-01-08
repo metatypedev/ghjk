@@ -6,6 +6,7 @@ import {
 import { PortArgsBase } from "../modules/ports/types.ts";
 import {
   $,
+  defaultLatestStable,
   depExecShimPath,
   downloadFile,
   dwnUrlOut,
@@ -18,6 +19,7 @@ import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
+  ListAllArgs,
 } from "../port.ts";
 
 const tar_aa_id = {
@@ -58,6 +60,10 @@ export class Port extends PortBase {
         "python3",
       ).toString(),
     };
+  }
+
+  latestStable(args: ListAllArgs): Promise<string> {
+    return defaultLatestStable(this, args);
   }
 
   async listAll() {

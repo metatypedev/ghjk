@@ -1,16 +1,39 @@
-import { dax, jsonHash, std_fs, std_path, std_url } from "../deps/common.ts";
+import {
+  dax,
+  jsonHash,
+  std_fs,
+  std_path,
+  std_url,
+  zod,
+} from "../deps/common.ts";
 import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./modules"
 import type {
   DepArts,
   DownloadArgs,
-  InstallConfigLite,
+  InstallConfigResolvedX,
   OsEnum,
   PortDep,
+  PortManifest,
 } from "../modules/ports/types.ts";
 
+export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
+const literalSchema = zod.union([
+  zod.string(),
+  zod.number(),
+  zod.boolean(),
+  zod.null(),
+]);
+export type JsonLiteral = zod.infer<typeof literalSchema>;
+export type JsonObject = { [key: string]: Json };
+export type JsonArray = Json[];
+export type Json = JsonLiteral | JsonObject | JsonArray;
+export const jsonSchema: zod.ZodType<Json> = zod.lazy(() =>
+  zod.union([literalSchema, zod.array(jsonSchema), zod.record(jsonSchema)])
+);
+
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug(() => val, ...more);
+  logger().debug(() => val, ...more, "DBG");
   return val;
 }
 
@@ -108,27 +131,60 @@ export function bufferToHex(buffer: ArrayBuffer): string {
   ).join("");
 }
 
-export async function getInstallHash(install: InstallConfigLite) {
-  const hashBuf = await jsonHash.digest("SHA-256", install as jsonHash.Tree);
-  const hashHex = bufferToHex(hashBuf).slice(0, 8);
-  return `${install.portName}@${hashHex}`;
+export async function bufferHashHex(
+  buf: ArrayBuffer,
+  algo: AlgorithmIdentifier = "SHA-256",
+) {
+  const hashBuf = await crypto.subtle.digest(algo, buf);
+  return bufferToHex(hashBuf);
+}
+export async function stringHashHex(
+  val: string,
+  algo: AlgorithmIdentifier = "SHA-256",
+) {
+  const arr = new TextEncoder().encode(val);
+  return await bufferHashHex(arr, algo);
+}
+
+export async function objectHashHex(
+  object: jsonHash.Tree,
+  algo: jsonHash.DigestAlgorithmType = "SHA-256",
+) {
+  const hashBuf = await jsonHash.digest(algo, object);
+  const hashHex = bufferToHex(hashBuf);
+  return hashHex;
+}
+
+export function getPortRef(manifest: PortManifest) {
+  return `${manifest.name}@${manifest.version}`;
+}
+
+export async function getInstallHash(install: InstallConfigResolvedX) {
+  const fullHashHex = await objectHashHex(install as jsonHash.Tree);
+  const hashHex = fullHashHex.slice(0, 8);
+  return `${install.portRef}+${hashHex}`;
+}
+
+export type PathRef = dax.PathRef;
+
+export function defaultCommandBuilder() {
+  const builder = new dax.CommandBuilder()
+    .printCommand(true);
+  builder.setPrintCommandLogger((_, cmd) => {
+    // clean up the already colorized print command logs
+    // TODO: remove when https://github.com/dsherret/dax/pull/203
+    // is merged
+    return logger().debug(
+      "spawning",
+      $.stripAnsi(cmd).split(/\s/),
+    );
+  });
+  return builder;
 }
 
 export const $ = dax.build$(
   {
-    commandBuilder: (() => {
-      const builder = new dax.CommandBuilder().printCommand(true);
-      builder.setPrintCommandLogger((_, cmd) => {
-        // clean up the already colorized print command logs
-        // TODO: remove when https://github.com/dsherret/dax/pull/203
-        // is merged
-        return logger().debug(
-          "spawning",
-          $.stripAnsi(cmd).split(/\s/),
-        );
-      });
-      return builder;
-    })(),
+    commandBuilder: defaultCommandBuilder(),
     extras: {
       inspect(val: unknown) {
         return Deno.inspect(val, {
@@ -156,22 +212,18 @@ export function inWorker() {
 
 export async function findConfig(path: string) {
   let current = path;
-  while (current !== "/") {
-    const location = `${path}/ghjk.ts`;
+  while (true) {
+    const location = `${current}/ghjk.ts`;
     if (await std_fs.exists(location)) {
       return location;
     }
-    current = std_path.dirname(current);
+    const nextCurrent = std_path.dirname(current);
+    if (nextCurrent == "/" && current == "/") {
+      break;
+    }
+    current = nextCurrent;
   }
   return null;
-}
-
-export function envDirFromConfig(ghjkDir: string, configPath: string) {
-  return std_path.resolve(
-    ghjkDir,
-    "envs",
-    std_path.dirname(configPath).replaceAll("/", "."),
-  );
 }
 
 export function home_dir(): string | null {
@@ -311,4 +363,88 @@ export async function downloadFile(
   await $.path(downloadPath).ensureDir();
 
   await tmpFilePath.copyFile(fileDwnPath);
+  return downloadPath.toString();
+}
+
+/* *
+ * This returns a tmp path that's guaranteed to be
+ * on the same file system as targetDir by
+ * checking if $TMPDIR satisfies that constraint
+ * or just pointing to targetDir/tmp
+ * This is handy for making moves atomics from
+ * tmp dirs to to locations within targetDir
+ *
+ * Make sure to remove the dir after use
+ */
+export async function sameFsTmpRoot(
+  targetDir: string,
+  targetTmpDirName = "tmp",
+) {
+  const defaultTmp = Deno.env.get("TMPDIR");
+  const targetPath = $.path(targetDir);
+  if (!defaultTmp) {
+    // this doens't return a unique tmp dir on every sync
+    // this allows subsequent syncs to clean up after
+    // some previously failing sync as this is not a system managed
+    // tmp dir but this means two concurrent syncing  will clash
+    // TODO: mutex file to prevent block concurrent syncinc
+    return await targetPath.join(targetTmpDirName).ensureDir();
+  }
+  const defaultTmpPath = $.path(defaultTmp);
+  if ((await targetPath.stat())?.dev != (await defaultTmpPath.stat())?.dev) {
+    return await targetPath.join(targetTmpDirName).ensureDir();
+  }
+  // when using the system managed tmp dir, we create a new tmp dir in it
+  // we don't care if the sync fails before it cleans as the system will
+  // take care of it
+  return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
+}
+export type Rc<T> = ReturnType<typeof rc<T>>;
+
+export function rc<T>(val: T, onDrop: (val: T) => void) {
+  const rc = {
+    counter: 1,
+    val,
+    clone() {
+      rc.counter += 1;
+      return rc;
+    },
+    [Symbol.dispose]() {
+      rc.counter -= 1;
+      if (rc.counter < 0) {
+        throw new Error("reference count is negative", {
+          cause: rc,
+        });
+      }
+      if (rc.counter == 0) {
+        onDrop(val);
+      }
+    },
+  };
+  return rc;
+}
+
+export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
+
+export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
+  const rc = {
+    counter: 1,
+    val,
+    clone() {
+      rc.counter += 1;
+      return rc;
+    },
+    async [Symbol.asyncDispose]() {
+      rc.counter -= 1;
+      if (rc.counter < 0) {
+        throw new Error("reference count is negative", {
+          cause: rc,
+        });
+      }
+      if (rc.counter == 0) {
+        await onDrop(val);
+      }
+    },
+  };
+  return rc;
 }

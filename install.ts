@@ -1,3 +1,5 @@
+#!/usr/bin/env -S deno run --unstable-worker-options -A  
+
 //! Install ghjk for the current user
 
 import "./setup_logger.ts";
@@ -9,7 +11,8 @@ if (import.meta.main) {
 
   await install({
     ...defaultInstallArgs,
-    ghjkDir: Deno.env.get("GHJK_DIR") ?? defaultInstallArgs.ghjkDir,
+    ghjkShareDir: Deno.env.get("GHJK_SHARE_DIR") ??
+      defaultInstallArgs.ghjkShareDir,
     skipExecInstall: !!skipBinInstall && skipBinInstall != "0" &&
       skipBinInstall != "false",
     shellsToHook: Deno.env.get("GHJK_INSTALL_HOOK_SHELLS")

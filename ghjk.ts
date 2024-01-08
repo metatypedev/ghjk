@@ -1,51 +1,69 @@
 export { ghjk } from "./mod.ts";
 import * as ghjk from "./mod.ts";
-import node from "./ports/node.ts";
-import pnpm from "./ports/pnpm.ts";
-import cargo_binstall from "./ports/cargo-binstall.ts";
-import wasmedge from "./ports/wasmedge.ts";
-import wasm_tools from "./ports/wasm-tools.ts";
-import wasm_opt from "./ports/wasm-opt.ts";
-import cargo_insta from "./ports/cargo-insta.ts";
-import jco from "./ports/jco.ts";
-import mold from "./ports/mold.ts";
 import act from "./ports/act.ts";
-import asdf from "./ports/asdf.ts";
 import protoc from "./ports/protoc.ts";
-import ruff from "./ports/ruff.ts";
-import whiz from "./ports/whiz.ts";
-import cpython from "./ports/cpy_bs.ts";
+
 import pipi from "./ports/pipi.ts";
 
+ghjk
+  .task("greet", {
+    fn: async ({ $, argv: [name] }) => {
+      await $`echo Hello ${name}!`;
+    },
+  });
+
+const ha = ghjk
+  .task("ha", {
+    installs: [
+      protoc(),
+    ],
+    env: { STUFF: "stuffier" },
+    async fn({ $ }) {
+      await $`echo $STUFF;
+      protoc --version;
+      `;
+    },
+  });
+
+const ho = ghjk
+  .task("ho", {
+    dependsOn: [ha],
+    async fn({ $ }) {
+      await $`echo ho`;
+    },
+  });
+
+const hum = ghjk
+  .task("hum", {
+    dependsOn: [ho],
+    async fn({ $ }) {
+      await $`echo hum`;
+    },
+  });
+
+const hii = ghjk
+  .task("hii", {
+    dependsOn: [hum],
+    async fn({ $ }) {
+      await $`echo haii`;
+    },
+  });
+
+ghjk
+  .task("hey", {
+    dependsOn: [hii, ho],
+    async fn({ $ }) {
+      await $`echo hey`;
+    },
+  });
+
 // these are just for quick testing
-ghjk.install(
-  // node(),
-  // wasmedge(),
-  // pnpm(),
-  // cargo_binstall(),
-  // wasm_tools(),
-  // wasm_opt(),
-  // cargo_insta(),
-  // mold({
-  //   replaceLd: true,
-  // }),
-  // asdf({
-  // act(),
-  //   pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-  //   installType: "version",
-  // }),
-  // ...pipi({ packageName: "pre-commit" }),
-  // protoc(),
-  // ruff(),
-  // whiz(),
-  ...jco(),
-  // cpython(),
-);
+ghjk.install();
 
 // these are used for developing ghjk
 ghjk.install(
-  // act(),
-  // ...pipi({ packageName: "pre-commit" }),
+  act(),
+  ...pipi({ packageName: "pre-commit" }),
 );
 
 export const secureConfig = ghjk.secureConfig({

@@ -6,7 +6,7 @@ import {
 } from "../../utils/mod.ts";
 import { zod } from "../../deps/common.ts";
 import { PortBase } from "./base.ts";
-import type { DownloadArgs } from "./types.ts";
+import type { DownloadArgs, ListAllArgs } from "./types.ts";
 
 export const ghConfValidator = zod.object({
   ghToken: zod.string().nullish(),
@@ -70,10 +70,10 @@ export abstract class GithubReleasePort extends PortBase {
     );
   }
 
-  async latestStable() {
+  async latestStable(_args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
-      delay: 100,
+      delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
@@ -85,7 +85,7 @@ export abstract class GithubReleasePort extends PortBase {
     return metadata.tag_name;
   }
 
-  async listAll() {
+  async listAll(_args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
       delay: exponentialBackoff(1000),

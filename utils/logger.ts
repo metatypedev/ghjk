@@ -2,19 +2,42 @@ import {
   std_fmt_colors,
   std_log,
   std_log_levels,
-  std_path,
   std_url,
+  zod,
 } from "../deps/common.ts";
 
-// TODO: consult GHJK_LOG variable
-export default function logger(
-  name: ImportMeta | string = self.name,
-) {
-  if (typeof name === "object") {
-    name = std_url.basename(name.url);
-    name = name.replace(std_path.extname(name), "");
+const defaultLogLevel = "INFO" as const;
+
+// This parses the GHJK_LOG env var
+function confFromEnv() {
+  const loggerConfs = { "": defaultLogLevel } as Record<
+    string,
+    zod.infer<typeof levelValidator>
+  >;
+  const confStr = Deno.env.get("GHJK_LOG");
+  if (!confStr) {
+    return loggerConfs;
   }
-  return std_log.getLogger(name);
+  const levelValidator = zod.enum(
+    ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    {
+      description: "Log levels",
+    },
+  );
+  let defaultLevel = levelValidator.parse(defaultLogLevel);
+  const confs = confStr.toUpperCase().split(",");
+  // configure specific named loggers
+  for (const confSection of confs) {
+    const [left, right] = confSection.split("=");
+    // this is a plain level name, thus configuring the default logger
+    if (!right) {
+      defaultLevel = levelValidator.parse(left);
+    } else {
+      loggerConfs[left] = levelValidator.parse(right);
+    }
+  }
+  loggerConfs[""] = defaultLevel;
+  return loggerConfs;
 }
 
 function formatter(lr: std_log.LogRecord) {
@@ -33,34 +56,6 @@ function formatter(lr: std_log.LogRecord) {
   });
 
   return msg;
-}
-
-export function setup(handler = new ConsoleErrHandler("NOTSET")) {
-  const panicLevelName = Deno.env.get("GHJK_LOG_PANIC_LEVEL");
-  if (panicLevelName) {
-    handler = new TestConsoleErrHandler(
-      std_log_levels.getLevelByName(
-        panicLevelName.toUpperCase() as std_log_levels.LevelName,
-      ),
-      "NOTSET",
-    );
-  }
-  std_log.setup({
-    handlers: {
-      console: handler,
-    },
-
-    loggers: {
-      default: {
-        level: "DEBUG",
-        handlers: ["console"],
-      },
-      [self.name]: {
-        level: "DEBUG",
-        handlers: ["console"],
-      },
-    },
-  });
 }
 
 export class ConsoleErrHandler extends std_log.handlers.BaseHandler {
@@ -116,17 +111,57 @@ export class TestConsoleErrHandler extends ConsoleErrHandler {
     super.handle(lr);
   }
 }
+const loggers = new Map<string, std_log.Logger>();
+const loggerLevelsConf = confFromEnv();
+
+const panicLevelName = Deno.env.get("GHJK_LOG_PANIC_LEVEL");
+const consoleHandler = panicLevelName
+  ? new TestConsoleErrHandler(
+    std_log_levels.getLevelByName(
+      panicLevelName.toUpperCase() as std_log_levels.LevelName,
+    ),
+    "NOTSET",
+  )
+  : new ConsoleErrHandler("NOTSET");
+
+// TODO: consult GHJK_LOG variable
+export default function logger(
+  name: ImportMeta | string = self.name,
+) {
+  if (typeof name === "object") {
+    const baseName = std_url.basename(name.url);
+    const dirName = std_url.basename(std_url.dirname(name.url));
+    name = `${dirName}/${baseName}`;
+  }
+  let logger = loggers.get(name);
+  if (!logger) {
+    const level = loggerLevelsConf[name] ?? loggerLevelsConf[""];
+    logger = new std_log.Logger(name, level, {
+      handlers: [consoleHandler],
+    });
+  }
+  return logger;
+}
+
+export function setup() {
+  const defaultLogger = new std_log.Logger("default", loggerLevelsConf[""], {
+    handlers: [consoleHandler],
+  });
+  loggers.set("", defaultLogger);
+}
 
 let colorEnvFlagSet = false;
 Deno.permissions.query({
   name: "env",
   variable: "CLICOLOR_FORCE",
-}).then((perm) => {
-  if (perm.state == "granted") {
-    const val = Deno.env.get("CLICOLOR_FORCE");
-    colorEnvFlagSet = !!val && val != "0" && val != "false";
-  }
-});
+})
+  // do the check lazily to improve starts
+  .then((perm) => {
+    if (perm.state == "granted") {
+      const val = Deno.env.get("CLICOLOR_FORCE");
+      colorEnvFlagSet = !!val && val != "0" && val != "false";
+    }
+  });
 
 export function isColorfulTty(outFile = Deno.stdout) {
   if (colorEnvFlagSet) {

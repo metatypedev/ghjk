@@ -1,6 +1,12 @@
 import "../setup_logger.ts";
-import { dockerE2eTest, E2eTestCase, localE2eTest } from "./utils.ts";
+import {
+  dockerE2eTest,
+  E2eTestCase,
+  localE2eTest,
+  tsGhjkFileFromInstalls,
+} from "./utils.ts";
 import dummy from "../ports/dummy.ts";
+import type { InstallConfigFat } from "../port.ts";
 
 // avoid using single quotes in this script
 const posixInteractiveScript = `
@@ -55,13 +61,13 @@ dummy; or exit 123
 test $DUMMY_ENV = "dummy"; or exit 105
 `;
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+  installConf?: InstallConfigFat | InstallConfigFat[];
   ePoint: string;
   stdin: string;
 };
 const cases: CustomE2eTestCase[] = [
   {
-    installConf: dummy(),
     name: "hook_test_bash_interactive",
     // -s: read from stdin
     // -l: login/interactive mode
@@ -69,31 +75,26 @@ const cases: CustomE2eTestCase[] = [
     stdin: posixInteractiveScript,
   },
   {
-    installConf: dummy(),
     name: "hook_test_bash_scripting",
     ePoint: `bash -s`,
     stdin: posixNonInteractiveScript,
   },
   {
-    installConf: dummy(),
     name: "hook_test_zsh_interactive",
     ePoint: `zsh -sl`,
     stdin: posixInteractiveScript,
   },
   {
-    installConf: dummy(),
     name: "hook_test_zsh_scripting",
     ePoint: `zsh -s`,
     stdin: posixNonInteractiveScript,
   },
   {
-    installConf: dummy(),
     name: "hook_test_fish_interactive",
     ePoint: `fish -l`,
     stdin: fishScript,
   },
   {
-    installConf: dummy(),
     name: "hook_test_fish_scripting",
     ePoint: `fish`,
     // the fish implementation triggers changes
@@ -115,6 +116,9 @@ function testMany(
       () =>
         testFn({
           ...testCase,
+          tsGhjkfileStr: tsGhjkFileFromInstalls(
+            { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
+          ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
           envs: {
             ...defaultEnvs,

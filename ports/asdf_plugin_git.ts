@@ -1,5 +1,6 @@
 import {
   $,
+  defaultLatestStable,
   depExecShimPath,
   type DownloadArgs,
   type InstallArgs,
@@ -22,6 +23,7 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [git_aa_id],
+  resolutionDeps: [git_aa_id],
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
@@ -51,6 +53,10 @@ export class Port extends PortBase {
       .filter(Boolean)
       //NOTE: first 10 char of hashes should be enough
       .map((line) => line.split(/\s/)[0].slice(0, 10));
+  }
+
+  latestStable(args: ListAllArgs): Promise<string> {
+    return defaultLatestStable(this, args);
   }
 
   async download(args: DownloadArgs) {

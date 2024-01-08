@@ -1,4 +1,4 @@
-#! /usr/bin/env -S deno run --unstable-worker-options -A  
+#!/usr/bin/env -S deno run --unstable-worker-options -A  
 
 import "./setup_logger.ts";
 import { cli } from "./host/mod.ts";
@@ -7,16 +7,18 @@ import logger from "./utils/logger.ts";
 import { dirs, findConfig } from "./utils/mod.ts";
 
 if (import.meta.main) {
-  const configPath = Deno.env.get("GHJK_CONFIG") ??
+  const ghjkfile = Deno.env.get("GHJKFILE") ??
     await findConfig(Deno.cwd());
-  if (!configPath) {
-    logger().error("ghjk did not find any `ghjk.ts` config.");
+  if (!ghjkfile) {
+    logger().error(
+      "ghjk could not find any ghjkfiles, try creating a `ghjk.ts` script.",
+    );
     Deno.exit(2);
   }
   await cli({
-    ghjkDir: Deno.env.get("GHJK_DIR") ??
+    ghjkShareDir: Deno.env.get("GHJK_SHARE_DIR") ??
       std_path.resolve(dirs().shareDir, "ghjk"),
-    configPath: std_path.resolve(Deno.cwd(), configPath),
+    ghjkfilePath: std_path.resolve(Deno.cwd(), ghjkfile),
   });
 } else {
   throw new Error(
