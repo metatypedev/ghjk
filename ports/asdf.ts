@@ -2,6 +2,7 @@ import {
   $,
   depExecShimPath,
   DownloadArgs,
+  getPortRef,
   InstallArgs,
   InstallConfigFat,
   InstallConfigSimple,
@@ -22,6 +23,12 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [std_ports.curl_aa, std_ports.git_aa, std_ports.asdf_plugin_git],
+  // NOTE: we require the same port set for version resolution as well
+  resolutionDeps: [
+    std_ports.curl_aa,
+    std_ports.git_aa,
+    std_ports.asdf_plugin_git,
+  ],
   platforms: osXarch(["linux", "darwin"], ["x86_64", "aarch64"]),
 };
 
@@ -39,18 +46,20 @@ export default function conf(
   config: AsdfInstallConf,
 ): InstallConfigFat {
   // we only need the lite version of the InstConf here
-  const { port, ...liteConf } = asdf_plugin_git({
+  const { port: pluginPort, ...liteConf } = asdf_plugin_git({
     pluginRepo: config.pluginRepo,
   });
+  const depConfigs = {
+    [std_ports.asdf_plugin_git.name]: {
+      ...liteConf,
+      portRef: getPortRef(pluginPort),
+    },
+  };
   return {
     ...confValidator.parse(config),
     port: manifest,
-    depConfigs: {
-      [std_ports.asdf_plugin_git.name]: {
-        ...liteConf,
-        portName: port.name,
-      },
-    },
+    depConfigs,
+    resolutionDepConfigs: depConfigs,
   };
 }
 

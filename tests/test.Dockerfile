@@ -43,6 +43,7 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
+ENV GHJK_LOG=debug
 ENV GHJK_INSTALL_EXE_DIR=/usr/bin
 ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
 # share the module cache of the image
@@ -52,7 +53,9 @@ RUN deno run -A /ghjk/install.ts
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
-RUN cat > ghjk.ts <<EOT
+# avoid variable expansion in the contents of the
+# here-document by quoting the tag
+COPY <<"EOT" /app/ghjk.ts 
 #{{CMD_ADD_CONFIG}}
 EOT
 

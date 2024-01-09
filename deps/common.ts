@@ -1,4 +1,6 @@
 //! dependencies used by all
+//! FIXME: move files in this module to files called deps.ts
+//! and located close to their users
 
 export { z as zod } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 export * as semver from "https://deno.land/std@0.205.0/semver/mod.ts";
@@ -10,4 +12,4 @@ export * as std_path from "https://deno.land/std@0.205.0/path/mod.ts";
 export * as std_fs from "https://deno.land/std@0.205.0/fs/mod.ts";
 export * as dax from "https://deno.land/x/dax@0.35.0/mod.ts";
 export * as jsonHash from "https://deno.land/x/json_hash@0.2.0/mod.ts";
-export * as equal from "https://deno.land/x/equal@v1.5.0/mod.ts";
+export { default as deep_eql } from "https://deno.land/x/deep_eql@v5.0.1/index.js";

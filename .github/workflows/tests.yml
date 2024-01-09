@@ -11,6 +11,7 @@ on:
 env:
   DENO_VERSION: "1.39.0"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
 
 jobs:
@@ -50,7 +51,8 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - if: "${{ matrix.os == 'macos-latest' }}"
-        run: brew install fish zsh
+        # we need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils
       - name: Cache deno dir
         if: "${{ matrix.os == 'macos-latest' }}"
         uses: actions/cache@v3
@@ -71,12 +73,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@v1
+      - uses: metatypedev/setup-ghjk@a4453d20156edde8e1c9b19784f8188a36b3bf23
         with:
           installer-url: ./install.ts
         env: 
-          GHJK_CONFIG: ./examples/protoc/ghjk.ts
+          GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/protoc
-          . $(dirname $BASH_ENV)/env.bash
+          . $(ghjk print share-dir-path)/env.sh
           protoc --version

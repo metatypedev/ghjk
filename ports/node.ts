@@ -1,5 +1,6 @@
 import {
   $,
+  defaultLatestStable,
   depExecShimPath,
   downloadFile,
   dwnUrlOut,
@@ -47,6 +48,10 @@ export class Port extends PortBase {
     return {
       NODE_PATH: args.installPath,
     };
+  }
+
+  latestStable(args: ListAllArgs): Promise<string> {
+    return defaultLatestStable(this, args);
   }
 
   // we wan't to avoid adding libraries found by default at /lib
