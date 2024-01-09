@@ -110,7 +110,7 @@
                   ]
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///data/home/ghjk/ports/act.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/act.ts"
               }
             },
             {
@@ -189,7 +189,7 @@
                     "name": "cpy_bs_ghrel"
                   }
                 ],
-                "moduleSpecifier": "file:///data/home/ghjk/ports/pipi.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/pipi.ts"
               },
               "packageName": "pre-commit"
             },
@@ -232,7 +232,7 @@
                     "name": "zstd_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///data/home/ghjk/ports/cpy_bs.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/cpy_bs.ts"
               }
             }
           ],
@@ -524,7 +524,7 @@
                   ]
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///data/home/ghjk/ports/cargo-binstall.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/cargo-binstall.ts"
               },
               "defaultInst": {
                 "portRef": "cargo_binstall_ghrel@0.1.0"
@@ -561,7 +561,7 @@
                   ]
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///data/home/ghjk/ports/pnpm.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/pnpm.ts"
               },
               "defaultInst": {
                 "portRef": "pnpm_ghrel@0.1.0"
@@ -608,7 +608,7 @@
                     "name": "git_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///data/home/ghjk/ports/asdf_plugin_git.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/asdf_plugin_git.ts"
               },
               "defaultInst": {
                 "portRef": "asdf_plugin_git@0.1.0"
@@ -650,7 +650,7 @@
                     "name": "tar_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///data/home/ghjk/ports/node.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/node.ts"
               },
               "defaultInst": {
                 "portRef": "node_org@0.1.0"
@@ -695,7 +695,7 @@
                     "name": "zstd_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///data/home/ghjk/ports/cpy_bs.ts"
+                "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/cpy_bs.ts"
               },
               "defaultInst": {
                 "portRef": "cpy_bs_ghrel@0.1.0"
@@ -727,7 +727,7 @@
                       "ty": "denoWorker@v1",
                       "name": "protoc_ghrel",
                       "version": "0.1.0",
-                      "moduleSpecifier": "file:///data/home/ghjk/ports/protoc.ts",
+                      "moduleSpecifier": "file:///home/asdf/repos/ecma/ghjk/ports/protoc.ts",
                       "platforms": [
                         [
                           "linux",
