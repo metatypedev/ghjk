@@ -5,7 +5,7 @@
     "check": "deno run -A check.ts"
   },
   "fmt": {
-    "exclude": []
+    "exclude": ["**/*.md"]
   },
   "lint": {
     "exclude": [
