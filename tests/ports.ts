@@ -93,6 +93,24 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.node(),
     ePoint: `node --version`,
   },
+  // node + 11 megs
+  {
+    name: "npmi-node-gyp",
+    installConf: ports.npmi({ packageName: "node-gyp" }),
+    ePoint: `node-gyp --version`,
+    secureConf: secureConfig({
+      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+    }),
+  },
+  // node + more megs
+  {
+    name: "npmi-jco",
+    installConf: ports.npmi({ packageName: "@bytecodealliance/jco" }),
+    ePoint: `jco --version`,
+    secureConf: secureConfig({
+      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+    }),
+  },
   // cargo-binstall + 22 megs
   {
     name: "wasm-opt",
@@ -110,15 +128,6 @@ const cases: CustomE2eTestCase[] = [
     name: "pnpm",
     installConf: ports.pnpm(),
     ePoint: `pnpm --version`,
-  },
-  // node + more megs
-  {
-    name: "jco",
-    installConf: ports.jco(),
-    ePoint: `jco --version`,
-    secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
-    }),
   },
   // 77 meg +
   {

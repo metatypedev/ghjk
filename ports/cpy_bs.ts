@@ -14,6 +14,7 @@ import {
   osXarch,
   PortBase,
   std_fs,
+  zod,
 } from "../port.ts";
 import type {
   DownloadArgs,
@@ -39,8 +40,17 @@ export const manifest = {
   platforms: osXarch(["linux", "darwin", "windows"], ["x86_64", "aarch64"]),
 };
 
+const confValidator = zod.object({
+  releaseTag: zod.string().nullish(),
+}).passthrough();
+
+export type CpythonBsInstallConf =
+  & InstallConfigSimple
+  & GithubReleasesInstConf
+  & zod.input<typeof confValidator>;
+
 export default function conf(
-  config: InstallConfigSimple & GithubReleasesInstConf = {},
+  config: CpythonBsInstallConf = {},
 ) {
   return {
     ...readGhVars(),
@@ -66,9 +76,8 @@ export class Port extends PortBase {
     return defaultLatestStable(this, args);
   }
 
-  async listAll(args: ListAllArgs) {
-    const headers = ghHeaders(args.config);
-    const latestMeta = await $.withRetries({
+  async latestMeta(headers: Record<string, string>) {
+    const meta = await $.withRetries({
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
@@ -83,6 +92,23 @@ export class Port extends PortBase {
             "asset_url_prefix": string;
           },
     });
+    if (meta.version != 1) {
+      throw new Error(
+        `${this.repoOwner}/${this.repoName} have changed their latest release tag json version`,
+        { cause: meta },
+      );
+    }
+    return meta;
+  }
+
+  async listAll(args: ListAllArgs) {
+    const headers = ghHeaders(args.config);
+    const conf = confValidator.parse(args.config);
+    let tag = conf.releaseTag;
+    if (!tag) {
+      const latestMeta = await this.latestMeta(headers);
+      tag = latestMeta.tag;
+    }
     // python-build-standalone builds all supported versions of python
     // on every release
     const metadata = await $.withRetries({
@@ -90,7 +116,7 @@ export class Port extends PortBase {
       delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
-          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/tags/${latestMeta.tag}`,
+          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/tags/${tag}`,
         )
           .header(headers)
           .json() as {
@@ -113,27 +139,11 @@ export class Port extends PortBase {
 
   async download(args: DownloadArgs) {
     const headers = ghHeaders(args.config);
-    const latestMeta = await $.withRetries({
-      count: 10,
-      delay: exponentialBackoff(1000),
-      action: async () =>
-        await $.request(
-          `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/latest-release/latest-release.json`,
-        )
-          .header(headers)
-          .json() as {
-            "version": number;
-            "tag": string;
-            "release_url": string;
-            "asset_url_prefix": string;
-          },
-    });
-    if (latestMeta.version != 1) {
-      throw new Error(
-        `${this.repoOwner}/${this.repoName} have changed their latest release tag json version ${
-          $.inspect(latestMeta)
-        }`,
-      );
+    const conf = confValidator.parse(args.config);
+    let tag = conf.releaseTag;
+    if (!tag) {
+      const latestMeta = await this.latestMeta(headers);
+      tag = latestMeta.tag;
     }
     const { installVersion, platform } = args;
     const arch = platform.arch;
@@ -155,7 +165,7 @@ export class Port extends PortBase {
         throw new Error(`unsupported: ${platform}`);
     }
     const urls = [
-      `${latestMeta.asset_url_prefix}/cpython-${installVersion}+${latestMeta.tag}-${arch}-${os}-pgo+lto-full.tar.zst`,
+      `https://github.com/${this.repoOwner}/${this.repoName}/releases/download/${tag}/cpython-${installVersion}+${tag}-${arch}-${os}-pgo+lto-full.tar.zst`,
     ];
     await Promise.all(
       urls.map(dwnUrlOut)

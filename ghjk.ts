@@ -1,9 +1,6 @@
 export { ghjk } from "./mod.ts";
 import * as ghjk from "./mod.ts";
-import act from "./ports/act.ts";
-import protoc from "./ports/protoc.ts";
-
-import pipi from "./ports/pipi.ts";
+import { act, cpy_bs, pipi, protoc } from "./ports/mod.ts";
 
 ghjk
   .task("greet", {
@@ -63,7 +60,8 @@ ghjk.install();
 // these are used for developing ghjk
 ghjk.install(
   act(),
-  ...pipi({ packageName: "pre-commit" }),
+  pipi({ packageName: "pre-commit" })[0],
+  cpy_bs({ releaseTag: "20231002" }),
 );
 
 export const secureConfig = ghjk.secureConfig({
