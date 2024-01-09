@@ -25,7 +25,7 @@ ghjk /jk/ is a programmable runtime manager.
 # stable
 curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | bash
 # latest (main)
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERISON=main bash
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERSION=main bash
 ```
 
 In your project, create a configuration file `ghjk.ts`:
