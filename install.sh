@@ -15,7 +15,7 @@ fi
 # if custom deno bin is not set, install one
 if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
 
-    GHJK_INSTALL_DENO_EXEC="$GHJK_DIR/bin/deno"
+    GHJK_INSTALL_DENO_EXEC="$GHJK_SHARE_DIR/bin/deno"
     if [ ! -f "$GHJK_INSTALL_DENO_EXEC" ] || [ "$DENO_VERSION" != "v$("$GHJK_INSTALL_DENO_EXEC" --version | head -n 1 | cut -d ' ' -f 2)" ]; then
 
         echo "GHJK_INSTALL_DENO_EXEC not set, installing deno $DENO_VERSION for ghjk"
@@ -25,7 +25,7 @@ if [ -z "${GHJK_INSTALL_DENO_EXEC+x}" ]; then
             exit 1
         fi
 
-        curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$GHJK_DIR" sh -s "$DENO_VERSION" >/dev/null
+        curl -fsSL https://deno.land/x/install/install.sh | DENO_INSTALL="$GHJK_SHARE_DIR" sh -s "$DENO_VERSION" >/dev/null
     fi
 fi
 
