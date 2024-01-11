@@ -70,8 +70,20 @@ export function install(...configs: InstallConfigFat[]) {
 export type TaskDefNice =
   & Omit<TaskFnDef, "env" | "name" | "dependsOn">
   & Partial<Pick<TaskFnDef, "dependsOn">>
-  & Partial<TaskEnv>;
+  & Partial<Omit<TaskEnv, "allowedPortDeps">>
+  & { allowedPortDeps?: AllowedPortDep[] };
 export function task(name: string, config: TaskDefNice) {
+  const allowedPortDeps = Object.fromEntries([
+    ...(config.allowedPortDeps ??
+      // only add the stdDeps if the task specifies installs
+      (config.installs ? stdDeps() : []))
+      .map((dep) =>
+        [
+          dep.manifest.name,
+          portsValidators.allowedPortDep.parse(dep),
+        ] as const
+      ),
+  ]);
   tasks[name] = {
     name,
     fn: config.fn,
@@ -80,7 +92,7 @@ export function task(name: string, config: TaskDefNice) {
     env: {
       installs: config.installs ?? [],
       env: config.env ?? {},
-      allowedPortDeps: config.allowedPortDeps ?? {},
+      allowedPortDeps,
     },
   };
   return name;
