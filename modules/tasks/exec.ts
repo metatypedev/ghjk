@@ -152,7 +152,17 @@ export async function execTask(
       taskName,
       args,
       {
-        ...installEnvs,
+        ...Deno.env.toObject(),
+        ...Object.fromEntries(
+          Object.entries(installEnvs).map(
+            (
+              [key, val],
+            ) => [
+              key,
+              key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
+            ],
+          ),
+        ),
         ...taskEnv.env.env,
       },
     );

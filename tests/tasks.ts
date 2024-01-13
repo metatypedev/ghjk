@@ -6,7 +6,8 @@ import {
   type TaskDefTest,
   tsGhjkFileFromInstalls,
 } from "./utils.ts";
-import { protoc } from "../ports/mod.ts";
+import * as ghjk from "../mod.ts";
+import * as ports from "../ports/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
@@ -47,7 +48,7 @@ test (ghjk x greet world) = 'Hello moon!'`,
     name: "ports",
     tasks: [{
       name: "protoc",
-      installs: [protoc()],
+      installs: [ports.protoc()],
       fn: async ({ $ }) => {
         await $`protoc --version`;
       },
@@ -55,6 +56,33 @@ test (ghjk x greet world) = 'Hello moon!'`,
     ePoint: `fish`,
     stdin: `
 ghjk x protoc`,
+  },
+  {
+    name: "port_deps",
+    tasks: [{
+      name: "test",
+      // node depends on tar_aa
+      installs: [...ports.pipi({ packageName: "pre-commit" })],
+      allowedPortDeps: ghjk.stdDeps({ enableRuntimes: true }),
+      fn: async ({ $ }) => {
+        await $`pre-commit --version`;
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `ghjk x test`,
+  },
+  {
+    name: "default_port_deps",
+    tasks: [{
+      name: "test",
+      // node depends on tar_aa
+      installs: [ports.node()],
+      fn: async ({ $ }) => {
+        await $`node --version`;
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `ghjk x test`,
   },
   {
     name: "dependencies",
