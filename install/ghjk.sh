@@ -1,6 +1,7 @@
 #!/bin/sh 
 export GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-__GHJK_SHARE_DIR__}" 
 export DENO_DIR="${GHJK_DENO_DIR:-__DENO_CACHE_DIR}" 
+export DENO_NO_UPDATE_CHECK=1
 
 # if ghjkfile var is set, set the GHJK_DIR overriding
 # any set by the user

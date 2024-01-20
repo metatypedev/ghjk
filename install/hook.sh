@@ -62,7 +62,6 @@ export GHJK_LAST_PWD="$PWD"
 
 precmd() {
     if [ "$GHJK_LAST_PWD" != "$PWD" ]; then
-        echo "reloading"
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
     fi
