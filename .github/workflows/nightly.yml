@@ -32,7 +32,7 @@ jobs:
         run: brew install fish zsh
       - name: Cache deno dir
         if: "${{ matrix.os == 'macos-latest' }}"
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
           key: deno-mac-${{ hashFiles('**/deno.lock') }}
