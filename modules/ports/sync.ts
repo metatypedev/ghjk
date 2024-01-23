@@ -1087,8 +1087,8 @@ export ${k}="${v}:$${k}";
 set --global --export ${k} '${v}';`
       ),
       ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --path ${k} (string match --invert --regex "^${envDir}" $${k});';
-set --global --prepend ${k} ${v};
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${k} (string match --invert --regex "^${envDir}" $${k});';
+set --global --export --prepend ${k} ${v};
 `
       ),
     ].join("\n"),

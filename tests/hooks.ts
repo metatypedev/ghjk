@@ -8,11 +8,14 @@ import {
 import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../port.ts";
 
-// avoid using single quotes in this script
 const posixInteractiveScript = `
 set -eux
 [ "$DUMMY_ENV" = "dummy" ] || exit 101
 dummy
+
+# it should be avail in subshells
+sh -c '[ "$DUMMY_ENV" = "dummy" ]' || exit 105
+sh -c "dummy"
 
 pushd ../
 # it shouldn't be avail here
@@ -59,7 +62,6 @@ ${line}
 ]
   .join("\n");
 
-// avoid using single quotes in this script
 const posixNonInteractiveScript = `
 set -eux
 
@@ -67,6 +69,10 @@ set -eux
 ghjk_reload
 [ "$DUMMY_ENV" = "dummy" ] || exit 101
 dummy
+
+# it should be avail in subshells
+sh -c '[ "$DUMMY_ENV" = "dummy" ]' || exit 105
+sh -c "dummy"
 
 pushd ../
 # no reload so it's stil avail
@@ -93,6 +99,10 @@ dummy
 const fishScript = `
 dummy; or exit 101
 test $DUMMY_ENV = "dummy"; or exit 102
+
+# it should be avail in subshells
+sh -c '[ "$DUMMY_ENV" = "dummy" ]'; or exit 105
+sh -c "dummy"
 
 pushd ../
 # it shouldn't be avail here

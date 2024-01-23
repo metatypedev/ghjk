@@ -57,7 +57,7 @@ jobs:
         if: "${{ matrix.os == 'macos-latest' }}"
         uses: actions/cache@v4
         with:
-          path: ${{ env.DENO_DIR }}
+          path: ${{ env.GHJK_DENO_DIR }}
           key: deno-mac-${{ hashFiles('**/deno.lock') }}
 
       - if: "${{ matrix.e2eType == 'docker' }}"
