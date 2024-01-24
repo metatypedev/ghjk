@@ -36,6 +36,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            e2eType: "docker"
           - os: ubuntu-latest
             e2eType: "docker"
           - os: macos-latest

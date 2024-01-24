@@ -148,7 +148,14 @@ const cases: CustomE2eTestCase[] = [
       components: ["rust-analyzer"],
       targets: ["wasm32-unknown-unknown"],
       profile: "minimal",
-      host: "x86_64-unknown-linux-musl",
+      ...(Deno.build.os == "linux"
+        ? {
+          // tests are run on alpine docker
+          host: Deno.build.arch == "x86_64"
+            ? "x86_64-unknown-linux-musl"
+            : "aarch64-unknown-linux-musl",
+        }
+        : {}),
     }),
     ePoint: `rustc --version`,
   },
