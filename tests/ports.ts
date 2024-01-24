@@ -34,12 +34,6 @@ const cases: CustomE2eTestCase[] = [
   },
   // 7 megs
   {
-    name: "whiz",
-    installConf: ports.whiz(),
-    ePoint: `whiz --version`,
-  },
-  // 7 megs
-  {
     name: "act",
     installConf: ports.act(),
     ePoint: `act --version`,
@@ -74,18 +68,6 @@ const cases: CustomE2eTestCase[] = [
     name: "wasmedge",
     installConf: ports.wasmedge(),
     ePoint: `wasmedge --version`,
-  },
-  // cargo binstall +7 megs
-  {
-    name: "cargo-insta",
-    installConf: ports.cargo_insta(),
-    ePoint: `cargo-insta -V`,
-  },
-  // cargo binsatll 13 megs
-  {
-    name: "wasm-tools",
-    installConf: ports.wasm_tools(),
-    ePoint: `wasm-tools -V`,
   },
   // 23 megs
   {
@@ -122,12 +104,6 @@ const cases: CustomE2eTestCase[] = [
     secureConf: secureConfig({
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
     }),
-  },
-  // cargo-binstall + 22 megs
-  {
-    name: "wasm-opt",
-    installConf: ports.wasm_opt(),
-    ePoint: `wasm-opt --version`,
   },
   // 42 megs
   {
@@ -175,6 +151,12 @@ const cases: CustomE2eTestCase[] = [
       host: "x86_64-unknown-linux-musl",
     }),
     ePoint: `rustc --version`,
+  },
+  // rust + cargo_binstall + 22 megs
+  {
+    name: "cargobi-wasm-opt",
+    installConf: ports.cargobi({ crateName: "wasm-opt" }),
+    ePoint: `wasm-opt --version`,
   },
 ];
 

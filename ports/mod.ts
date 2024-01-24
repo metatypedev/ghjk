@@ -1,8 +1,8 @@
 export { default as act } from "./act.ts";
 export { default as asdf } from "./asdf.ts";
 export { default as cargo_binstall } from "./cargo-binstall.ts";
+export { default as cargobi } from "./cargobi.ts";
 export { default as cpy_bs } from "./cpy_bs.ts";
-export { default as cargo_insta } from "./cargo-insta.ts";
 export { default as curl } from "./curl.ts";
 export { default as earthly } from "./earthly.ts";
 export { default as git } from "./git.ts";
@@ -20,8 +20,5 @@ export { default as tar } from "./tar.ts";
 export { default as temporal_cli } from "./temporal_cli.ts";
 export { default as terraform } from "./terraform.ts";
 export { default as unzip } from "./unzip.ts";
-export { default as wasm_opt } from "./wasm-opt.ts";
-export { default as wasm_tools } from "./wasm-tools.ts";
 export { default as wasmedge } from "./wasmedge.ts";
-export { default as whiz } from "./whiz.ts";
 export { default as zstd } from "./zstd.ts";

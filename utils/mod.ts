@@ -11,6 +11,7 @@ import logger, { isColorfulTty } from "./logger.ts";
 import type {
   DepArts,
   DownloadArgs,
+  InstallConfigFat,
   InstallConfigResolvedX,
   OsEnum,
   PortDep,
@@ -448,4 +449,12 @@ export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
     },
   };
   return rc;
+}
+
+export function thinInstallConfig(fat: InstallConfigFat) {
+  const { port, ...lite } = fat;
+  return {
+    portRef: getPortRef(port),
+    ...lite,
+  };
 }
