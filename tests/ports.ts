@@ -63,6 +63,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.infisical(),
     ePoint: `infisical --version`,
   },
+  // 13 megs
+  {
+    name: "rustup",
+    installConf: ports.rustup(),
+    ePoint: `rustup-init --version`,
+  },
   // 16 megs
   {
     name: "wasmedge",
@@ -158,6 +164,17 @@ const cases: CustomE2eTestCase[] = [
     secureConf: secureConfig({
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
     }),
+  },
+  // rustup +  600 megs
+  {
+    name: "rust",
+    installConf: ports.rust({
+      components: ["rust-analyzer"],
+      targets: ["wasm32-unknown-unknown"],
+      profile: "minimal",
+      host: "x86_64-unknown-linux-musl",
+    }),
+    ePoint: `rustc --version`,
   },
 ];
 

@@ -15,6 +15,8 @@ import { manifest as man_node_org } from "../../ports/node.ts";
 import { manifest as man_pnpm_ghrel } from "../../ports/pnpm.ts";
 import { manifest as man_asdf_plugin_git } from "../../ports/asdf_plugin_git.ts";
 import { manifest as man_cpy_bs_ghrel } from "../../ports/cpy_bs.ts";
+import { manifest as man_rustup_rustlang } from "../../ports/rustup.ts";
+import { manifest as man_rust_rustup } from "../../ports/rust.ts";
 import { getPortRef } from "../../utils/mod.ts";
 
 const aaPorts: PortManifest[] = [
@@ -26,6 +28,8 @@ const aaPorts: PortManifest[] = [
 ];
 
 const denoPorts: PortManifest[] = [
+  man_rustup_rustlang,
+  man_rust_rustup,
   man_cbin_ghrel,
   man_pnpm_ghrel,
   man_asdf_plugin_git,
@@ -69,6 +73,14 @@ export const git_aa = Object.freeze({
 
 export const curl_aa = Object.freeze({
   name: man_curl_aa.name,
+} as PortDep);
+
+export const rustup_rustlang = Object.freeze({
+  name: man_rustup_rustlang.name,
+} as PortDep);
+
+export const rust_rustup = Object.freeze({
+  name: man_rust_rustup.name,
 } as PortDep);
 
 export const cbin_ghrel = Object.freeze({

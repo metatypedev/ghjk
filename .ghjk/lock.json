@@ -198,6 +198,14 @@
                   [
                     "illumos",
                     "aarch64"
+                  ],
+                  [
+                    "android",
+                    "x86_64"
+                  ],
+                  [
+                    "android",
+                    "aarch64"
                   ]
                 ],
                 "version": "0.1.0",
@@ -355,6 +363,14 @@
                   [
                     "illumos",
                     "aarch64"
+                  ],
+                  [
+                    "android",
+                    "x86_64"
+                  ],
+                  [
+                    "android",
+                    "aarch64"
                   ]
                 ],
                 "version": "0.1.0",
@@ -434,6 +450,14 @@
                   ],
                   [
                     "illumos",
+                    "aarch64"
+                  ],
+                  [
+                    "android",
+                    "x86_64"
+                  ],
+                  [
+                    "android",
                     "aarch64"
                   ]
                 ],
@@ -517,6 +541,151 @@
               },
               "defaultInst": {
                 "portRef": "zstd_aa@0.1.0"
+              }
+            },
+            "rustup_rustlang": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "rustup_rustlang",
+                "platforms": [
+                  [
+                    "darwin",
+                    "x86_64"
+                  ],
+                  [
+                    "darwin",
+                    "aarch64"
+                  ],
+                  [
+                    "linux",
+                    "x86_64"
+                  ],
+                  [
+                    "linux",
+                    "aarch64"
+                  ],
+                  [
+                    "windows",
+                    "x86_64"
+                  ],
+                  [
+                    "illumos",
+                    "x86_64"
+                  ],
+                  [
+                    "freebsd",
+                    "x86_64"
+                  ],
+                  [
+                    "netbsd",
+                    "x86_64"
+                  ]
+                ],
+                "version": "0.1.0",
+                "deps": [
+                  {
+                    "name": "git_aa"
+                  }
+                ],
+                "resolutionDeps": [
+                  {
+                    "name": "git_aa"
+                  }
+                ],
+                "moduleSpecifier": "file:///data/home/ghjk/ports/rustup.ts"
+              },
+              "defaultInst": {
+                "portRef": "rustup_rustlang@0.1.0"
+              }
+            },
+            "rust_rustup": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "rust_rustup",
+                "platforms": [
+                  [
+                    "linux",
+                    "x86_64"
+                  ],
+                  [
+                    "linux",
+                    "aarch64"
+                  ],
+                  [
+                    "darwin",
+                    "x86_64"
+                  ],
+                  [
+                    "darwin",
+                    "aarch64"
+                  ],
+                  [
+                    "windows",
+                    "x86_64"
+                  ],
+                  [
+                    "windows",
+                    "aarch64"
+                  ],
+                  [
+                    "freebsd",
+                    "x86_64"
+                  ],
+                  [
+                    "freebsd",
+                    "aarch64"
+                  ],
+                  [
+                    "netbsd",
+                    "x86_64"
+                  ],
+                  [
+                    "netbsd",
+                    "aarch64"
+                  ],
+                  [
+                    "aix",
+                    "x86_64"
+                  ],
+                  [
+                    "aix",
+                    "aarch64"
+                  ],
+                  [
+                    "solaris",
+                    "x86_64"
+                  ],
+                  [
+                    "solaris",
+                    "aarch64"
+                  ],
+                  [
+                    "illumos",
+                    "x86_64"
+                  ],
+                  [
+                    "illumos",
+                    "aarch64"
+                  ],
+                  [
+                    "android",
+                    "x86_64"
+                  ],
+                  [
+                    "android",
+                    "aarch64"
+                  ]
+                ],
+                "version": "0.1.0",
+                "deps": [
+                  {
+                    "name": "rustup_rustlang"
+                  }
+                ],
+                "moduleSpecifier": "file:///data/home/ghjk/ports/rust.ts"
+              },
+              "defaultInst": {
+                "portRef": "rust_rustup@0.1.0"
               }
             },
             "cargo_binstall_ghrel": {
@@ -871,6 +1040,14 @@
                         [
                           "illumos",
                           "aarch64"
+                        ],
+                        [
+                          "android",
+                          "x86_64"
+                        ],
+                        [
+                          "android",
+                          "aarch64"
                         ]
                       ],
                       "version": "0.1.0",
@@ -950,6 +1127,14 @@
                         ],
                         [
                           "illumos",
+                          "aarch64"
+                        ],
+                        [
+                          "android",
+                          "x86_64"
+                        ],
+                        [
+                          "android",
                           "aarch64"
                         ]
                       ],
@@ -1033,6 +1218,151 @@
                     },
                     "defaultInst": {
                       "portRef": "zstd_aa@0.1.0"
+                    }
+                  },
+                  "rustup_rustlang": {
+                    "manifest": {
+                      "ty": "denoWorker@v1",
+                      "name": "rustup_rustlang",
+                      "platforms": [
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ],
+                        [
+                          "illumos",
+                          "x86_64"
+                        ],
+                        [
+                          "freebsd",
+                          "x86_64"
+                        ],
+                        [
+                          "netbsd",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "deps": [
+                        {
+                          "name": "git_aa"
+                        }
+                      ],
+                      "resolutionDeps": [
+                        {
+                          "name": "git_aa"
+                        }
+                      ],
+                      "moduleSpecifier": "file:///data/home/ghjk/ports/rustup.ts"
+                    },
+                    "defaultInst": {
+                      "portRef": "rustup_rustlang@0.1.0"
+                    }
+                  },
+                  "rust_rustup": {
+                    "manifest": {
+                      "ty": "denoWorker@v1",
+                      "name": "rust_rustup",
+                      "platforms": [
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "freebsd",
+                          "x86_64"
+                        ],
+                        [
+                          "freebsd",
+                          "aarch64"
+                        ],
+                        [
+                          "netbsd",
+                          "x86_64"
+                        ],
+                        [
+                          "netbsd",
+                          "aarch64"
+                        ],
+                        [
+                          "aix",
+                          "x86_64"
+                        ],
+                        [
+                          "aix",
+                          "aarch64"
+                        ],
+                        [
+                          "solaris",
+                          "x86_64"
+                        ],
+                        [
+                          "solaris",
+                          "aarch64"
+                        ],
+                        [
+                          "illumos",
+                          "x86_64"
+                        ],
+                        [
+                          "illumos",
+                          "aarch64"
+                        ],
+                        [
+                          "android",
+                          "x86_64"
+                        ],
+                        [
+                          "android",
+                          "aarch64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "deps": [
+                        {
+                          "name": "rustup_rustlang"
+                        }
+                      ],
+                      "moduleSpecifier": "file:///data/home/ghjk/ports/rust.ts"
+                    },
+                    "defaultInst": {
+                      "portRef": "rust_rustup@0.1.0"
                     }
                   },
                   "cargo_binstall_ghrel": {

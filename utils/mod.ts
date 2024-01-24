@@ -114,6 +114,7 @@ export function tryDepExecShimPath(
   if (!shimPaths) {
     return;
   }
+  // FIXME: match despite `.exe` extension on windows
   const path = shimPaths.execs[execName];
   if (!path) {
     return;
