@@ -1,6 +1,6 @@
 export { ghjk } from "./mod.ts";
 import * as ghjk from "./mod.ts";
-import { act, cpy_bs, pipi, protoc } from "./ports/mod.ts";
+import { act, cpy_bs, pipi, protoc, temporal_cli } from "./ports/mod.ts";
 
 ghjk
   .task("greet", {

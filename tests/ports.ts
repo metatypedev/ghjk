@@ -81,6 +81,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.wasm_tools(),
     ePoint: `wasm-tools -V`,
   },
+  // 23 megs
+  {
+    name: "temporal",
+    installConf: ports.temporal_cli(),
+    ePoint: `temporal --version`,
+  },
   // 24 megs
   {
     name: "terraform",
