@@ -12,6 +12,7 @@ ARG GTAR_V=1.34-r2
 ARG UNZIP_V=6.0-r13
 ARG ZSTD_V=1.5.5-r0
 ARG GCOMPAT_V=1.1.0-r0
+ARG BUILD_BASE_V=0.5-r3
 
 RUN set -eux; \
     apk update; \
@@ -28,6 +29,7 @@ RUN set -eux; \
     curl=$CURL_V \
     xz=$XZ_V \
     unzip=$UNZIP_V \
+    build-base=$BUILD_BASE_V \
     ca-certificates \
     ;
 

@@ -37,8 +37,7 @@ const manifest = {
 
 const confValidator = zod.object({
   crateName: zod.string().regex(/[a-z0-9._-]*/),
-  // TODO: a method to use debug compilation
-  // profile: zod.string().regex(/[a-zA-Z_-]+/).nullish(),
+  profile: zod.string().regex(/[a-zA-Z_-]+/).nullish(),
   noDefaultFeatures: zod.boolean().nullish(),
   features: zod.string().regex(/[a-zA-Z_-]+/).array().nullish(),
   locked: zod.boolean().nullish(),
@@ -71,10 +70,22 @@ export default function conf(config: CargobiInstallConf) {
 export class Port extends PortBase {
   async listAll(args: ListAllArgs) {
     const conf = confValidator.parse(args.config);
-    const metadataText = await $.request(
-      `https://index.crates.io/${conf.crateName.slice(0, 2)}/${
+    // https://doc.rust-lang.org/cargo/reference/registry-index.html#index-files
+    const lowerCName = conf.crateName.toLowerCase();
+    let indexPath;
+    if (lowerCName.length == 1) {
+      indexPath = `1/${lowerCName}`;
+    } else if (lowerCName.length == 2) {
+      indexPath = `2/${lowerCName}`;
+    } else if (lowerCName.length == 3) {
+      indexPath = `3/${conf.crateName[0]}/${lowerCName}`;
+    } else {
+      indexPath = `${conf.crateName.slice(0, 2)}/${
         conf.crateName.slice(2, 4)
-      }/${conf.crateName}`,
+      }/${lowerCName}`;
+    }
+    const metadataText = await $.request(
+      `https://index.crates.io/${indexPath}`,
     ).text();
     const versions = metadataText
       .split("\n")
@@ -102,27 +113,65 @@ export class Port extends PortBase {
     }
     const ghConf = ghConfValidator.parse(args.config);
     const target = conf.target ? `--target ${conf.target}` : "";
+    const profile = conf.profile ? `--profile ${conf.profile}` : "";
     const noDefaultFeatures = conf.noDefaultFeatures
       ? "--no-default-features"
       : "";
     const features = conf.features ? `--features ${conf.features.join()}` : "";
     const locked = conf.locked ? `--locked` : "";
-    await $.raw`${
-      depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
-    } ${conf.crateName} --version ${args.installVersion} --install-path ${args.tmpDirPath} --no-confirm --no-track ${
-      [
-        target,
-        noDefaultFeatures,
-        features,
-        locked,
-      ].filter((str) => str.length > 0)
-    }`.env(
-      {
-        // cargo-binstall might want to access cargo
-        ...pathsWithDepArts(args.depArts, args.platform.os),
-        ...ghConf.ghToken ? { GITHUB_TOKEN: ghConf.ghToken } : {},
-      },
-    );
+
+    const cargoBinstall = () => {
+      return $.raw`${
+        depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
+      } ${conf.crateName} --version ${args.installVersion} --disable-strategies compile --root ${args.tmpDirPath} --no-confirm --no-track ${
+        [
+          target,
+          locked,
+        ].filter((str) => str.length > 0)
+      }`.env(
+        {
+          // cargo-binstall might want to access cargo
+          ...pathsWithDepArts(args.depArts, args.platform.os),
+          ...ghConf.ghToken ? { GITHUB_TOKEN: ghConf.ghToken } : {},
+        },
+      ).noThrow(true);
+    };
+
+    const cargoInstall = () => {
+      return $.raw`${
+        depExecShimPath(std_ports.rust_rustup, "cargo", args.depArts)
+      } install ${conf.crateName} --version ${args.installVersion} --root ${args.tmpDirPath} --no-track ${
+        [
+          target,
+          noDefaultFeatures,
+          features,
+          locked,
+          profile,
+        ].filter((str) => str.length > 0)
+      }`.env(
+        {
+          // cargo will need to access rustc
+          ...pathsWithDepArts(args.depArts, args.platform.os),
+          ...ghConf.ghToken ? { GITHUB_TOKEN: ghConf.ghToken } : {},
+        },
+      );
+    };
+
+    // if any paramaters unsupported by cargo binstall are present
+    if ([profile, noDefaultFeatures, features].some((str) => str.length > 0)) {
+      // directly go to cargo install
+      await cargoInstall();
+    } else {
+      const res = await cargoBinstall();
+      // code 94 implies cargo binstall tried to fall back
+      // to cargo install
+      if (res.code == 94) {
+        await cargoInstall();
+      } else if (res.code != 0) {
+        throw new Error(`error ${res.code} on cargo-binstall\n${res.combined}`);
+      }
+    }
+
     await std_fs.move(
       args.tmpDirPath,
       args.downloadPath,
@@ -136,7 +185,7 @@ export class Port extends PortBase {
     }
     await std_fs.copy(
       args.downloadPath,
-      installPath.join("bin").toString(),
+      args.installPath,
     );
   }
 }

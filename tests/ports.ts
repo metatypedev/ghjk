@@ -159,11 +159,44 @@ const cases: CustomE2eTestCase[] = [
     }),
     ePoint: `rustc --version`,
   },
+  // rust + cargo_binstall + 14 megs
+  {
+    name: "cargobi-sd",
+    installConf: ports.cargobi({
+      crateName: "sd",
+      rustConfOverride: {
+        profile: "minimal",
+        ...(Deno.build.os == "linux"
+          ? {
+            // tests are run on alpine docker
+            host: Deno.build.arch == "x86_64"
+              ? "x86_64-unknown-linux-musl"
+              : "aarch64-unknown-linux-musl",
+          }
+          : {}),
+      },
+    }),
+    ePoint: `sd --version`,
+  },
   // rust + cargo_binstall + 22 megs
   {
-    name: "cargobi-wasm-opt",
-    installConf: ports.cargobi({ crateName: "wasm-opt" }),
-    ePoint: `wasm-opt --version`,
+    name: "cargobi-sd",
+    installConf: ports.cargobi({
+      crateName: "sd",
+      profile: "dev", // force to use cargo-install
+      rustConfOverride: {
+        profile: "minimal",
+        ...(Deno.build.os == "linux"
+          ? {
+            // tests are run on alpine docker
+            host: Deno.build.arch == "x86_64"
+              ? "x86_64-unknown-linux-musl"
+              : "aarch64-unknown-linux-musl",
+          }
+          : {}),
+      },
+    }),
+    ePoint: `sd --version`,
   },
 ];
 

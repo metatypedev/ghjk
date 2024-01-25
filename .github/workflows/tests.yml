@@ -9,7 +9,7 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.39.0"
+  DENO_VERSION: "1.39.4"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@a4453d20156edde8e1c9b19784f8188a36b3bf23
+      - uses: metatypedev/setup-ghjk@32fe7ad4eab41d5e62189208afa6fe17112a5563
         with:
           installer-url: ./install.ts
         env: 
