@@ -62,11 +62,6 @@
           "depConfigs": {},
           "portRef": "zstd_aa@0.1.0"
         },
-        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
-          "version": "v25.1",
-          "depConfigs": {},
-          "portRef": "protoc_ghrel@0.1.0"
-        },
         "c58811a17645c26b5a55a2de02f930945e04adf37e408846bf6b5c72bf707146": {
           "version": "3.12.0",
           "depConfigs": {
@@ -83,6 +78,11 @@
           },
           "portRef": "cpy_bs_ghrel@0.1.0",
           "releaseTag": "20231002"
+        },
+        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
+          "version": "v25.2",
+          "depConfigs": {},
+          "portRef": "protoc_ghrel@0.1.0"
         }
       }
     },
@@ -770,7 +770,385 @@
                 "env": {
                   "STUFF": "stuffier"
                 },
-                "allowedPortDeps": {}
+                "allowedPortDeps": {
+                  "tar_aa": {
+                    "manifest": {
+                      "ty": "ambientAccess@v1",
+                      "name": "tar_aa",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "execName": "tar",
+                      "versionExtractFlag": "--version",
+                      "versionExtractRegex": "(\\d+\\.\\d+)",
+                      "versionExtractRegexFlags": ""
+                    },
+                    "defaultInst": {
+                      "portRef": "tar_aa@0.1.0"
+                    }
+                  },
+                  "git_aa": {
+                    "manifest": {
+                      "ty": "ambientAccess@v1",
+                      "name": "git_aa",
+                      "platforms": [
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "freebsd",
+                          "x86_64"
+                        ],
+                        [
+                          "freebsd",
+                          "aarch64"
+                        ],
+                        [
+                          "netbsd",
+                          "x86_64"
+                        ],
+                        [
+                          "netbsd",
+                          "aarch64"
+                        ],
+                        [
+                          "aix",
+                          "x86_64"
+                        ],
+                        [
+                          "aix",
+                          "aarch64"
+                        ],
+                        [
+                          "solaris",
+                          "x86_64"
+                        ],
+                        [
+                          "solaris",
+                          "aarch64"
+                        ],
+                        [
+                          "illumos",
+                          "x86_64"
+                        ],
+                        [
+                          "illumos",
+                          "aarch64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "execName": "git",
+                      "versionExtractFlag": "--version",
+                      "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+                      "versionExtractRegexFlags": ""
+                    },
+                    "defaultInst": {
+                      "portRef": "git_aa@0.1.0"
+                    }
+                  },
+                  "curl_aa": {
+                    "manifest": {
+                      "ty": "ambientAccess@v1",
+                      "name": "curl_aa",
+                      "platforms": [
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "freebsd",
+                          "x86_64"
+                        ],
+                        [
+                          "freebsd",
+                          "aarch64"
+                        ],
+                        [
+                          "netbsd",
+                          "x86_64"
+                        ],
+                        [
+                          "netbsd",
+                          "aarch64"
+                        ],
+                        [
+                          "aix",
+                          "x86_64"
+                        ],
+                        [
+                          "aix",
+                          "aarch64"
+                        ],
+                        [
+                          "solaris",
+                          "x86_64"
+                        ],
+                        [
+                          "solaris",
+                          "aarch64"
+                        ],
+                        [
+                          "illumos",
+                          "x86_64"
+                        ],
+                        [
+                          "illumos",
+                          "aarch64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "execName": "curl",
+                      "versionExtractFlag": "--version",
+                      "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+                      "versionExtractRegexFlags": ""
+                    },
+                    "defaultInst": {
+                      "portRef": "curl_aa@0.1.0"
+                    }
+                  },
+                  "unzip_aa": {
+                    "manifest": {
+                      "ty": "ambientAccess@v1",
+                      "name": "unzip_aa",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "execName": "unzip",
+                      "versionExtractFlag": "-v",
+                      "versionExtractRegex": "(\\d+\\.\\d+)",
+                      "versionExtractRegexFlags": ""
+                    },
+                    "defaultInst": {
+                      "portRef": "unzip_aa@0.1.0"
+                    }
+                  },
+                  "zstd_aa": {
+                    "manifest": {
+                      "ty": "ambientAccess@v1",
+                      "name": "zstd_aa",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "execName": "zstd",
+                      "versionExtractFlag": "--version",
+                      "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
+                      "versionExtractRegexFlags": ""
+                    },
+                    "defaultInst": {
+                      "portRef": "zstd_aa@0.1.0"
+                    }
+                  },
+                  "cargo_binstall_ghrel": {
+                    "manifest": {
+                      "ty": "denoWorker@v1",
+                      "name": "cargo_binstall_ghrel",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "moduleSpecifier": "file:///data/home/ghjk/ports/cargo-binstall.ts"
+                    },
+                    "defaultInst": {
+                      "portRef": "cargo_binstall_ghrel@0.1.0"
+                    }
+                  },
+                  "pnpm_ghrel": {
+                    "manifest": {
+                      "ty": "denoWorker@v1",
+                      "name": "pnpm_ghrel",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "moduleSpecifier": "file:///data/home/ghjk/ports/pnpm.ts"
+                    },
+                    "defaultInst": {
+                      "portRef": "pnpm_ghrel@0.1.0"
+                    }
+                  },
+                  "asdf_plugin_git": {
+                    "manifest": {
+                      "ty": "denoWorker@v1",
+                      "name": "asdf_plugin_git",
+                      "platforms": [
+                        [
+                          "linux",
+                          "aarch64"
+                        ],
+                        [
+                          "linux",
+                          "x86_64"
+                        ],
+                        [
+                          "darwin",
+                          "aarch64"
+                        ],
+                        [
+                          "darwin",
+                          "x86_64"
+                        ],
+                        [
+                          "windows",
+                          "aarch64"
+                        ],
+                        [
+                          "windows",
+                          "x86_64"
+                        ]
+                      ],
+                      "version": "0.1.0",
+                      "deps": [
+                        {
+                          "name": "git_aa"
+                        }
+                      ],
+                      "resolutionDeps": [
+                        {
+                          "name": "git_aa"
+                        }
+                      ],
+                      "moduleSpecifier": "file:///data/home/ghjk/ports/asdf_plugin_git.ts"
+                    },
+                    "defaultInst": {
+                      "portRef": "asdf_plugin_git@0.1.0"
+                    }
+                  }
+                }
               }
             },
             "ho": {

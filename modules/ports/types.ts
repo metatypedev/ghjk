@@ -28,6 +28,7 @@ export const ALL_OS = [
   "aix",
   "solaris",
   "illumos",
+  "android",
 ] as const;
 
 export const ALL_ARCH = [
