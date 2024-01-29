@@ -52,6 +52,9 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
+      - if: "${{ matrix.os == 'custom-macos' }}"
+        run: brew install zstd
+
       - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'custom-macos' }}"
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils

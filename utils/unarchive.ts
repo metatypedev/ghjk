@@ -52,7 +52,6 @@ export async function untgz(
     },
   });
   const buf = gzDec.finish().copyAndDispose();
-  await Deno.writeFile("/tmp/my.tar", buf);
   await untarReader(new std_io.Buffer(buf), dest);
 }
 export async function untar(
