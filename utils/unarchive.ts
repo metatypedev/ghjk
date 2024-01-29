@@ -5,7 +5,7 @@ import {
   std_io,
   std_path,
   std_streams,
-  std_tar,
+  std_untar,
 } from "../deps/ports.ts";
 
 /// Uses file extension to determine type
@@ -77,7 +77,7 @@ export async function untarReader(
   reader: Deno.Reader,
   dest = "./",
 ) {
-  for await (const entry of new std_tar.Untar(reader)) {
+  for await (const entry of new std_untar.Untar(reader)) {
     const filePath = std_path.resolve(dest, entry.fileName);
     if (entry.type === "directory") {
       await std_fs.ensureDir(filePath);

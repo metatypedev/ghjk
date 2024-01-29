@@ -148,14 +148,17 @@ const cases: CustomE2eTestCase[] = [
       components: ["rust-analyzer"],
       targets: ["wasm32-unknown-unknown"],
       profile: "minimal",
-      ...(Deno.build.os == "linux"
-        ? {
-          // tests are run on alpine docker
-          host: Deno.build.arch == "x86_64"
-            ? "x86_64-unknown-linux-musl"
-            : "aarch64-unknown-linux-musl",
-        }
-        : {}),
+      ...(
+        Deno.build.os == "linux" &&
+          Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+          ? {
+            // tests are run on alpine docker
+            host: Deno.build.arch == "x86_64"
+              ? "x86_64-unknown-linux-musl"
+              : "aarch64-unknown-linux-musl",
+          }
+          : {}
+      ),
     }),
     ePoint: `rustc --version`,
   },
@@ -166,14 +169,17 @@ const cases: CustomE2eTestCase[] = [
       crateName: "sd",
       rustConfOverride: {
         profile: "minimal",
-        ...(Deno.build.os == "linux"
-          ? {
-            // tests are run on alpine docker
-            host: Deno.build.arch == "x86_64"
-              ? "x86_64-unknown-linux-musl"
-              : "aarch64-unknown-linux-musl",
-          }
-          : {}),
+        ...(
+          Deno.build.os == "linux" &&
+            Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+            ? {
+              // tests are run on alpine docker
+              host: Deno.build.arch == "x86_64"
+                ? "x86_64-unknown-linux-musl"
+                : "aarch64-unknown-linux-musl",
+            }
+            : {}
+        ),
       },
     }),
     ePoint: `sd --version`,
@@ -186,14 +192,17 @@ const cases: CustomE2eTestCase[] = [
       profile: "dev", // force to use cargo-install
       rustConfOverride: {
         profile: "minimal",
-        ...(Deno.build.os == "linux"
-          ? {
-            // tests are run on alpine docker
-            host: Deno.build.arch == "x86_64"
-              ? "x86_64-unknown-linux-musl"
-              : "aarch64-unknown-linux-musl",
-          }
-          : {}),
+        ...(
+          Deno.build.os == "linux" &&
+            Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+            ? {
+              // tests are run on alpine docker
+              host: Deno.build.arch == "x86_64"
+                ? "x86_64-unknown-linux-musl"
+                : "aarch64-unknown-linux-musl",
+            }
+            : {}
+        ),
       },
     }),
     ePoint: `sd --version`,

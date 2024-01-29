@@ -167,7 +167,7 @@ export function isColorfulTty(outFile = Deno.stdout) {
   if (colorEnvFlagSet) {
     return true;
   }
-  if (Deno.isatty(outFile.rid)) {
+  if (outFile.isTerminal()) {
     const { columns } = Deno.consoleSize();
     return columns > 0;
   }
