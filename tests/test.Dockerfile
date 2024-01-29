@@ -1,4 +1,4 @@
-ARG DENO_V=1.39.0
+ARG DENO_V=1.40.2
 
 FROM docker.io/denoland/deno:alpine-${DENO_V}
 
