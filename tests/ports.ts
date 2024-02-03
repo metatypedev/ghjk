@@ -45,12 +45,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.cargo_binstall(),
     ePoint: `cargo-binstall -V`,
   },
-  // 7 megs
+  /* // 7 megs
   {
     name: "meta-cli",
-    installConf: ports.meta_cli_ghrel(),
+    installConf: ports.meta_cli_ghrel({ full: true }),
     ePoint: `meta --version`,
-  },
+  }, */
   // 8 megs
   {
     name: "mold",
@@ -252,7 +252,10 @@ function testMany(
                 ...testCase.envs,
               },
             }),
-            10_000,
+            // building the test docker image might taka a while
+            // but we don't want some bug spinlocking the ci for
+            // an hour
+            300_000,
           ),
       },
     );

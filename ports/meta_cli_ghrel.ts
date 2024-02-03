@@ -9,6 +9,7 @@ import {
   std_fs,
   std_path,
   unarchive,
+  zod,
 } from "../port.ts";
 import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
@@ -20,8 +21,17 @@ const manifest = {
   platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
+const confValidator = zod.object({
+  full: zod.boolean().nullish(),
+}).passthrough();
+
+export type MetaCliInstallConf =
+  & InstallConfigSimple
+  & GithubReleasesInstConf
+  & zod.input<typeof confValidator>;
+
 export default function conf(
-  config: InstallConfigSimple & GithubReleasesInstConf = {},
+  config: MetaCliInstallConf = {},
 ) {
   return {
     ...readGhVars(),
@@ -35,6 +45,7 @@ export class Port extends GithubReleasePort {
   repoName = "metatype";
 
   downloadUrls(args: DownloadArgs) {
+    const conf = confValidator.parse(args);
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {
@@ -51,7 +62,7 @@ export class Port extends GithubReleasePort {
     const ext = ".tar.gz";
     switch (platform.os) {
       case "linux":
-        os = arch == "x86_64" ? "unknown-linux-musl" : "unknown-linux-gnu";
+        os = "unknown-linux-gnu";
         break;
       case "darwin":
         os = "apple-darwin";
@@ -62,7 +73,9 @@ export class Port extends GithubReleasePort {
     return [
       this.releaseArtifactUrl(
         installVersion,
-        `meta-cli-${installVersion}-${arch}-${os}${ext}`,
+        `meta-cli${
+          conf.full ? "-full" : ""
+        }-${installVersion}-${arch}-${os}${ext}`,
       ),
     ].map(dwnUrlOut);
   }
