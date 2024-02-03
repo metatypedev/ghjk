@@ -40,7 +40,7 @@ jobs:
             e2eType: "docker"
           - os: macos-latest
             e2eType: "local"
-          - os: custom-macos
+          - os: macos-14
             e2eType: "local"
           # - os: windows-latest
           #   e2eType: "local"
@@ -52,14 +52,11 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
-      - if: "${{ matrix.os == 'custom-macos' }}"
-        run: brew install zstd
-
-      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'custom-macos' }}"
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils
       - name: Cache deno dir
-        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'custom-macos' }}"
+        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         uses: actions/cache@v4
         with:
           path: ${{ env.GHJK_DENO_DIR }}

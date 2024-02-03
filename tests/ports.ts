@@ -11,6 +11,7 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
+import { $ } from "../utils/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
@@ -227,29 +228,36 @@ function testMany(
         name: `${testGroup} - ${testCase.name}`,
         ignore: testCase.ignore,
         fn: () =>
-          testFn({
-            ...testCase,
-            tsGhjkfileStr: tsGhjkFileFromInstalls(
-              {
-                installConf: testCase.installConf,
-                secureConf: testCase.secureConf,
-                taskDefs: [],
-              },
-            ),
-            ePoints: [
-              ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                cmd: `env ${sh} '${testCase.ePoint}'`,
-              })),
-              // FIXME: better tests for the `InstallDb`
-              // installs db means this shouldn't take too long
-              // as it's the second sync
-              { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
+          Promise.race(
+            [
+              $.sleep(10_000).then(() => {
+                throw new Error("timeout");
+              }),
+              testFn({
+                ...testCase,
+                tsGhjkfileStr: tsGhjkFileFromInstalls(
+                  {
+                    installConf: testCase.installConf,
+                    secureConf: testCase.secureConf,
+                    taskDefs: [],
+                  },
+                ),
+                ePoints: [
+                  ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+                    cmd: `env ${sh} '${testCase.ePoint}'`,
+                  })),
+                  // FIXME: better tests for the `InstallDb`
+                  // installs db means this shouldn't take too long
+                  // as it's the second sync
+                  { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
+                ],
+                envs: {
+                  ...defaultEnvs,
+                  ...testCase.envs,
+                },
+              }),
             ],
-            envs: {
-              ...defaultEnvs,
-              ...testCase.envs,
-            },
-          }),
+          ),
       },
     );
   }
