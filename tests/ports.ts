@@ -45,12 +45,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.cargo_binstall(),
     ePoint: `cargo-binstall -V`,
   },
-  /* // 7 megs
+  // 7 megs
   {
     name: "meta-cli",
     installConf: ports.meta_cli_ghrel({ full: true }),
     ePoint: `meta --version`,
-  }, */
+  },
   // 8 megs
   {
     name: "mold",
