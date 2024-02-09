@@ -15,7 +15,7 @@ import type {
   PortsModuleSecureConfig,
 } from "./modules/ports/types.ts";
 import logger from "./utils/logger.ts";
-import { $, defaultCommandBuilder, getPortRef } from "./utils/mod.ts";
+import { $, defaultCommandBuilder, thinInstallConfig } from "./utils/mod.ts";
 import * as std_ports from "./modules/ports/std.ts";
 import * as cpy from "./ports/cpy_bs.ts";
 import * as node from "./ports/node.ts";
@@ -132,13 +132,9 @@ export function stdDeps(args = { enableRuntimes: false }) {
         node.default(),
         cpy.default(),
       ].map((fatInst) => {
-        const { port, ...liteInst } = fatInst;
         return portsValidators.allowedPortDep.parse({
-          manifest: port,
-          defaultInst: {
-            portRef: getPortRef(port),
-            ...liteInst,
-          },
+          manifest: fatInst.port,
+          defaultInst: thinInstallConfig(fatInst),
         });
       }),
     );

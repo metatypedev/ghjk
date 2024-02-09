@@ -1,4 +1,5 @@
 import "../setup_logger.ts";
+import { std_async } from "../deps/dev.ts";
 import { secureConfig, stdDeps } from "../mod.ts";
 import {
   dockerE2eTest,
@@ -34,12 +35,6 @@ const cases: CustomE2eTestCase[] = [
   },
   // 7 megs
   {
-    name: "whiz",
-    installConf: ports.whiz(),
-    ePoint: `whiz --version`,
-  },
-  // 7 megs
-  {
     name: "act",
     installConf: ports.act(),
     ePoint: `act --version`,
@@ -63,23 +58,11 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.infisical(),
     ePoint: `infisical --version`,
   },
-  // 16 megs
+  // 13 megs
   {
-    name: "wasmedge",
-    installConf: ports.wasmedge(),
-    ePoint: `wasmedge --version`,
-  },
-  // cargo binstall +7 megs
-  {
-    name: "cargo-insta",
-    installConf: ports.cargo_insta(),
-    ePoint: `cargo-insta -V`,
-  },
-  // cargo binsatll 13 megs
-  {
-    name: "wasm-tools",
-    installConf: ports.wasm_tools(),
-    ePoint: `wasm-tools -V`,
+    name: "rustup",
+    installConf: ports.rustup(),
+    ePoint: `rustup-init --version`,
   },
   // 23 megs
   {
@@ -117,12 +100,6 @@ const cases: CustomE2eTestCase[] = [
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
     }),
   },
-  // cargo-binstall + 22 megs
-  {
-    name: "wasm-opt",
-    installConf: ports.wasm_opt(),
-    ePoint: `wasm-opt --version`,
-  },
   // 42 megs
   {
     name: "earthly",
@@ -134,6 +111,22 @@ const cases: CustomE2eTestCase[] = [
     name: "pnpm",
     installConf: ports.pnpm(),
     ePoint: `pnpm --version`,
+  },
+  // 70 megs + 16 megs
+  {
+    name: "meta-cli-and-wasmedge",
+    installConf: [
+      ports.meta_cli_ghrel({ full: true }),
+      ports.wasmedge(),
+    ],
+    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") != "local"
+      // meta cli runs into segmentation error in the alpine
+      // image
+      // https://github.com/metatypedev/metatype/issues/584
+      // just check that the shell's able to find the
+      // executrable
+      ? `which meta && wasmedge --version`
+      : `meta --version && wasmedge --version`,
   },
   // 77 meg +
   {
@@ -159,6 +152,72 @@ const cases: CustomE2eTestCase[] = [
       allowedPortDeps: stdDeps({ enableRuntimes: true }),
     }),
   },
+  // rustup +  600 megs
+  {
+    name: "rust",
+    installConf: ports.rust({
+      components: ["rust-analyzer"],
+      targets: ["wasm32-unknown-unknown"],
+      profile: "minimal",
+      ...(
+        Deno.build.os == "linux" &&
+          Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+          ? {
+            // tests are run on alpine docker
+            host: Deno.build.arch == "x86_64"
+              ? "x86_64-unknown-linux-musl"
+              : "aarch64-unknown-linux-musl",
+          }
+          : {}
+      ),
+    }),
+    ePoint: `rustc --version`,
+  },
+  // rust + cargo_binstall + 14 megs
+  {
+    name: "cargobi-sd",
+    installConf: ports.cargobi({
+      crateName: "sd",
+      rustConfOverride: {
+        profile: "minimal",
+        ...(
+          Deno.build.os == "linux" &&
+            Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+            ? {
+              // tests are run on alpine docker
+              host: Deno.build.arch == "x86_64"
+                ? "x86_64-unknown-linux-musl"
+                : "aarch64-unknown-linux-musl",
+            }
+            : {}
+        ),
+      },
+    }),
+    ePoint: `sd --version`,
+  },
+  // rust + cargo_binstall + 22 megs
+  {
+    name: "cargobi-sd",
+    installConf: ports.cargobi({
+      crateName: "sd",
+      profile: "dev", // force to use cargo-install
+      rustConfOverride: {
+        profile: "minimal",
+        ...(
+          Deno.build.os == "linux" &&
+            Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+            ? {
+              // tests are run on alpine docker
+              host: Deno.build.arch == "x86_64"
+                ? "x86_64-unknown-linux-musl"
+                : "aarch64-unknown-linux-musl",
+            }
+            : {}
+        ),
+      },
+    }),
+    ePoint: `sd --version`,
+  },
 ];
 
 function testMany(
@@ -173,29 +232,35 @@ function testMany(
         name: `${testGroup} - ${testCase.name}`,
         ignore: testCase.ignore,
         fn: () =>
-          testFn({
-            ...testCase,
-            tsGhjkfileStr: tsGhjkFileFromInstalls(
-              {
-                installConf: testCase.installConf,
-                secureConf: testCase.secureConf,
-                taskDefs: [],
+          std_async.deadline(
+            testFn({
+              ...testCase,
+              tsGhjkfileStr: tsGhjkFileFromInstalls(
+                {
+                  installConf: testCase.installConf,
+                  secureConf: testCase.secureConf,
+                  taskDefs: [],
+                },
+              ),
+              ePoints: [
+                ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+                  cmd: `env ${sh} '${testCase.ePoint}'`,
+                })),
+                // FIXME: better tests for the `InstallDb`
+                // installs db means this shouldn't take too long
+                // as it's the second sync
+                { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
+              ],
+              envs: {
+                ...defaultEnvs,
+                ...testCase.envs,
               },
-            ),
-            ePoints: [
-              ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                cmd: `env ${sh} '${testCase.ePoint}'`,
-              })),
-              // FIXME: better tests for the `InstallDb`
-              // installs db means this shouldn't take too long
-              // as it's the second sync
-              { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
-            ],
-            envs: {
-              ...defaultEnvs,
-              ...testCase.envs,
-            },
-          }),
+            }),
+            // building the test docker image might taka a while
+            // but we don't want some bug spinlocking the ci for
+            // an hour
+            300_000,
+          ),
       },
     );
   }

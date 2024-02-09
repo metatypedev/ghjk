@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  DENO_VERSION: "1.39.0"
+  DENO_VERSION: "1.40.2"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG_PANIC_LEVEL: error
 
@@ -18,6 +18,8 @@ jobs:
             e2eType: "docker"
           - os: macos-latest
             e2eType: "local"
+          - os: macos-14
+            e2eType: "local"
           # - os: windows-latest
           #   e2eType: "local"
     env:
@@ -28,13 +30,14 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
-      - if: "${{ matrix.os == 'macos-latest' }}"
-        run: brew install fish zsh
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+        # we need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils
       - name: Cache deno dir
-        if: "${{ matrix.os == 'macos-latest' }}"
+        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         uses: actions/cache@v4
         with:
-          path: ${{ env.DENO_DIR }}
+          path: ${{ env.GHJK_DENO_DIR }}
           key: deno-mac-${{ hashFiles('**/deno.lock') }}
 
       - if: "${{ matrix.e2eType == 'docker' }}"
@@ -50,12 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@v1
+      - uses: metatypedev/setup-ghjk@32fe7ad4eab41d5e62189208afa6fe17112a5563
         with:
           installer-url: ./install.ts
         env: 
-          GHJK_CONFIG: ./examples/protoc/ghjk.ts
+          GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/protoc
-          . $(dirname $BASH_ENV)/env.bash
+          . $(ghjk print share-dir-path)/env.sh
           protoc --version

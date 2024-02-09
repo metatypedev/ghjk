@@ -755,7 +755,7 @@ async function resolveAndInstall(
     const stageArgs = {
       installId,
       installPath: std_path.resolve(scx.installsPath, installId),
-      downloadPath: std_path.resolve(scx.installsPath, installId),
+      downloadPath: std_path.resolve(scx.downloadsPath, installId),
       tmpPath: scx.tmpPath,
       config: config,
       manifest,

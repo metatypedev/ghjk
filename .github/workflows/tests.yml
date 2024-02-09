@@ -9,7 +9,7 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.39.0"
+  DENO_VERSION: "1.40.2"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
@@ -40,6 +40,8 @@ jobs:
             e2eType: "docker"
           - os: macos-latest
             e2eType: "local"
+          - os: macos-14
+            e2eType: "local"
           # - os: windows-latest
           #   e2eType: "local"
     env:
@@ -50,11 +52,11 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
 
-      - if: "${{ matrix.os == 'macos-latest' }}"
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils
       - name: Cache deno dir
-        if: "${{ matrix.os == 'macos-latest' }}"
+        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         uses: actions/cache@v4
         with:
           path: ${{ env.GHJK_DENO_DIR }}
@@ -73,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@a4453d20156edde8e1c9b19784f8188a36b3bf23
+      - uses: metatypedev/setup-ghjk@32fe7ad4eab41d5e62189208afa6fe17112a5563
         with:
           installer-url: ./install.ts
         env: 
