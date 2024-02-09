@@ -122,7 +122,7 @@ const cases: CustomE2eTestCase[] = [
   {
     name: "meta-cli",
     installConf: ports.meta_cli_ghrel({ full: true }),
-    ePoint: `meta --version`,
+    ePoint: `ls -l .ghjk/envs/default/shims/bin && meta --version`,
   },
   // 77 meg +
   {
