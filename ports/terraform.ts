@@ -57,7 +57,7 @@ export class Port extends PortBase {
         arch = "amd64";
         break;
       case "aarch64":
-        arch = "arm";
+        arch = "arm64";
         break;
       default:
         throw new Error(`unsupported: ${platform}`);

@@ -5,28 +5,38 @@ import {
   dwnUrlOut,
   GithubReleasePort,
   InstallArgs,
-  type InstallConfigSimple,
+  InstallConfigSimple,
   osXarch,
   std_fs,
   std_path,
+  zod,
 } from "../port.ts";
 import * as std_ports from "../modules/ports/std.ts";
 import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
-  name: "whiz_ghrel",
+  name: "meta_cli_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   deps: [
     // we have to use tar because their tarballs for darwin use gnu sparse
     std_ports.tar_aa,
   ],
-  platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
+  platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
+const confValidator = zod.object({
+  full: zod.boolean().nullish(),
+}).passthrough();
+
+export type MetaCliInstallConf =
+  & InstallConfigSimple
+  & GithubReleasesInstConf
+  & zod.input<typeof confValidator>;
+
 export default function conf(
-  config: InstallConfigSimple & GithubReleasesInstConf = {},
+  config: MetaCliInstallConf = {},
 ) {
   return {
     ...readGhVars(),
@@ -36,10 +46,11 @@ export default function conf(
 }
 
 export class Port extends GithubReleasePort {
-  repoOwner = "zifeo";
-  repoName = "whiz";
+  repoOwner = "metatypedev";
+  repoName = "metatype";
 
   downloadUrls(args: DownloadArgs) {
+    const conf = confValidator.parse(args.config);
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {
@@ -50,34 +61,33 @@ export class Port extends GithubReleasePort {
         arch = "aarch64";
         break;
       default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported: ${platform}`);
     }
     let os;
-    const ext = "tar.gz";
+    const ext = ".tar.gz";
     switch (platform.os) {
       case "linux":
-        os = "unknown-linux-musl";
+        os = "unknown-linux-gnu";
         break;
       case "darwin":
         os = "apple-darwin";
         break;
-      case "windows":
-        os = "pc-windows-msvc";
-        break;
       default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported: ${platform}`);
     }
-
     return [
       this.releaseArtifactUrl(
         installVersion,
-        `${this.repoName}-${installVersion}-${arch}-${os}.${ext}`,
+        `meta-cli${
+          conf.full ? "-full" : ""
+        }-${installVersion}-${arch}-${os}${ext}`,
       ),
     ].map(dwnUrlOut);
   }
 
   async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
+
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await $`${
       depExecShimPath(std_ports.tar_aa, "tar", args.depArts)

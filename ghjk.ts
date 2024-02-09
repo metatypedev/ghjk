@@ -1,6 +1,6 @@
 export { ghjk } from "./mod.ts";
 import * as ghjk from "./mod.ts";
-import { act, cpy_bs, pipi, protoc, temporal_cli } from "./ports/mod.ts";
+import * as ports from "./ports/mod.ts";
 
 ghjk
   .task("greet", {
@@ -12,7 +12,7 @@ ghjk
 const ha = ghjk
   .task("ha", {
     installs: [
-      protoc(),
+      ports.protoc(),
     ],
     env: { STUFF: "stuffier" },
     async fn({ $ }) {
@@ -59,9 +59,9 @@ ghjk.install();
 
 // these are used for developing ghjk
 ghjk.install(
-  act(),
-  pipi({ packageName: "pre-commit" })[0],
-  cpy_bs({ releaseTag: "20231002" }),
+  ports.act(),
+  ports.pipi({ packageName: "pre-commit" })[0],
+  ports.cpy_bs({ releaseTag: "20231002" }),
 );
 
 export const secureConfig = ghjk.secureConfig({
