@@ -1,6 +1,5 @@
 import {
   $,
-  dbg,
   DownloadArgs,
   dwnUrlOut,
   GithubReleasePort,
@@ -46,7 +45,7 @@ export class Port extends GithubReleasePort {
   repoName = "metatype";
 
   downloadUrls(args: DownloadArgs) {
-    const conf = confValidator.parse(args);
+    const conf = confValidator.parse(args.config);
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {
@@ -72,14 +71,11 @@ export class Port extends GithubReleasePort {
         throw new Error(`unsupported: ${platform}`);
     }
     return [
-      dbg(
-        this.releaseArtifactUrl(
-          installVersion,
-          `meta-cli${
-            conf.full ? "-full" : ""
-          }-${installVersion}-${arch}-${os}${ext}`,
-        ),
-        { conf },
+      this.releaseArtifactUrl(
+        installVersion,
+        `meta-cli${
+          conf.full ? "-full" : ""
+        }-${installVersion}-${arch}-${os}${ext}`,
       ),
     ].map(dwnUrlOut);
   }
