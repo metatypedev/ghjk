@@ -64,12 +64,6 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.rustup(),
     ePoint: `rustup-init --version`,
   },
-  // 16 megs
-  {
-    name: "wasmedge",
-    installConf: ports.wasmedge(),
-    ePoint: `wasmedge --version`,
-  },
   // 23 megs
   {
     name: "temporal",
@@ -118,11 +112,21 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.pnpm(),
     ePoint: `pnpm --version`,
   },
-  // 70 megs
+  // 70 megs + 16 megs
   {
-    name: "meta-cli",
-    installConf: ports.meta_cli_ghrel({ full: true }),
-    ePoint: `ls -l .ghjk/envs/default/shims/bin && meta --version`,
+    name: "meta-cli-and-wasmedge",
+    installConf: [
+      ports.meta_cli_ghrel({ full: true }),
+      ports.wasmedge(),
+    ],
+    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") == "docker"
+      // meta cli runs into segmentation error in the alpine
+      // image
+      // https://github.com/metatypedev/metatype/issues/584
+      // just check that the shell's able to find the
+      // executrable
+      ? `which meta && wasmedge --version`
+      : `meta --version && wasmedge --version`,
   },
   // 77 meg +
   {

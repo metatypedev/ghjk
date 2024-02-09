@@ -1,5 +1,6 @@
 import {
   $,
+  depExecShimPath,
   DownloadArgs,
   dwnUrlOut,
   GithubReleasePort,
@@ -8,9 +9,9 @@ import {
   osXarch,
   std_fs,
   std_path,
-  unarchive,
   zod,
 } from "../port.ts";
+import * as std_ports from "../modules/ports/std.ts";
 import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
@@ -18,6 +19,10 @@ const manifest = {
   name: "meta_cli_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
+  deps: [
+    // we have to use tar because their tarballs for darwin use gnu sparse
+    std_ports.tar_aa,
+  ],
   platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
 };
 
@@ -84,7 +89,9 @@ export class Port extends GithubReleasePort {
     const [{ name: fileName }] = this.downloadUrls(args);
 
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
-    await unarchive(fileDwnPath, args.tmpDirPath);
+    await $`${
+      depExecShimPath(std_ports.tar_aa, "tar", args.depArts)
+    } xf ${fileDwnPath} --directory=${args.tmpDirPath}`;
 
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
