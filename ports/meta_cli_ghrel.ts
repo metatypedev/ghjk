@@ -1,5 +1,6 @@
 import {
   $,
+  dbg,
   DownloadArgs,
   dwnUrlOut,
   GithubReleasePort,
@@ -71,11 +72,14 @@ export class Port extends GithubReleasePort {
         throw new Error(`unsupported: ${platform}`);
     }
     return [
-      this.releaseArtifactUrl(
-        installVersion,
-        `meta-cli${
-          conf.full ? "-full" : ""
-        }-${installVersion}-${arch}-${os}${ext}`,
+      dbg(
+        this.releaseArtifactUrl(
+          installVersion,
+          `meta-cli${
+            conf.full ? "-full" : ""
+          }-${installVersion}-${arch}-${os}${ext}`,
+        ),
+        { conf },
       ),
     ].map(dwnUrlOut);
   }
