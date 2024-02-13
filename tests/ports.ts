@@ -70,6 +70,12 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.temporal_cli(),
     ePoint: `temporal --version`,
   },
+  // 23 megs
+  {
+    name: "opentofu",
+    installConf: ports.opentofu_ghrel(),
+    ePoint: `tofu --version`,
+  },
   // 24 megs
   {
     name: "terraform",

@@ -11,6 +11,7 @@ export { default as meta_cli_ghrel } from "./meta_cli_ghrel.ts";
 export { default as mold } from "./mold.ts";
 export { default as node } from "./node.ts";
 export { default as npmi } from "./npmi.ts";
+export { default as opentofu_ghrel } from "./opentofu_ghrel.ts";
 export { default as pipi } from "./pipi.ts";
 export { default as pnpm } from "./pnpm.ts";
 export { default as protoc } from "./protoc.ts";

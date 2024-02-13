@@ -10,7 +10,6 @@ import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./modules"
 import type {
   DepArts,
-  DownloadArgs,
   InstallConfigFat,
   InstallConfigResolvedX,
   OsEnum,
@@ -333,7 +332,9 @@ exec ${execPath}${defArgs ? ` ${defArgs}` : ""} $*`,
   );
 }
 
-export type DownloadFileArgs = DownloadArgs & {
+export type DownloadFileArgs = {
+  downloadPath: string;
+  tmpDirPath: string;
   url: string;
   name?: string;
   mode?: number;
