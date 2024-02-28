@@ -16,7 +16,7 @@ export { default as portsValidators } from "./modules/ports/types.ts";
 import { std_url } from "./deps/common.ts";
 import { PortBase } from "./modules/ports/base.ts";
 import type { ArchEnum, ListAllArgs, OsEnum } from "./modules/ports/types.ts";
-import { serializePlatform } from "./utils/serialization.ts";
+import { serializePlatform } from "./modules/ports/types/platform.ts";
 
 export function dwnUrlOut(url: string) {
   return { url, name: std_url.basename(url) };

@@ -1,6 +1,9 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
+import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
+
+export { ALL_ARCH, ALL_OS, archEnum, osEnum };
 
 // TODO: find a better identification scheme for ports
 const portName = zod.string().regex(/[^ @]*/);
@@ -18,25 +21,6 @@ const portDepFat = portDep.merge(zod.object({
   // FIXME: figure out cyclically putting `installConfigLite` here
   config: zod.unknown(),
 }));
-
-export const ALL_OS = [
-  "linux",
-  "darwin",
-  "windows",
-  "freebsd",
-  "netbsd",
-  "aix",
-  "solaris",
-  "illumos",
-  "android",
-] as const;
-
-export const ALL_ARCH = [
-  "x86_64",
-  "aarch64",
-] as const;
-export const osEnum = zod.enum(ALL_OS);
-export const archEnum = zod.enum(ALL_ARCH);
 
 const portManifestBase = zod.object({
   ty: zod.string(),

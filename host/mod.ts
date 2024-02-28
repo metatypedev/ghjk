@@ -14,7 +14,7 @@ import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
-import { serializePlatform } from "../utils/serialization.ts";
+import { serializePlatform } from "../modules/ports/types/platform.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
