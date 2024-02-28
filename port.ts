@@ -16,6 +16,7 @@ export { default as portsValidators } from "./modules/ports/types.ts";
 import { std_url } from "./deps/common.ts";
 import { PortBase } from "./modules/ports/base.ts";
 import type { ArchEnum, ListAllArgs, OsEnum } from "./modules/ports/types.ts";
+import { serializePlatform } from "./utils/serialization.ts";
 
 export function dwnUrlOut(url: string) {
   return { url, name: std_url.basename(url) };
@@ -26,7 +27,7 @@ export function osXarch<O extends OsEnum, A extends ArchEnum>(
   supportedArches: A[],
 ) {
   return supportedOses.flatMap((os) =>
-    supportedArches.map((arch) => [os, arch] as [O, A])
+    supportedArches.map((arch) => serializePlatform({ os, arch }))
   );
 }
 

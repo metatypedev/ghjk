@@ -9,12 +9,12 @@ import {
   PathRef,
   stringHashHex,
 } from "../utils/mod.ts";
-import validators from "./types.ts";
+import validators, { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as deno from "./deno.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
-import portValidators from "../modules/ports/types.ts";
+import { serializePlatform } from "../utils/serialization.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
@@ -140,10 +140,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
 
   const ghjkfileHash = await fileHashHex(hcx, configPath);
 
-  let serializedConfig;
-  let envVarHashes;
-  let readFileHashes;
-  let listedFiles;
+  let configExt: SerializedConfigExt | null = null;
   // TODO: figure out cross platform lockfiles :O
   if (
     foundLockObj && // lockfile found
@@ -211,40 +208,35 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       await fileListingsMatch() &&
       await envHashesMatch()
     ) {
-      serializedConfig = foundLockObj.config;
-      envVarHashes = foundHashObj.envVarHashes;
-      readFileHashes = foundHashObj.readFileHashes;
-      listedFiles = foundHashObj.listedFiles;
+      configExt = {
+        config: foundLockObj.config,
+        envVarHashes: foundHashObj.envVarHashes,
+        readFileHashes: foundHashObj.readFileHashes,
+        listedFiles: foundHashObj.listedFiles,
+      };
     }
   }
 
-  // if one is null, all are null but typescript
-  // doesn't know better so check both
-  if (!serializedConfig || !envVarHashes || !readFileHashes || !listedFiles) {
+  if (!configExt) {
     logger().info("serializing ghjkfile", configPath);
-    ({ config: serializedConfig, envVarHashes, listedFiles, readFileHashes } =
-      await readAndSerializeConfig(
-        hcx,
-        configPath,
-        curEnvVars,
-      ));
+    configExt = await readAndSerializeConfig(hcx, configPath, curEnvVars);
   }
 
   const newLockObj: zod.infer<typeof lockObjValidator> = {
     version: "0",
-    platform: [Deno.build.os, Deno.build.arch],
+    platform: serializePlatform(Deno.build),
     moduleEntries: {} as Record<string, unknown>,
-    config: serializedConfig,
+    config: configExt.config,
   };
   const newHashObj: zod.infer<typeof hashObjValidator> = {
     version: "0",
     ghjkfileHash,
-    envVarHashes,
-    readFileHashes,
-    listedFiles,
+    envVarHashes: configExt.envVarHashes,
+    readFileHashes: configExt.readFileHashes,
+    listedFiles: configExt.listedFiles,
   };
   const instances = [];
-  for (const man of serializedConfig.modules) {
+  for (const man of configExt.config.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
       throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
@@ -274,40 +266,51 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
   if (!foundHashObj || !deep_eql(newHashObj, foundHashObj)) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
-  return { subCommands, serializedConfig };
+  return { subCommands, serializedConfig: configExt.config };
 }
+
+type HashStore = Record<string, string | null | undefined>;
+
+type SerializedConfigExt = {
+  config: SerializedConfig;
+  envVarHashes: HashStore;
+  readFileHashes: HashStore;
+  listedFiles: string[];
+};
 
 async function readAndSerializeConfig(
   hcx: HostCtx,
   configPath: PathRef,
   envVars: Record<string, string>,
-) {
-  let raw;
-  let envVarHashes;
-  let readFileHashes;
-  let listedFiles;
+): Promise<SerializedConfigExt> {
   switch (configPath.extname()) {
     case "":
       logger().warning("config file has no extension, assuming deno config");
-      /* falls through */
+    /* falls through */
     case ".ts": {
+      logger().debug("serializing ts config", configPath);
       const res = await deno.getSerializedConfig(
         configPath.toFileUrl().href,
         envVars,
       );
-      raw = res.config;
-      envVarHashes = await hashEnvVars(envVars, res.accessedEnvKeys);
+      const envVarHashes = await hashEnvVars(envVars, res.accessedEnvKeys);
       const cwd = $.path(Deno.cwd());
       const cwdStr = cwd.toString();
-      listedFiles = res.listedFiles
+      const listedFiles = res.listedFiles
         .map((path) => cwd.resolve(path).toString().replace(cwdStr, "."));
       // FIXME: this breaks if the version of the file the config reads
       // has changed by this point
       // consider reading mtime of files when read by the serializer and comparing
       // them before hashing to make sure we get the same file
       // not sure what to do if it has changed though, re-serialize?
-      readFileHashes = await hashFiles(hcx, res.readFiles, cwd);
-      break;
+      const readFileHashes = await hashFiles(hcx, res.readFiles, cwd);
+
+      return {
+        config: validateRawConfig(res.config, configPath),
+        envVarHashes,
+        readFileHashes,
+        listedFiles,
+      };
     }
     // case ".jsonc":
     // case ".json":
@@ -318,26 +321,34 @@ async function readAndSerializeConfig(
         `unrecognized ghjkfile type provided at path: ${configPath}`,
       );
   }
+}
+
+function validateRawConfig(
+  raw: unknown,
+  configPath: PathRef,
+): SerializedConfig {
   const res = validators.serializedConfig.safeParse(raw);
   if (!res.success) {
     logger().error("zod error", res.error);
     logger().error("serializedConf", raw);
     throw new Error(`error parsing seralized config from ${configPath}`);
   }
-  const config = res.data;
-  return { config, envVarHashes, readFileHashes, listedFiles };
+
+  return res.data;
 }
 
 const lockObjValidator = zod.object({
   version: zod.string(),
-  platform: zod.tuple([portValidators.osEnum, portValidators.archEnum]),
+  platform: zod.string(), // TODO custom validator??
   moduleEntries: zod.record(zod.string(), zod.unknown()),
   config: validators.serializedConfig,
 });
 
-async function readLockFile(lockFilePath: PathRef) {
+type LockObject = zod.infer<typeof lockObjValidator>;
+
+async function readLockFile(lockFilePath: PathRef): Promise<LockObject | null> {
   const raw = await lockFilePath.readMaybeJson();
-  if (!raw) return;
+  if (!raw) return null;
   const res = lockObjValidator.safeParse(raw);
   if (!res.success) {
     throw new Error(`error parsing lockfile from ${lockFilePath}`, {
@@ -369,7 +380,7 @@ async function readHashFile(hashFilePath: PathRef) {
 }
 
 async function hashEnvVars(all: Record<string, string>, accessed: string[]) {
-  const hashes = {} as Record<string, string | null>;
+  const hashes = {} as HashStore;
   for (const key of accessed) {
     const val = all[key];
     if (!val) {
@@ -384,7 +395,7 @@ async function hashEnvVars(all: Record<string, string>, accessed: string[]) {
 
 async function hashFiles(hcx: HostCtx, readFiles: string[], cwd: PathRef) {
   const cwdStr = cwd.toString();
-  const readFileHashes = {} as Record<string, string | null>;
+  const readFileHashes = {} as HashStore;
   for (const path of readFiles) {
     const pathRef = cwd.resolve(path);
     const relativePath = pathRef

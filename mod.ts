@@ -202,6 +202,6 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
     };
     return config;
   } catch (cause) {
-    throw new Error(`error constructing config for serializatino`, { cause });
+    throw new Error(`error constructing config for serialization`, { cause });
   }
 }

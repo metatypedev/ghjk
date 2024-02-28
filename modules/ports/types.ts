@@ -35,13 +35,13 @@ export const ALL_ARCH = [
   "x86_64",
   "aarch64",
 ] as const;
-const osEnum = zod.enum(ALL_OS);
-const archEnum = zod.enum(ALL_ARCH);
+export const osEnum = zod.enum(ALL_OS);
+export const archEnum = zod.enum(ALL_ARCH);
 
 const portManifestBase = zod.object({
   ty: zod.string(),
   name: zod.string().min(1),
-  platforms: zod.tuple([osEnum, archEnum]).array(),
+  platforms: zod.string().array(),
   version: zod.string()
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
