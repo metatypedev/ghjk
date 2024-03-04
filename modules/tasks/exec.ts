@@ -48,7 +48,9 @@ export async function buildTaskGraph(
             await buildInstallGraph(
               ecx.syncCx,
               {
-                installs: task.env.installs,
+                installs: task.env.installs.map(
+                  (name) => portsConfig.installs[name],
+                ),
                 allowedDeps: task.env.allowedPortDeps,
               },
             ),

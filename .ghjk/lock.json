@@ -6,7 +6,7 @@
       "version": "0",
       "configResolutions": {
         "95dbc2b8c604a5996b88c5b1b4fb0c10b3e0d9cac68f57eb915b012c44288e93": {
-          "version": "v0.2.59",
+          "version": "v0.2.60",
           "depConfigs": {},
           "portRef": "act_ghrel@0.1.0"
         },
@@ -489,6 +489,22 @@
       {
         "id": "tasks",
         "config": {
+          "installs": {
+            "protoc_ghrel": {
+              "port": {
+                "ty": "denoWorker@v1",
+                "name": "protoc_ghrel",
+                "version": "0.1.0",
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/protoc.ts",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin"
+                ]
+              }
+            }
+          },
           "tasks": {
             "greet": {
               "name": "greet",
@@ -504,20 +520,7 @@
               "dependsOn": [],
               "env": {
                 "installs": [
-                  {
-                    "port": {
-                      "ty": "denoWorker@v1",
-                      "name": "protoc_ghrel",
-                      "version": "0.1.0",
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/protoc.ts",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin"
-                      ]
-                    }
-                  }
+                  "protoc_ghrel"
                 ],
                 "env": {
                   "STUFF": "stuffier"

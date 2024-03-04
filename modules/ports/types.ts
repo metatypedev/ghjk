@@ -6,7 +6,7 @@ import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
 export { ALL_ARCH, ALL_OS, archEnum, osEnum };
 
 // TODO: find a better identification scheme for ports
-const portName = zod.string().regex(/[^ @]*/);
+export const portName = zod.string().regex(/[^ @]*/);
 // FIXME: get rid of semantic minor.patch version from portRef
 // to allow install hashes to be equivalent as long as major
 // version is the same

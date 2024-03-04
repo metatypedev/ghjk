@@ -28,7 +28,7 @@ import type {
   TaskEnv,
   TasksModuleConfig,
 } from "./modules/tasks/types.ts";
-import { dax } from "./deps/common.ts";
+import { dax, deep_eql } from "./deps/common.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
 
@@ -43,10 +43,8 @@ export type TaskFnDef = TaskDef & {
   fn: TaskFn;
   // command: cliffy_cmd.Command;
 };
-const tasks = {} as Record<
-  string,
-  TaskFnDef
->;
+const tasks = {} as Record<string, TaskFnDef>;
+const taskInstalls = {} as Record<string, InstallConfigFat>;
 
 // FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
@@ -64,14 +62,33 @@ export function install(...configs: InstallConfigFat[]) {
   }
 }
 
+function registerTaskInstalls(installs: InstallConfigFat[]) {
+  const res: string[] = [];
+  for (const install of installs) {
+    const registered = taskInstalls[install.port.name];
+    if (registered) {
+      if (!deep_eql(registered, install)) {
+        throw new Error(
+          `task install already registered with different config: ${install.port.name}`,
+        );
+      }
+    } else {
+      taskInstalls[install.port.name] = install;
+      res.push(install.port.name);
+    }
+  }
+
+  return res;
+}
+
 /*
  * A nicer form of TaskFnDef for better ergonomics in the ghjkfile
  */
 export type TaskDefNice =
   & Omit<TaskFnDef, "env" | "name" | "dependsOn">
   & Partial<Pick<TaskFnDef, "dependsOn">>
-  & Partial<Omit<TaskEnv, "allowedPortDeps">>
-  & { allowedPortDeps?: AllowedPortDep[] };
+  & Partial<Pick<TaskEnv, "env">>
+  & { allowedPortDeps?: AllowedPortDep[]; installs?: InstallConfigFat[] };
 export function task(name: string, config: TaskDefNice) {
   const allowedPortDeps = Object.fromEntries([
     ...(config.allowedPortDeps ??
@@ -84,13 +101,16 @@ export function task(name: string, config: TaskDefNice) {
         ] as const
       ),
   ]);
+
+  const installs = registerTaskInstalls(config.installs ?? []);
+
   tasks[name] = {
     name,
     fn: config.fn,
     desc: config.desc,
     dependsOn: config.dependsOn ?? [],
     env: {
-      installs: config.installs ?? [],
+      installs,
       env: config.env ?? {},
       allowedPortDeps,
     },
@@ -186,6 +206,7 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
       ),
     );
     const tasksConfig: TasksModuleConfig = {
+      installs: taskInstalls,
       tasks: Object.fromEntries(
         cmdJsons2,
       ),
