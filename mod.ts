@@ -44,7 +44,8 @@ export type TaskFnDef = TaskDef & {
   // command: cliffy_cmd.Command;
 };
 const tasks = {} as Record<string, TaskFnDef>;
-const taskInstalls = {} as Record<string, InstallConfigFat>;
+const taskDeps = {} as Record<string, InstallConfigFat>;
+const taskAllowedPortDeps = {} as Record<string, AllowedPortDep>;
 
 // FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
@@ -65,7 +66,8 @@ export function install(...configs: InstallConfigFat[]) {
 function registerTaskInstalls(installs: InstallConfigFat[]) {
   const res: string[] = [];
   for (const install of installs) {
-    const registered = taskInstalls[install.port.name];
+    const key = install.port.name;
+    const registered = taskDeps[key];
     if (registered) {
       if (!deep_eql(registered, install)) {
         throw new Error(
@@ -73,8 +75,28 @@ function registerTaskInstalls(installs: InstallConfigFat[]) {
         );
       }
     } else {
-      taskInstalls[install.port.name] = install;
-      res.push(install.port.name);
+      taskDeps[key] = install;
+      res.push(key);
+    }
+  }
+
+  return res;
+}
+
+function registerTaskAllowedPortDeps(deps: AllowedPortDep[]) {
+  const res: string[] = [];
+  for (const dep of deps) {
+    const key = dep.manifest.name;
+    const registered = taskAllowedPortDeps[key];
+    if (registered) {
+      if (!deep_eql(registered, dep)) {
+        throw new Error(
+          `task allowedPortDep already registered with different config: ${dep.manifest.name}`,
+        );
+      }
+    } else {
+      taskAllowedPortDeps[key] = portsValidators.allowedPortDep.parse(dep);
+      res.push(key);
     }
   }
 
@@ -90,16 +112,8 @@ export type TaskDefNice =
   & Partial<Pick<TaskEnv, "env">>
   & { allowedPortDeps?: AllowedPortDep[]; installs?: InstallConfigFat[] };
 export function task(name: string, config: TaskDefNice) {
-  const allowedPortDeps = Object.fromEntries([
-    ...(config.allowedPortDeps ??
-      // only add the stdDeps if the task specifies installs
-      (config.installs ? stdDeps() : []))
-      .map((dep) =>
-        [
-          dep.manifest.name,
-          portsValidators.allowedPortDep.parse(dep),
-        ] as const
-      ),
+  const allowedPortDeps = registerTaskAllowedPortDeps([
+    ...(config.allowedPortDeps ?? (config.installs ? stdDeps() : [])),
   ]);
 
   const installs = registerTaskInstalls(config.installs ?? []);
@@ -206,10 +220,11 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
       ),
     );
     const tasksConfig: TasksModuleConfig = {
-      installs: taskInstalls,
       tasks: Object.fromEntries(
         cmdJsons2,
       ),
+      installs: taskDeps,
+      allowedPortDeps: taskAllowedPortDeps,
     };
 
     const config: SerializedConfig = {

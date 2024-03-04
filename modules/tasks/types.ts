@@ -7,11 +7,8 @@ const taskName = zod.string().regex(/[^\s]/);
 
 const taskEnv = zod.object({
   installs: portName.array(),
-  allowedPortDeps: zod.record(
-    zod.string(),
-    portsValidators.allowedPortDep,
-  ),
   env: zod.record(zod.string(), zod.string()),
+  allowedPortDeps: zod.string().array(),
 });
 
 const taskDef = zod.object({
@@ -24,6 +21,10 @@ const taskDef = zod.object({
 const tasksModuleConfig = zod.object({
   // FIXME portName vs portRef??
   installs: zod.record(portName, portsValidators.installConfigFat),
+  allowedPortDeps: zod.record(
+    zod.string(),
+    portsValidators.allowedPortDep,
+  ),
   tasks: zod.record(taskName, taskDef),
 });
 export default {

@@ -489,6 +489,86 @@
       {
         "id": "tasks",
         "config": {
+          "tasks": {
+            "greet": {
+              "name": "greet",
+              "dependsOn": [],
+              "env": {
+                "installs": [],
+                "env": {},
+                "allowedPortDeps": []
+              }
+            },
+            "ha": {
+              "name": "ha",
+              "dependsOn": [],
+              "env": {
+                "installs": [
+                  "protoc_ghrel"
+                ],
+                "env": {
+                  "STUFF": "stuffier"
+                },
+                "allowedPortDeps": [
+                  "tar_aa",
+                  "git_aa",
+                  "curl_aa",
+                  "unzip_aa",
+                  "zstd_aa",
+                  "rustup_rustlang",
+                  "rust_rustup",
+                  "cargo_binstall_ghrel",
+                  "pnpm_ghrel",
+                  "asdf_plugin_git"
+                ]
+              }
+            },
+            "ho": {
+              "name": "ho",
+              "dependsOn": [
+                "ha"
+              ],
+              "env": {
+                "installs": [],
+                "env": {},
+                "allowedPortDeps": []
+              }
+            },
+            "hum": {
+              "name": "hum",
+              "dependsOn": [
+                "ho"
+              ],
+              "env": {
+                "installs": [],
+                "env": {},
+                "allowedPortDeps": []
+              }
+            },
+            "hii": {
+              "name": "hii",
+              "dependsOn": [
+                "hum"
+              ],
+              "env": {
+                "installs": [],
+                "env": {},
+                "allowedPortDeps": []
+              }
+            },
+            "hey": {
+              "name": "hey",
+              "dependsOn": [
+                "hii",
+                "ho"
+              ],
+              "env": {
+                "installs": [],
+                "env": {},
+                "allowedPortDeps": []
+              }
+            }
+          },
           "installs": {
             "protoc_ghrel": {
               "port": {
@@ -505,335 +585,267 @@
               }
             }
           },
-          "tasks": {
-            "greet": {
-              "name": "greet",
-              "dependsOn": [],
-              "env": {
-                "installs": [],
-                "env": {},
-                "allowedPortDeps": {}
-              }
-            },
-            "ha": {
-              "name": "ha",
-              "dependsOn": [],
-              "env": {
-                "installs": [
-                  "protoc_ghrel"
+          "allowedPortDeps": {
+            "tar_aa": {
+              "manifest": {
+                "ty": "ambientAccess@v1",
+                "name": "tar_aa",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin"
                 ],
-                "env": {
-                  "STUFF": "stuffier"
-                },
-                "allowedPortDeps": {
-                  "tar_aa": {
-                    "manifest": {
-                      "ty": "ambientAccess@v1",
-                      "name": "tar_aa",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin"
-                      ],
-                      "version": "0.1.0",
-                      "execName": "tar",
-                      "versionExtractFlag": "--version",
-                      "versionExtractRegex": "(\\d+\\.\\d+)",
-                      "versionExtractRegexFlags": ""
-                    },
-                    "defaultInst": {
-                      "portRef": "tar_aa@0.1.0"
-                    }
-                  },
-                  "git_aa": {
-                    "manifest": {
-                      "ty": "ambientAccess@v1",
-                      "name": "git_aa",
-                      "platforms": [
-                        "x86_64-linux",
-                        "aarch64-linux",
-                        "x86_64-darwin",
-                        "aarch64-darwin",
-                        "x86_64-windows",
-                        "aarch64-windows",
-                        "x86_64-freebsd",
-                        "aarch64-freebsd",
-                        "x86_64-netbsd",
-                        "aarch64-netbsd",
-                        "x86_64-aix",
-                        "aarch64-aix",
-                        "x86_64-solaris",
-                        "aarch64-solaris",
-                        "x86_64-illumos",
-                        "aarch64-illumos",
-                        "x86_64-android",
-                        "aarch64-android"
-                      ],
-                      "version": "0.1.0",
-                      "execName": "git",
-                      "versionExtractFlag": "--version",
-                      "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                      "versionExtractRegexFlags": ""
-                    },
-                    "defaultInst": {
-                      "portRef": "git_aa@0.1.0"
-                    }
-                  },
-                  "curl_aa": {
-                    "manifest": {
-                      "ty": "ambientAccess@v1",
-                      "name": "curl_aa",
-                      "platforms": [
-                        "x86_64-linux",
-                        "aarch64-linux",
-                        "x86_64-darwin",
-                        "aarch64-darwin",
-                        "x86_64-windows",
-                        "aarch64-windows",
-                        "x86_64-freebsd",
-                        "aarch64-freebsd",
-                        "x86_64-netbsd",
-                        "aarch64-netbsd",
-                        "x86_64-aix",
-                        "aarch64-aix",
-                        "x86_64-solaris",
-                        "aarch64-solaris",
-                        "x86_64-illumos",
-                        "aarch64-illumos",
-                        "x86_64-android",
-                        "aarch64-android"
-                      ],
-                      "version": "0.1.0",
-                      "execName": "curl",
-                      "versionExtractFlag": "--version",
-                      "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                      "versionExtractRegexFlags": ""
-                    },
-                    "defaultInst": {
-                      "portRef": "curl_aa@0.1.0"
-                    }
-                  },
-                  "unzip_aa": {
-                    "manifest": {
-                      "ty": "ambientAccess@v1",
-                      "name": "unzip_aa",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin",
-                        "aarch64-windows",
-                        "x86_64-windows"
-                      ],
-                      "version": "0.1.0",
-                      "execName": "unzip",
-                      "versionExtractFlag": "-v",
-                      "versionExtractRegex": "(\\d+\\.\\d+)",
-                      "versionExtractRegexFlags": ""
-                    },
-                    "defaultInst": {
-                      "portRef": "unzip_aa@0.1.0"
-                    }
-                  },
-                  "zstd_aa": {
-                    "manifest": {
-                      "ty": "ambientAccess@v1",
-                      "name": "zstd_aa",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin"
-                      ],
-                      "version": "0.1.0",
-                      "execName": "zstd",
-                      "versionExtractFlag": "--version",
-                      "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
-                      "versionExtractRegexFlags": ""
-                    },
-                    "defaultInst": {
-                      "portRef": "zstd_aa@0.1.0"
-                    }
-                  },
-                  "rustup_rustlang": {
-                    "manifest": {
-                      "ty": "denoWorker@v1",
-                      "name": "rustup_rustlang",
-                      "platforms": [
-                        "x86_64-darwin",
-                        "aarch64-darwin",
-                        "x86_64-linux",
-                        "aarch64-linux",
-                        "x86_64-windows",
-                        "x86_64-illumos",
-                        "x86_64-freebsd",
-                        "x86_64-netbsd"
-                      ],
-                      "version": "0.1.0",
-                      "deps": [
-                        {
-                          "name": "git_aa"
-                        }
-                      ],
-                      "resolutionDeps": [
-                        {
-                          "name": "git_aa"
-                        }
-                      ],
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rustup.ts"
-                    },
-                    "defaultInst": {
-                      "portRef": "rustup_rustlang@0.1.0"
-                    }
-                  },
-                  "rust_rustup": {
-                    "manifest": {
-                      "ty": "denoWorker@v1",
-                      "name": "rust_rustup",
-                      "platforms": [
-                        "x86_64-linux",
-                        "aarch64-linux",
-                        "x86_64-darwin",
-                        "aarch64-darwin",
-                        "x86_64-windows",
-                        "aarch64-windows",
-                        "x86_64-freebsd",
-                        "aarch64-freebsd",
-                        "x86_64-netbsd",
-                        "aarch64-netbsd",
-                        "x86_64-aix",
-                        "aarch64-aix",
-                        "x86_64-solaris",
-                        "aarch64-solaris",
-                        "x86_64-illumos",
-                        "aarch64-illumos",
-                        "x86_64-android",
-                        "aarch64-android"
-                      ],
-                      "version": "0.1.0",
-                      "deps": [
-                        {
-                          "name": "rustup_rustlang"
-                        }
-                      ],
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rust.ts"
-                    },
-                    "defaultInst": {
-                      "portRef": "rust_rustup@0.1.0"
-                    }
-                  },
-                  "cargo_binstall_ghrel": {
-                    "manifest": {
-                      "ty": "denoWorker@v1",
-                      "name": "cargo_binstall_ghrel",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin"
-                      ],
-                      "version": "0.1.0",
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cargo-binstall.ts"
-                    },
-                    "defaultInst": {
-                      "portRef": "cargo_binstall_ghrel@0.1.0"
-                    }
-                  },
-                  "pnpm_ghrel": {
-                    "manifest": {
-                      "ty": "denoWorker@v1",
-                      "name": "pnpm_ghrel",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin",
-                        "aarch64-windows",
-                        "x86_64-windows"
-                      ],
-                      "version": "0.1.0",
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/pnpm.ts"
-                    },
-                    "defaultInst": {
-                      "portRef": "pnpm_ghrel@0.1.0"
-                    }
-                  },
-                  "asdf_plugin_git": {
-                    "manifest": {
-                      "ty": "denoWorker@v1",
-                      "name": "asdf_plugin_git",
-                      "platforms": [
-                        "aarch64-linux",
-                        "x86_64-linux",
-                        "aarch64-darwin",
-                        "x86_64-darwin",
-                        "aarch64-windows",
-                        "x86_64-windows"
-                      ],
-                      "version": "0.1.0",
-                      "deps": [
-                        {
-                          "name": "git_aa"
-                        }
-                      ],
-                      "resolutionDeps": [
-                        {
-                          "name": "git_aa"
-                        }
-                      ],
-                      "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/asdf_plugin_git.ts"
-                    },
-                    "defaultInst": {
-                      "portRef": "asdf_plugin_git@0.1.0"
-                    }
+                "version": "0.1.0",
+                "execName": "tar",
+                "versionExtractFlag": "--version",
+                "versionExtractRegex": "(\\d+\\.\\d+)",
+                "versionExtractRegexFlags": ""
+              },
+              "defaultInst": {
+                "portRef": "tar_aa@0.1.0"
+              }
+            },
+            "git_aa": {
+              "manifest": {
+                "ty": "ambientAccess@v1",
+                "name": "git_aa",
+                "platforms": [
+                  "x86_64-linux",
+                  "aarch64-linux",
+                  "x86_64-darwin",
+                  "aarch64-darwin",
+                  "x86_64-windows",
+                  "aarch64-windows",
+                  "x86_64-freebsd",
+                  "aarch64-freebsd",
+                  "x86_64-netbsd",
+                  "aarch64-netbsd",
+                  "x86_64-aix",
+                  "aarch64-aix",
+                  "x86_64-solaris",
+                  "aarch64-solaris",
+                  "x86_64-illumos",
+                  "aarch64-illumos",
+                  "x86_64-android",
+                  "aarch64-android"
+                ],
+                "version": "0.1.0",
+                "execName": "git",
+                "versionExtractFlag": "--version",
+                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+                "versionExtractRegexFlags": ""
+              },
+              "defaultInst": {
+                "portRef": "git_aa@0.1.0"
+              }
+            },
+            "curl_aa": {
+              "manifest": {
+                "ty": "ambientAccess@v1",
+                "name": "curl_aa",
+                "platforms": [
+                  "x86_64-linux",
+                  "aarch64-linux",
+                  "x86_64-darwin",
+                  "aarch64-darwin",
+                  "x86_64-windows",
+                  "aarch64-windows",
+                  "x86_64-freebsd",
+                  "aarch64-freebsd",
+                  "x86_64-netbsd",
+                  "aarch64-netbsd",
+                  "x86_64-aix",
+                  "aarch64-aix",
+                  "x86_64-solaris",
+                  "aarch64-solaris",
+                  "x86_64-illumos",
+                  "aarch64-illumos",
+                  "x86_64-android",
+                  "aarch64-android"
+                ],
+                "version": "0.1.0",
+                "execName": "curl",
+                "versionExtractFlag": "--version",
+                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+                "versionExtractRegexFlags": ""
+              },
+              "defaultInst": {
+                "portRef": "curl_aa@0.1.0"
+              }
+            },
+            "unzip_aa": {
+              "manifest": {
+                "ty": "ambientAccess@v1",
+                "name": "unzip_aa",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin",
+                  "aarch64-windows",
+                  "x86_64-windows"
+                ],
+                "version": "0.1.0",
+                "execName": "unzip",
+                "versionExtractFlag": "-v",
+                "versionExtractRegex": "(\\d+\\.\\d+)",
+                "versionExtractRegexFlags": ""
+              },
+              "defaultInst": {
+                "portRef": "unzip_aa@0.1.0"
+              }
+            },
+            "zstd_aa": {
+              "manifest": {
+                "ty": "ambientAccess@v1",
+                "name": "zstd_aa",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin"
+                ],
+                "version": "0.1.0",
+                "execName": "zstd",
+                "versionExtractFlag": "--version",
+                "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
+                "versionExtractRegexFlags": ""
+              },
+              "defaultInst": {
+                "portRef": "zstd_aa@0.1.0"
+              }
+            },
+            "rustup_rustlang": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "rustup_rustlang",
+                "platforms": [
+                  "x86_64-darwin",
+                  "aarch64-darwin",
+                  "x86_64-linux",
+                  "aarch64-linux",
+                  "x86_64-windows",
+                  "x86_64-illumos",
+                  "x86_64-freebsd",
+                  "x86_64-netbsd"
+                ],
+                "version": "0.1.0",
+                "deps": [
+                  {
+                    "name": "git_aa"
                   }
-                }
+                ],
+                "resolutionDeps": [
+                  {
+                    "name": "git_aa"
+                  }
+                ],
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rustup.ts"
+              },
+              "defaultInst": {
+                "portRef": "rustup_rustlang@0.1.0"
               }
             },
-            "ho": {
-              "name": "ho",
-              "dependsOn": [
-                "ha"
-              ],
-              "env": {
-                "installs": [],
-                "env": {},
-                "allowedPortDeps": {}
+            "rust_rustup": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "rust_rustup",
+                "platforms": [
+                  "x86_64-linux",
+                  "aarch64-linux",
+                  "x86_64-darwin",
+                  "aarch64-darwin",
+                  "x86_64-windows",
+                  "aarch64-windows",
+                  "x86_64-freebsd",
+                  "aarch64-freebsd",
+                  "x86_64-netbsd",
+                  "aarch64-netbsd",
+                  "x86_64-aix",
+                  "aarch64-aix",
+                  "x86_64-solaris",
+                  "aarch64-solaris",
+                  "x86_64-illumos",
+                  "aarch64-illumos",
+                  "x86_64-android",
+                  "aarch64-android"
+                ],
+                "version": "0.1.0",
+                "deps": [
+                  {
+                    "name": "rustup_rustlang"
+                  }
+                ],
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rust.ts"
+              },
+              "defaultInst": {
+                "portRef": "rust_rustup@0.1.0"
               }
             },
-            "hum": {
-              "name": "hum",
-              "dependsOn": [
-                "ho"
-              ],
-              "env": {
-                "installs": [],
-                "env": {},
-                "allowedPortDeps": {}
+            "cargo_binstall_ghrel": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "cargo_binstall_ghrel",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin"
+                ],
+                "version": "0.1.0",
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cargo-binstall.ts"
+              },
+              "defaultInst": {
+                "portRef": "cargo_binstall_ghrel@0.1.0"
               }
             },
-            "hii": {
-              "name": "hii",
-              "dependsOn": [
-                "hum"
-              ],
-              "env": {
-                "installs": [],
-                "env": {},
-                "allowedPortDeps": {}
+            "pnpm_ghrel": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "pnpm_ghrel",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin",
+                  "aarch64-windows",
+                  "x86_64-windows"
+                ],
+                "version": "0.1.0",
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/pnpm.ts"
+              },
+              "defaultInst": {
+                "portRef": "pnpm_ghrel@0.1.0"
               }
             },
-            "hey": {
-              "name": "hey",
-              "dependsOn": [
-                "hii",
-                "ho"
-              ],
-              "env": {
-                "installs": [],
-                "env": {},
-                "allowedPortDeps": {}
+            "asdf_plugin_git": {
+              "manifest": {
+                "ty": "denoWorker@v1",
+                "name": "asdf_plugin_git",
+                "platforms": [
+                  "aarch64-linux",
+                  "x86_64-linux",
+                  "aarch64-darwin",
+                  "x86_64-darwin",
+                  "aarch64-windows",
+                  "x86_64-windows"
+                ],
+                "version": "0.1.0",
+                "deps": [
+                  {
+                    "name": "git_aa"
+                  }
+                ],
+                "resolutionDeps": [
+                  {
+                    "name": "git_aa"
+                  }
+                ],
+                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/asdf_plugin_git.ts"
+              },
+              "defaultInst": {
+                "portRef": "asdf_plugin_git@0.1.0"
               }
             }
           }
