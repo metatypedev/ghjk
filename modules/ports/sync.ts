@@ -485,14 +485,7 @@ export async function buildInstallGraph(
     } else {
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
-      // console.log("protsCOnfig", portsConfig);
       for (const depId of manifest.deps) {
-        console.log(
-          "depId",
-          depId.name,
-          "; allowed=",
-          Object.keys(portsConfig.allowedDeps),
-        );
         const { manifest: depPort } = portsConfig.allowedDeps[depId.name];
         if (!depPort) {
           throw new Error(
