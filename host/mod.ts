@@ -242,7 +242,12 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
     }
     const instance: ModuleBase<unknown, unknown> = new mod.ctor();
-    const pMan = await instance.processManifest(gcx, man, lockEntries[man.id]);
+    const pMan = await instance.processManifest(
+      gcx,
+      man,
+      lockEntries[man.id],
+      newLockObj.config.globalEnv,
+    );
     instances.push([man.id, instance, pMan] as const);
     subCommands[man.id] = instance.command(gcx, pMan);
   }

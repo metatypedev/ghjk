@@ -28,7 +28,7 @@ import type {
   TaskEnv,
   TasksModuleConfig,
 } from "./modules/tasks/types.ts";
-import { dax, deep_eql } from "./deps/common.ts";
+import { dax, deep_eql, jsonHash, objectHash } from "./deps/common.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
 
@@ -43,9 +43,12 @@ export type TaskFnDef = TaskDef & {
   fn: TaskFn;
   // command: cliffy_cmd.Command;
 };
+
+// TODO tasks config
 const tasks = {} as Record<string, TaskFnDef>;
-const taskDeps = {} as Record<string, InstallConfigFat>;
 const taskAllowedPortDeps = {} as Record<string, AllowedPortDep>;
+
+const commonInstalls = {} as Record<string, InstallConfigFat>;
 
 // FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
@@ -63,21 +66,20 @@ export function install(...configs: InstallConfigFat[]) {
   }
 }
 
+function registerInstall(config: InstallConfigFat) {
+  // jsonHash.digest is async
+  const hash = objectHash(jsonHash.canonicalize(config as jsonHash.Tree));
+
+  if (!commonInstalls[hash]) {
+    commonInstalls[hash] = config;
+  }
+  return hash;
+}
+
 function registerTaskInstalls(installs: InstallConfigFat[]) {
   const res: string[] = [];
   for (const install of installs) {
-    const key = install.port.name;
-    const registered = taskDeps[key];
-    if (registered) {
-      if (!deep_eql(registered, install)) {
-        throw new Error(
-          `task install already registered with different config: ${install.port.name}`,
-        );
-      }
-    } else {
-      taskDeps[key] = install;
-    }
-    res.push(key);
+    res.push(registerInstall(install));
   }
 
   return res;
@@ -116,6 +118,7 @@ export function task(name: string, config: TaskDefNice) {
     ...(config.allowedPortDeps ?? (config.installs ? stdDeps() : [])),
   ]);
 
+  // TODO validate installs?
   const installs = registerTaskInstalls(config.installs ?? []);
 
   tasks[name] = {
@@ -147,7 +150,7 @@ function addInstall(
   }
   const config = res.data;
   logger().debug("install added", config);
-  cx.installs.push(config);
+  cx.installs.push(registerInstall(config));
 }
 
 export function secureConfig(
@@ -223,7 +226,6 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
       tasks: Object.fromEntries(
         cmdJsons2,
       ),
-      installs: taskDeps,
       allowedPortDeps: taskAllowedPortDeps,
     };
 
@@ -235,6 +237,9 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
         id: std_modules.tasks,
         config: tasksConfig,
       }],
+      globalEnv: {
+        installs: commonInstalls,
+      },
     };
     return config;
   } catch (cause) {

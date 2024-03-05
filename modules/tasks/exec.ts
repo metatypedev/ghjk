@@ -11,6 +11,7 @@ import {
   installFromGraphAndShimEnv,
   syncCtxFromGhjk,
 } from "../ports/sync.ts";
+import { GlobalEnv } from "../../host/types.ts";
 
 export type ExecCtx = DePromisify<ReturnType<typeof execCtxFromGhjk>>;
 
@@ -32,6 +33,7 @@ export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 export async function buildTaskGraph(
   ecx: ExecCtx,
   portsConfig: TasksModuleConfigX,
+  env: GlobalEnv,
 ) {
   const graph = {
     indie: [] as string[],
@@ -48,13 +50,12 @@ export async function buildTaskGraph(
             await buildInstallGraph(
               ecx.syncCx,
               {
-                installs: task.env.installs.map(
-                  (name) => portsConfig.installs[name],
-                ),
+                installs: task.env.installs,
                 allowedDeps: Object.fromEntries(task.env.allowedPortDeps.map(
                   (name) => [name, portsConfig.allowedPortDeps[name]],
                 )),
               },
+              env,
             ),
           ]),
       ),

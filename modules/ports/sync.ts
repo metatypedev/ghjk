@@ -29,6 +29,7 @@ import {
 } from "../../utils/mod.ts";
 import { type InstallsDb, installsDbKv } from "./db.ts";
 import type { GhjkCtx } from "../types.ts";
+import { GlobalEnv } from "../../host/types.ts";
 
 const logger = getLogger(import.meta);
 
@@ -380,6 +381,7 @@ export type InstallGraph = DePromisify<ReturnType<typeof buildInstallGraph>>;
 export async function buildInstallGraph(
   scx: SyncCtx,
   portsConfig: PortsModuleConfigX,
+  env: GlobalEnv,
 ) {
   type GraphInstConf = {
     instId: string;
@@ -429,7 +431,11 @@ export async function buildInstallGraph(
   const foundInstalls: GraphInstConf[] = [];
 
   // collect the user specified insts first
-  for (const inst of portsConfig.installs) {
+  for (const instHash of portsConfig.installs) {
+    const inst = env.installs[instHash];
+    if (!inst) {
+      throw new Error(`install "${instHash}" not found in env`);
+    }
     const { port: manifest, ...instLiteBase } = inst;
     const portRef = addPort(manifest);
     const instLite = validators.installConfigLite.parse({

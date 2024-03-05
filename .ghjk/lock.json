@@ -93,81 +93,9 @@
         "id": "ports",
         "config": {
           "installs": [
-            {
-              "port": {
-                "ty": "denoWorker@v1",
-                "name": "act_ghrel",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///ports/act.ts"
-              }
-            },
-            {
-              "port": {
-                "ty": "denoWorker@v1",
-                "name": "pipi_pypi",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "cpy_bs_ghrel"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/pipi.ts"
-              },
-              "packageName": "pre-commit"
-            },
-            {
-              "port": {
-                "ty": "denoWorker@v1",
-                "name": "cpy_bs_ghrel",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "tar_aa"
-                  },
-                  {
-                    "name": "zstd_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/cpy_bs.ts"
-              },
-              "releaseTag": "20231002"
-            }
+            "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f",
+            "9283b97b5499e8da4dcfb7f14c1306c25e8e8a44",
+            "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c"
           ],
           "allowedDeps": {
             "tar_aa": {
@@ -504,7 +432,7 @@
               "dependsOn": [],
               "env": {
                 "installs": [
-                  "protoc_ghrel"
+                  "ea4ab1dc054cb2dba8fc5c830c995c8db385cc79"
                 ],
                 "env": {
                   "STUFF": "stuffier"
@@ -566,22 +494,6 @@
                 "installs": [],
                 "env": {},
                 "allowedPortDeps": []
-              }
-            }
-          },
-          "installs": {
-            "protoc_ghrel": {
-              "port": {
-                "ty": "denoWorker@v1",
-                "name": "protoc_ghrel",
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/protoc.ts",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ]
               }
             }
           },
@@ -851,6 +763,99 @@
           }
         }
       }
-    ]
+    ],
+    "globalEnv": {
+      "installs": {
+        "ea4ab1dc054cb2dba8fc5c830c995c8db385cc79": {
+          "port": {
+            "ty": "denoWorker@v1",
+            "name": "protoc_ghrel",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin"
+            ],
+            "version": "0.1.0",
+            "moduleSpecifier": "file:///ports/protoc.ts"
+          }
+        },
+        "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f": {
+          "port": {
+            "ty": "denoWorker@v1",
+            "name": "act_ghrel",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin",
+              "aarch64-windows",
+              "x86_64-windows"
+            ],
+            "version": "0.1.0",
+            "moduleSpecifier": "file:///ports/act.ts"
+          }
+        },
+        "9283b97b5499e8da4dcfb7f14c1306c25e8e8a44": {
+          "port": {
+            "ty": "denoWorker@v1",
+            "name": "pipi_pypi",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows",
+              "x86_64-freebsd",
+              "aarch64-freebsd",
+              "x86_64-netbsd",
+              "aarch64-netbsd",
+              "x86_64-aix",
+              "aarch64-aix",
+              "x86_64-solaris",
+              "aarch64-solaris",
+              "x86_64-illumos",
+              "aarch64-illumos",
+              "x86_64-android",
+              "aarch64-android"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "cpy_bs_ghrel"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/pipi.ts"
+          },
+          "packageName": "pre-commit"
+        },
+        "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c": {
+          "port": {
+            "ty": "denoWorker@v1",
+            "name": "cpy_bs_ghrel",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "tar_aa"
+              },
+              {
+                "name": "zstd_aa"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/cpy_bs.ts"
+          },
+          "releaseTag": "20231002"
+        }
+      }
+    }
   }
 }

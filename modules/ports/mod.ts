@@ -14,6 +14,7 @@ import {
   type InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts";
+import { GlobalEnv } from "../../host/types.ts";
 
 type PortsCtx = {
   config: PortsModuleConfigX;
@@ -34,6 +35,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     gcx: GhjkCtx,
     manifest: ModuleManifest,
     _lockEnt: PortsLockEnt | undefined,
+    env: GlobalEnv,
   ) {
     const res = validators.portsModuleConfig.safeParse(manifest.config);
     if (!res.success) {
@@ -47,7 +49,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     const config = res.data;
 
     await using syncCx = await syncCtxFromGhjk(gcx);
-    const installGraph = await buildInstallGraph(syncCx, config);
+    const installGraph = await buildInstallGraph(syncCx, config, env);
     return { config, installGraph };
   }
 

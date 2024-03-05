@@ -19,8 +19,6 @@ const taskDef = zod.object({
 });
 
 const tasksModuleConfig = zod.object({
-  // FIXME portName vs portRef??
-  installs: zod.record(portName, portsValidators.installConfigFat),
   allowedPortDeps: zod.record(
     zod.string(),
     portsValidators.allowedPortDep,

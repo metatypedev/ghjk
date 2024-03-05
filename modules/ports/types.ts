@@ -140,8 +140,7 @@ const installConfig = zod.union([
 ]);
 
 const portsModuleConfigBase = zod.object({
-  // ports: zod.record(zod.string(), portManifest),
-  installs: zod.array(installConfigFat),
+  installs: zod.array(zod.string()),
 });
 
 const allowedPortDep = zod.object({

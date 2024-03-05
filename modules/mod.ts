@@ -1,4 +1,5 @@
 import { cliffy_cmd } from "../deps/cli.ts";
+import { GlobalEnv } from "../host/types.ts";
 import type { Json } from "../utils/mod.ts";
 import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
@@ -7,6 +8,7 @@ export abstract class ModuleBase<Ctx, LockEnt> {
     ctx: GhjkCtx,
     manifest: ModuleManifest,
     lockEnt: LockEnt | undefined,
+    env: GlobalEnv,
   ): Promise<Ctx> | Ctx;
   // returns undefined if previous lock entry is no longer valid
   abstract loadLockEntry(
