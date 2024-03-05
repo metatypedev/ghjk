@@ -139,10 +139,6 @@ const installConfig = zod.union([
   stdInstallConfigFat,
 ]);
 
-const portsModuleConfigBase = zod.object({
-  installs: zod.array(zod.string()),
-});
-
 const allowedPortDep = zod.object({
   manifest: portManifest,
   defaultInst: installConfigLite,
@@ -152,13 +148,22 @@ const portsModuleSecureConfig = zod.object({
   allowedPortDeps: zod.array(allowedPortDep).nullish(),
 });
 
+const portsModuleConfigBase = zod.object({
+  installs: zod.array(zod.string()),
+});
+
 const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
   allowedDeps: zod.record(
     zod.string(),
     zod.string(),
   ),
 }));
-const portsModuleConfigX = portsModuleConfigBase.merge(zod.object({
+
+const portsModuleConfigBaseX = zod.object({
+  installs: zod.array(installConfigFat),
+});
+
+const portsModuleConfigX = portsModuleConfigBaseX.merge(zod.object({
   allowedDeps: zod.record(
     zod.string(),
     allowedPortDep,

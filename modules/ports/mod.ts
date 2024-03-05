@@ -47,7 +47,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       });
     }
     const config: PortsModuleConfigX = {
-      ...res.data,
+      installs: res.data.installs.map((hash) => env.installs[hash]),
       allowedDeps: Object.fromEntries(
         Object.entries(res.data.allowedDeps).map((
           [key, value],
@@ -56,7 +56,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     };
 
     await using syncCx = await syncCtxFromGhjk(gcx);
-    const installGraph = await buildInstallGraph(syncCx, config, env);
+    const installGraph = await buildInstallGraph(syncCx, config);
     return { config, installGraph };
   }
 

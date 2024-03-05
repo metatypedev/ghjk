@@ -50,12 +50,11 @@ export async function buildTaskGraph(
             await buildInstallGraph(
               ecx.syncCx,
               {
-                installs: task.env.installs,
+                installs: task.env.installs.map((hash) => env.installs[hash]),
                 allowedDeps: Object.fromEntries(task.env.allowedPortDeps.map(
                   (dep) => [dep.manifest.name, dep],
                 )),
               },
-              env,
             ),
           ]),
       ),
