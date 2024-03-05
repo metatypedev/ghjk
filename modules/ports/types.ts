@@ -1,6 +1,7 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
+import { relativeFileUrl } from "../../utils/url.ts";
 import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
 
 export { ALL_ARCH, ALL_OS, archEnum, osEnum };
@@ -42,7 +43,7 @@ const portManifestBase = zod.object({
 const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
     ty: zod.literal("denoWorker@v1"),
-    moduleSpecifier: zod.string().url(),
+    moduleSpecifier: zod.string().url().transform(relativeFileUrl),
   }),
 );
 

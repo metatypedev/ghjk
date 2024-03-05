@@ -106,7 +106,7 @@
                   "x86_64-windows"
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/act.ts"
+                "moduleSpecifier": "file:///ports/act.ts"
               }
             },
             {
@@ -139,7 +139,7 @@
                     "name": "cpy_bs_ghrel"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/pipi.ts"
+                "moduleSpecifier": "file:///ports/pipi.ts"
               },
               "packageName": "pre-commit"
             },
@@ -164,7 +164,7 @@
                     "name": "zstd_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cpy_bs.ts"
+                "moduleSpecifier": "file:///ports/cpy_bs.ts"
               },
               "releaseTag": "20231002"
             }
@@ -325,7 +325,7 @@
                     "name": "git_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rustup.ts"
+                "moduleSpecifier": "file:///ports/rustup.ts"
               },
               "defaultInst": {
                 "portRef": "rustup_rustlang@0.1.0"
@@ -361,7 +361,7 @@
                     "name": "rustup_rustlang"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rust.ts"
+                "moduleSpecifier": "file:///ports/rust.ts"
               },
               "defaultInst": {
                 "portRef": "rust_rustup@0.1.0"
@@ -378,7 +378,7 @@
                   "x86_64-darwin"
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cargo-binstall.ts"
+                "moduleSpecifier": "file:///ports/cargo-binstall.ts"
               },
               "defaultInst": {
                 "portRef": "cargo_binstall_ghrel@0.1.0"
@@ -397,7 +397,7 @@
                   "x86_64-windows"
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/pnpm.ts"
+                "moduleSpecifier": "file:///ports/pnpm.ts"
               },
               "defaultInst": {
                 "portRef": "pnpm_ghrel@0.1.0"
@@ -426,7 +426,7 @@
                     "name": "git_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/asdf_plugin_git.ts"
+                "moduleSpecifier": "file:///ports/asdf_plugin_git.ts"
               },
               "defaultInst": {
                 "portRef": "asdf_plugin_git@0.1.0"
@@ -450,7 +450,7 @@
                     "name": "tar_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/node.ts"
+                "moduleSpecifier": "file:///ports/node.ts"
               },
               "defaultInst": {
                 "portRef": "node_org@0.1.0"
@@ -477,7 +477,7 @@
                     "name": "zstd_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cpy_bs.ts"
+                "moduleSpecifier": "file:///ports/cpy_bs.ts"
               },
               "defaultInst": {
                 "portRef": "cpy_bs_ghrel@0.1.0"
@@ -741,7 +741,7 @@
                     "name": "git_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rustup.ts"
+                "moduleSpecifier": "file:///ports/rustup.ts"
               },
               "defaultInst": {
                 "portRef": "rustup_rustlang@0.1.0"
@@ -777,7 +777,7 @@
                     "name": "rustup_rustlang"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/rust.ts"
+                "moduleSpecifier": "file:///ports/rust.ts"
               },
               "defaultInst": {
                 "portRef": "rust_rustup@0.1.0"
@@ -794,7 +794,7 @@
                   "x86_64-darwin"
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/cargo-binstall.ts"
+                "moduleSpecifier": "file:///ports/cargo-binstall.ts"
               },
               "defaultInst": {
                 "portRef": "cargo_binstall_ghrel@0.1.0"
@@ -813,7 +813,7 @@
                   "x86_64-windows"
                 ],
                 "version": "0.1.0",
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/pnpm.ts"
+                "moduleSpecifier": "file:///ports/pnpm.ts"
               },
               "defaultInst": {
                 "portRef": "pnpm_ghrel@0.1.0"
@@ -842,7 +842,7 @@
                     "name": "git_aa"
                   }
                 ],
-                "moduleSpecifier": "file:///home/natoandro/devel/metatypedev/ghjk/ports/asdf_plugin_git.ts"
+                "moduleSpecifier": "file:///ports/asdf_plugin_git.ts"
               },
               "defaultInst": {
                 "portRef": "asdf_plugin_git@0.1.0"
