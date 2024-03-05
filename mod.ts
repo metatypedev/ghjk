@@ -76,8 +76,8 @@ function registerTaskInstalls(installs: InstallConfigFat[]) {
       }
     } else {
       taskDeps[key] = install;
-      res.push(key);
     }
+    res.push(key);
   }
 
   return res;
@@ -93,13 +93,11 @@ function registerTaskAllowedPortDeps(deps: AllowedPortDep[]) {
         throw new Error(
           `task allowedPortDep already registered with different config: ${dep.manifest.name}`,
         );
-      } else {
-        res.push(key);
       }
     } else {
       taskAllowedPortDeps[key] = portsValidators.allowedPortDep.parse(dep);
-      res.push(key);
     }
+    res.push(key);
   }
 
   return res;
