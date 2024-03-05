@@ -2,24 +2,41 @@
 
 import { zod } from "../../deps/common.ts";
 import { portName } from "../ports/types.ts";
+import portsValidator from "../ports/types.ts";
 
 const taskName = zod.string().regex(/[^\s]/);
 
-const taskEnv = zod.object({
+const taskEnvBase = zod.object({
   installs: portName.array(),
   env: zod.record(zod.string(), zod.string()),
-  allowedPortDeps: zod.string().array(),
 });
 
-const taskDef = zod.object({
+const taskEnv = taskEnvBase.merge(zod.object({
+  allowedPortDeps: zod.string().array(),
+}));
+
+const taskEnvX = taskEnvBase.merge(zod.object({
+  allowedPortDeps: portsValidator.allowedPortDep.array(),
+}));
+
+const taskDefBase = zod.object({
   name: zod.string(),
-  env: taskEnv,
   dependsOn: taskName.array(),
   desc: zod.string().nullish(),
 });
 
+const taskDef = taskDefBase.merge(zod.object({
+  env: taskEnv,
+}));
+const taskDefX = taskDefBase.merge(zod.object({
+  env: taskEnvX,
+}));
+
 const tasksModuleConfig = zod.object({
   tasks: zod.record(taskName, taskDef),
+});
+const tasksModuleConfigX = zod.object({
+  tasks: zod.record(taskName, taskDefX),
 });
 export default {
   taskDef,
@@ -29,6 +46,6 @@ export default {
 export type TaskEnv = zod.input<typeof taskEnv>;
 export type TaskEnvX = zod.infer<typeof taskEnv>;
 export type TaskDef = zod.input<typeof taskDef>;
-export type TaskDefX = zod.infer<typeof taskDef>;
+export type TaskDefX = zod.infer<typeof taskDefX>;
 export type TasksModuleConfig = zod.input<typeof tasksModuleConfig>;
-export type TasksModuleConfigX = zod.infer<typeof tasksModuleConfig>;
+export type TasksModuleConfigX = zod.infer<typeof tasksModuleConfigX>;

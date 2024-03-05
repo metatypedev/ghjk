@@ -41,7 +41,21 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
         },
       });
     }
-    const config = res.data;
+    const config: TasksModuleConfigX = {
+      tasks: Object.fromEntries(
+        Object.entries(res.data.tasks).map(
+          ([name, task]) => [name, {
+            ...task,
+            env: {
+              ...task.env,
+              allowedPortDeps: task.env.allowedPortDeps.map((hash) =>
+                env.allowedPortDeps[hash]
+              ),
+            },
+          }],
+        ),
+      ),
+    };
 
     await using execCx = await execCtxFromGhjk(ctx);
     const taskGraph = await buildTaskGraph(execCx, config, env);

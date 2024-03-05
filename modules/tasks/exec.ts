@@ -52,7 +52,7 @@ export async function buildTaskGraph(
               {
                 installs: task.env.installs,
                 allowedDeps: Object.fromEntries(task.env.allowedPortDeps.map(
-                  (hash) => [hash, env.allowedPortDeps[hash]],
+                  (dep) => [dep.manifest.name, dep],
                 )),
               },
               env,
