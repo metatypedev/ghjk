@@ -42,6 +42,7 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     const config = res.data;
 
     await using execCx = await execCtxFromGhjk(ctx);
+    console.log("config", config);
     const taskGraph = await buildTaskGraph(execCx, config);
     return {
       config,
