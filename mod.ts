@@ -20,7 +20,7 @@ import * as std_ports from "./modules/ports/std.ts";
 import * as cpy from "./ports/cpy_bs.ts";
 import * as node from "./ports/node.ts";
 // hosts
-import type { SerializedConfig } from "./host/types.ts";
+import type { GlobalEnv, SerializedConfig } from "./host/types.ts";
 import * as std_modules from "./modules/std.ts";
 // tasks
 import type {
@@ -28,7 +28,7 @@ import type {
   TaskEnv,
   TasksModuleConfig,
 } from "./modules/tasks/types.ts";
-import { dax, deep_eql, jsonHash, objectHash } from "./deps/common.ts";
+import { dax, jsonHash, objectHash } from "./deps/common.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
 
@@ -46,9 +46,11 @@ export type TaskFnDef = TaskDef & {
 
 // TODO tasks config
 const tasks = {} as Record<string, TaskFnDef>;
-const taskAllowedPortDeps = {} as Record<string, AllowedPortDep>;
 
-const commonInstalls = {} as Record<string, InstallConfigFat>;
+const globalEnv: GlobalEnv = {
+  installs: {},
+  allowedPortDeps: {},
+};
 
 // FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
@@ -70,39 +72,18 @@ function registerInstall(config: InstallConfigFat) {
   // jsonHash.digest is async
   const hash = objectHash(jsonHash.canonicalize(config as jsonHash.Tree));
 
-  if (!commonInstalls[hash]) {
-    commonInstalls[hash] = config;
+  if (!globalEnv.installs[hash]) {
+    globalEnv.installs[hash] = config;
   }
   return hash;
 }
 
-function registerTaskInstalls(installs: InstallConfigFat[]) {
-  const res: string[] = [];
-  for (const install of installs) {
-    res.push(registerInstall(install));
+function registerAllowedPortDep(dep: AllowedPortDep) {
+  const hash = objectHash(jsonHash.canonicalize(dep as jsonHash.Tree));
+  if (!globalEnv.allowedPortDeps[hash]) {
+    globalEnv.allowedPortDeps[hash] = dep;
   }
-
-  return res;
-}
-
-function registerTaskAllowedPortDeps(deps: AllowedPortDep[]) {
-  const res: string[] = [];
-  for (const dep of deps) {
-    const key = dep.manifest.name;
-    const registered = taskAllowedPortDeps[key];
-    if (registered) {
-      if (!deep_eql(registered, dep)) {
-        throw new Error(
-          `task allowedPortDep already registered with different config: ${dep.manifest.name}`,
-        );
-      }
-    } else {
-      taskAllowedPortDeps[key] = portsValidators.allowedPortDep.parse(dep);
-    }
-    res.push(key);
-  }
-
-  return res;
+  return hash;
 }
 
 /*
@@ -114,12 +95,12 @@ export type TaskDefNice =
   & Partial<Pick<TaskEnv, "env">>
   & { allowedPortDeps?: AllowedPortDep[]; installs?: InstallConfigFat[] };
 export function task(name: string, config: TaskDefNice) {
-  const allowedPortDeps = registerTaskAllowedPortDeps([
+  const allowedPortDeps = [
     ...(config.allowedPortDeps ?? (config.installs ? stdDeps() : [])),
-  ]);
+  ].map(registerAllowedPortDep);
 
   // TODO validate installs?
-  const installs = registerTaskInstalls(config.installs ?? []);
+  const installs = (config.installs ?? []).map(registerInstall);
 
   tasks[name] = {
     name,
@@ -201,7 +182,7 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
         .map((dep) =>
           [
             dep.manifest.name,
-            portsValidators.allowedPortDep.parse(dep),
+            registerAllowedPortDep(portsValidators.allowedPortDep.parse(dep)),
           ] as const
         ),
     ]);
@@ -226,7 +207,6 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
       tasks: Object.fromEntries(
         cmdJsons2,
       ),
-      allowedPortDeps: taskAllowedPortDeps,
     };
 
     const config: SerializedConfig = {
@@ -237,9 +217,7 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
         id: std_modules.tasks,
         config: tasksConfig,
       }],
-      globalEnv: {
-        installs: commonInstalls,
-      },
+      globalEnv,
     };
     return config;
   } catch (cause) {

@@ -1,7 +1,7 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { zod } from "../../deps/common.ts";
-import portsValidators, { portName } from "../ports/types.ts";
+import { portName } from "../ports/types.ts";
 
 const taskName = zod.string().regex(/[^\s]/);
 
@@ -19,10 +19,6 @@ const taskDef = zod.object({
 });
 
 const tasksModuleConfig = zod.object({
-  allowedPortDeps: zod.record(
-    zod.string(),
-    portsValidators.allowedPortDep,
-  ),
   tasks: zod.record(taskName, taskDef),
 });
 export default {

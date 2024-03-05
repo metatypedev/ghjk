@@ -46,7 +46,14 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         },
       });
     }
-    const config = res.data;
+    const config: PortsModuleConfigX = {
+      ...res.data,
+      allowedDeps: Object.fromEntries(
+        Object.entries(res.data.allowedDeps).map((
+          [key, value],
+        ) => [key, env.allowedPortDeps[value]]),
+      ),
+    };
 
     await using syncCx = await syncCtxFromGhjk(gcx);
     const installGraph = await buildInstallGraph(syncCx, config, env);

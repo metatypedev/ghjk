@@ -4,6 +4,7 @@ import portsValidator from "../modules/ports/types.ts";
 
 const globalEnv = zod.object({
   installs: zod.record(zod.string(), portsValidator.installConfigFat),
+  allowedPortDeps: zod.record(zod.string(), portsValidator.allowedPortDep),
 });
 
 const serializedConfig = zod.object(

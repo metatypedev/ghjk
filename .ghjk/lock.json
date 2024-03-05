@@ -98,319 +98,18 @@
             "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c"
           ],
           "allowedDeps": {
-            "tar_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "tar_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "execName": "tar",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "tar_aa@0.1.0"
-              }
-            },
-            "git_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "git_aa",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "execName": "git",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "git_aa@0.1.0"
-              }
-            },
-            "curl_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "curl_aa",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "execName": "curl",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "curl_aa@0.1.0"
-              }
-            },
-            "unzip_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "unzip_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "execName": "unzip",
-                "versionExtractFlag": "-v",
-                "versionExtractRegex": "(\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "unzip_aa@0.1.0"
-              }
-            },
-            "zstd_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "zstd_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "execName": "zstd",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "zstd_aa@0.1.0"
-              }
-            },
-            "rustup_rustlang": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "rustup_rustlang",
-                "platforms": [
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-windows",
-                  "x86_64-illumos",
-                  "x86_64-freebsd",
-                  "x86_64-netbsd"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "resolutionDeps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/rustup.ts"
-              },
-              "defaultInst": {
-                "portRef": "rustup_rustlang@0.1.0"
-              }
-            },
-            "rust_rustup": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "rust_rustup",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "rustup_rustlang"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/rust.ts"
-              },
-              "defaultInst": {
-                "portRef": "rust_rustup@0.1.0"
-              }
-            },
-            "cargo_binstall_ghrel": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "cargo_binstall_ghrel",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///ports/cargo-binstall.ts"
-              },
-              "defaultInst": {
-                "portRef": "cargo_binstall_ghrel@0.1.0"
-              }
-            },
-            "pnpm_ghrel": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "pnpm_ghrel",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///ports/pnpm.ts"
-              },
-              "defaultInst": {
-                "portRef": "pnpm_ghrel@0.1.0"
-              }
-            },
-            "asdf_plugin_git": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "asdf_plugin_git",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "resolutionDeps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/asdf_plugin_git.ts"
-              },
-              "defaultInst": {
-                "portRef": "asdf_plugin_git@0.1.0"
-              }
-            },
-            "node_org": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "node_org",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "tar_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/node.ts"
-              },
-              "defaultInst": {
-                "portRef": "node_org@0.1.0"
-              }
-            },
-            "cpy_bs_ghrel": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "cpy_bs_ghrel",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "tar_aa"
-                  },
-                  {
-                    "name": "zstd_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/cpy_bs.ts"
-              },
-              "defaultInst": {
-                "portRef": "cpy_bs_ghrel@0.1.0"
-              }
-            }
+            "tar_aa": "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2",
+            "git_aa": "9d26d0d90f6ecdd69d0705a042b01a344aa626ee",
+            "curl_aa": "3c447f912abf18883bd05314f946740975ee0dd3",
+            "unzip_aa": "dfb0f5e74666817e6ab8cbceca0c9da271142bca",
+            "zstd_aa": "d9122eff1fe3ef56872e53dae725ff3ccb37472e",
+            "rustup_rustlang": "8f14cde4f25c276d5e54538d91a6ac6d3eec3e8d",
+            "rust_rustup": "9fc8f32a0f79253defdb8845e2d6a4df69b526b9",
+            "cargo_binstall_ghrel": "45999e7561d7f6a661191f58ee35e67755d375e0",
+            "pnpm_ghrel": "b80f4de14adc81c11569bf5f3a2d10b92ad5f1a7",
+            "asdf_plugin_git": "a36b37f4eda81bf51a50d00362637690c7fea473",
+            "node_org": "5843605c861f0b7307c0192a1628c3823fe28ed9",
+            "cpy_bs_ghrel": "7a33163826283c47b52964a23b87a4762662c746"
           }
         }
       },
@@ -438,16 +137,16 @@
                   "STUFF": "stuffier"
                 },
                 "allowedPortDeps": [
-                  "tar_aa",
-                  "git_aa",
-                  "curl_aa",
-                  "unzip_aa",
-                  "zstd_aa",
-                  "rustup_rustlang",
-                  "rust_rustup",
-                  "cargo_binstall_ghrel",
-                  "pnpm_ghrel",
-                  "asdf_plugin_git"
+                  "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2",
+                  "9d26d0d90f6ecdd69d0705a042b01a344aa626ee",
+                  "3c447f912abf18883bd05314f946740975ee0dd3",
+                  "dfb0f5e74666817e6ab8cbceca0c9da271142bca",
+                  "d9122eff1fe3ef56872e53dae725ff3ccb37472e",
+                  "8f14cde4f25c276d5e54538d91a6ac6d3eec3e8d",
+                  "9fc8f32a0f79253defdb8845e2d6a4df69b526b9",
+                  "45999e7561d7f6a661191f58ee35e67755d375e0",
+                  "b80f4de14adc81c11569bf5f3a2d10b92ad5f1a7",
+                  "a36b37f4eda81bf51a50d00362637690c7fea473"
                 ]
               }
             },
@@ -494,270 +193,6 @@
                 "installs": [],
                 "env": {},
                 "allowedPortDeps": []
-              }
-            }
-          },
-          "allowedPortDeps": {
-            "tar_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "tar_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "execName": "tar",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "tar_aa@0.1.0"
-              }
-            },
-            "git_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "git_aa",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "execName": "git",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "git_aa@0.1.0"
-              }
-            },
-            "curl_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "curl_aa",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "execName": "curl",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "curl_aa@0.1.0"
-              }
-            },
-            "unzip_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "unzip_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "execName": "unzip",
-                "versionExtractFlag": "-v",
-                "versionExtractRegex": "(\\d+\\.\\d+)",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "unzip_aa@0.1.0"
-              }
-            },
-            "zstd_aa": {
-              "manifest": {
-                "ty": "ambientAccess@v1",
-                "name": "zstd_aa",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "execName": "zstd",
-                "versionExtractFlag": "--version",
-                "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
-                "versionExtractRegexFlags": ""
-              },
-              "defaultInst": {
-                "portRef": "zstd_aa@0.1.0"
-              }
-            },
-            "rustup_rustlang": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "rustup_rustlang",
-                "platforms": [
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-windows",
-                  "x86_64-illumos",
-                  "x86_64-freebsd",
-                  "x86_64-netbsd"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "resolutionDeps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/rustup.ts"
-              },
-              "defaultInst": {
-                "portRef": "rustup_rustlang@0.1.0"
-              }
-            },
-            "rust_rustup": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "rust_rustup",
-                "platforms": [
-                  "x86_64-linux",
-                  "aarch64-linux",
-                  "x86_64-darwin",
-                  "aarch64-darwin",
-                  "x86_64-windows",
-                  "aarch64-windows",
-                  "x86_64-freebsd",
-                  "aarch64-freebsd",
-                  "x86_64-netbsd",
-                  "aarch64-netbsd",
-                  "x86_64-aix",
-                  "aarch64-aix",
-                  "x86_64-solaris",
-                  "aarch64-solaris",
-                  "x86_64-illumos",
-                  "aarch64-illumos",
-                  "x86_64-android",
-                  "aarch64-android"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "rustup_rustlang"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/rust.ts"
-              },
-              "defaultInst": {
-                "portRef": "rust_rustup@0.1.0"
-              }
-            },
-            "cargo_binstall_ghrel": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "cargo_binstall_ghrel",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin"
-                ],
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///ports/cargo-binstall.ts"
-              },
-              "defaultInst": {
-                "portRef": "cargo_binstall_ghrel@0.1.0"
-              }
-            },
-            "pnpm_ghrel": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "pnpm_ghrel",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "moduleSpecifier": "file:///ports/pnpm.ts"
-              },
-              "defaultInst": {
-                "portRef": "pnpm_ghrel@0.1.0"
-              }
-            },
-            "asdf_plugin_git": {
-              "manifest": {
-                "ty": "denoWorker@v1",
-                "name": "asdf_plugin_git",
-                "platforms": [
-                  "aarch64-linux",
-                  "x86_64-linux",
-                  "aarch64-darwin",
-                  "x86_64-darwin",
-                  "aarch64-windows",
-                  "x86_64-windows"
-                ],
-                "version": "0.1.0",
-                "deps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "resolutionDeps": [
-                  {
-                    "name": "git_aa"
-                  }
-                ],
-                "moduleSpecifier": "file:///ports/asdf_plugin_git.ts"
-              },
-              "defaultInst": {
-                "portRef": "asdf_plugin_git@0.1.0"
               }
             }
           }
@@ -854,6 +289,321 @@
             "moduleSpecifier": "file:///ports/cpy_bs.ts"
           },
           "releaseTag": "20231002"
+        }
+      },
+      "allowedPortDeps": {
+        "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2": {
+          "manifest": {
+            "ty": "ambientAccess@v1",
+            "name": "tar_aa",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin"
+            ],
+            "version": "0.1.0",
+            "execName": "tar",
+            "versionExtractFlag": "--version",
+            "versionExtractRegex": "(\\d+\\.\\d+)",
+            "versionExtractRegexFlags": ""
+          },
+          "defaultInst": {
+            "portRef": "tar_aa@0.1.0"
+          }
+        },
+        "9d26d0d90f6ecdd69d0705a042b01a344aa626ee": {
+          "manifest": {
+            "ty": "ambientAccess@v1",
+            "name": "git_aa",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows",
+              "x86_64-freebsd",
+              "aarch64-freebsd",
+              "x86_64-netbsd",
+              "aarch64-netbsd",
+              "x86_64-aix",
+              "aarch64-aix",
+              "x86_64-solaris",
+              "aarch64-solaris",
+              "x86_64-illumos",
+              "aarch64-illumos",
+              "x86_64-android",
+              "aarch64-android"
+            ],
+            "version": "0.1.0",
+            "execName": "git",
+            "versionExtractFlag": "--version",
+            "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+            "versionExtractRegexFlags": ""
+          },
+          "defaultInst": {
+            "portRef": "git_aa@0.1.0"
+          }
+        },
+        "3c447f912abf18883bd05314f946740975ee0dd3": {
+          "manifest": {
+            "ty": "ambientAccess@v1",
+            "name": "curl_aa",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows",
+              "x86_64-freebsd",
+              "aarch64-freebsd",
+              "x86_64-netbsd",
+              "aarch64-netbsd",
+              "x86_64-aix",
+              "aarch64-aix",
+              "x86_64-solaris",
+              "aarch64-solaris",
+              "x86_64-illumos",
+              "aarch64-illumos",
+              "x86_64-android",
+              "aarch64-android"
+            ],
+            "version": "0.1.0",
+            "execName": "curl",
+            "versionExtractFlag": "--version",
+            "versionExtractRegex": "(\\d+\\.\\d+\\.\\d+)",
+            "versionExtractRegexFlags": ""
+          },
+          "defaultInst": {
+            "portRef": "curl_aa@0.1.0"
+          }
+        },
+        "dfb0f5e74666817e6ab8cbceca0c9da271142bca": {
+          "manifest": {
+            "ty": "ambientAccess@v1",
+            "name": "unzip_aa",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin",
+              "aarch64-windows",
+              "x86_64-windows"
+            ],
+            "version": "0.1.0",
+            "execName": "unzip",
+            "versionExtractFlag": "-v",
+            "versionExtractRegex": "(\\d+\\.\\d+)",
+            "versionExtractRegexFlags": ""
+          },
+          "defaultInst": {
+            "portRef": "unzip_aa@0.1.0"
+          }
+        },
+        "d9122eff1fe3ef56872e53dae725ff3ccb37472e": {
+          "manifest": {
+            "ty": "ambientAccess@v1",
+            "name": "zstd_aa",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin"
+            ],
+            "version": "0.1.0",
+            "execName": "zstd",
+            "versionExtractFlag": "--version",
+            "versionExtractRegex": "v(\\d+\\.\\d+\\.\\d+),",
+            "versionExtractRegexFlags": ""
+          },
+          "defaultInst": {
+            "portRef": "zstd_aa@0.1.0"
+          }
+        },
+        "8f14cde4f25c276d5e54538d91a6ac6d3eec3e8d": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "rustup_rustlang",
+            "platforms": [
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-windows",
+              "x86_64-illumos",
+              "x86_64-freebsd",
+              "x86_64-netbsd"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "git_aa"
+              }
+            ],
+            "resolutionDeps": [
+              {
+                "name": "git_aa"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/rustup.ts"
+          },
+          "defaultInst": {
+            "portRef": "rustup_rustlang@0.1.0"
+          }
+        },
+        "9fc8f32a0f79253defdb8845e2d6a4df69b526b9": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "rust_rustup",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows",
+              "x86_64-freebsd",
+              "aarch64-freebsd",
+              "x86_64-netbsd",
+              "aarch64-netbsd",
+              "x86_64-aix",
+              "aarch64-aix",
+              "x86_64-solaris",
+              "aarch64-solaris",
+              "x86_64-illumos",
+              "aarch64-illumos",
+              "x86_64-android",
+              "aarch64-android"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "rustup_rustlang"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/rust.ts"
+          },
+          "defaultInst": {
+            "portRef": "rust_rustup@0.1.0"
+          }
+        },
+        "45999e7561d7f6a661191f58ee35e67755d375e0": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "cargo_binstall_ghrel",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin"
+            ],
+            "version": "0.1.0",
+            "moduleSpecifier": "file:///ports/cargo-binstall.ts"
+          },
+          "defaultInst": {
+            "portRef": "cargo_binstall_ghrel@0.1.0"
+          }
+        },
+        "b80f4de14adc81c11569bf5f3a2d10b92ad5f1a7": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "pnpm_ghrel",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin",
+              "aarch64-windows",
+              "x86_64-windows"
+            ],
+            "version": "0.1.0",
+            "moduleSpecifier": "file:///ports/pnpm.ts"
+          },
+          "defaultInst": {
+            "portRef": "pnpm_ghrel@0.1.0"
+          }
+        },
+        "a36b37f4eda81bf51a50d00362637690c7fea473": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "asdf_plugin_git",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin",
+              "aarch64-windows",
+              "x86_64-windows"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "git_aa"
+              }
+            ],
+            "resolutionDeps": [
+              {
+                "name": "git_aa"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/asdf_plugin_git.ts"
+          },
+          "defaultInst": {
+            "portRef": "asdf_plugin_git@0.1.0"
+          }
+        },
+        "5843605c861f0b7307c0192a1628c3823fe28ed9": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "node_org",
+            "platforms": [
+              "aarch64-linux",
+              "x86_64-linux",
+              "aarch64-darwin",
+              "x86_64-darwin",
+              "aarch64-windows",
+              "x86_64-windows"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "tar_aa"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/node.ts"
+          },
+          "defaultInst": {
+            "portRef": "node_org@0.1.0"
+          }
+        },
+        "7a33163826283c47b52964a23b87a4762662c746": {
+          "manifest": {
+            "ty": "denoWorker@v1",
+            "name": "cpy_bs_ghrel",
+            "platforms": [
+              "x86_64-linux",
+              "aarch64-linux",
+              "x86_64-darwin",
+              "aarch64-darwin",
+              "x86_64-windows",
+              "aarch64-windows"
+            ],
+            "version": "0.1.0",
+            "deps": [
+              {
+                "name": "tar_aa"
+              },
+              {
+                "name": "zstd_aa"
+              }
+            ],
+            "moduleSpecifier": "file:///ports/cpy_bs.ts"
+          },
+          "defaultInst": {
+            "portRef": "cpy_bs_ghrel@0.1.0"
+          }
         }
       }
     }

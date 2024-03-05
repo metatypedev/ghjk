@@ -155,6 +155,12 @@ const portsModuleSecureConfig = zod.object({
 const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
   allowedDeps: zod.record(
     zod.string(),
+    zod.string(),
+  ),
+}));
+const portsModuleConfigX = portsModuleConfigBase.merge(zod.object({
+  allowedDeps: zod.record(
+    zod.string(),
     allowedPortDep,
   ),
 }));
@@ -182,6 +188,7 @@ const validators = {
   portsModuleConfigBase,
   portsModuleSecureConfig,
   portsModuleConfig,
+  portsModuleConfigX,
   allowedPortDep,
   string: zod.string(),
   stringArray: zod.string().min(1).array(),
@@ -268,7 +275,9 @@ export type PortsModuleSecureConfigX = zod.input<
 >;
 
 export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
-export type PortsModuleConfigX = zod.infer<typeof validators.portsModuleConfig>;
+export type PortsModuleConfigX = zod.infer<
+  typeof validators.portsModuleConfigX
+>;
 
 /*
 interface ASDF_CONFIG_EXAMPLE {
