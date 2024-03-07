@@ -79,7 +79,7 @@ export class Port extends GithubReleasePort {
       this.releaseArtifactUrl(
         installVersion,
         `meta-cli${
-          conf.full ? "-full" : ""
+          conf.full ? "" : "-thin"
         }-${installVersion}-${arch}-${os}${ext}`,
       ),
     ].map(dwnUrlOut);
