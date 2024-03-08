@@ -20,7 +20,7 @@ import * as std_ports from "./modules/ports/std.ts";
 import * as cpy from "./ports/cpy_bs.ts";
 import * as node from "./ports/node.ts";
 // hosts
-import type { SerializedConfig } from "./host/types.ts";
+import type { GlobalEnv, SerializedConfig } from "./host/types.ts";
 import * as std_modules from "./modules/std.ts";
 // tasks
 import type {
@@ -28,7 +28,7 @@ import type {
   TaskEnv,
   TasksModuleConfig,
 } from "./modules/tasks/types.ts";
-import { dax } from "./deps/common.ts";
+import { dax, jsonHash, objectHash } from "./deps/common.ts";
 
 const portsConfig: PortsModuleConfigBase = { installs: [] };
 
@@ -43,10 +43,14 @@ export type TaskFnDef = TaskDef & {
   fn: TaskFn;
   // command: cliffy_cmd.Command;
 };
-const tasks = {} as Record<
-  string,
-  TaskFnDef
->;
+
+// TODO tasks config
+const tasks = {} as Record<string, TaskFnDef>;
+
+const globalEnv: GlobalEnv = {
+  installs: {},
+  allowedPortDeps: {},
+};
 
 // FIXME: ses.lockdown to freeze primoridials
 // freeze the object to prevent malicious tampering of the secureConfig
@@ -64,33 +68,47 @@ export function install(...configs: InstallConfigFat[]) {
   }
 }
 
+function registerInstall(config: InstallConfigFat) {
+  // jsonHash.digest is async
+  const hash = objectHash(jsonHash.canonicalize(config as jsonHash.Tree));
+
+  if (!globalEnv.installs[hash]) {
+    globalEnv.installs[hash] = config;
+  }
+  return hash;
+}
+
+function registerAllowedPortDep(dep: AllowedPortDep) {
+  const hash = objectHash(jsonHash.canonicalize(dep as jsonHash.Tree));
+  if (!globalEnv.allowedPortDeps[hash]) {
+    globalEnv.allowedPortDeps[hash] = dep;
+  }
+  return hash;
+}
+
 /*
  * A nicer form of TaskFnDef for better ergonomics in the ghjkfile
  */
 export type TaskDefNice =
   & Omit<TaskFnDef, "env" | "name" | "dependsOn">
   & Partial<Pick<TaskFnDef, "dependsOn">>
-  & Partial<Omit<TaskEnv, "allowedPortDeps">>
-  & { allowedPortDeps?: AllowedPortDep[] };
+  & Partial<Pick<TaskEnv, "env">>
+  & { allowedPortDeps?: AllowedPortDep[]; installs?: InstallConfigFat[] };
 export function task(name: string, config: TaskDefNice) {
-  const allowedPortDeps = Object.fromEntries([
-    ...(config.allowedPortDeps ??
-      // only add the stdDeps if the task specifies installs
-      (config.installs ? stdDeps() : []))
-      .map((dep) =>
-        [
-          dep.manifest.name,
-          portsValidators.allowedPortDep.parse(dep),
-        ] as const
-      ),
-  ]);
+  const allowedPortDeps = [
+    ...(config.allowedPortDeps ?? (config.installs ? stdDeps() : [])),
+  ].map(registerAllowedPortDep);
+
+  // TODO validate installs?
+  const installs = (config.installs ?? []).map(registerInstall);
+
   tasks[name] = {
     name,
     fn: config.fn,
     desc: config.desc,
     dependsOn: config.dependsOn ?? [],
     env: {
-      installs: config.installs ?? [],
+      installs,
       env: config.env ?? {},
       allowedPortDeps,
     },
@@ -113,7 +131,7 @@ function addInstall(
   }
   const config = res.data;
   logger().debug("install added", config);
-  cx.installs.push(config);
+  cx.installs.push(registerInstall(config));
 }
 
 export function secureConfig(
@@ -164,7 +182,7 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
         .map((dep) =>
           [
             dep.manifest.name,
-            portsValidators.allowedPortDep.parse(dep),
+            registerAllowedPortDep(portsValidators.allowedPortDep.parse(dep)),
           ] as const
         ),
     ]);
@@ -199,9 +217,10 @@ async function getConfig(secureConfig: PortsModuleSecureConfig | undefined) {
         id: std_modules.tasks,
         config: tasksConfig,
       }],
+      globalEnv,
     };
     return config;
   } catch (cause) {
-    throw new Error(`error constructing config for serializatino`, { cause });
+    throw new Error(`error constructing config for serialization`, { cause });
   }
 }

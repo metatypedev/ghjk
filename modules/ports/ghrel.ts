@@ -70,31 +70,31 @@ export abstract class GithubReleasePort extends PortBase {
     );
   }
 
-  async latestStable(_args: ListAllArgs) {
+  async latestStable(args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
-        ).json() as {
-          tag_name: string;
-        },
+        )
+          .header(ghHeaders(args.config))
+          .json() as { tag_name: string },
     });
 
     return metadata.tag_name;
   }
 
-  async listAll(_args: ListAllArgs) {
+  async listAll(args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
       delay: exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`,
-        ).json() as [{
-          tag_name: string;
-        }],
+        )
+          .header(ghHeaders(args.config))
+          .json() as [{ tag_name: string }],
     });
 
     return metadata.map((rel) => rel.tag_name).reverse();

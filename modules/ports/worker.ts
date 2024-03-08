@@ -12,6 +12,7 @@ import type {
   ListAllArgs,
   ListBinPathsArgs,
 } from "./types.ts";
+import { absoluteFileUrl } from "../../utils/url.ts";
 
 if (inWorker()) {
   initWorker();
@@ -31,10 +32,11 @@ async function onMsg(msg: MessageEvent<WorkerReq>) {
   }
 
   // get the Port class exported from the module
-  const { Port } = await import(req.moduleSpecifier);
+  const moduleSpecifier = absoluteFileUrl(req.moduleSpecifier);
+  const { Port } = await import(moduleSpecifier);
   if (typeof Port != "function") {
     throw new Error(
-      `export "Port" of module ${req.moduleSpecifier} is not a function`,
+      `export "Port" of module ${moduleSpecifier} is not a function`,
     );
   }
   const portCtor = Port as unknown as new () => PortBase;

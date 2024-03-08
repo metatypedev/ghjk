@@ -1,9 +1,13 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
+import { relativeFileUrl } from "../../utils/url.ts";
+import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
+
+export { ALL_ARCH, ALL_OS, archEnum, osEnum };
 
 // TODO: find a better identification scheme for ports
-const portName = zod.string().regex(/[^ @]*/);
+export const portName = zod.string().regex(/[^ @]*/);
 // FIXME: get rid of semantic minor.patch version from portRef
 // to allow install hashes to be equivalent as long as major
 // version is the same
@@ -19,29 +23,10 @@ const portDepFat = portDep.merge(zod.object({
   config: zod.unknown(),
 }));
 
-export const ALL_OS = [
-  "linux",
-  "darwin",
-  "windows",
-  "freebsd",
-  "netbsd",
-  "aix",
-  "solaris",
-  "illumos",
-  "android",
-] as const;
-
-export const ALL_ARCH = [
-  "x86_64",
-  "aarch64",
-] as const;
-const osEnum = zod.enum(ALL_OS);
-const archEnum = zod.enum(ALL_ARCH);
-
 const portManifestBase = zod.object({
   ty: zod.string(),
   name: zod.string().min(1),
-  platforms: zod.tuple([osEnum, archEnum]).array(),
+  platforms: zod.string().array(),
   version: zod.string()
     .refine((str) => semver.parse(str), {
       message: "invalid semver string",
@@ -58,7 +43,7 @@ const portManifestBase = zod.object({
 const denoWorkerPortManifest = portManifestBase.merge(
   zod.object({
     ty: zod.literal("denoWorker@v1"),
-    moduleSpecifier: zod.string().url(),
+    moduleSpecifier: zod.string().url().transform(relativeFileUrl),
   }),
 );
 
@@ -154,11 +139,6 @@ const installConfig = zod.union([
   stdInstallConfigFat,
 ]);
 
-const portsModuleConfigBase = zod.object({
-  // ports: zod.record(zod.string(), portManifest),
-  installs: zod.array(installConfigFat),
-});
-
 const allowedPortDep = zod.object({
   manifest: portManifest,
   defaultInst: installConfigLite,
@@ -168,7 +148,22 @@ const portsModuleSecureConfig = zod.object({
   allowedPortDeps: zod.array(allowedPortDep).nullish(),
 });
 
+const portsModuleConfigBase = zod.object({
+  installs: zod.array(zod.string()),
+});
+
 const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
+  allowedDeps: zod.record(
+    zod.string(),
+    zod.string(),
+  ),
+}));
+
+const portsModuleConfigBaseX = zod.object({
+  installs: zod.array(installConfigFat),
+});
+
+const portsModuleConfigX = portsModuleConfigBaseX.merge(zod.object({
   allowedDeps: zod.record(
     zod.string(),
     allowedPortDep,
@@ -198,6 +193,7 @@ const validators = {
   portsModuleConfigBase,
   portsModuleSecureConfig,
   portsModuleConfig,
+  portsModuleConfigX,
   allowedPortDep,
   string: zod.string(),
   stringArray: zod.string().min(1).array(),
@@ -284,7 +280,9 @@ export type PortsModuleSecureConfigX = zod.input<
 >;
 
 export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
-export type PortsModuleConfigX = zod.infer<typeof validators.portsModuleConfig>;
+export type PortsModuleConfigX = zod.infer<
+  typeof validators.portsModuleConfigX
+>;
 
 /*
 interface ASDF_CONFIG_EXAMPLE {

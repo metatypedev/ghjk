@@ -14,6 +14,7 @@ import {
   execTask,
   type TaskGraph,
 } from "./exec.ts";
+import { GlobalEnv } from "../../host/types.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;
@@ -29,6 +30,7 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     ctx: GhjkCtx,
     manifest: ModuleManifest,
     _lockEnt: TasksLockEnt | undefined,
+    env: GlobalEnv,
   ) {
     const res = validators.tasksModuleConfig.safeParse(manifest.config);
     if (!res.success) {
@@ -39,10 +41,24 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
         },
       });
     }
-    const config = res.data;
+    const config: TasksModuleConfigX = {
+      tasks: Object.fromEntries(
+        Object.entries(res.data.tasks).map(
+          ([name, task]) => [name, {
+            ...task,
+            env: {
+              ...task.env,
+              allowedPortDeps: task.env.allowedPortDeps.map((hash) =>
+                env.allowedPortDeps[hash]
+              ),
+            },
+          }],
+        ),
+      ),
+    };
 
     await using execCx = await execCtxFromGhjk(ctx);
-    const taskGraph = await buildTaskGraph(execCx, config);
+    const taskGraph = await buildTaskGraph(execCx, config, env);
     return {
       config,
       taskGraph,
