@@ -38,12 +38,13 @@ export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 export function getResolutionMemo(
   gcx: GhjkCtx,
 ) {
-  let memoStore = gcx.state.get("resolutionMemoStore") as
+  const id = "resolutionMemoStore";
+  let memoStore = gcx.blackboard.get(id) as
     | ResolutionMemoStore
     | undefined;
   if (!memoStore) {
     memoStore = new Map();
-    gcx.state.set("resolutionMemoStore", memoStore);
+    gcx.blackboard.set(id, memoStore);
   }
   return memoStore;
 }
@@ -60,7 +61,7 @@ export async function syncCtxFromGhjk(
       sameFsTmpRoot(portsPath.toString()),
     ])
   ).map($.pathToString);
-  let db = gcx.state.get("installsDb") as
+  let db = gcx.blackboard.get("installsDb") as
     | Rc<InstallsDb>
     | undefined;
   if (!db) {
@@ -72,10 +73,10 @@ export async function syncCtxFromGhjk(
       ),
       (db) => {
         db[Symbol.dispose]();
-        gcx.state.delete("installsDb");
+        gcx.blackboard.delete("installsDb");
       },
     );
-    gcx.state.set("installsDb", db);
+    gcx.blackboard.set("installsDb", db);
   } else {
     db = db.clone();
   }

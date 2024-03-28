@@ -14,7 +14,7 @@ export type GhjkCtx = {
   ghjkfilePath: string;
   ghjkDir: string;
   ghjkShareDir: string;
-  state: Map<string, unknown>;
+  blackboard: Map<string, unknown>;
 };
 
 export default {

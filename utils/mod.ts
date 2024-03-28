@@ -459,3 +459,22 @@ export function thinInstallConfig(fat: InstallConfigFat) {
     ...lite,
   };
 }
+
+export function match<
+  All,
+  K extends keyof All,
+>(
+  val: K,
+  branches: All,
+): All[K] extends () => infer Inner ? Inner : All[K] {
+  // return branches[val];
+  const branch = branches[val];
+  return typeof branch == "function" ? branch() : branch;
+}
+
+const _b = match("hey", {
+  hey: () => 1,
+  hello: () => 2,
+  hi: 3 as const,
+  holla: 4,
+});

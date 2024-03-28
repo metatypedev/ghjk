@@ -6,16 +6,20 @@ import portsValidator from "../ports/types.ts";
 const taskName = zod.string().regex(/[^\s]/);
 
 const taskEnvBase = zod.object({
-  installs: zod.string().array(),
   env: zod.record(zod.string(), zod.string()),
 });
 
-const taskEnv = taskEnvBase.merge(zod.object({
-  allowedPortDeps: zod.string().array(),
+const taskEnvHashed = taskEnvBase.merge(zod.object({
+  installs: zod.string().array(),
+  allowedPortDeps: zod.record(zod.string(), zod.string()),
 }));
 
-const taskEnvX = taskEnvBase.merge(zod.object({
-  allowedPortDeps: portsValidator.allowedPortDep.array(),
+const taskEnv = taskEnvBase.merge(zod.object({
+  installs: portsValidator.installConfigFat.array(),
+  allowedPortDeps: zod.record(
+    zod.string(),
+    portsValidator.allowedPortDep,
+  ),
 }));
 
 const taskDefBase = zod.object({
@@ -27,24 +31,47 @@ const taskDefBase = zod.object({
 const taskDef = taskDefBase.merge(zod.object({
   env: taskEnv,
 }));
-const taskDefX = taskDefBase.merge(zod.object({
-  env: taskEnvX,
+
+const taskDefHashed = taskDefBase.merge(zod.object({
+  env: taskEnvHashed,
 }));
 
 const tasksModuleConfig = zod.object({
   tasks: zod.record(taskName, taskDef),
 });
-const tasksModuleConfigX = zod.object({
-  tasks: zod.record(taskName, taskDefX),
-});
-export default {
-  taskDef,
-  tasksModuleConfig,
-};
 
-export type TaskEnv = zod.input<typeof taskEnv>;
-export type TaskEnvX = zod.infer<typeof taskEnv>;
-export type TaskDef = zod.input<typeof taskDef>;
-export type TaskDefX = zod.infer<typeof taskDefX>;
-export type TasksModuleConfig = zod.input<typeof tasksModuleConfig>;
-export type TasksModuleConfigX = zod.infer<typeof tasksModuleConfigX>;
+const tasksModuleConfigHashed = zod.object({
+  tasks: zod.record(taskName, taskDefHashed),
+});
+
+const validators = {
+  taskEnv,
+  taskEnvHashed,
+  taskDef,
+  taskDefHashed,
+  tasksModuleConfig,
+  tasksModuleConfigHashed,
+};
+export default validators;
+
+export type TaskEnv = zod.input<typeof validators.taskEnv>;
+export type TaskEnvX = zod.infer<typeof validators.taskEnv>;
+
+export type TaskEnvHashed = zod.input<typeof validators.taskEnvHashed>;
+export type TaskEnvHashedX = zod.infer<typeof validators.taskEnvHashed>;
+
+export type TaskDef = zod.input<typeof validators.taskDef>;
+export type TaskDefX = zod.infer<typeof validators.taskDef>;
+
+export type TaskDefHashed = zod.input<typeof validators.taskDefHashed>;
+export type TaskDefHashedX = zod.infer<typeof validators.taskDefHashed>;
+
+export type TasksModuleConfig = zod.input<typeof validators.tasksModuleConfig>;
+export type TasksModuleConfigX = zod.infer<typeof validators.tasksModuleConfig>;
+
+export type TasksModuleConfigHashed = zod.input<
+  typeof validators.tasksModuleConfigHashed
+>;
+export type TasksModuleConfigHashedX = zod.infer<
+  typeof tasksModuleConfigHashed
+>;

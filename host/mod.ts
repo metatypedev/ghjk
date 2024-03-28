@@ -34,7 +34,7 @@ export async function cli(args: CliArgs) {
 
   logger().debug({ ghjkfilePath, ghjkDir });
 
-  const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, state: new Map() };
+  const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, blackboard: new Map() };
   const hcx = { fileHashMemoStore: new Map() };
 
   const { subCommands, serializedConfig } = await readConfig(gcx, hcx);
@@ -245,8 +245,8 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     const pMan = await instance.processManifest(
       gcx,
       man,
+      newLockObj.config.blackboard,
       lockEntries[man.id],
-      newLockObj.config.globalEnv,
     );
     instances.push([man.id, instance, pMan] as const);
     subCommands[man.id] = instance.command(gcx, pMan);
@@ -290,7 +290,7 @@ async function readAndSerializeConfig(
 ): Promise<SerializedConfigExt> {
   switch (configPath.extname()) {
     case "":
-      logger().warning("config file has no extension, assuming deno config");
+      logger().warn("config file has no extension, assuming deno config");
     /* falls through */
     case ".ts": {
       logger().debug("serializing ts config", configPath);

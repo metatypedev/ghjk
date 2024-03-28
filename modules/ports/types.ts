@@ -148,27 +148,26 @@ const portsModuleSecureConfig = zod.object({
   allowedPortDeps: zod.array(allowedPortDep).nullish(),
 });
 
-const portsModuleConfigBase = zod.object({
+const portsModuleConfigHashed = zod.object({
   installs: zod.array(zod.string()),
-});
-
-const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
   allowedDeps: zod.record(
     zod.string(),
     zod.string(),
   ),
-}));
-
-const portsModuleConfigBaseX = zod.object({
-  installs: zod.array(installConfigFat),
 });
 
-const portsModuleConfigX = portsModuleConfigBaseX.merge(zod.object({
+const portsModuleConfig = zod.object({
+  installs: zod.array(installConfigFat),
   allowedDeps: zod.record(
     zod.string(),
     allowedPortDep,
   ),
-}));
+});
+
+const installEnvProvision = zod.object({
+  ty: zod.literal("ghjkInstall"),
+  confHash: zod.string(),
+});
 
 const validators = {
   osEnum,
@@ -190,11 +189,11 @@ const validators = {
   installConfig,
   installConfigResolved,
   portManifest,
-  portsModuleConfigBase,
   portsModuleSecureConfig,
   portsModuleConfig,
-  portsModuleConfigX,
+  portsModuleConfigHashed,
   allowedPortDep,
+  installEnvProvision,
   string: zod.string(),
   stringArray: zod.string().min(1).array(),
 };
@@ -262,8 +261,8 @@ export type InstallConfigResolvedX = zod.infer<
   typeof validators.installConfigResolved
 >;
 
-export type PortsModuleConfigBase = zod.infer<
-  typeof validators.portsModuleConfigBase
+export type InstallEnvProvision = zod.infer<
+  typeof validators.installEnvProvision
 >;
 
 export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
@@ -281,7 +280,14 @@ export type PortsModuleSecureConfigX = zod.input<
 
 export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
 export type PortsModuleConfigX = zod.infer<
-  typeof validators.portsModuleConfigX
+  typeof validators.portsModuleConfig
+>;
+
+export type PortsModuleConfigHashed = zod.input<
+  typeof validators.portsModuleConfigHashed
+>;
+export type PortsModuleConfigLiteHashedX = zod.infer<
+  typeof validators.portsModuleConfigHashed
 >;
 
 /*
