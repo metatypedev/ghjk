@@ -40,36 +40,6 @@ ghjk.install(
 );
 ```
 
-## How it works
-
-The only required dependency is `deno`. Everything else is managed automatically
-and looks as follows (abstracting away some implementation details):
-
-- the installer sets up a directory hook in your shell profile
-  - `.bashrc`
-  - `.zshrc`
-  - `.config/fish/config.fish`
-- for every visited directory, the hook looks for `$PWD/ghjk.ts` in the
-  directory or its parents, and
-  - adds the `$HOME/.local/share/ghjk/envs/$PWD/shims/{bin,lib,include}` to your
-    paths
-  - sources environment variables in
-    `$HOME/.local/share/ghjk/envs/$PWD/loader.{sh,fish}` and clear previously
-    loaded ones (if any)
-- you can then
-  - sync your runtime with `ghjk ports sync` which
-    - installs the missing tools at `$HOME/.local/share/ghjk/ports/installs`
-    - regenerates the shims with symlinks and environment variables
-    - detects any violation of the enforced rules
-  - [ ] `ghjk ports list`: list installed tools and versions
-  - [ ] `ghjk ports outdated`: list outdated tools
-  - [ ] `ghjk ports cleanup`: remove unused tools and versions
-
-## Extending `ghjk`
-
-```ts
-```
-
 ## Development
 
 ```bash

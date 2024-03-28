@@ -14,7 +14,7 @@ import {
   type InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts";
-import { GlobalEnv } from "../../host/types.ts";
+import { Blackboard } from "../../host/types.ts";
 
 type PortsCtx = {
   config: PortsModuleConfigX;
@@ -34,24 +34,36 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   async processManifest(
     gcx: GhjkCtx,
     manifest: ModuleManifest,
+    bb: Blackboard,
     _lockEnt: PortsLockEnt | undefined,
-    env: GlobalEnv,
   ) {
-    const res = validators.portsModuleConfig.safeParse(manifest.config);
-    if (!res.success) {
-      throw new Error("error parsing module config", {
-        cause: {
-          config: manifest.config,
-          zodErr: res.error,
-        },
-      });
+    function unwrapParseRes<In, Out>(res: zod.SafeParseReturnType<In, Out>) {
+      if (!res.success) {
+        throw new Error("error parsing module config", {
+          cause: {
+            zodErr: res.error,
+            id: manifest.id,
+            config: manifest.config,
+            bb,
+          },
+        });
+      }
+      return res.data;
     }
+    const hashed = unwrapParseRes(
+      validators.portsModuleConfigHashed.safeParse(manifest.config),
+    );
     const config: PortsModuleConfigX = {
-      installs: res.data.installs.map((hash) => env.installs[hash]),
+      installs: hashed.installs.map((hash) =>
+        unwrapParseRes(validators.installConfigFat.safeParse(bb[hash]))
+      ),
       allowedDeps: Object.fromEntries(
-        Object.entries(res.data.allowedDeps).map((
+        Object.entries(hashed.allowedDeps).map((
           [key, value],
-        ) => [key, env.allowedPortDeps[value]]),
+        ) => [
+          key,
+          unwrapParseRes(validators.allowedPortDep.safeParse(bb[value])),
+        ]),
       ),
     };
 
