@@ -2,31 +2,36 @@ import { std_path, zod } from "../../deps/common.ts";
 
 const absolutePath = zod.string().refine((path) => std_path.isAbsolute(path));
 
-const envVars = zod.record(zod.string(), zod.string());
-
 const provision = zod.object({ ty: zod.string() }).passthrough();
 
-export const wellKnownProvisionTypes = [
+const posixFileProvisionTypes = [
   "posixExec",
   "posixSharedLib",
   "headerFile",
 ] as const;
 
+// we separate the posix file types in a separate
+// array in the interest of type inference
+export const wellKnownProvisionTypes = [
+  "envVar",
+  ...posixFileProvisionTypes,
+] as const;
+
 const wellKnownProvision = zod.discriminatedUnion(
   "ty",
   [
-    // the types require that the discrim union array is not
-    // empty so we move the first item out of the `map` statement
-    // to appease typescript
-    zod.object({ ty: zod.literal(wellKnownProvisionTypes[0]), absolutePath }),
-    ...wellKnownProvisionTypes.slice(1).map((ty) =>
+    zod.object({
+      ty: zod.literal(wellKnownProvisionTypes[0]),
+      key: zod.string(),
+      val: zod.string(),
+    }),
+    ...posixFileProvisionTypes.map((ty) =>
       zod.object({ ty: zod.literal(ty), absolutePath })
     ),
   ],
 );
 
 const envRecipe = zod.object({
-  vars: envVars,
   provides: zod.array(provision),
 });
 
@@ -65,6 +70,6 @@ export type WellKnownEnvRecipeX = zod.infer<
   typeof validators.wellKnownEnvRecipe
 >;
 
-export type ProvisionReducer = (
-  provision: Provision,
-) => Promise<Array<WellKnownProvision>>;
+export type ProvisionReducer<P extends Provision> = (
+  provision: P[],
+) => Promise<WellKnownProvision[]>;

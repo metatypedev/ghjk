@@ -14,7 +14,7 @@ const ha = ghjk
     installs: [
       ports.protoc(),
     ],
-    env: { STUFF: "stuffier" },
+    envVars: { STUFF: "stuffier" },
     async fn({ $ }) {
       await $`echo $STUFF;
       protoc --version;
@@ -65,5 +65,5 @@ ghjk.install(
 );
 
 export const secureConfig = ghjk.secureConfig({
-  allowedPortDeps: [...ghjk.stdDeps({ enableRuntimes: true })],
+  masterPortDepAllowList: ghjk.stdDeps({ enableRuntimes: true }),
 });

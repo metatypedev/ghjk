@@ -478,3 +478,29 @@ const _b = match("hey", {
   hi: 3 as const,
   holla: 4,
 });
+
+export async function expandGlobsAndAbsolutize(path: string, wd: string) {
+  if (std_path.isGlob(path)) {
+    const glob = std_path.isAbsolute(path)
+      ? path
+      : std_path.joinGlobs([wd, path], { extended: true });
+    return (await Array.fromAsync(std_fs.expandGlob(glob)))
+      .map((entry) => std_path.resolve(wd, entry.path));
+  }
+  return [std_path.resolve(wd, path)];
+}
+export function unwrapParseRes<In, Out>(
+  res: zod.SafeParseReturnType<In, Out>,
+  cause: object = {},
+  errMessage = "error parsing object",
+) {
+  if (!res.success) {
+    throw new Error(errMessage, {
+      cause: {
+        zodErr: res.error,
+        ...cause,
+      },
+    });
+  }
+  return res.data;
+}

@@ -4,6 +4,9 @@ import type { Json } from "../utils/mod.ts";
 import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
 export abstract class ModuleBase<Ctx, LockEnt> {
+  /* init(
+    _gcx: GhjkCtx,
+  ): Promise<void> | void {} */
   abstract processManifest(
     ctx: GhjkCtx,
     manifest: ModuleManifest,

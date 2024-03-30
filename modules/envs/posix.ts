@@ -1,7 +1,7 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
 import type {
   EnvRecipeX,
-  ProvisionReducer,
+  Provision,
   WellKnownEnvRecipeX,
   WellKnownProvision,
 } from "./types.ts";
@@ -10,42 +10,39 @@ import { wellKnownProvisionTypes } from "./types.ts";
 import getLogger from "../../utils/logger.ts";
 import { $, PathRef } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
+import { getProvisionReducerStore } from "./reducer.ts";
 
 const logger = getLogger(import.meta);
-
-export type ProvisionReducerStore = Map<string, ProvisionReducer>;
-export function getProvisionReducerStore(
-  gcx: GhjkCtx,
-) {
-  const id = "provisionReducerStore";
-  let store = gcx.blackboard.get(id) as
-    | ProvisionReducerStore
-    | undefined;
-  if (!store) {
-    store = new Map();
-    gcx.blackboard.set(id, store);
-  }
-  return store;
-}
 
 export async function reduceStrangeProvisions(
   gcx: GhjkCtx,
   env: EnvRecipeX,
 ) {
   const reducerStore = getProvisionReducerStore(gcx);
-  const reducedSet = [] as WellKnownProvision[];
+  const bins = {} as Record<string, Provision[]>;
   for (const item of env.provides) {
-    if (wellKnownProvisionTypes.includes(item.ty as any)) {
-      reducedSet.push(validators.wellKnownProvision.parse(item));
+    let bin = bins[item.ty];
+    if (!bin) {
+      bin = [];
+      bins[item.ty] = bin;
+    }
+    bin.push(item);
+  }
+  const reducedSet = [] as WellKnownProvision[];
+  for (const [ty, items] of Object.entries(bins)) {
+    if (wellKnownProvisionTypes.includes(ty as any)) {
+      reducedSet.push(
+        ...items.map((item) => validators.wellKnownProvision.parse(item)),
+      );
       continue;
     }
-    const reducer = reducerStore.get(item.ty);
+    const reducer = reducerStore.get(ty);
     if (!reducer) {
-      throw new Error(`no provider reducer found for ty: ${item.ty}`, {
-        cause: item,
+      throw new Error(`no provider reducer found for ty: ${ty}`, {
+        cause: items,
       });
     }
-    const reduced = await reducer(item);
+    const reduced = await reducer(items);
     reducedSet.push(validators.wellKnownProvision.parse(reduced));
   }
   const out: WellKnownEnvRecipeX = {
@@ -75,6 +72,7 @@ export async function cookUnixEnv(
   const binPaths = [] as string[];
   const libPaths = [] as string[];
   const includePaths = [] as string[];
+  const vars = {} as Record<string, string>;
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
@@ -88,6 +86,16 @@ export async function cookUnixEnv(
         break;
       case "headerFile":
         includePaths.push(item.absolutePath);
+        break;
+      case "envVar":
+        if (vars[item.key]) {
+          throw new Error(
+            `env var conflict cooking unix env: key "${item.key}" has entries "${
+              vars[item.key]
+            }" and "${item.val}"`,
+          );
+        }
+        vars[item.key] = vars[item.val];
         break;
       default:
         throw Error(`unsupported provision type: ${(item as any).provision}`);
@@ -109,7 +117,7 @@ export async function cookUnixEnv(
     includeShimDir,
   );
   // write loader for the env vars mandated by the installs
-  logger.debug("adding vars to loader", env.vars);
+  logger.debug("adding vars to loader", vars);
   // FIXME: prevent malicious env manipulations
   let LD_LIBRARY_ENV: string;
   switch (Deno.build.os) {
@@ -132,13 +140,13 @@ export async function cookUnixEnv(
   if (createShellLoaders) {
     await writeLoader(
       envDir,
-      env.vars,
+      vars,
       pathVars,
     );
   }
   return {
     env: {
-      ...env.vars,
+      ...vars,
       ...pathVars,
     },
   };

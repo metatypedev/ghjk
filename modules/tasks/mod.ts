@@ -1,20 +1,14 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { Json } from "../../utils/mod.ts";
+import { Json, unwrapParseRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
-import portValidators from "../ports/types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
-import {
-  buildTaskGraph,
-  execCtxFromGhjk,
-  execTask,
-  type TaskGraph,
-} from "./exec.ts";
+import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
 import { Blackboard } from "../../host/types.ts";
 
 export type TasksCtx = {
@@ -27,57 +21,25 @@ const lockValidator = zod.object({
 type TasksLockEnt = zod.infer<typeof lockValidator>;
 
 export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
-  async processManifest(
-    ctx: GhjkCtx,
+  processManifest(
+    gcx: GhjkCtx,
     manifest: ModuleManifest,
     bb: Blackboard,
     _lockEnt: TasksLockEnt | undefined,
   ) {
-    function unwrapParseRes<In, Out>(res: zod.SafeParseReturnType<In, Out>) {
-      if (!res.success) {
-        throw new Error("error parsing module config", {
-          cause: {
-            zodErr: res.error,
-            id: manifest.id,
-            config: manifest.config,
-            bb,
-          },
-        });
-      }
-      return res.data;
+    function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
+      return unwrapParseRes<I, O>(res, {
+        id: manifest.id,
+        config: manifest.config,
+        bb,
+      }, "error parsing module config");
     }
-    const hashed = unwrapParseRes(
-      validators.tasksModuleConfigHashed.safeParse(manifest.config),
-    );
-    const config: TasksModuleConfigX = {
-      tasks: Object.fromEntries(
-        Object.entries(hashed.tasks).map(
-          ([name, task]) => [name, {
-            ...task,
-            env: {
-              ...task.env,
-              installs: task.env.installs.map((hash) =>
-                unwrapParseRes(
-                  portValidators.installConfigFat.safeParse(bb[hash]),
-                )
-              ),
-              allowedPortDeps: Object.fromEntries(
-                Object.entries(task.env.allowedPortDeps)
-                  .map(([key, hash]) => [
-                    key,
-                    unwrapParseRes(
-                      portValidators.allowedPortDep.safeParse(bb[hash]),
-                    ),
-                  ]),
-              ),
-            },
-          }],
-        ),
-      ),
-    };
 
-    await using execCx = await execCtxFromGhjk(ctx);
-    const taskGraph = await buildTaskGraph(execCx, config);
+    const config = unwrapParseCurry(
+      validators.tasksModuleConfig.safeParse(manifest.config),
+    );
+
+    const taskGraph = buildTaskGraph(gcx, config);
     return {
       config,
       taskGraph,
@@ -94,9 +56,8 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
           .name(name)
           .useRawArgs()
           .action(async (_, ...args) => {
-            await using execCx = await execCtxFromGhjk(gcx);
             await execTask(
-              execCx,
+              gcx,
               tcx.config,
               tcx.taskGraph,
               name,

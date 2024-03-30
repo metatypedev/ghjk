@@ -3,7 +3,7 @@ import {
   dockerE2eTest,
   E2eTestCase,
   localE2eTest,
-  type TaskDefTest,
+  type TaskDefArgs,
   tsGhjkFileFromInstalls,
 } from "./utils.ts";
 import * as ghjk from "../mod.ts";
@@ -12,7 +12,7 @@ import * as ports from "../ports/mod.ts";
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   stdin: string;
-  tasks: TaskDefTest[];
+  tasks: TaskDefArgs[];
 };
 const cases: CustomE2eTestCase[] = [
   {
@@ -32,7 +32,7 @@ test (ghjk x greet world) = 'Hello world!'`,
     name: "env_vars",
     tasks: [{
       name: "greet",
-      env: {
+      envVars: {
         NAME: "moon",
       },
       fn: async ({ $ }) => {

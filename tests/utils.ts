@@ -5,7 +5,8 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
-import type { TaskDefNice } from "../mod.ts";
+import type { TaskDefArgs } from "../mod.ts";
+export type { TaskDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
   name: string;
@@ -150,12 +151,11 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await tmpDir.remove({ recursive: true });
 }
 
-export type TaskDefTest = TaskDefNice & { name: string };
 export function tsGhjkFileFromInstalls(
   { installConf, secureConf, taskDefs }: {
     installConf: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
-    taskDefs: TaskDefTest[];
+    taskDefs: TaskDefArgs[];
   },
 ) {
   const installConfArray = Array.isArray(installConf)

@@ -1,36 +1,17 @@
 import { std_path } from "../../deps/cli.ts";
 import { $, DePromisify } from "../../utils/mod.ts";
 
-import type { TaskDefX, TasksModuleConfigX } from "./types.ts";
+import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
 import logger from "../../utils/logger.ts";
 import { execTaskDeno } from "./deno.ts";
 
-import {
-  buildInstallGraph,
-  installFromGraphAndShimEnv,
-  syncCtxFromGhjk,
-} from "../ports/sync.ts";
-
-export type ExecCtx = DePromisify<ReturnType<typeof execCtxFromGhjk>>;
-
-export async function execCtxFromGhjk(
-  gcx: GhjkCtx,
-) {
-  const syncCx = await syncCtxFromGhjk(gcx);
-  return {
-    ghjkCx: gcx,
-    syncCx,
-    async [Symbol.asyncDispose]() {
-      await syncCx![Symbol.asyncDispose]();
-    },
-  };
-}
+import { cookUnixEnv, reduceStrangeProvisions } from "../envs/posix.ts";
 
 export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 
-export async function buildTaskGraph(
-  ecx: ExecCtx,
+export function buildTaskGraph(
+  _gcx: GhjkCtx,
   portsConfig: TasksModuleConfigX,
   // env: Blackboard,
 ) {
@@ -40,32 +21,21 @@ export async function buildTaskGraph(
     revDepEdges: {} as Record<string, string[]>,
     // edges from dependent to dependency
     depEdges: {} as Record<string, string[] | undefined>,
-    // the install graphs for the ports declared by the tasks
-    portInstallGraphs: Object.fromEntries(
-      await Promise.all(
-        Object.entries(portsConfig.tasks)
-          .map(async ([name, task]) => [
-            name,
-            await buildInstallGraph(
-              ecx.syncCx,
-              {
-                installs: task.env.installs,
-                allowedDeps: task.env.allowedPortDeps,
-              },
-            ),
-          ]),
-      ),
-    ),
   };
   for (const [name, task] of Object.entries(portsConfig.tasks)) {
-    if (task.dependsOn.length == 0) {
+    if (portsConfig.envs[task.envHash]) {
+      throw new Error(
+        `unable to find env referenced by task "${name}" under hash "${task.envHash}"`,
+      );
+    }
+    if (!task.dependsOn || task.dependsOn.length == 0) {
       graph.indie.push(name);
     } else {
       for (const depTaskName of task.dependsOn) {
         const testCycle = (
           name: string,
           depName: string,
-        ): TaskDefX | undefined => {
+        ): TaskDefHashedX | undefined => {
           const depTask = portsConfig.tasks[depName];
           if (!depTask) {
             throw new Error(`specified dependency task doesn't exist`, {
@@ -109,7 +79,7 @@ export async function buildTaskGraph(
 }
 
 export async function execTask(
-  ecx: ExecCtx,
+  gcx: GhjkCtx,
   tasksConfig: TasksModuleConfigX,
   taskGraph: TaskGraph,
   targetName: string,
@@ -123,8 +93,8 @@ export async function execTask(
     while (stack.length > 0) {
       const taskName = stack.pop()!;
       const taskDef = tasksConfig.tasks[taskName];
-      stack.push(...taskDef.dependsOn);
-      workSet = new Set([...workSet.keys(), ...taskDef.dependsOn]);
+      stack.push(...taskDef.dependsOn ?? []);
+      workSet = new Set([...workSet.keys(), ...taskDef.dependsOn ?? []]);
     }
   }
   const pendingDepEdges = new Map(
@@ -136,35 +106,36 @@ export async function execTask(
   }
   while (pendingTasks.length > 0) {
     const taskName = pendingTasks.pop()!;
-    const taskEnv = tasksConfig.tasks[taskName];
+    const taskDef = tasksConfig.tasks[taskName];
 
-    const installGraph = taskGraph.portInstallGraphs[taskName];
     const taskEnvDir = await Deno.makeTempDir({
       prefix: `ghjkTaskEnv_${taskName}_`,
     });
-    const { env: installEnvs } = await installFromGraphAndShimEnv(
-      ecx.syncCx,
-      taskEnvDir,
-      installGraph,
+    const reducedEnv = await reduceStrangeProvisions(
+      gcx,
+      tasksConfig.envs[taskDef.envHash],
     );
+    const { env: installEnvs } = await cookUnixEnv(reducedEnv, taskEnvDir);
     logger().info("executing", taskName, args);
     await execTaskDeno(
-      std_path.toFileUrl(ecx.ghjkCx.ghjkfilePath).href,
-      taskName,
-      args,
+      std_path.toFileUrl(gcx.ghjkfilePath).href,
       {
-        ...Deno.env.toObject(),
-        ...Object.fromEntries(
-          Object.entries(installEnvs).map(
-            (
-              [key, val],
-            ) => [
-              key,
-              key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
-            ],
+        name: taskName,
+        argv: args,
+        envVars: {
+          ...Deno.env.toObject(),
+          ...Object.fromEntries(
+            Object.entries(installEnvs).map(
+              (
+                [key, val],
+              ) => [
+                key,
+                key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
+              ],
+            ),
           ),
-        ),
-        ...taskEnv.env.env,
+        },
+        workingDir: std_path.dirname(gcx.ghjkfilePath),
       },
     );
     $.removeIfExists(taskEnvDir);

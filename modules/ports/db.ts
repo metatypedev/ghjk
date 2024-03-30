@@ -1,21 +1,22 @@
 // Deno.Kv api is unstable
 /// <reference lib="deno.unstable" />
 
-import type {
-  DownloadArtifacts,
-  InstallArtifacts,
-  InstallConfigLite,
-  PortManifestX,
-} from "./types.ts";
+import { zod } from "../../deps/common.ts";
+import validators from "./types.ts";
 
-export type InstallRow = {
-  installId: string;
-  conf: InstallConfigLite;
-  manifest: PortManifestX;
-  installArts?: InstallArtifacts;
-  downloadArts: DownloadArtifacts;
-  progress: "downloaded" | "installed";
-};
+// const logger = getLogger(import.meta);
+
+// NOTE: make sure any changes to here are backwards compatible
+const installRowValidator = zod.object({
+  installId: zod.string(),
+  conf: validators.installConfigLite,
+  manifest: validators.portManifest,
+  installArts: validators.installArtifacts.nullish(),
+  downloadArts: validators.downloadArtifacts,
+  progress: zod.enum(["downloaded", "installed"]),
+}).passthrough();
+
+export type InstallRow = zod.infer<typeof installRowValidator>;
 
 export abstract class InstallsDb {
   abstract all(): Promise<InstallRow[]>;
@@ -61,3 +62,42 @@ class DenoKvInstallsDb extends InstallsDb {
     }
   }
 }
+
+// TODO: implement me
+/*
+class InlineInstallsDb extends InstallsDb {
+  #map = new Map<string, InstallRow>();
+  #dbDir: PathRef;
+  constructor(
+    dbDir: string,
+  ) {
+    super();
+    this.#dbDir = $.path(dbDir);
+  }
+  all(): Promise<InstallRow[]> {
+    throw new Error("Method not implemented.");
+  }
+  async get(id: string): Promise<InstallRow | undefined> {
+    let row = this.#map.get(id);
+    if (!row) {
+      const res = installRowValidator.safeParse(
+        await this.#dbDir.join(`${id}.meta`).readMaybeJson(),
+      );
+      if (!res.success) {
+        logger.warn()
+      }
+    }
+    return row;
+  }
+  set(id: string, row: InstallRow): Promise<void> {
+    this.#map.set(id, row);
+    throw new Error("Method not implemented.");
+  }
+  delete(id: string): Promise<void> {
+    this.#map.delete(id);
+    throw new Error("Method not implemented.");
+  }
+  [Symbol.dispose](): void {
+    throw new Error("Method not implemented.");
+  }
+}*/

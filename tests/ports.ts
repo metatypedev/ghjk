@@ -100,7 +100,7 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.npmi({ packageName: "node-gyp" }),
     ePoint: `node-gyp --version`,
     secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
     }),
   },
   // node + more megs
@@ -109,7 +109,7 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.npmi({ packageName: "@bytecodealliance/jco" }),
     ePoint: `jco --version`,
     secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
     }),
   },
   // 42 megs
@@ -161,7 +161,7 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
     secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
+      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
     }),
   },
   // rustup +  600 megs

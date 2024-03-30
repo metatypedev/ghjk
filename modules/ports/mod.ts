@@ -1,10 +1,13 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { $, Json } from "../../utils/mod.ts";
+import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
-import validators from "./types.ts";
-import type { PortsModuleConfigX } from "./types.ts";
+import validators, {
+  installSetProvisionTy,
+  installSetRefProvisionTy,
+} from "./types.ts";
+import type { InstallSetX, PortsModuleConfigX } from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
@@ -13,12 +16,18 @@ import {
   installFromGraphAndShimEnv,
   type InstallGraph,
   syncCtxFromGhjk,
-} from "./sync.ts";
-import { Blackboard } from "../../host/types.ts";
+} from "./sync.ts"; // TODO: rename to install.ts
+import type { Blackboard } from "../../host/types.ts";
+import { getProvisionReducerStore } from "../envs/reducer.ts";
+import { installSetReducer, installSetRefReducer } from "./reducers.ts";
+import type { Provision, ProvisionReducer } from "../envs/types.ts";
 
-type PortsCtx = {
+export type PortsCtx = {
   config: PortsModuleConfigX;
-  installGraph: InstallGraph;
+  /*
+   * A map from a setId found in the `PortsModuleConfigX` to the `InstallGraph`.
+   */
+  installGraphs: Map<string, InstallGraph>;
 };
 
 const lockValidator = zod.object({
@@ -37,39 +46,62 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     bb: Blackboard,
     _lockEnt: PortsLockEnt | undefined,
   ) {
-    function unwrapParseRes<In, Out>(res: zod.SafeParseReturnType<In, Out>) {
-      if (!res.success) {
-        throw new Error("error parsing module config", {
-          cause: {
-            zodErr: res.error,
-            id: manifest.id,
-            config: manifest.config,
-            bb,
-          },
-        });
-      }
-      return res.data;
+    function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
+      return unwrapParseRes<I, O>(res, {
+        id: manifest.id,
+        config: manifest.config,
+        bb,
+      }, "error parsing module config");
     }
-    const hashed = unwrapParseRes(
+
+    const hashedModConf = unwrapParseCurry(
       validators.portsModuleConfigHashed.safeParse(manifest.config),
     );
-    const config: PortsModuleConfigX = {
-      installs: hashed.installs.map((hash) =>
-        unwrapParseRes(validators.installConfigFat.safeParse(bb[hash]))
-      ),
-      allowedDeps: Object.fromEntries(
-        Object.entries(hashed.allowedDeps).map((
-          [key, value],
-        ) => [
-          key,
-          unwrapParseRes(validators.allowedPortDep.safeParse(bb[value])),
-        ]),
-      ),
+    const pcx: PortsCtx = {
+      config: {
+        sets: {},
+      },
+      installGraphs: new Map(),
     };
+    // pre-process the install sets found in the config
+    {
+      // syncCx contains a reference counted db connection
+      // somewhere deep in there
+      // so we need to use `using`
+      await using syncCx = await syncCtxFromGhjk(gcx);
+      for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
+        // install sets in the config use hash references to dedupe InstallConfigs
+        // reify the references from the blackboard from continuing
+        const set: InstallSetX = {
+          installs: hashedSet.installs.map((hash) =>
+            unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
+          ),
+          allowedDeps: Object.fromEntries(
+            Object.entries(hashedSet.allowedDeps).map((
+              [key, value],
+            ) => [
+              key,
+              unwrapParseCurry(validators.allowedPortDep.safeParse(bb[value])),
+            ]),
+          ),
+        };
+        pcx.config.sets[id] = set;
+        pcx.installGraphs.set(id, await buildInstallGraph(syncCx, set));
+      }
+    }
 
-    await using syncCx = await syncCtxFromGhjk(gcx);
-    const installGraph = await buildInstallGraph(syncCx, config);
-    return { config, installGraph };
+    // register envrionment reducers for any
+    // environemnts making use of install sets
+    const reducerStore = getProvisionReducerStore(gcx);
+    reducerStore.set(
+      installSetRefProvisionTy,
+      installSetRefReducer(gcx, pcx) as ProvisionReducer<Provision>,
+    );
+    reducerStore.set(
+      installSetProvisionTy,
+      installSetReducer(gcx) as ProvisionReducer<Provision>,
+    );
+    return pcx;
   }
 
   command(
@@ -91,7 +123,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
             void await installFromGraphAndShimEnv(
               syncCx,
               $.path(gcx.ghjkDir).join("envs", "default").toString(),
-              pcx.installGraph,
+              // FIXME:
+              pcx.installGraphs.values().next().value,
             );
           }),
       )

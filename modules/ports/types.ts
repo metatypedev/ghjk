@@ -145,10 +145,10 @@ const allowedPortDep = zod.object({
 });
 
 const portsModuleSecureConfig = zod.object({
-  allowedPortDeps: zod.array(allowedPortDep).nullish(),
+  masterPortDepAllowList: zod.array(allowedPortDep).nullish(),
 });
 
-const portsModuleConfigHashed = zod.object({
+const installSetHashed = zod.object({
   installs: zod.array(zod.string()),
   allowedDeps: zod.record(
     zod.string(),
@@ -156,7 +156,7 @@ const portsModuleConfigHashed = zod.object({
   ),
 });
 
-const portsModuleConfig = zod.object({
+const installSet = zod.object({
   installs: zod.array(installConfigFat),
   allowedDeps: zod.record(
     zod.string(),
@@ -164,9 +164,39 @@ const portsModuleConfig = zod.object({
   ),
 });
 
-const installEnvProvision = zod.object({
-  ty: zod.literal("ghjkInstall"),
-  confHash: zod.string(),
+const portsModuleConfigHashed = zod.object({
+  sets: zod.record(zod.string(), installSetHashed),
+});
+
+const portsModuleConfig = zod.object({
+  sets: zod.record(zod.string(), installSet),
+});
+
+export const installSetProvisionTy = "ghjkPortsInstallSet";
+const installSetProvision = zod.object({
+  ty: zod.literal(installSetProvisionTy),
+  set: installSet,
+});
+
+export const installSetRefProvisionTy = "ghjkPortsInstallSetRef";
+const installSetRefProvision = zod.object({
+  ty: zod.literal(installSetRefProvisionTy),
+  setId: zod.string(),
+});
+
+const downloadArtifacts = zod.object({
+  installVersion: zod.string(),
+  downloadPath: zod.string(),
+});
+
+const installArtifacts = zod.object({
+  env: zod.record(zod.string(), zod.string()),
+  installVersion: zod.string(),
+  binPaths: zod.string().array(),
+  libPaths: zod.string().array(),
+  includePaths: zod.string().array(),
+  installPath: zod.string(),
+  downloadPath: zod.string(),
 });
 
 const validators = {
@@ -193,8 +223,13 @@ const validators = {
   portsModuleConfig,
   portsModuleConfigHashed,
   allowedPortDep,
-  installEnvProvision,
+  installSetProvision,
+  installSetRefProvision,
+  installSet,
+  installSetHashed,
   string: zod.string(),
+  downloadArtifacts,
+  installArtifacts,
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
@@ -261,8 +296,24 @@ export type InstallConfigResolvedX = zod.infer<
   typeof validators.installConfigResolved
 >;
 
-export type InstallEnvProvision = zod.infer<
-  typeof validators.installEnvProvision
+/*
+ * Provisions an [`InstallSet`].
+ */
+export type InstallSetProvision = zod.input<
+  typeof validators.installSetProvision
+>;
+export type InstallSetProvisionX = zod.infer<
+  typeof validators.installSetProvision
+>;
+
+/*
+ * Provisions an [`InstallSet`] that's been pre-defined in the [`PortsModuleConfigX`].
+ */
+export type InstallSetRefProvision = zod.input<
+  typeof validators.installSetRefProvision
+>;
+export type InstallSetRefProvisionX = zod.infer<
+  typeof validators.installSetRefProvision
 >;
 
 export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
@@ -276,6 +327,16 @@ export type PortsModuleSecureConfig = zod.input<
 >;
 export type PortsModuleSecureConfigX = zod.input<
   typeof validators.portsModuleSecureConfig
+>;
+
+export type InstallSet = zod.input<typeof validators.installSet>;
+export type InstallSetX = zod.infer<
+  typeof validators.installSet
+>;
+
+export type InstallSetHashed = zod.input<typeof validators.installSetHashed>;
+export type InstallSetHashedX = zod.infer<
+  typeof validators.installSetHashed
 >;
 
 export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
@@ -350,17 +411,5 @@ export interface InstallArgs extends PortArgsBase {
   tmpDirPath: string;
 }
 
-export type DownloadArtifacts = {
-  installVersion: string;
-  downloadPath: string;
-};
-
-export type InstallArtifacts = {
-  env: Record<string, string>;
-  installVersion: string;
-  binPaths: string[];
-  libPaths: string[];
-  includePaths: string[];
-  installPath: string;
-  downloadPath: string;
-};
+export type DownloadArtifacts = zod.infer<typeof validators.downloadArtifacts>;
+export type InstallArtifacts = zod.infer<typeof validators.installArtifacts>;
