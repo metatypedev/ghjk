@@ -10,19 +10,19 @@ if (import.meta.main) {
   const ghjkfile = Deno.env.get("GHJKFILE") ??
     await findConfig(Deno.cwd());
   if (!ghjkfile) {
-    logger().error(
+    logger().warn(
       "ghjk could not find any ghjkfiles, try creating a `ghjk.ts` script.",
     );
-    Deno.exit(2);
+    // Deno.exit(2);
   }
   await cli({
     ghjkShareDir: Deno.env.get("GHJK_SHARE_DIR") ??
       std_path.resolve(dirs().shareDir, "ghjk"),
-    ghjkfilePath: std_path.resolve(Deno.cwd(), ghjkfile),
+    ghjkfilePath: ghjkfile ? std_path.resolve(Deno.cwd(), ghjkfile) : undefined,
   });
 } else {
   throw new Error(
-    `unexpected context: this module is an entrypoint. If you want to programmatically invoke the ghjk cli, import \`main\` from ${
+    `unexpected context: this module is an entrypoint. If you want to programmatically invoke the ghjk cli, import \`cli\` from ${
       import.meta.resolve("./host/mod.ts")
     }`,
   );

@@ -11,17 +11,21 @@
 > [here](https://www.tldraw.com/s/v2_c_MewHuw1lKwZzwv3XG8-Y6?viewport=-3756%2C-1126%2C10279%2C6280&page=page%3Apage).
 > Be sure to update the [backup](./architecture.tldr) if you update that.
 
-Ghjk is made up of a set of modules that each implement and encapsulate a set of related features. 
-The program is primarily consumed through the provided CLI.
-It takes as an argument a path to a ghjkfile (through `$GHJKFILE`) and if no such argument is provided, it'll look for a file named `ghjk.ts` in the current or any of the parent directories and treat it as the config file. 
-It then loads the config file in a `WebWorker` to obtain a config object which is expected to contain configuration for any of the modules it's interested in. 
-The modules then process their configuration and, based on it, outline the cli commands and flags to expose through the CLI. 
-The modules are also allowed to export entries to the lockfile which is treated as a _memo_ of the processed config file. 
-As of January 1, 2024 the following modules are implemented/planned:
+Ghjk is made up of a set of modules that each implement and encapsulate a set of
+related features. The program is primarily consumed through the provided CLI. It
+takes as an argument a path to a ghjkfile (through `$GHJKFILE`) and if no such
+argument is provided, it'll look for a file named `ghjk.ts` in the current or
+any of the parent directories and treat it as the config file. It then loads the
+config file in a `WebWorker` to obtain a config object which is expected to
+contain configuration for any of the modules it's interested in. The modules
+then process their configuration and, based on it, outline the cli commands and
+flags to expose through the CLI. The modules are also allowed to export entries
+to the lockfile which is treated as a _memo_ of the processed config file. As of
+January 1, 2024 the following modules are implemented/planned:
 
 - Ports: download and install executables and libraries
-- Envs (TBD): make CLI shell environments that have access to specific programs
-  and variables
+- Envs: make CLI shell environments that have access to specific programs and
+  variables
 - Tasks: run commands in custom shell environments
 
 ## Run down
@@ -34,9 +38,14 @@ Ghjk is composed of two distinct spheres:
 - The host
   - loads and processes config files
 
-Ghjkfiles are the primary entry point for interacting with `ghjk` and provide the vector of programmability for end users. As of today, only `ghjk.ts` config files are supported but the `ghjk` is designed to support alternatives. 
-You'll observe that this kind of modularity and extendability is a core motif of the design, providing constraints, guidance and tension that's informed a lot of the current design. 
-A lot of decisions and abstractions will thus appear YAGNI (you ain't going to need it) at this early stage but programmability is the name of the game in ghjk is programmability so we prefer to err on the side of modularity.
+Ghjkfiles are the primary entry point for interacting with `ghjk` and provide
+the vector of programmability for end users. As of today, only `ghjk.ts` config
+files are supported but the `ghjk` is designed to support alternatives. You'll
+observe that this kind of modularity and extendability is a core motif of the
+design, providing constraints, guidance and tension that's informed a lot of the
+current design. A lot of decisions and abstractions will thus appear YAGNI (you
+ain't going to need it) at this early stage but programmability is the name of
+the game in ghjk so we prefer to err on the side of modularity.
 
 ### Ghjkfiles
 
@@ -52,17 +61,20 @@ A lot of decisions and abstractions will thus appear YAGNI (you ain't going to n
   - If `ghjk.ts` exposes an item named `secureConfig`, it's passed as the first
     argument to `getConfig`.
 - `ghjk/mod.ts` exposes a bunch of helpers for authoring conventional `ghjk.ts`
-  but as far as the host is concerned, it's only aware of the `getConfig`
-  interface.
+  but as far as the host is concerned, it's only aware of the
+  `getConfig(secureConfig?): SerializedConfig` interface.
 
 ### Ghjkdir
 
 - Contains files specific to a certain ghjkfile
 - Expected and placed in `.ghjk/` within the same dir of the ghjkfile.
 - Contents:
-  - `lock.json`: lockfile generated from the ghjkfile. Intended to be version control.
-  - `deno.lock`: lockfile for any modules used by ghjk when working with that specific lockfile. Intended to be version controlled.
-  - `hash.json`: serves as a store for hashes used to determine weather re-serialization is necessary. Don't put in version control.
+  - `lock.json`: lockfile generated from the ghjkfile. Intended to be version
+    control.
+  - `deno.lock`: lockfile for any modules used by ghjk when working with that
+    specific lockfile. Intended to be version controlled.
+  - `hash.json`: serves as a store for hashes used to determine weather
+    re-serialization is necessary. Don't put in version control.
   - `envs`: the shims and loaders of the different environments
 
 ### Host
@@ -76,14 +88,19 @@ The host is the section of the program expected to:
 
 ### Modules
 
-Ghjk is made up of a set of interacting modules implementing specific functionality. 
-Listed below are the modules that we think will make ghjk a complete runtime manager but note that we don't currently plan on implementing all of them.
-Getting each module to become competitive with equivalent tools let alone achieving feature parity is beyond the resources available to the authors today and their design is only considered here to provide a holistic framework for development of ghjk. 
-It is, after all, a _programmable runtime manager_ and we intend to make the core of ghjk (i.e. the host) modular enough that:
+Ghjk is made up of a set of interacting modules implementing specific
+functionality. Listed below are the modules that we think will make ghjk a
+complete runtime manager but note that we don't currently plan on implementing
+all of them. Getting each module to become competitive with equivalent tools let
+alone achieving feature parity is beyond the resources available to the authors
+today and their design is only considered here to provide a holistic perspective
+for the design of ghjk. It is, after all, a _programmable runtime manager_ and
+we intend to make the core of ghjk (i.e. the host) modular enough that:
 
 - Future implementations shouldn't require large refactors
 - Easy integration of external tools as modules
-- Easy to swap implementation of modules without requiring lot of changes in other dependent modules
+- Easy to swap implementation of modules without requiring lot of changes in
+  other dependent modules
 
 #### Ports module
 
@@ -112,14 +129,13 @@ Equivalent tools:
       program that will handle it's installation.
       - A `PortManifest` can optionally specify a list of other ports, under
         `buildDeps`, that the `Port` requires during build time.
-        - A separate list of dependencies, `resolutionDeps`, is used for
-          routines used for version resolution like `listAll` and
-          `latestStable`.
+        - A separate list of dependencies, `resolutionDeps`, is used for version
+          resolution like `listAll` and `latestStable`.
       - Any dependencies used by ports must be declared in the top level
         `allowedPortDeps` list.
         - I.e. non standard dependencies will have to be manually declared there
           by users.
-    - `InstallConfig` can optionally contain a `version`.
+    - `InstallConfig` can optionally contain a `version` field.
       - If found, the `version` is sanity checked against the list of versions
         returned by `listAll`.
         - [ ] Fuzzy matching can optionally take place.
@@ -135,7 +151,8 @@ Equivalent tools:
 
 - A Port is described through the `PortManifest` object.
 - The implementation and execution of ports depends on the `ty` of the port but
-  they're all roughly expose the following stages modeled after `asdf` plugins:
+  they're all, roughly, expected to expose the following stages modeled after
+  `asdf` plugins:
   - `listAll`: return a list of all the versions that the port
   - `latestStable`: the version to install when no version is specified by the
     user.
@@ -174,8 +191,9 @@ Equivalent tools:
 
 #### Envs module
 
-Reproducible CLI shell environments that can access specific tools and variables.
-Including support to auto-load an environment when a specific shell `cd`'s to the ghjk root.
+Reproducible CLI shell environments that can access specific tools and
+variables. Including support to auto-load an environment when a specific shell
+`cd`'s to the ghjk root.
 
 Prior art:
 
@@ -206,7 +224,7 @@ Aspirations:
 
 #### Containers module
 
-Create OCI compatible containers from based on the results of the Envs and Build
+Create OCI compatible containers from on the outputs of the Envs and Build
 module. Not planned.
 
 Looking at:

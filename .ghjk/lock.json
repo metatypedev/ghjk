@@ -103,12 +103,6 @@
                 "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c"
               ],
               "allowedDeps": "48a429761f3837562b097b47afe07601ba4ffca5"
-            },
-            "ghjkTaskInstSet___ha": {
-              "installs": [
-                "f48ddfcfec810fcfcfc155fef7281a8c139c26fa"
-              ],
-              "allowedDeps": "48a429761f3837562b097b47afe07601ba4ffca5"
             }
           }
         }
@@ -116,63 +110,8 @@
       {
         "id": "tasks",
         "config": {
-          "envs": {
-            "287dbbf1428b17704321d061b7b99f6906906546": {
-              "provides": []
-            },
-            "5b8568ad275f743bca20b3988d17dc60cccc5dc6": {
-              "provides": [
-                {
-                  "ty": "ghjkPortsInstallSetRef",
-                  "setId": "ghjkTaskInstSet___ha"
-                },
-                {
-                  "ty": "envVar",
-                  "key": "STUFF",
-                  "val": "stuffier"
-                }
-              ]
-            }
-          },
-          "tasks": {
-            "greet": {
-              "name": "greet",
-              "envHash": "287dbbf1428b17704321d061b7b99f6906906546"
-            },
-            "ha": {
-              "name": "ha",
-              "envHash": "5b8568ad275f743bca20b3988d17dc60cccc5dc6"
-            },
-            "ho": {
-              "name": "ho",
-              "dependsOn": [
-                "ha"
-              ],
-              "envHash": "287dbbf1428b17704321d061b7b99f6906906546"
-            },
-            "hum": {
-              "name": "hum",
-              "dependsOn": [
-                "ho"
-              ],
-              "envHash": "287dbbf1428b17704321d061b7b99f6906906546"
-            },
-            "hii": {
-              "name": "hii",
-              "dependsOn": [
-                "hum"
-              ],
-              "envHash": "287dbbf1428b17704321d061b7b99f6906906546"
-            },
-            "hey": {
-              "name": "hey",
-              "dependsOn": [
-                "hii",
-                "ho"
-              ],
-              "envHash": "287dbbf1428b17704321d061b7b99f6906906546"
-            }
-          }
+          "envs": {},
+          "tasks": {}
         }
       },
       {
@@ -584,20 +523,6 @@
         "asdf_plugin_git": "a36b37f4eda81bf51a50d00362637690c7fea473",
         "node_org": "5843605c861f0b7307c0192a1628c3823fe28ed9",
         "cpy_bs_ghrel": "7a33163826283c47b52964a23b87a4762662c746"
-      },
-      "f48ddfcfec810fcfcfc155fef7281a8c139c26fa": {
-        "port": {
-          "ty": "denoWorker@v1",
-          "name": "protoc_ghrel",
-          "version": "0.1.0",
-          "moduleSpecifier": "file:///data/home/ghjk/ports/protoc.ts",
-          "platforms": [
-            "aarch64-linux",
-            "x86_64-linux",
-            "aarch64-darwin",
-            "x86_64-darwin"
-          ]
-        }
       }
     }
   }

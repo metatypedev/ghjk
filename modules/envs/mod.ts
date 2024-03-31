@@ -1,6 +1,8 @@
 /*
   Design:
-    - `$ ghjk env foo` to switch to environment
+    - `$ ghjk env activate` to switch to default environment
+    - `$ ghjk env list`
+    - `$ ghjk env info`
     - By default, all things go to the `main` environment
 */
 

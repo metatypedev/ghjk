@@ -65,7 +65,7 @@ export type TaskFnArgs = {
   env: Record<string, string>;
 };
 
-export type TaskFn = (args: TaskFnArgs) => Promise<void>;
+export type TaskFn = (args: TaskFnArgs) => Promise<any> | any;
 
 /*
  * Configuration for a task.
@@ -83,18 +83,12 @@ export type TaskDefArgs = {
 };
 
 class GhjkfileBuilder {
-  #installSets = new Map<
-    string,
-    InstallSet
-  >();
+  #installSets = new Map<string, InstallSet>();
   #tasks = {} as Record<string, TaskDefArgs>;
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
 
-  addInstall(
-    setId: string,
-    configUnclean: InstallConfigFat,
-  ) {
+  addInstall(setId: string, configUnclean: InstallConfigFat) {
     const config = unwrapParseRes(
       portsValidators.installConfigFat.safeParse(configUnclean),
       {
@@ -108,10 +102,7 @@ class GhjkfileBuilder {
     logger().debug("install added", config);
   }
 
-  setAllowedPortDeps(
-    setId: string,
-    deps: AllowedPortDep[],
-  ) {
+  setAllowedPortDeps(setId: string, deps: AllowedPortDep[]) {
     const set = this.#getSet(setId);
     set.allowedDeps = Object.fromEntries(
       deps.map((
@@ -120,9 +111,7 @@ class GhjkfileBuilder {
     );
   }
 
-  addTask(
-    args: TaskDefArgs,
-  ) {
+  addTask(args: TaskDefArgs) {
     // NOTE: we make sure the env base declared here exists
     // this call is necessary to make sure that a `task` can
     // be declared before the `env` but still depend on it.
@@ -139,9 +128,7 @@ class GhjkfileBuilder {
     return args.name;
   }
 
-  addEnv(
-    args: EnvDefArgs,
-  ) {
+  addEnv(args: EnvDefArgs) {
     let env = this.#seenEnvs[args.name]?.[0];
     if (!env) {
       let finalizer: EnvFinalizer;
@@ -194,10 +181,6 @@ class GhjkfileBuilder {
         }],
         blackboard: Object.fromEntries(this.#bb.entries()),
       };
-      console.log(Deno.inspect(config, {
-        depth: 10,
-        colors: true,
-      }));
       return config;
     } catch (cause) {
       throw new Error(`error constructing config for serialization`, { cause });
@@ -437,26 +420,8 @@ class GhjkfileBuilder {
     const out: PortsModuleConfigHashed = {
       sets: {},
     };
-    /* const masterPortDepAllowList = Object.fromEntries([
-      ...masterAllowList
-        .map((dep) =>
-          [
-            dep.manifest.name,
-            this.#registerAllowedPortDep(
-              portsValidators.allowedPortDep.parse(dep),
-            ),
-          ] as const
-        ),
-    ]);
-    */
     const masterPortDepAllowList = Object.fromEntries(
-      masterAllowList
-        .map((dep) =>
-          [
-            dep.manifest.name,
-            dep,
-          ] as const
-        ),
+      masterAllowList.map((dep) => [dep.manifest.name, dep] as const),
     );
     for (
       const [setId, set] of this.#installSets.entries()
@@ -476,9 +441,9 @@ class GhjkfileBuilder {
       out.sets[setId] = {
         installs: set.installs.map((inst) => this.#addToBlackboard(inst)),
         allowedDeps: this.#addToBlackboard(Object.fromEntries(
-          Object.entries(set.allowedDeps).map((
-            [key, dep],
-          ) => [key, this.#addToBlackboard(dep)]),
+          Object.entries(set.allowedDeps).map(
+            ([key, dep]) => [key, this.#addToBlackboard(dep)],
+          ),
         )),
       };
     }
@@ -610,10 +575,20 @@ export function env(
   return file.addEnv(args);
 }
 
-export function secureConfig(
-  config: PortsModuleSecureConfig,
-) {
-  return config;
+export function stdSecureConfig(
+  args: {
+    additionalAllowedPorts?: PortsModuleSecureConfig["masterPortDepAllowList"];
+    enableRuntimes?: boolean;
+  },
+): PortsModuleSecureConfig {
+  const { additionalAllowedPorts, enableRuntimes = false } = args;
+  const out: PortsModuleSecureConfig = {
+    masterPortDepAllowList: [
+      ...stdDeps({ enableRuntimes }),
+      ...additionalAllowedPorts ?? [],
+    ],
+  };
+  return out;
 }
 
 export function stdDeps(args = { enableRuntimes: false }) {

@@ -72,6 +72,8 @@ function denoFsReadShim() {
       throw new Error("Deno.watchFs API is disabled");
     }] as const,
     ...[
+      // TODO: systemize a way to make sure this
+      // tracks deno APIs
       Deno.readFile,
       Deno.readTextFileSync,
       Deno.readTextFile,

@@ -18,7 +18,7 @@ import { serializePlatform } from "../modules/ports/types/platform.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
-  ghjkfilePath: string;
+  ghjkfilePath?: string;
 }
 
 type HostCtx = {
@@ -26,18 +26,81 @@ type HostCtx = {
 };
 
 export async function cli(args: CliArgs) {
-  const ghjkfilePath = $.path(args.ghjkfilePath).resolve().normalize()
-    .toString();
   const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize()
     .toString();
-  const ghjkDir = $.path(ghjkfilePath).parentOrThrow().join(".ghjk").toString();
 
-  logger().debug({ ghjkfilePath, ghjkDir });
+  const subcmds = {
+    print: new cliffy_cmd.Command()
+      .description("Emit different discovered and built values to stdout.")
+      .action(function () {
+        this.showHelp();
+      })
+      .command(
+        "share-dir-path",
+        new cliffy_cmd.Command()
+          .description("Print the path where ghjk is installed in.")
+          .action(function () {
+            console.log(ghjkShareDir);
+          }),
+      ),
+    deno: new cliffy_cmd.Command()
+      .description("Access the deno cli used by ghjk.")
+      .useRawArgs()
+      .action(async function (_, ...args) {
+        logger().debug(args);
+        await $.raw`${Deno.execPath()} ${args}`
+          .env("DENO_EXEC_PATH", Deno.execPath());
+      }),
+  };
 
-  const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, blackboard: new Map() };
-  const hcx = { fileHashMemoStore: new Map() };
+  if (args.ghjkfilePath) {
+    const ghjkfilePath = $.path(args.ghjkfilePath).resolve().normalize()
+      .toString();
+    const ghjkDir = $.path(ghjkfilePath).parentOrThrow().join(".ghjk")
+      .toString();
+    logger().debug({ ghjkfilePath, ghjkDir });
 
-  const { subCommands, serializedConfig } = await readConfig(gcx, hcx);
+    const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, blackboard: new Map() };
+    const hcx = { fileHashMemoStore: new Map() };
+
+    const { subCommands: configCommands, serializedConfig } = await readConfig(
+      gcx,
+      hcx,
+    );
+
+    Object.assign(subcmds, configCommands);
+
+    subcmds.print = subcmds.print
+      .command(
+        "ghjk-dir-path",
+        new cliffy_cmd.Command()
+          .description("Print the path where ghjk is installed in.")
+          .action(function () {
+            console.log(ghjkDir);
+          }),
+      )
+      .command(
+        "ghjkfile-path",
+        new cliffy_cmd.Command()
+          .description("Print the path of the ghjk.ts used")
+          .action(function () {
+            console.log(ghjkfilePath);
+          }),
+      )
+      .command(
+        "config",
+        new cliffy_cmd.Command()
+          .description(
+            "Print the extracted ans serialized config from the ghjkfile",
+          )
+          .action(function () {
+            console.log(Deno.inspect(serializedConfig, {
+              depth: 10,
+              colors: isColorfulTty(),
+            }));
+          }),
+      );
+  }
 
   let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
     .name("ghjk")
@@ -45,65 +108,8 @@ export async function cli(args: CliArgs) {
     .description("Programmable runtime manager.")
     .action(function () {
       this.showHelp();
-    })
-    .command(
-      "print",
-      new cliffy_cmd.Command()
-        .description("Emit different discovored and built values to stdout.")
-        .action(function () {
-          this.showHelp();
-        })
-        .command(
-          "ghjk-dir-path",
-          new cliffy_cmd.Command()
-            .description("Print the path where ghjk is installed in.")
-            .action(function () {
-              console.log(ghjkDir);
-            }),
-        )
-        .command(
-          "share-dir-path",
-          new cliffy_cmd.Command()
-            .description("Print the path where ghjk is installed in.")
-            .action(function () {
-              console.log(ghjkShareDir);
-            }),
-        )
-        .command(
-          "ghjkfile-path",
-          new cliffy_cmd.Command()
-            .description("Print the path of the ghjk.ts used")
-            .action(function () {
-              console.log(ghjkfilePath);
-            }),
-        )
-        .command(
-          "config",
-          new cliffy_cmd.Command()
-            .description(
-              "Print the extracted ans serialized config from the ghjkfile",
-            )
-            .action(function () {
-              console.log(Deno.inspect(serializedConfig, {
-                depth: 10,
-                colors: isColorfulTty(),
-              }));
-            }),
-        ),
-    )
-    .command(
-      "deno",
-      new cliffy_cmd.Command()
-        .description("Access the deno cli used by ghjk.")
-        .useRawArgs()
-        .action(async function (_, ...args) {
-          logger().debug(args);
-          await $.raw`${Deno.execPath()} ${args}`
-            .env("DENO_EXEC_PATH", Deno.execPath());
-        }),
-    );
-
-  for (const [name, subcmd] of Object.entries(subCommands)) {
+    });
+  for (const [name, subcmd] of Object.entries(subcmds)) {
     cmd = cmd.command(name, subcmd);
   }
   await cmd
@@ -168,8 +174,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     }
 
     const platformMatch = () =>
-      foundLockObj.platform[0] == Deno.build.os &&
-      foundLockObj.platform[1] == Deno.build.arch;
+      serializePlatform(Deno.build) == foundLockObj.platform;
 
     const envHashesMatch = async () => {
       const oldHashes = foundHashObj!.envVarHashes;
