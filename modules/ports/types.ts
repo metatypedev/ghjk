@@ -146,6 +146,8 @@ const allowedPortDep = zod.object({
 
 const portsModuleSecureConfig = zod.object({
   masterPortDepAllowList: zod.array(allowedPortDep).nullish(),
+  defaultEnv: zod.string().nullish(),
+  defaultBaseEnv: zod.string().nullish(),
 });
 
 const allowDepSet = zod.record(zod.string(), allowedPortDep);
@@ -170,13 +172,13 @@ const portsModuleConfig = zod.object({
   sets: zod.record(zod.string(), installSet),
 });
 
-export const installSetProvisionTy = "ghjkPortsInstallSet";
+export const installSetProvisionTy = "ghjk.ports.InstallSet";
 const installSetProvision = zod.object({
   ty: zod.literal(installSetProvisionTy),
   set: installSet,
 });
 
-export const installSetRefProvisionTy = "ghjkPortsInstallSetRef";
+export const installSetRefProvisionTy = "ghjk.ports.InstallSetRef";
 const installSetRefProvision = zod.object({
   ty: zod.literal(installSetRefProvisionTy),
   setId: zod.string(),

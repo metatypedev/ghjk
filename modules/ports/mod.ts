@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
+import { Json, unwrapParseRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
   installSetProvisionTy,
@@ -13,7 +13,6 @@ import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
   getResolutionMemo,
-  installFromGraphAndShimEnv,
   type InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
@@ -113,8 +112,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   }
 
   command(
-    gcx: GhjkCtx,
-    pcx: PortsCtx,
+    _gcx: GhjkCtx,
+    _pcx: PortsCtx,
   ) {
     return new cliffy_cmd.Command()
       .alias("p")
@@ -122,20 +121,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         this.showHelp();
       })
       .description("Ports module, install programs into your env.")
-      .command(
-        "sync",
-        new cliffy_cmd.Command().description("Syncs the environment.")
-          .action(async () => {
-            logger().debug("syncing ports");
-            await using syncCx = await syncCtxFromGhjk(gcx);
-            void await installFromGraphAndShimEnv(
-              syncCx,
-              $.path(gcx.ghjkDir).join("envs", "default").toString(),
-              // FIXME:
-              pcx.installGraphs.values().next().value,
-            );
-          }),
-      )
       .command(
         "outdated",
         new cliffy_cmd.Command()

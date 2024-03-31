@@ -61,7 +61,7 @@ RUN <<EOT
     cat $(which ghjk)
     export CLICOLOR_FORCE=1 
     ghjk print config
-    ghjk ports sync
+    ghjk env sync
 EOT
 
 # activate ghjk non-interactive shells execs

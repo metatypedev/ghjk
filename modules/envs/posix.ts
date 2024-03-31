@@ -1,61 +1,14 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
-import type {
-  EnvRecipeX,
-  Provision,
-  WellKnownEnvRecipeX,
-  WellKnownProvision,
-} from "./types.ts";
-import validators from "./types.ts";
-import { wellKnownProvisionTypes } from "./types.ts";
+import type { WellKnownEnvRecipeX } from "./types.ts";
 import getLogger from "../../utils/logger.ts";
 import { $, PathRef } from "../../utils/mod.ts";
-import type { GhjkCtx } from "../types.ts";
-import { getProvisionReducerStore } from "./reducer.ts";
 
 const logger = getLogger(import.meta);
 
-export async function reduceStrangeProvisions(
-  gcx: GhjkCtx,
-  env: EnvRecipeX,
-) {
-  const reducerStore = getProvisionReducerStore(gcx);
-  const bins = {} as Record<string, Provision[]>;
-  for (const item of env.provides) {
-    let bin = bins[item.ty];
-    if (!bin) {
-      bin = [];
-      bins[item.ty] = bin;
-    }
-    bin.push(item);
-  }
-  const reducedSet = [] as WellKnownProvision[];
-  for (const [ty, items] of Object.entries(bins)) {
-    if (wellKnownProvisionTypes.includes(ty as any)) {
-      reducedSet.push(
-        ...items.map((item) => validators.wellKnownProvision.parse(item)),
-      );
-      continue;
-    }
-    const reducer = reducerStore.get(ty);
-    if (!reducer) {
-      throw new Error(`no provider reducer found for ty: ${ty}`, {
-        cause: items,
-      });
-    }
-    const reduced = await reducer(items);
-    reducedSet.push(validators.wellKnownProvision.parse(reduced));
-  }
-  const out: WellKnownEnvRecipeX = {
-    ...env,
-    provides: reducedSet,
-  };
-  return out;
-}
-
-export async function cookUnixEnv(
+export async function cookPosixEnv(
   env: WellKnownEnvRecipeX,
   envDir: string,
-  createShellLoaders = true,
+  createShellLoaders = false,
 ) {
   // create the shims for the user's environment
   const shimDir = $.path(envDir).join("shims");
@@ -78,16 +31,16 @@ export async function cookUnixEnv(
 
   await Promise.all(env.provides.map((item) => {
     switch (item.ty) {
-      case "posixExec":
+      case "posix.exec":
         binPaths.push(item.absolutePath);
         break;
-      case "posixSharedLib":
+      case "posix.sharedLib":
         libPaths.push(item.absolutePath);
         break;
-      case "headerFile":
+      case "posix.headerFile":
         includePaths.push(item.absolutePath);
         break;
-      case "envVar":
+      case "posix.envVar":
         if (vars[item.key]) {
           throw new Error(
             `env var conflict cooking unix env: key "${item.key}" has entries "${
@@ -101,21 +54,23 @@ export async function cookUnixEnv(
         throw Error(`unsupported provision type: ${(item as any).provision}`);
     }
   }));
-  // bin shims
-  void await shimLinkPaths(
-    binPaths,
-    binShimDir,
-  );
-  // lib shims
-  void await shimLinkPaths(
-    libPaths,
-    libShimDir,
-  );
-  // include shims
-  void await shimLinkPaths(
-    includePaths,
-    includeShimDir,
-  );
+  void await Promise.all([
+    // bin shims
+    await shimLinkPaths(
+      binPaths,
+      binShimDir,
+    ),
+    // lib shims
+    await shimLinkPaths(
+      libPaths,
+      libShimDir,
+    ),
+    // include shims
+    await shimLinkPaths(
+      includePaths,
+      includeShimDir,
+    ),
+  ]);
   // write loader for the env vars mandated by the installs
   logger.debug("adding vars to loader", vars);
   // FIXME: prevent malicious env manipulations

@@ -8,7 +8,8 @@ import { execTaskDeno } from "./deno.ts";
 
 const logger = getLogger(import.meta);
 
-import { cookUnixEnv, reduceStrangeProvisions } from "../envs/posix.ts";
+import { cookPosixEnv } from "../envs/posix.ts";
+import { reduceStrangeProvisions } from "../envs/reducer.ts";
 
 export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 
@@ -117,7 +118,7 @@ export async function execTask(
       gcx,
       tasksConfig.envs[taskDef.envHash],
     );
-    const { env: installEnvs } = await cookUnixEnv(reducedEnv, taskEnvDir);
+    const { env: installEnvs } = await cookPosixEnv(reducedEnv, taskEnvDir);
     logger.info("executing", taskName, args);
     await execTaskDeno(
       std_path.toFileUrl(gcx.ghjkfilePath).href,

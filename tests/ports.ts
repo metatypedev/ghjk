@@ -1,6 +1,6 @@
 import "../setup_logger.ts";
 import { std_async } from "../deps/dev.ts";
-import { secureConfig, stdDeps } from "../mod.ts";
+import { stdSecureConfig } from "../mod.ts";
 import {
   dockerE2eTest,
   E2eTestCase,
@@ -99,8 +99,8 @@ const cases: CustomE2eTestCase[] = [
     name: "npmi-node-gyp",
     installConf: ports.npmi({ packageName: "node-gyp" }),
     ePoint: `node-gyp --version`,
-    secureConf: secureConfig({
-      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
+    secureConf: stdSecureConfig({
+      enableRuntimes: true,
     }),
   },
   // node + more megs
@@ -108,8 +108,8 @@ const cases: CustomE2eTestCase[] = [
     name: "npmi-jco",
     installConf: ports.npmi({ packageName: "@bytecodealliance/jco" }),
     ePoint: `jco --version`,
-    secureConf: secureConfig({
-      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
+    secureConf: stdSecureConfig({
+      enableRuntimes: true,
     }),
   },
   // 42 megs
@@ -160,8 +160,8 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
-    secureConf: secureConfig({
-      masterPortDepAllowList: stdDeps({ enableRuntimes: true }),
+    secureConf: stdSecureConfig({
+      enableRuntimes: true,
     }),
   },
   // rustup +  600 megs
@@ -228,7 +228,7 @@ function testMany(
                 // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long
                 // as it's the second sync
-                { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
+                { cmd: "env bash -c 'timeout 1 ghjk env sync'" },
               ],
               envs: {
                 ...defaultEnvs,

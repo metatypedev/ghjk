@@ -98,7 +98,7 @@ async function reduceInstArts(
       }
       foundEnvVars[key] = [val, instId];
       out.push({
-        ty: "envVar",
+        ty: "posix.envVar",
         key,
         val,
       });
@@ -117,19 +117,19 @@ async function reduceInstArts(
     out.push(
       ...binPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "posixExec" as const,
+          ty: "posix.exec" as const,
           absolutePath,
         }))
       ),
       ...libPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "posixSharedLib" as const,
+          ty: "posix.sharedLib" as const,
           absolutePath,
         }))
       ),
       ...includePathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "headerFile" as const,
+          ty: "posix.headerFile" as const,
           absolutePath,
         }))
       ),

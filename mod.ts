@@ -44,7 +44,7 @@ import {
   WellKnownProvision,
 } from "./modules/envs/types.ts";
 
-const DEFAULT_ENV_NAME = "main";
+const DEFAULT_BASE_ENV_NAME = "main";
 
 export type EnvDefArgs = {
   name: string;
@@ -135,7 +135,7 @@ class GhjkfileBuilder {
       env = new EnvBuilder(this, (fin) => finalizer = fin, args.name);
       this.#seenEnvs[args.name] = [env, finalizer!];
     }
-    if (args.envBase) {
+    if (args.envBase !== undefined) {
       env.base(args.envBase);
     }
     if (args.installs) {
@@ -162,8 +162,14 @@ class GhjkfileBuilder {
 
   toConfig(secureConfig: PortsModuleSecureConfig | undefined) {
     try {
-      const envsConfig = this.#processEnvs();
-      const tasksConfig = this.#processTasks(envsConfig);
+      const defaultEnv = secureConfig?.defaultEnv ?? DEFAULT_BASE_ENV_NAME;
+      const defaultBaseEnv = secureConfig?.defaultBaseEnv ??
+        DEFAULT_BASE_ENV_NAME;
+      const envsConfig = this.#processEnvs(
+        defaultEnv,
+        defaultBaseEnv,
+      );
+      const tasksConfig = this.#processTasks(envsConfig, defaultBaseEnv);
       const portsConfig = this.#processInstalls(
         secureConfig?.masterPortDepAllowList ?? stdDeps(),
       );
@@ -208,7 +214,10 @@ class GhjkfileBuilder {
 
   // this processes the defined envs, normalizing dependency (i.e. "envBase")
   // relationships to produce the standard EnvsModuleConfig
-  #processEnvs() {
+  #processEnvs(
+    defaultEnv: string,
+    defaultBaseEnv: string,
+  ) {
     const all = {} as Record<
       string,
       ReturnType<EnvFinalizer> & { envBaseResolved: null | string }
@@ -223,7 +232,7 @@ class GhjkfileBuilder {
       const envBaseResolved = typeof envBase === "string"
         ? envBase
         : envBase
-        ? DEFAULT_ENV_NAME
+        ? defaultBaseEnv
         : null;
       all[name] = { ...final, envBaseResolved };
       if (envBaseResolved) {
@@ -238,14 +247,16 @@ class GhjkfileBuilder {
       }
     }
     const processed = {} as Record<string, { installSetId?: string }>;
-    const out: EnvsModuleConfig = { envs: {} };
-    const workingSet = indie;
+    const out: EnvsModuleConfig = { envs: {}, defaultEnv };
+    const workingSet = [...indie];
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
+
       const base = final.envBaseResolved
         ? processed[final.envBaseResolved]
         : null;
+
       let processedInstallSetId: string | undefined;
       {
         const installSet = this.#installSets.get(final.installSetId);
@@ -286,23 +297,29 @@ class GhjkfileBuilder {
           ...Object.entries(final.vars).map((
             [key, val],
           ) => {
-            const prov: WellKnownProvision = { ty: "envVar", key, val };
+            const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
         ],
       };
       if (processedInstallSetId) {
         const prov: InstallSetRefProvision = {
-          ty: "ghjkPortsInstallSetRef",
+          ty: "ghjk.ports.InstallSetRef",
           setId: processedInstallSetId,
         };
         out.envs[final.name].provides.push(prov);
+      }
+
+      const curRevDeps = revDeps.get(final.name);
+      if (curRevDeps) {
+        workingSet.push(...curRevDeps);
+        revDeps.delete(final.name);
       }
     }
     return out;
   }
 
-  #processTasks(envsConfig: EnvsModuleConfig) {
+  #processTasks(envsConfig: EnvsModuleConfig, defaultBaseEnv: string) {
     const out: TasksModuleConfig = {
       envs: {},
       tasks: {},
@@ -317,7 +334,7 @@ class GhjkfileBuilder {
       const envBaseResolved = typeof envBase === "string"
         ? envBase
         : envBase
-        ? DEFAULT_ENV_NAME
+        ? defaultBaseEnv
         : null;
 
       const envBaseRecipe = envBaseResolved
@@ -344,11 +361,11 @@ class GhjkfileBuilder {
               | InstallSetRefProvision
             )[]
         ) {
-          if (prov.ty == "envVar") {
+          if (prov.ty == "posix.envVar") {
             if (!mergedEnvVars[prov.key]) {
               mergedEnvVars[prov.key] = prov.val;
             }
-          } else if (prov.ty == "ghjkPortsInstallSetRef") {
+          } else if (prov.ty == "ghjk.ports.InstallSetRef") {
             const baseSet = this.#installSets.get(prov.setId)!;
             const mergedInstallsSet = new Set([
               ...taskInstallSet.installs,
@@ -373,7 +390,7 @@ class GhjkfileBuilder {
         const setId = `ghjkTaskInstSet___${name}`;
         this.#installSets.set(setId, taskInstallSet);
         const prov: InstallSetRefProvision = {
-          ty: "ghjkPortsInstallSetRef",
+          ty: "ghjk.ports.InstallSetRef",
           setId,
         };
         taskEnvRecipe.provides.push(prov);
@@ -383,7 +400,7 @@ class GhjkfileBuilder {
         ...Object.entries(mergedEnvVars).map((
           [key, val],
         ) => {
-          const prov: WellKnownProvision = { ty: "envVar", key, val };
+          const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
           return prov;
         }),
       );
@@ -514,7 +531,7 @@ class EnvBuilder {
 
 const file = new GhjkfileBuilder();
 const mainEnv = file.addEnv({
-  name: DEFAULT_ENV_NAME,
+  name: DEFAULT_BASE_ENV_NAME,
   envBase: false,
   allowedPortDeps: stdDeps(),
 });
@@ -579,7 +596,7 @@ export function stdSecureConfig(
   args: {
     additionalAllowedPorts?: PortsModuleSecureConfig["masterPortDepAllowList"];
     enableRuntimes?: boolean;
-  },
+  } & Pick<PortsModuleSecureConfig, "defaultEnv" | "defaultBaseEnv">,
 ): PortsModuleSecureConfig {
   const { additionalAllowedPorts, enableRuntimes = false } = args;
   const out: PortsModuleSecureConfig = {

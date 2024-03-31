@@ -460,24 +460,34 @@ export function thinInstallConfig(fat: InstallConfigFat) {
   };
 }
 
-export function match<
-  All,
-  K extends keyof All,
+export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
+
+export function switchMap<
+  K extends string | number | symbol,
+  All extends {
+    [Key in K]: All[K];
+  },
 >(
   val: K,
   branches: All,
-): All[K] extends () => infer Inner ? Inner : All[K] {
+  // def?: D,
+): K extends keyof All ? OrRetOf<All[K]>
+  : /* All[keyof All] | */ undefined {
   // return branches[val];
   const branch = branches[val];
   return typeof branch == "function" ? branch() : branch;
 }
 
-const _b = match("hey", {
-  hey: () => 1,
-  hello: () => 2,
-  hi: 3 as const,
-  holla: 4,
-});
+switchMap(
+  "holla" as string,
+  {
+    hey: () => 1,
+    hello: () => 2,
+    hi: 3,
+    holla: 4,
+  } as const,
+  // () =>5
+);
 
 export async function expandGlobsAndAbsolutize(path: string, wd: string) {
   if (std_path.isGlob(path)) {

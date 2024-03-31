@@ -1,5 +1,5 @@
 export { ghjk } from "./mod.ts";
-import { install, stdSecureConfig } from "./mod.ts";
+import { env, install, stdSecureConfig } from "./mod.ts";
 import * as ports from "./ports/mod.ts";
 
 // these are just for quick testing
@@ -12,4 +12,10 @@ install(
   ports.cpy_bs({ releaseTag: "20231002" }),
 );
 
-export const secureConfig = stdSecureConfig({ enableRuntimes: true });
+env("test")
+  .install(ports.protoc());
+
+export const secureConfig = stdSecureConfig({
+  enableRuntimes: true,
+  defaultBaseEnv: "test",
+});

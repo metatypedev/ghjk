@@ -5,15 +5,15 @@ const absolutePath = zod.string().refine((path) => std_path.isAbsolute(path));
 const provision = zod.object({ ty: zod.string() }).passthrough();
 
 const posixFileProvisionTypes = [
-  "posixExec",
-  "posixSharedLib",
-  "headerFile",
+  "posix.exec",
+  "posix.sharedLib",
+  "posix.headerFile",
 ] as const;
 
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
-  "envVar",
+  "posix.envVar",
   ...posixFileProvisionTypes,
 ] as const;
 
@@ -40,7 +40,10 @@ const wellKnownEnvRecipe = envRecipe.merge(zod.object({
 }));
 
 const envsModuleConfig = zod.object({
+  defaultEnv: zod.string(),
   envs: zod.record(zod.string(), envRecipe),
+}).refine((conf) => conf.envs[conf.defaultEnv], {
+  message: `no env found under the provided "defaultEnv"`,
 });
 
 const validators = {
