@@ -70,6 +70,9 @@ export type WellKnownEnvRecipeX = zod.infer<
   typeof validators.wellKnownEnvRecipe
 >;
 
+/*
+ * A function that batch convert strange provisions of a certain kind to well known ones.
+ */
 export type ProvisionReducer<P extends Provision> = (
-  provision: P[],
+  provisions: P[],
 ) => Promise<WellKnownProvision[]>;

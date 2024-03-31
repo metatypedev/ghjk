@@ -1,6 +1,9 @@
 //! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
 //! avoid importing elsewhere at it has side-effects.
 
+// NOTE: avoid adding sources of randomness
+// here to make the resulting config reasonably stable
+// across serializaiton. No random identifiers.
 // TODO: harden most of the items in here
 
 import "./setup_logger.ts";
@@ -10,7 +13,7 @@ import portsValidators from "./modules/ports/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigFat,
-  InstallSetHashed,
+  InstallSet,
   InstallSetRefProvision,
   PortsModuleConfigHashed,
   PortsModuleSecureConfig,
@@ -80,14 +83,11 @@ export type TaskDefArgs = {
 };
 
 class GhjkfileBuilder {
-  #installSets = new Map<string, InstallSetHashed>();
-  #tasks = {} as Record<
+  #installSets = new Map<
     string,
-    Omit<TaskDefArgs, "installs" | "allowedPortDeps"> & {
-      installs: string[];
-      allowedPortDeps: Record<string, string>;
-    }
-  >;
+    InstallSet
+  >();
+  #tasks = {} as Record<string, TaskDefArgs>;
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
 
@@ -104,7 +104,7 @@ class GhjkfileBuilder {
     );
 
     const set = this.#getSet(setId);
-    set.installs.push(this.#registerInstall(config));
+    set.installs.push(config);
     logger().debug("install added", config);
   }
 
@@ -116,26 +116,13 @@ class GhjkfileBuilder {
     set.allowedDeps = Object.fromEntries(
       deps.map((
         dep,
-      ) => [dep.manifest.name, this.#registerAllowedPortDep(dep)]),
+      ) => [dep.manifest.name, dep]),
     );
   }
 
   addTask(
     args: TaskDefArgs,
   ) {
-    const allowedPortDeps = Object.fromEntries(
-      [
-        ...(args.allowedPortDeps ?? (args.installs ? stdDeps() : [])),
-      ]
-        .map((
-          dep,
-        ) => [dep.manifest.name, this.#registerAllowedPortDep(dep)]),
-    );
-
-    const installs = (args.installs ?? []).map((fat) =>
-      this.#registerInstall(fat)
-    );
-
     // NOTE: we make sure the env base declared here exists
     // this call is necessary to make sure that a `task` can
     // be declared before the `env` but still depend on it.
@@ -148,8 +135,6 @@ class GhjkfileBuilder {
     this.#tasks[args.name] = {
       ...args,
       name,
-      installs,
-      allowedPortDeps,
     };
     return args.name;
   }
@@ -191,153 +176,28 @@ class GhjkfileBuilder {
   toConfig(secureConfig: PortsModuleSecureConfig | undefined) {
     try {
       const envsConfig = this.#processEnvs();
-
-      const tasksConfig: TasksModuleConfig = {
-        envs: {},
-        tasks: {},
-      };
-      for (
-        const [name, args] of Object
-          .entries(
-            this.#tasks,
-          )
-      ) {
-        const { workingDir, desc, dependsOn, envBase } = args;
-        const envBaseResolved = typeof envBase === "string"
-          ? envBase
-          : envBase
-          ? DEFAULT_ENV_NAME
-          : null;
-
-        const envBaseRecipe = envBaseResolved
-          ? envsConfig.envs[envBaseResolved]
-          : null;
-
-        const taskEnvRecipe: EnvRecipe = {
-          provides: [],
-        };
-
-        const taskInstallSet: InstallSetHashed = {
-          installs: args.installs,
-          allowedDeps: args.allowedPortDeps,
-        };
-
-        const mergedEnvVars = args.envVars ?? {};
-        if (envBaseRecipe) {
-          for (
-            const prov of envBaseRecipe
-              .provides as (
-                | WellKnownProvision
-                | InstallSetRefProvision
-              )[]
-          ) {
-            if (prov.ty == "envVar") {
-              if (!mergedEnvVars[prov.key]) {
-                mergedEnvVars[prov.key] = prov.val;
-              }
-            } else if (prov.ty == "ghjkPortsInstallSetRef") {
-              const baseSet = this.#installSets.get(prov.setId)!;
-              const mergedInstallsSet = new Set([
-                ...taskInstallSet.installs,
-                ...baseSet.installs,
-              ]);
-              taskInstallSet.installs = [...mergedInstallsSet.values()];
-              for (
-                const [key, val] of Object.entries(baseSet.allowedDeps)
-              ) {
-                // prefer the port dep config of the child over any
-                // similar deps in the base
-                if (!taskInstallSet.allowedDeps[key]) {
-                  taskInstallSet.allowedDeps[key] = val;
-                }
-              }
-            } else {
-              taskEnvRecipe.provides.push(prov);
-            }
-          }
-        }
-        if (taskInstallSet.installs.length > 0) {
-          const setId = `${name}_${crypto.randomUUID()}`;
-          this.#installSets.set(setId, taskInstallSet);
-          const prov: InstallSetRefProvision = {
-            ty: "ghjkPortsInstallSetRef",
-            setId,
-          };
-          taskEnvRecipe.provides.push(prov);
-        }
-
-        taskEnvRecipe.provides.push(
-          ...Object.entries(mergedEnvVars).map((
-            [key, val],
-          ) => {
-            const prov: WellKnownProvision = { ty: "envVar", key, val };
-            return prov;
-          }),
-        );
-
-        const envHash = objectHash(
-          jsonHash.canonicalize(taskEnvRecipe as jsonHash.Tree),
-        );
-        tasksConfig.envs[envHash] = taskEnvRecipe;
-
-        tasksConfig.tasks[name] = {
-          name,
-          workingDir: typeof workingDir == "object"
-            ? workingDir.toString()
-            : workingDir,
-          desc,
-          dependsOn,
-          envHash,
-        };
-      }
-      for (const [name, { dependsOn }] of Object.entries(tasksConfig.tasks)) {
-        for (const depName of dependsOn ?? []) {
-          if (!tasksConfig.tasks[depName]) {
-            throw new Error(
-              `task "${name}" depend on non-existent task "${depName}"`,
-            );
-          }
-        }
-      }
-
-      const masterPortDepAllowList = Object.fromEntries([
-        ...(secureConfig?.masterPortDepAllowList ?? stdDeps())
-          .map((dep) =>
-            [
-              dep.manifest.name,
-              this.#registerAllowedPortDep(
-                portsValidators.allowedPortDep.parse(dep),
-              ),
-            ] as const
-          ),
-      ]);
-
-      const fullPortsConfig: PortsModuleConfigHashed = {
-        sets: {},
-      };
-      for (
-        const [setId, set] of this.#installSets.entries()
-      ) {
-        for (const [portName, _] of Object.entries(set.allowedDeps)) {
-          if (!masterPortDepAllowList[portName]) {
-            throw new Error(
-              `"${portName}" is in allowedPortDeps list of install set "${setId}" but not in the masterPortDepAllowList`,
-            );
-          }
-        }
-        fullPortsConfig.sets[setId] = set;
-      }
+      const tasksConfig = this.#processTasks(envsConfig);
+      const portsConfig = this.#processInstalls(
+        secureConfig?.masterPortDepAllowList ?? stdDeps(),
+      );
 
       const config: SerializedConfig = {
         modules: [{
           id: std_modules.ports,
-          config: fullPortsConfig,
+          config: portsConfig,
         }, {
           id: std_modules.tasks,
           config: tasksConfig,
+        }, {
+          id: std_modules.envs,
+          config: envsConfig,
         }],
         blackboard: Object.fromEntries(this.#bb.entries()),
       };
+      console.log(Deno.inspect(config, {
+        depth: 10,
+        colors: true,
+      }));
       return config;
     } catch (cause) {
       throw new Error(`error constructing config for serialization`, { cause });
@@ -353,20 +213,12 @@ class GhjkfileBuilder {
     return set;
   }
 
-  #registerInstall(config: InstallConfigFat) {
+  #addToBlackboard(inp: unknown) {
     // jsonHash.digest is async
-    const hash = objectHash(jsonHash.canonicalize(config as jsonHash.Tree));
+    const hash = objectHash(jsonHash.canonicalize(inp as jsonHash.Tree));
 
     if (!this.#bb.has(hash)) {
-      this.#bb.set(hash, config);
-    }
-    return hash;
-  }
-
-  #registerAllowedPortDep(dep: AllowedPortDep) {
-    const hash = objectHash(jsonHash.canonicalize(dep as jsonHash.Tree));
-    if (!this.#bb.has(hash)) {
-      this.#bb.set(hash, dep);
+      this.#bb.set(hash, inp);
     }
     return hash;
   }
@@ -466,6 +318,172 @@ class GhjkfileBuilder {
     }
     return out;
   }
+
+  #processTasks(envsConfig: EnvsModuleConfig) {
+    const out: TasksModuleConfig = {
+      envs: {},
+      tasks: {},
+    };
+    for (
+      const [name, args] of Object
+        .entries(
+          this.#tasks,
+        )
+    ) {
+      const { workingDir, desc, dependsOn, envBase } = args;
+      const envBaseResolved = typeof envBase === "string"
+        ? envBase
+        : envBase
+        ? DEFAULT_ENV_NAME
+        : null;
+
+      const envBaseRecipe = envBaseResolved
+        ? envsConfig.envs[envBaseResolved]
+        : null;
+
+      const taskEnvRecipe: EnvRecipe = {
+        provides: [],
+      };
+
+      const taskInstallSet: InstallSet = {
+        installs: args.installs ?? [],
+        allowedDeps: Object.fromEntries(
+          (args.allowedPortDeps ?? []).map((dep) => [dep.manifest.name, dep]),
+        ),
+      };
+
+      const mergedEnvVars = args.envVars ?? {};
+      if (envBaseRecipe) {
+        for (
+          const prov of envBaseRecipe
+            .provides as (
+              | WellKnownProvision
+              | InstallSetRefProvision
+            )[]
+        ) {
+          if (prov.ty == "envVar") {
+            if (!mergedEnvVars[prov.key]) {
+              mergedEnvVars[prov.key] = prov.val;
+            }
+          } else if (prov.ty == "ghjkPortsInstallSetRef") {
+            const baseSet = this.#installSets.get(prov.setId)!;
+            const mergedInstallsSet = new Set([
+              ...taskInstallSet.installs,
+              ...baseSet.installs,
+            ]);
+            taskInstallSet.installs = [...mergedInstallsSet.values()];
+            for (
+              const [key, val] of Object.entries(baseSet.allowedDeps)
+            ) {
+              // prefer the port dep config of the child over any
+              // similar deps in the base
+              if (!taskInstallSet.allowedDeps[key]) {
+                taskInstallSet.allowedDeps[key] = val;
+              }
+            }
+          } else {
+            taskEnvRecipe.provides.push(prov);
+          }
+        }
+      }
+      if (taskInstallSet.installs.length > 0) {
+        const setId = `ghjkTaskInstSet___${name}`;
+        this.#installSets.set(setId, taskInstallSet);
+        const prov: InstallSetRefProvision = {
+          ty: "ghjkPortsInstallSetRef",
+          setId,
+        };
+        taskEnvRecipe.provides.push(prov);
+      }
+
+      taskEnvRecipe.provides.push(
+        ...Object.entries(mergedEnvVars).map((
+          [key, val],
+        ) => {
+          const prov: WellKnownProvision = { ty: "envVar", key, val };
+          return prov;
+        }),
+      );
+
+      const envHash = objectHash(
+        jsonHash.canonicalize(taskEnvRecipe as jsonHash.Tree),
+      );
+      out.envs[envHash] = taskEnvRecipe;
+
+      out.tasks[name] = {
+        name,
+        workingDir: typeof workingDir == "object"
+          ? workingDir.toString()
+          : workingDir,
+        desc,
+        dependsOn,
+        envHash,
+      };
+    }
+    for (const [name, { dependsOn }] of Object.entries(out.tasks)) {
+      for (const depName of dependsOn ?? []) {
+        if (!out.tasks[depName]) {
+          throw new Error(
+            `task "${name}" depend on non-existent task "${depName}"`,
+          );
+        }
+      }
+    }
+
+    return out;
+  }
+
+  #processInstalls(masterAllowList: AllowedPortDep[]) {
+    const out: PortsModuleConfigHashed = {
+      sets: {},
+    };
+    /* const masterPortDepAllowList = Object.fromEntries([
+      ...masterAllowList
+        .map((dep) =>
+          [
+            dep.manifest.name,
+            this.#registerAllowedPortDep(
+              portsValidators.allowedPortDep.parse(dep),
+            ),
+          ] as const
+        ),
+    ]);
+    */
+    const masterPortDepAllowList = Object.fromEntries(
+      masterAllowList
+        .map((dep) =>
+          [
+            dep.manifest.name,
+            dep,
+          ] as const
+        ),
+    );
+    for (
+      const [setId, set] of this.#installSets.entries()
+    ) {
+      for (const [portName, _] of Object.entries(set.allowedDeps)) {
+        if (!masterPortDepAllowList[portName]) {
+          throw new Error(
+            `"${portName}" is in allowedPortDeps list of install set "${setId}" but not in the masterPortDepAllowList`,
+          );
+        }
+      }
+      for (const [name, hash] of Object.entries(masterPortDepAllowList)) {
+        if (!set.allowedDeps[name]) {
+          set.allowedDeps[name] = hash;
+        }
+      }
+      out.sets[setId] = {
+        installs: set.installs.map((inst) => this.#addToBlackboard(inst)),
+        allowedDeps: this.#addToBlackboard(Object.fromEntries(
+          Object.entries(set.allowedDeps).map((
+            [key, dep],
+          ) => [key, this.#addToBlackboard(dep)]),
+        )),
+      };
+    }
+    return out;
+  }
 }
 
 type EnvFinalizer = () => {
@@ -490,7 +508,7 @@ class EnvBuilder {
     public name: string,
   ) {
     this.#file = file;
-    this.#installSetId = `${name}_${crypto.randomUUID()}`;
+    this.#installSetId = `ghjkEnvProvInstSet___${name}`;
     setFinalizer(() => ({
       name: this.name,
       installSetId: this.#installSetId,

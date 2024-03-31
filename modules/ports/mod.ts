@@ -70,20 +70,28 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       // so we need to use `using`
       await using syncCx = await syncCtxFromGhjk(gcx);
       for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
-        // install sets in the config use hash references to dedupe InstallConfigs
-        // reify the references from the blackboard from continuing
+        // install sets in the config use hash references to dedupe InstallConfigs,
+        // AllowedDepSets and AllowedDeps
+        // reify the references from the blackboard before continuing
+        const installs = hashedSet.installs.map((hash) =>
+          unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
+        );
+        const allowedDepSetHashed = unwrapParseCurry(
+          validators.allowDepSetHashed.safeParse(
+            bb[hashedSet.allowedDeps],
+          ),
+        );
+        const allowedDeps = Object.fromEntries(
+          Object.entries(allowedDepSetHashed).map((
+            [key, hash],
+          ) => [
+            key,
+            unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
+          ]),
+        );
         const set: InstallSetX = {
-          installs: hashedSet.installs.map((hash) =>
-            unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
-          ),
-          allowedDeps: Object.fromEntries(
-            Object.entries(hashedSet.allowedDeps).map((
-              [key, value],
-            ) => [
-              key,
-              unwrapParseCurry(validators.allowedPortDep.safeParse(bb[value])),
-            ]),
-          ),
+          installs,
+          allowedDeps,
         };
         pcx.config.sets[id] = set;
         pcx.installGraphs.set(id, await buildInstallGraph(syncCx, set));

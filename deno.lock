@@ -1,16 +1,5 @@
 {
   "version": "3",
-  "packages": {
-    "specifiers": {
-      "npm:@types/node": "npm:@types/node@18.16.19"
-    },
-    "npm": {
-      "@types/node@18.16.19": {
-        "integrity": "sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==",
-        "dependencies": {}
-      }
-    }
-  },
   "remote": {
     "https://deno.land/std@0.116.0/_util/assert.ts": "2f868145a042a11d5ad0a3c748dcf580add8a0dbc0e876eaa0026303a5488f58",
     "https://deno.land/std@0.116.0/_util/os.ts": "dfb186cc4e968c770ab6cc3288bd65f4871be03b93beecae57d657232ecffcac",

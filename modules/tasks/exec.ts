@@ -3,8 +3,10 @@ import { $, DePromisify } from "../../utils/mod.ts";
 
 import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
-import logger from "../../utils/logger.ts";
+import getLogger from "../../utils/logger.ts";
 import { execTaskDeno } from "./deno.ts";
+
+const logger = getLogger(import.meta);
 
 import { cookUnixEnv, reduceStrangeProvisions } from "../envs/posix.ts";
 
@@ -23,7 +25,7 @@ export function buildTaskGraph(
     depEdges: {} as Record<string, string[] | undefined>,
   };
   for (const [name, task] of Object.entries(portsConfig.tasks)) {
-    if (portsConfig.envs[task.envHash]) {
+    if (!portsConfig.envs[task.envHash]) {
       throw new Error(
         `unable to find env referenced by task "${name}" under hash "${task.envHash}"`,
       );
@@ -116,7 +118,7 @@ export async function execTask(
       tasksConfig.envs[taskDef.envHash],
     );
     const { env: installEnvs } = await cookUnixEnv(reducedEnv, taskEnvDir);
-    logger().info("executing", taskName, args);
+    logger.info("executing", taskName, args);
     await execTaskDeno(
       std_path.toFileUrl(gcx.ghjkfilePath).href,
       {

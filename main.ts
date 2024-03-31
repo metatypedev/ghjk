@@ -22,6 +22,8 @@ if (import.meta.main) {
   });
 } else {
   throw new Error(
-    "unexpected ctx: if you want to run the ghjk cli, import `main` from ./host/mod.ts",
+    `unexpected context: this module is an entrypoint. If you want to programmatically invoke the ghjk cli, import \`main\` from ${
+      import.meta.resolve("./host/mod.ts")
+    }`,
   );
 }

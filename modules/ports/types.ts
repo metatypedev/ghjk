@@ -148,20 +148,18 @@ const portsModuleSecureConfig = zod.object({
   masterPortDepAllowList: zod.array(allowedPortDep).nullish(),
 });
 
+const allowDepSet = zod.record(zod.string(), allowedPortDep);
+
+const allowDepSetHashed = zod.record(zod.string(), zod.string());
+
 const installSetHashed = zod.object({
   installs: zod.array(zod.string()),
-  allowedDeps: zod.record(
-    zod.string(),
-    zod.string(),
-  ),
+  allowedDeps: zod.string(),
 });
 
 const installSet = zod.object({
   installs: zod.array(installConfigFat),
-  allowedDeps: zod.record(
-    zod.string(),
-    allowedPortDep,
-  ),
+  allowedDeps: allowDepSet,
 });
 
 const portsModuleConfigHashed = zod.object({
@@ -223,6 +221,8 @@ const validators = {
   portsModuleConfig,
   portsModuleConfigHashed,
   allowedPortDep,
+  allowDepSet,
+  allowDepSetHashed,
   installSetProvision,
   installSetRefProvision,
   installSet,
@@ -319,9 +319,11 @@ export type InstallSetRefProvisionX = zod.infer<
 export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
 export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
 
-/// This is a secure sections of the config intended to be direct exports
-/// from the config script instead of the global variable approach the
-/// main [`GhjkConfig`] can take.
+/*
+ * This is a secure sections of the config intended to be direct exports
+ * from the config script instead of the global variable approach the
+ * main [`GhjkConfig`] can take.
+ */
 export type PortsModuleSecureConfig = zod.input<
   typeof validators.portsModuleSecureConfig
 >;
@@ -350,21 +352,6 @@ export type PortsModuleConfigHashed = zod.input<
 export type PortsModuleConfigLiteHashedX = zod.infer<
   typeof validators.portsModuleConfigHashed
 >;
-
-/*
-interface ASDF_CONFIG_EXAMPLE {
-  ASDF_INSTALL_TYPE: "version" | "ref";
-  ASDF_INSTALL_VERSION: string; //	full version number or Git Ref depending on ASDF_INSTALL_TYPE
-  ASDF_INSTALL_PATH: string; //	the path to where the tool should, or has been installed
-  ASDF_CONCURRENCY: number; //	the number of cores to use when compiling the source code. Useful for setting make -j
-  ASDF_DOWNLOAD_PATH: string; //	the path to where the source code or binary was downloaded to by bin/download
-  ASDF_PLUGIN_PATH: string; //	the path the plugin was installed
-  ASDF_PLUGIN_SOURCE_URL: string; //	the source URL of the plugin
-  ASDF_PLUGIN_PREV_REF: string; //	prevous git-ref of the plugin repo
-  ASDF_PLUGIN_POST_REF: string; //	updated git-ref of the plugin repo
-  ASDF_CMD_FILE: string; // resolves to the full path of the file being sourced
-}
-*/
 
 export type DepArt = {
   execs: Record<string, string>;

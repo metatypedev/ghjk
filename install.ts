@@ -34,6 +34,8 @@ if (import.meta.main) {
   });
 } else {
   throw new Error(
-    "unexpected ctx: if you want to access the ghjk installer, import `install` from ./install/mod.ts",
+    `unexpected context: this module is an entrypoint. If you want to programmatically invoke the ghjk installer, import \`install\` from ${
+      import.meta.resolve("./install/mod.ts")
+    }`,
   );
 }
