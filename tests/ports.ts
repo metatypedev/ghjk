@@ -21,6 +21,12 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
+  // 2 megs
+  {
+    name: "jq",
+    installConf: ports.jq_ghrel(),
+    ePoint: `jq --version`,
+  },
   // 3 megs
   {
     name: "protoc",

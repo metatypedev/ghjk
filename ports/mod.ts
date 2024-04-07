@@ -7,6 +7,7 @@ export { default as curl } from "./curl.ts";
 export { default as earthly } from "./earthly.ts";
 export { default as git } from "./git.ts";
 export { default as infisical } from "./infisical.ts";
+export { default as jq_ghrel } from "./jq_ghrel.ts";
 export { default as meta_cli_ghrel } from "./meta_cli_ghrel.ts";
 export { default as mold } from "./mold.ts";
 export { default as node } from "./node.ts";
