@@ -3,8 +3,8 @@ ARG DENO_VERSION=1.42.1
 FROM denoland/deno:bin-$DENO_VERSION AS deno
 
 FROM docker.io/library/debian:12-slim
-COPY --from=deno /deno /usr/local/bin/deno
 
+COPY --from=deno /deno /usr/local/bin/deno
 RUN set -eux; \
     apt-get update; \
     apt install --no-install-recommends --assume-yes \
@@ -24,6 +24,8 @@ RUN set -eux; \
     ;
 
 WORKDIR /ghjk
+
+ENV DENO_DIR=/deno-dir
 
 COPY deno.lock deno.jsonc ./
 COPY deps/* ./deps/
