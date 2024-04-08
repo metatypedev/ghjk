@@ -9,8 +9,11 @@ RUN set -eux; \
     apt-get update; \
     apt install --no-install-recommends --assume-yes \
     # ambient deps \
+    # TODO: explicit libarchive \
     zstd \
     tar \
+    # TODO: explicit cc \
+    build-essential \
     # test deps \
     bash \
     fish \
