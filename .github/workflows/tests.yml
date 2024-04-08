@@ -13,7 +13,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
-  DENO_DIR: deno-dir
+  DENO_DIR: .deno-dir
 
 jobs:
   changes:
