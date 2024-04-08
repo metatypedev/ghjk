@@ -4,8 +4,8 @@ import { stdSecureConfig } from "../mod.ts";
 import {
   dockerE2eTest,
   E2eTestCase,
+  genTsGhjkFile,
   localE2eTest,
-  tsGhjkFileFromInstalls,
 } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
 import type {
@@ -214,7 +214,7 @@ function testMany(
           std_async.deadline(
             testFn({
               ...testCase,
-              tsGhjkfileStr: tsGhjkFileFromInstalls(
+              tsGhjkfileStr: genTsGhjkFile(
                 {
                   installConf: testCase.installConf,
                   secureConf: testCase.secureConf,

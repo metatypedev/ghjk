@@ -100,7 +100,7 @@
               "installs": [
                 "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f",
                 "9283b97b5499e8da4dcfb7f14c1306c25e8e8a44",
-                "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c"
+                "8b6b1d9eb548f213730d5f134e4caa6c366c427a"
               ],
               "allowedDeps": "48a429761f3837562b097b47afe07601ba4ffca5"
             },
@@ -109,7 +109,7 @@
                 "aa103d26454710ca5d7f43358123341380389864",
                 "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f",
                 "9283b97b5499e8da4dcfb7f14c1306c25e8e8a44",
-                "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c"
+                "8b6b1d9eb548f213730d5f134e4caa6c366c427a"
               ],
               "allowedDeps": "48a429761f3837562b097b47afe07601ba4ffca5"
             }
@@ -199,7 +199,7 @@
         },
         "packageName": "pre-commit"
       },
-      "7d7b0f4b9ec5375688fceab016687f3ac3fbc94c": {
+      "8b6b1d9eb548f213730d5f134e4caa6c366c427a": {
         "port": {
           "ty": "denoWorker@v1",
           "name": "cpy_bs_ghrel",
@@ -221,8 +221,7 @@
             }
           ],
           "moduleSpecifier": "file:///ports/cpy_bs.ts"
-        },
-        "releaseTag": "20231002"
+        }
       },
       "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2": {
         "manifest": {

@@ -151,7 +151,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await tmpDir.remove({ recursive: true });
 }
 
-export function tsGhjkFileFromInstalls(
+export function genTsGhjkFile(
   { installConf, secureConf, taskDefs }: {
     installConf: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;

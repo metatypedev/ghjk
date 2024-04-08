@@ -39,7 +39,7 @@ ghjk_reload() {
     if [ -n "$local_ghjk_dir" ]; then
         # export GHJK_DIR
         # locate the active env
-        active_env="${GHJK_ACTIVE_ENV:-default}";
+        active_env="${GHJK_ENV:-default}";
         active_env_dir="$local_ghjk_dir/envs/$active_env"
         if [ -d "$active_env_dir" ]; then
             # load the shim
@@ -60,13 +60,13 @@ ghjk_reload() {
 
 # memo to detect directory changes
 export GHJK_LAST_PWD="$PWD"
-export GHJK_LAST_ACTIVE_ENV="$GHJK_ACTIVE_ENV"
+export GHJK_LAST_ENV="$GHJK_ENV"
 
 precmd() {
-    if [ "$GHJK_LAST_PWD" != "$PWD" ] || [ "$GHJK_LAST_ACTIVE_ENV" != "$GHJK_ACTIVE_ENV" ]; then
+    if [ "$GHJK_LAST_PWD" != "$PWD" ] || [ "$GHJK_LAST_ENV" != "$GHJK_ENV" ]; then
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
-        export GHJK_LAST_ACTIVE_ENV="$GHJK_ACTIVE_ENV"
+        export GHJK_LAST_ENV="$GHJK_ENV"
     fi
 }
 

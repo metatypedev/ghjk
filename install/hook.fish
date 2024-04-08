@@ -1,4 +1,4 @@
-function ghjk_reload --on-variable PWD --on-variable GHJK_ACTIVE_ENV
+function ghjk_reload --on-variable PWD --on-variable GHJK_ENV
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
         eval $GHJK_CLEANUP_FISH
@@ -36,7 +36,7 @@ function ghjk_reload --on-variable PWD --on-variable GHJK_ACTIVE_ENV
 
     if test -n "$local_ghjk_dir"
         # locate the active env
-        set --local active_env "$GHJK_ACTIVE_ENV"
+        set --local active_env "$GHJK_ENV"
         test -z $active_env; and set --local active_env default
         set --local active_env_dir $local_ghjk_dir/envs/$active_env
         if test -d $active_env_dir
@@ -53,7 +53,7 @@ function ghjk_reload --on-variable PWD --on-variable GHJK_ACTIVE_ENV
             end
         else
             set_color FF4500
-            echo "[ghjk] Active environment not ($active_env) found, please sync..."
+            echo "[ghjk] Active environment ($active_env) not found, please sync..."
             set_color normal
         end
     end

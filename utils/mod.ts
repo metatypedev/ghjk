@@ -163,7 +163,7 @@ export function getPortRef(manifest: PortManifest) {
 export async function getInstallHash(install: InstallConfigResolvedX) {
   const fullHashHex = await objectHashHex(install as jsonHash.Tree);
   const hashHex = fullHashHex.slice(0, 8);
-  return `${install.portRef}+${hashHex}`;
+  return `${install.portRef}~${hashHex}`;
 }
 
 export type PathRef = dax.PathRef;

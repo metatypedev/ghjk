@@ -9,7 +9,7 @@ install();
 install(
   ports.act(),
   ports.pipi({ packageName: "pre-commit" })[0],
-  ports.cpy_bs({ releaseTag: "20231002" }),
+  ports.cpy_bs({}),
 );
 
 env("test")

@@ -1,7 +1,7 @@
 /*
   Design:
     - `$ ghjk env activate` to switch to default environment
-    - `$ ghjk env list`
+    - `$ ghjk envs list`
     - `$ ghjk env info`
     - By default, all things go to the `main` environment
 */
@@ -24,6 +24,7 @@ import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
+import { isColorfulTty } from "../../utils/logger.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -54,7 +55,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
       validators.envsModuleConfig.safeParse(manifest.config),
     );
 
-    const activeEnv = Deno.env.get("GHJK_ACTIVE_ENV") ?? config.defaultEnv;
+    const activeEnv = Deno.env.get("GHJK_ENV") ?? config.defaultEnv;
 
     return Promise.resolve({
       activeEnv,
@@ -120,7 +121,10 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
           default:
         }
       }
-      console.log(Deno.inspect(printBag));
+      console.log(Deno.inspect(printBag, {
+        depth: 10,
+        colors: isColorfulTty(),
+      }));
     };
 
     const commands = {
@@ -162,7 +166,7 @@ If invoked without any arguments, this will show the info of the active env [${e
       .Command()
       .description("Envs module, reproducable unix shells environments.")
       .alias("e")
-      .alias("env")
+      // .alias("env")
       .action(function () {
         this.showHelp();
       });

@@ -2,9 +2,9 @@ import "../setup_logger.ts";
 import {
   dockerE2eTest,
   E2eTestCase,
+  genTsGhjkFile,
   localE2eTest,
   type TaskDefArgs,
-  tsGhjkFileFromInstalls,
 } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
@@ -129,7 +129,7 @@ function testMany(
       () =>
         testFn({
           ...testCase,
-          tsGhjkfileStr: tsGhjkFileFromInstalls(
+          tsGhjkfileStr: genTsGhjkFile(
             { installConf: [], taskDefs: testCase.tasks },
           ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
