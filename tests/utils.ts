@@ -5,7 +5,7 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
-import type { TaskDefArgs } from "../mod.ts";
+import type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
 export type { TaskDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
@@ -153,14 +153,15 @@ export async function localE2eTest(testCase: E2eTestCase) {
 
 export function genTsGhjkFile(
   { installConf, secureConf, taskDefs }: {
-    installConf: InstallConfigFat | InstallConfigFat[];
+    installConf?: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
-    taskDefs: TaskDefArgs[];
+    taskDefs?: TaskDefArgs[];
+    envDefs?: EnvDefArgs[];
   },
 ) {
-  const installConfArray = Array.isArray(installConf)
-    ? installConf
-    : [installConf];
+  const installConfArray = installConf
+    ? Array.isArray(installConf) ? installConf : [installConf]
+    : [];
 
   const serializedPortsInsts = JSON.stringify(
     installConfArray,
@@ -177,7 +178,7 @@ export function genTsGhjkFile(
     secureConf ?? null,
     (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
   );
-  const tasks = taskDefs.map(
+  const tasks = (taskDefs ?? []).map(
     (def) => {
       const { name, ...withoutName } = def;
       const stringifiedSection = JSON.stringify(

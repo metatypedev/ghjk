@@ -44,12 +44,12 @@ ghjk_reload() {
         if [ -d "$active_env_dir" ]; then
             # load the shim
             # shellcheck source=/dev/null
-            . "$active_env_dir/loader.sh"
+            . "$active_env_dir/activate.sh"
 
             # FIXME: -ot not valid in POSIX
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             # shellcheck disable=SC3000-SC4000
-            if [ "$active_env_dir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
+            if [ "$active_env_dir/activate.sh" -ot "$cur_dir/ghjk.ts" ]; then
                 printf "\033[0;33m[ghjk] Detected drift from active environment ($active_env), please sync...\033[0m\n"
             fi
         else

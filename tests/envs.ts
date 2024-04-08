@@ -43,7 +43,7 @@ function testMany(
         testFn({
           ...testCase,
           tsGhjkfileStr: genTsGhjkFile(
-            { installConf: [], taskDefs: [] },
+            {},
           ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
           envs: {

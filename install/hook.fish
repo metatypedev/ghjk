@@ -41,12 +41,12 @@ function ghjk_reload --on-variable PWD --on-variable GHJK_ENV
         set --local active_env_dir $local_ghjk_dir/envs/$active_env
         if test -d $active_env_dir
             # load the shim
-            . $active_env_dir/loader.fish
+            . $active_env_dir/activate.fish
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
-            if test $active_env_dir/loader.fish -ot $cur_dir/ghjk.ts
+            if test $active_env_dir/activate.fish -ot $cur_dir/ghjk.ts
                 set_color FF4500
                 echo "[ghjk] Detected drift from active environment ($active_env), please sync..."
                 set_color normal

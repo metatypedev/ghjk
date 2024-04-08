@@ -2,7 +2,15 @@
   Design:
     - `$ ghjk env activate` to switch to default environment
     - `$ ghjk envs list`
-    - `$ ghjk env info`
+    - `$ ghjk envs info`
+    - `$ ghjk env activate` - activate default environment
+    - `$ ghjk env activate $name` - activate $name environment
+    - `$ ghjk env src` - activate default environment
+    - `$ ghjk env src $name` - activate $name environment
+    - `$ ghjk env cook` - cooks default environment
+    - `$ ghjk env cook $name` - cooks $name environment
+    - `$ ghjk sync` - activates and cooks default environment
+    - `$ ghjk sync $name` - activates and cooks $name environment
     - By default, all things go to the `main` environment
 */
 
@@ -63,108 +71,73 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     });
   }
 
-  command(
+  commands(
     gcx: GhjkCtx,
     ecx: EnvsCtx,
   ) {
-    const printEnvInfo = (name: string) => {
-      const env = ecx.config.envs[name];
-      const printBag = { name } as Record<string, any>;
-      for (
-        const prov of env
-          .provides as (
-            | WellKnownProvision
-            | InstallSetRefProvision
-            | InstallSetProvision
-          )[]
-      ) {
-        switch (prov.ty) {
-          case "posix.envVar":
-            printBag.envVars = {
-              ...printBag.envVars ?? {},
-              [prov.key]: prov.val,
-            };
-            break;
-          case "posix.exec":
-            printBag.execs = [
-              ...printBag.execs ?? [],
-              prov.absolutePath,
-            ];
-            break;
-          case "posix.sharedLib":
-            printBag.sharedLibs = [
-              ...printBag.sharedLibs ?? [],
-              prov.absolutePath,
-            ];
-            break;
-          case "posix.headerFile":
-            printBag.headerFiles = [
-              ...printBag.headerFiles ?? [],
-              prov.absolutePath,
-            ];
-            break;
-          case "ghjk.ports.InstallSet":
-            // TODO: display raw install sets
-            printBag.ports = {
-              ...printBag.ports ?? {},
-              [`installSet_${Math.floor(Math.random() * 100)}`]: prov.set,
-            };
-            break;
-          case "ghjk.ports.InstallSetRef": {
-            const installSetMetaStore = getInstallSetMetaStore(gcx);
-            printBag.ports = {
-              ...printBag.ports ?? {},
-              [prov.setId]: installSetMetaStore.get(prov.setId),
-            };
-            break;
-          }
-          default:
-        }
-      }
-      console.log(Deno.inspect(printBag, {
-        depth: 10,
-        colors: isColorfulTty(),
-      }));
-    };
-
     const commands = {
-      sync: new cliffy_cmd.Command()
-        .description("Syncs the environment.")
-        .action(async function () {
-          const envName = ecx.activeEnv;
+      src: new cliffy_cmd.Command()
+        .description(`Activate an environment.
+If invoked without any arguments, this will activate the default env [${ecx.config.defaultEnv}]`)
+        .arguments("[envName:string]")
+        .action(async function (_void, envName) {
+          $`fish `.env().spawn();
+        }),
 
+      cook: new cliffy_cmd.Command()
+        .description(`Cooks the environment to a posix shell.
+If invoked without any arguments, this will cook the active env [${ecx.activeEnv}]`)
+        .arguments("[envName:string]")
+        .action(async function (_void, envNameMaybe) {
+          const envName = envNameMaybe ?? ecx.activeEnv;
           const env = ecx.config.envs[envName];
+          if (!env) {
+            throw new Error(`No env found under given name "${envName}"`);
+          }
+
           // TODO: diff env and ask confirmation from user
           const reducedEnv = await reduceStrangeProvisions(gcx, env);
           const envDir = $.path(gcx.ghjkDir).join("envs", envName).toString();
 
           await cookPosixEnv(reducedEnv, envDir, true);
         }),
+
       ls: new cliffy_cmd.Command()
         .description("List environments defined in the ghjkfile.")
         .action(() => {
-          console.log(Object.keys(ecx.config.envs).join("\n"));
+          console.log(
+            Object.entries(ecx.config.envs)
+              .map(([name, { desc }]) => `${name}${desc ? ": " + desc : ""}`)
+              .join("\n"),
+          );
         }),
-      info: new cliffy_cmd.Command()
+
+      show: new cliffy_cmd.Command()
         .description(`Show details about an environment.
-If invoked without any arguments, this will show the info of the active env [${ecx.activeEnv}].
+If invoked without any arguments, this will show info of the active env [${ecx.activeEnv}].
         `)
-        .action(function () {
-          printEnvInfo(ecx.activeEnv);
+        .arguments("[envName:string]")
+        .action(function (_void, envNameMaybe) {
+          const envName = envNameMaybe ?? ecx.activeEnv;
+          if (!ecx.config.envs[envName]) {
+            throw new Error(`No env found under given name "${envName}"`);
+          }
+          printEnvInfo(gcx, ecx, envName);
         }),
     };
-    for (const name of Object.keys(ecx.config.envs)) {
-      commands.info.command(
-        name,
-        new cliffy_cmd.Command()
-          .action(function () {
-            printEnvInfo(name);
-          }),
-      );
+    for (const [envName, { desc }] of Object.entries(ecx.config.envs)) {
+      const cmd = new cliffy_cmd.Command()
+        .action(function () {
+          printEnvInfo(gcx, ecx, envName);
+        });
+      if (desc) {
+        cmd.description(desc);
+      }
+      commands.show.command(envName, cmd);
     }
     const root = new cliffy_cmd
       .Command()
-      .description("Envs module, reproducable unix shells environments.")
+      .description("Envs module, reproducable posix shells environments.")
       .alias("e")
       // .alias("env")
       .action(function () {
@@ -173,7 +146,9 @@ If invoked without any arguments, this will show the info of the active env [${e
     for (const [name, cmd] of Object.entries(commands)) {
       root.command(name, cmd);
     }
-    return root;
+    return {
+      envs: root,
+    };
   }
 
   loadLockEntry(
@@ -196,4 +171,71 @@ If invoked without any arguments, this will show the info of the active env [${e
       version: "0",
     };
   }
+}
+
+function printEnvInfo(
+  gcx: GhjkCtx,
+  ecx: EnvsCtx,
+  envName: string,
+) {
+  const env = ecx.config.envs[envName];
+  const printBag = {
+    envName,
+    ...(env.desc ? { desc: env.desc } : {}),
+  } as Record<string, any>;
+  for (
+    const prov of env
+      .provides as (
+        | WellKnownProvision
+        | InstallSetRefProvision
+        | InstallSetProvision
+      )[]
+  ) {
+    switch (prov.ty) {
+      case "posix.envVar":
+        printBag.envVars = {
+          ...printBag.envVars ?? {},
+          [prov.key]: prov.val,
+        };
+        break;
+      case "posix.exec":
+        printBag.execs = [
+          ...printBag.execs ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "posix.sharedLib":
+        printBag.sharedLibs = [
+          ...printBag.sharedLibs ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "posix.headerFile":
+        printBag.headerFiles = [
+          ...printBag.headerFiles ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "ghjk.ports.InstallSet":
+        // TODO: display raw install sets
+        printBag.ports = {
+          ...printBag.ports ?? {},
+          [`installSet_${Math.floor(Math.random() * 101)}`]: prov.set,
+        };
+        break;
+      case "ghjk.ports.InstallSetRef": {
+        const installSetMetaStore = getInstallSetMetaStore(gcx);
+        printBag.ports = {
+          ...printBag.ports ?? {},
+          [prov.setId]: installSetMetaStore.get(prov.setId),
+        };
+        break;
+      }
+      default:
+    }
+  }
+  console.log(Deno.inspect(printBag, {
+    depth: 10,
+    colors: isColorfulTty(),
+  }));
 }

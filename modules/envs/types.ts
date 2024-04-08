@@ -32,6 +32,7 @@ const wellKnownProvision = zod.discriminatedUnion(
 );
 
 const envRecipe = zod.object({
+  desc: zod.string().nullish(),
   provides: zod.array(provision),
 });
 

@@ -115,32 +115,34 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     return pcx;
   }
 
-  command(
+  commands(
     _gcx: GhjkCtx,
     _pcx: PortsCtx,
   ) {
-    return new cliffy_cmd.Command()
-      .alias("p")
-      .action(function () {
-        this.showHelp();
-      })
-      .description("Ports module, install programs into your env.")
-      .command(
-        "outdated",
-        new cliffy_cmd.Command()
-          .description("TODO")
-          .action(function () {
-            throw new Error("TODO");
-          }),
-      )
-      .command(
-        "cleanup",
-        new cliffy_cmd.Command()
-          .description("TODO")
-          .action(function () {
-            throw new Error("TODO");
-          }),
-      );
+    return {
+      ports: new cliffy_cmd.Command()
+        .alias("p")
+        .action(function () {
+          this.showHelp();
+        })
+        .description("Ports module, install programs into your env.")
+        .command(
+          "outdated",
+          new cliffy_cmd.Command()
+            .description("TODO")
+            .action(function () {
+              throw new Error("TODO");
+            }),
+        )
+        .command(
+          "cleanup",
+          new cliffy_cmd.Command()
+            .description("TODO")
+            .action(function () {
+              throw new Error("TODO");
+            }),
+        ),
+    };
   }
   loadLockEntry(
     gcx: GhjkCtx,

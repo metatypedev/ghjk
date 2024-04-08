@@ -29,7 +29,7 @@ export async function cli(args: CliArgs) {
   const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize()
     .toString();
 
-  const subcmds = {
+  const subcmds: Record<string, any> = {
     print: new cliffy_cmd.Command()
       .description("Emit different discovered and built values to stdout.")
       .action(function () {
@@ -51,6 +51,7 @@ export async function cli(args: CliArgs) {
         await $.raw`${Deno.execPath()} ${args}`
           .env("DENO_EXEC_PATH", Deno.execPath());
       }),
+    completions: new cliffy_cmd.CompletionsCommand(),
   };
 
   if (args.ghjkfilePath) {
@@ -68,7 +69,15 @@ export async function cli(args: CliArgs) {
       hcx,
     );
 
-    Object.assign(subcmds, configCommands);
+    for (const [cmdName, [cmd, src]] of Object.entries(configCommands)) {
+      const conflict = subcmds[cmdName];
+      if (conflict) {
+        throw new Error(
+          `CLI command conflict under name "${cmdName}" from host and module "${src}"`,
+        );
+      }
+      subcmds[cmdName] = cmd;
+    }
 
     subcmds.print = subcmds.print
       .command(
@@ -112,9 +121,7 @@ export async function cli(args: CliArgs) {
   for (const [name, subcmd] of Object.entries(subcmds)) {
     cmd.command(name, subcmd);
   }
-  await cmd
-    .command("completions", new cliffy_cmd.CompletionsCommand())
-    .parse(Deno.args);
+  await cmd.parse(Deno.args);
 }
 
 async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
@@ -136,7 +143,8 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
   const lockFilePath = ghjkDirPath.join("lock.json");
   const hashFilePath = ghjkDirPath.join("hash.json");
 
-  const subCommands = {} as Record<string, cliffy_cmd.Command>;
+  // command name to [cmd, source module]
+  const subCommands = {} as Record<string, [cliffy_cmd.Command, string]>;
   const lockEntries = {} as Record<string, unknown>;
 
   const curEnvVars = Deno.env.toObject();
@@ -254,7 +262,17 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       lockEntries[man.id],
     );
     instances.push([man.id, instance, pMan] as const);
-    subCommands[man.id] = instance.command(gcx, pMan);
+    for (const [cmdName, cmd] of Object.entries(instance.commands(gcx, pMan))) {
+      const conflict = subCommands[cmdName];
+      if (conflict) {
+        throw new Error(
+          `CLI command conflict under name "${cmdName}" from modules "${man.id}" & "${
+            conflict[1]
+          }"`,
+        );
+      }
+      subCommands[cmdName] = [cmd, man.id];
+    }
   }
   // generate the lock entries after *all* the modules
   // are done processing their config to allow
@@ -276,7 +294,10 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
   if (!foundHashObj || !deep_eql(newHashObj, foundHashObj)) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
-  return { subCommands, serializedConfig: configExt.config };
+  return {
+    subCommands,
+    serializedConfig: configExt.config,
+  };
 }
 
 type HashStore = Record<string, string | null | undefined>;

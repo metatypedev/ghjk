@@ -59,23 +59,6 @@
           "depConfigs": {},
           "portRef": "zstd_aa@0.1.0"
         },
-        "c58811a17645c26b5a55a2de02f930945e04adf37e408846bf6b5c72bf707146": {
-          "version": "3.12.0",
-          "depConfigs": {
-            "tar_aa": {
-              "version": "1.35",
-              "depConfigs": {},
-              "portRef": "tar_aa@0.1.0"
-            },
-            "zstd_aa": {
-              "version": "v1.5.5,",
-              "depConfigs": {},
-              "portRef": "zstd_aa@0.1.0"
-            }
-          },
-          "portRef": "cpy_bs_ghrel@0.1.0",
-          "releaseTag": "20231002"
-        },
         "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
           "version": "v26.1",
           "depConfigs": {},
@@ -128,6 +111,7 @@
         "config": {
           "envs": {
             "main": {
+              "desc": "The default default environment.",
               "provides": [
                 {
                   "ty": "ghjk.ports.InstallSetRef",

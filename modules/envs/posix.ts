@@ -10,9 +10,9 @@ export async function cookPosixEnv(
   envDir: string,
   createShellLoaders = false,
 ) {
+  await $.removeIfExists(envDir);
   // create the shims for the user's environment
   const shimDir = $.path(envDir).join("shims");
-  await $.removeIfExists(shimDir);
 
   const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
     shimDir.join("bin").ensureDir(),
@@ -156,7 +156,7 @@ async function writeLoader(
   env: Record<string, string>,
   pathVars: Record<string, string>,
 ) {
-  const loader = {
+  const activate = {
     posix: [
       `export GHJK_CLEANUP_POSIX="";`,
       ...Object.entries(env).map(([k, v]) =>
@@ -187,7 +187,7 @@ set --global --export --prepend ${k} ${v};
   };
   const envPathR = await $.path(envDir).ensureDir();
   await Promise.all([
-    envPathR.join(`loader.fish`).writeText(loader.fish),
-    envPathR.join(`loader.sh`).writeText(loader.posix),
+    envPathR.join(`activate.fish`).writeText(activate.fish),
+    envPathR.join(`activate.sh`).writeText(activate.posix),
   ]);
 }

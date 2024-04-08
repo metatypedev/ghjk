@@ -46,7 +46,7 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     };
   }
 
-  command(
+  commands(
     gcx: GhjkCtx,
     tcx: TasksCtx,
   ) {
@@ -79,7 +79,9 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     for (const cmd of commands) {
       root.command(cmd.getName(), cmd);
     }
-    return root;
+    return {
+      tasks: root,
+    };
   }
 
   loadLockEntry(

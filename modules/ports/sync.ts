@@ -1066,7 +1066,7 @@ async function writeLoader(
   env: Record<string, string>,
   pathVars: Record<string, string>,
 ) {
-  const loader = {
+  const activate = {
     posix: [
       `export GHJK_CLEANUP_POSIX="";`,
       ...Object.entries(env).map(([k, v]) =>
@@ -1097,7 +1097,7 @@ set --global --export --prepend ${k} ${v};
   };
   const envPathR = await $.path(envDir).ensureDir();
   await Promise.all([
-    envPathR.join(`loader.fish`).writeText(loader.fish),
-    envPathR.join(`loader.sh`).writeText(loader.posix),
+    envPathR.join(`activate.fish`).writeText(activate.fish),
+    envPathR.join(`activate.sh`).writeText(activate.posix),
   ]);
 }
