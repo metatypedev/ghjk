@@ -52,7 +52,7 @@ export class Port extends GithubReleasePort {
       default:
         throw new Error(`unsupported platform: ${serializePlatform(platform)}`);
     }
-    const os = platform.os;
+    const os = platform.os == "darwin" ? "macos" : platform.os;
 
     return [
       this.releaseArtifactUrl(

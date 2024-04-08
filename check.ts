@@ -6,7 +6,10 @@ import { $ } from "./utils/mod.ts";
 
 const files = (await Array.fromAsync(
   $.path(import.meta.url).parentOrThrow().expandGlob("**/*.ts", {
-    exclude: [],
+    exclude: [
+      ".ghjk/**",
+      ".deno-dir/**",
+    ],
   }),
 )).map((ref) => ref.path.toString());
 

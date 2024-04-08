@@ -7,11 +7,13 @@
   "fmt": {
     "exclude": [
       "**/*.md",
-      ".ghjk/**"
+      ".ghjk/**",
+      ".deno-dir/**"
     ]
   },
   "lint": {
     "exclude": [
+      ".deno-dir/**",
       "ghjk.ts",
       "play.ts"
     ],
