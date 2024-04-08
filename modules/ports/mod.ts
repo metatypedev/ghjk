@@ -20,6 +20,7 @@ import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
+import { getInstallSetMetaStore, installGraphToSetMeta } from "./inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -68,6 +69,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       // somewhere deep in there
       // so we need to use `using`
       await using syncCx = await syncCtxFromGhjk(gcx);
+      const installMetaStore = getInstallSetMetaStore(gcx);
       for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
         // install sets in the config use hash references to dedupe InstallConfigs,
         // AllowedDepSets and AllowedDeps
@@ -92,8 +94,10 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           installs,
           allowedDeps,
         };
+        const installGraph = await buildInstallGraph(syncCx, set);
+        installMetaStore.set(id, installGraphToSetMeta(installGraph));
         pcx.config.sets[id] = set;
-        pcx.installGraphs.set(id, await buildInstallGraph(syncCx, set));
+        pcx.installGraphs.set(id, installGraph);
       }
     }
 

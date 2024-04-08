@@ -38,32 +38,35 @@ ghjk_reload() {
 
     if [ -n "$local_ghjk_dir" ]; then
         # export GHJK_DIR
-        # locate the default env
-        default_env="$local_ghjk_dir/envs/default"
-        if [ -d "$default_env" ]; then
+        # locate the active env
+        active_env="${GHJK_ACTIVE_ENV:-default}";
+        active_env_dir="$local_ghjk_dir/envs/$active_env"
+        if [ -d "$active_env_dir" ]; then
             # load the shim
             # shellcheck source=/dev/null
-            . "$default_env/loader.sh"
+            . "$active_env_dir/loader.sh"
 
             # FIXME: -ot not valid in POSIX
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             # shellcheck disable=SC3000-SC4000
-            if [ "$default_env/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
-                printf "\033[0;33m[ghjk] Detected drift from default environment, please sync...\033[0m\n"
+            if [ "$active_env_dir/loader.sh" -ot "$cur_dir/ghjk.ts" ]; then
+                printf "\033[0;33m[ghjk] Detected drift from active environment ($active_env), please sync...\033[0m\n"
             fi
         else
-            printf "\033[0;31m[ghjk] No default environment found, please sync...\033[0m\n"
+            printf "\033[0;31m[ghjk] Active environment ($active_env) not set up, please sync...\033[0m\n"
         fi
     fi
 }
 
 # memo to detect directory changes
 export GHJK_LAST_PWD="$PWD"
+export GHJK_LAST_ACTIVE_ENV="$GHJK_ACTIVE_ENV"
 
 precmd() {
-    if [ "$GHJK_LAST_PWD" != "$PWD" ]; then
+    if [ "$GHJK_LAST_PWD" != "$PWD" ] || [ "$GHJK_LAST_ACTIVE_ENV" != "$GHJK_ACTIVE_ENV" ]; then
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
+        export GHJK_LAST_ACTIVE_ENV="$GHJK_ACTIVE_ENV"
     fi
 }
 

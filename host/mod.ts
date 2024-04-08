@@ -72,7 +72,7 @@ export async function cli(args: CliArgs) {
 
     subcmds.print = subcmds.print
       .command(
-        "ghjk-dir-path",
+        "ghjkdir-path",
         new cliffy_cmd.Command()
           .description("Print the path where ghjk is installed in.")
           .action(function () {
@@ -102,7 +102,7 @@ export async function cli(args: CliArgs) {
       );
   }
 
-  let cmd: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
+  const cmd = new cliffy_cmd.Command()
     .name("ghjk")
     .version("0.1.1") // FIXME: better way to resolve version
     .description("Programmable runtime manager.")
@@ -110,7 +110,7 @@ export async function cli(args: CliArgs) {
       this.showHelp();
     });
   for (const [name, subcmd] of Object.entries(subcmds)) {
-    cmd = cmd.command(name, subcmd);
+    cmd.command(name, subcmd);
   }
   await cmd
     .command("completions", new cliffy_cmd.CompletionsCommand())

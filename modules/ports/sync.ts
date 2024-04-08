@@ -33,7 +33,6 @@ import type { GhjkCtx } from "../types.ts";
 const logger = getLogger(import.meta);
 
 export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolvedX>>;
-export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 
 export function getResolutionMemo(
   gcx: GhjkCtx,
@@ -48,6 +47,8 @@ export function getResolutionMemo(
   }
   return memoStore;
 }
+
+export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,

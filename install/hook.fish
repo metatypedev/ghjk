@@ -1,4 +1,4 @@
-function ghjk_reload --on-variable PWD
+function ghjk_reload --on-variable PWD --on-variable GHJK_ACTIVE_ENV
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
         eval $GHJK_CLEANUP_FISH
@@ -35,23 +35,25 @@ function ghjk_reload --on-variable PWD
     end
 
     if test -n "$local_ghjk_dir"
-        # locate the default env
-        set --local default_env $local_ghjk_dir/envs/default
-        if test -d $default_env
+        # locate the active env
+        set --local active_env "$GHJK_ACTIVE_ENV"
+        test -z $active_env; and set --local active_env default
+        set --local active_env_dir $local_ghjk_dir/envs/$active_env
+        if test -d $active_env_dir
             # load the shim
-            . $default_env/loader.fish
+            . $active_env_dir/loader.fish
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
-            if test $default_env/loader.fish -ot $cur_dir/ghjk.ts
+            if test $active_env_dir/loader.fish -ot $cur_dir/ghjk.ts
                 set_color FF4500
-                echo "[ghjk] Detected drift from default environment, please sync..."
+                echo "[ghjk] Detected drift from active environment ($active_env), please sync..."
                 set_color normal
             end
         else
             set_color FF4500
-            echo "[ghjk] No default environment found, please sync..."
+            echo "[ghjk] Active environment not ($active_env) found, please sync..."
             set_color normal
         end
     end
