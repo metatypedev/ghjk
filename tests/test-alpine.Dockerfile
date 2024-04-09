@@ -1,34 +1,40 @@
-ARG DENO_VERSION=1.42.1
+ARG DENO_V=1.42.1
 
-FROM denoland/deno:bin-$DENO_VERSION AS deno
+FROM docker.io/denoland/deno:alpine-${DENO_V}
 
-FROM docker.io/library/debian:12-slim
+ARG BASH_V=5.2.21-r0
+ARG FISH_V=3.6.3-r0
+ARG ZSH_V=5.9-r2
+ARG GIT_V=2.43.0-r0
+ARG CURL_V=8.5.0-r0
+ARG XZ_V=5.4.5-r0
+ARG GTAR_V=1.35-r2
+ARG UNZIP_V=6.0-r14
+ARG ZSTD_V=1.5.5-r8
+ARG GCOMPAT_V=1.1.0-r4
+ARG BUILD_BASE_V=0.5-r3
 
-COPY --from=deno /deno /usr/local/bin/deno
 RUN set -eux; \
-    apt-get update; \
-    apt install --no-install-recommends --assume-yes \
+    apk update; \
+    apk add \
     # ambient deps \
-    # TODO: explicit libarchive \
-    zstd \
-    tar \
-    # TODO: explicit cc \
-    build-essential \
+    zstd=$ZSTD_V \
+    tar=$GTAR_V \
     # test deps \
-    bash \
-    fish \
-    zsh \
+    bash=$BASH_V \
+    fish=$FISH_V \
+    zsh=$ZSH_V \
     # asdf deps \
-    git \
-    curl \
-    xz-utils \
-    unzip \
+    git=$GIT_V \
+    curl=$CURL_V \
+    xz=$XZ_V \
+    unzip=$UNZIP_V \
+    build-base=$BUILD_BASE_V \
+    # gcompat=$GCOMPAT_V \
     ca-certificates \
     ;
 
 WORKDIR /ghjk
-
-ENV DENO_DIR=/deno-dir
 
 COPY deno.lock deno.jsonc ./
 COPY deps/* ./deps/

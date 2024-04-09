@@ -131,7 +131,7 @@
               "dependsOn": [],
               "env": {
                 "installs": [
-                  "ea4ab1dc054cb2dba8fc5c830c995c8db385cc79"
+                  "f48ddfcfec810fcfcfc155fef7281a8c139c26fa"
                 ],
                 "env": {
                   "STUFF": "stuffier"
@@ -201,7 +201,7 @@
     ],
     "globalEnv": {
       "installs": {
-        "ea4ab1dc054cb2dba8fc5c830c995c8db385cc79": {
+        "f48ddfcfec810fcfcfc155fef7281a8c139c26fa": {
           "port": {
             "ty": "denoWorker@v1",
             "name": "protoc_ghrel",
@@ -212,7 +212,7 @@
               "x86_64-darwin"
             ],
             "version": "0.1.0",
-            "moduleSpecifier": "file:///ports/protoc.ts"
+            "moduleSpecifier": "file:///data/home/ghjk/ports/protoc.ts"
           }
         },
         "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f": {

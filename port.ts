@@ -12,6 +12,7 @@ export { GithubReleasePort } from "./modules/ports/ghrel.ts";
 export { PortBase } from "./modules/ports/base.ts";
 export * from "./utils/unarchive.ts";
 export { default as portsValidators } from "./modules/ports/types.ts";
+export { serializePlatform } from "./modules/ports/types/platform.ts";
 
 import { std_url } from "./deps/common.ts";
 import { PortBase } from "./modules/ports/base.ts";
