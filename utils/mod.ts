@@ -122,9 +122,11 @@ export function tryDepExecShimPath(
   return path;
 }
 
-// Lifted from https://deno.land/x/hextools@v1.0.0
-// MIT License
-// Copyright (c) 2020 Santiago Aguilar Hernández
+/**
+ * Lifted from https://deno.land/x/hextools@v1.0.0
+ * MIT License
+ * Copyright (c) 2020 Santiago Aguilar Hernández
+ */
 export function bufferToHex(buffer: ArrayBuffer): string {
   return Array.prototype.map.call(
     new Uint8Array(buffer),
@@ -139,6 +141,7 @@ export async function bufferHashHex(
   const hashBuf = await crypto.subtle.digest(algo, buf);
   return bufferToHex(hashBuf);
 }
+
 export async function stringHashHex(
   val: string,
   algo: AlgorithmIdentifier = "SHA-256",
@@ -163,7 +166,7 @@ export function getPortRef(manifest: PortManifest) {
 export async function getInstallHash(install: InstallConfigResolvedX) {
   const fullHashHex = await objectHashHex(install as jsonHash.Tree);
   const hashHex = fullHashHex.slice(0, 8);
-  return `${install.portRef}~${hashHex}`;
+  return `${install.portRef}!${hashHex}`;
 }
 
 export type PathRef = dax.PathRef;

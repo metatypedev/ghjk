@@ -58,8 +58,7 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
       ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
         .flat(),
       tag,
-      ePoint.cmd,
-    ]}`
+    ]} ${ePoint.cmd}`
       .env(env);
     if (ePoint.stdin) {
       cmd = cmd.stdinText(ePoint.stdin!);

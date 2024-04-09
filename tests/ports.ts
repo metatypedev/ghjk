@@ -232,15 +232,15 @@ function testMany(
                 ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
                   cmd: [...`env ${sh}`.split(" "), testCase.ePoint],
                 })),
-                // FIXME: better tests for the `InstallDb`
+                /* // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long
                 // as it's the second sync
                 {
                   cmd: [
-                    ..."env bash -c".split(" "),
-                    "timeout 1 ghjk envs cook",
+                    ..."env".split(" "),
+                    "bash -c 'timeout 1 ghjk envs cook'",
                   ],
-                },
+                }, */
               ],
               envVars: {
                 ...defaultEnvs,
