@@ -98,9 +98,8 @@ export async function localE2eTest(testCase: E2eTestCase) {
     GHJK_SHARE_DIR: ghjkShareDir.toString(),
     PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
     // shield tests from external envs
-    // TODO: use `clearEnv` when `dax` stabilizes it
-    // https://github.com/dsherret/dax/issues/63
     GHJK_ENV: "main",
+    HOME: tmpDir.toString(),
   };
   // install ghjk
   await install({
@@ -114,6 +113,9 @@ export async function localE2eTest(testCase: E2eTestCase) {
     // don't modify system shell configs
     shellsToHook: [],
   });
+
+  // TODO: use `clearEnv` when `dax` stabilizes it
+  // https://github.com/dsherret/dax/issues/63
   std_assert.assertEquals(
     (await new Deno.Command(ghjkShareDir.join("ghjk").toString(), {
       args: "print config".split(" "),
@@ -150,7 +152,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }
   for (const ePoint of ePoints) {
-    console.log({ ePoint });
+    console.error({ ePoint });
     const cmdArr = Array.isArray(ePoint.cmd)
       ? ePoint.cmd
       : ePoint.cmd.split(" ");

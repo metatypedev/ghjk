@@ -1,6 +1,20 @@
 # shellcheck disable=SC2148
 # keep this posix compatible as it supports bash and zsh
 
+get_ctime_ts () {
+    case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
+        "linux")
+            stat -c "%Y" "$1"
+        ;;
+        "darwin")
+            stat -f "%Sm" -t "%s" "$1"
+        ;;
+        "*")
+            stat -c "%Y" "$1"
+        ;;
+    esac
+}
+
 ghjk_reload() {
     if [ -n "${GHJK_CLEANUP_POSIX+x}" ]; then
         # restore previous env
@@ -46,7 +60,7 @@ ghjk_reload() {
             . "$active_env_dir/activate.sh"
             # export variables to assist in change detection
             GHJK_LAST_ENV_DIR="$active_env_dir"
-            GHJK_LAST_ENV_DIR_CTIME="$(stat -c "%Y" "$active_env_dir/activate.sh")"
+            GHJK_LAST_ENV_DIR_CTIME="$(get_ctime_ts "$active_env_dir/activate.sh")"
             export GHJK_LAST_ENV_DIR
             export GHJK_LAST_ENV_DIR_CTIME
 
@@ -76,7 +90,7 @@ export GHJK_LAST_PWD="$PWD"
 
 precmd() {
     if [ "$GHJK_LAST_PWD" != "$PWD" ] || 
-        [ "$(stat -c "%Y" "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_CTIME" ]; then
+        [ "$(get_ctime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_CTIME" ]; then
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
         # export GHJK_LAST_ENV="$GHJK_ENV"

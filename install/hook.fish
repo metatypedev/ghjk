@@ -1,3 +1,15 @@
+
+function get_ctime_ts 
+    switch (uname -s | tr '[:upper:]' '[:lower:]')
+        case "linux"
+            stat -c "%Y" $argv
+        case "darwin"
+            stat -f "%Sm" -t "%s" $argv
+        case "*"
+            stat -c "%Y" $argv
+    end
+end
+
 function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-variable GHJK_ENV
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
@@ -44,7 +56,7 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-var
             . $active_env_dir/activate.fish
             # export variables to assist in change detection
             set --global --export GHJK_LAST_ENV_DIR $active_env_dir
-            set --global --export GHJK_LAST_ENV_DIR_CTIME (stat -c "%Y" $active_env_dir/activate.fish)
+            set --global --export GHJK_LAST_ENV_DIR_CTIME (get_ctime_ts $active_env_dir/activate.fish)
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
@@ -72,7 +84,7 @@ end
 
 # trigger reload the env dir loader ctime changes
 function ghjk_env_dir_watcher --on-event fish_postexec
-    if set --query GHJK_LAST_ENV_DIR; and test (stat -c "%Y" $GHJK_LAST_ENV_DIR/activate.fish) -gt "$GHJK_LAST_ENV_DIR_CTIME"
+    if set --query GHJK_LAST_ENV_DIR; and test (get_ctime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt "$GHJK_LAST_ENV_DIR_CTIME"
         emit ghjk_env_dir_change
     end
 end
