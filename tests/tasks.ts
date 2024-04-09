@@ -8,11 +8,13 @@ import {
 } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
+import { stdSecureConfig } from "../ghjkfiles/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   stdin: string;
   tasks: TaskDefArgs[];
+  enableRuntimesOnMasterPDAL?: boolean;
 };
 const cases: CustomE2eTestCase[] = [
   {
@@ -70,6 +72,7 @@ ghjk x protoc`,
     }],
     ePoint: `fish`,
     stdin: `ghjk x test`,
+    enableRuntimesOnMasterPDAL: true,
   },
   {
     name: "default_port_deps",
@@ -130,7 +133,12 @@ function testMany(
         testFn({
           ...testCase,
           tsGhjkfileStr: genTsGhjkFile(
-            { installConf: [], taskDefs: testCase.tasks },
+            {
+              taskDefs: testCase.tasks,
+              secureConf: stdSecureConfig({
+                enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
+              }),
+            },
           ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
           envVars: {
