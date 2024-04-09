@@ -122,10 +122,12 @@ Once you've configured your environments:
 
 - `$ ghjk envs cook $name` to reify and install an environment.
 - `$ ghjk envs activate $name` to switch to an environment.
-- And **most** usefully, `$ ghjk sync $name` to cook and activate and
+- And **most** usefully, `$ ghjk sync $name` to cook and _then_ activate an
   environment.
+  - If shell is already in the specified env, it only does cooking.
+  - Make sure to `sync` or `cook` your envs after changes.
 - If no `$name` is provided, most of these commands will operate on the default
-  or currently active default environment.
+  or currently active environment.
 
 ### Ports
 
