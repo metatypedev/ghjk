@@ -29,7 +29,7 @@ const envVarTestEnvs: EnvDefArgs[] = [
   },
   {
     name: "yuki",
-    envBase: false,
+    base: false,
     vars: {
       HUMM: "Soul Lady",
     },
@@ -90,7 +90,7 @@ const installTestEnvs: EnvDefArgs[] = [
   },
   {
     name: "foo",
-    envBase: false,
+    base: false,
     installs: [
       dummy({ output: "foo" }),
     ],

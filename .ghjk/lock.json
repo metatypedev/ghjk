@@ -63,6 +63,127 @@
           "version": "v26.1",
           "depConfigs": {},
           "portRef": "protoc_ghrel@0.1.0"
+        },
+        "18cb2f5c387de05ba14663089f84978cd36dd7878a2e7b429391c770dc7da623": {
+          "version": "1.77.1",
+          "depConfigs": {
+            "rustup_rustlang": {
+              "version": "1.27.0",
+              "depConfigs": {
+                "git_aa": {
+                  "version": "2.40.1",
+                  "depConfigs": {},
+                  "portRef": "git_aa@0.1.0"
+                }
+              },
+              "portRef": "rustup_rustlang@0.1.0"
+            }
+          },
+          "portRef": "rust_rustup@0.1.0"
+        },
+        "4b3f09c15ad572211f821a76c776adea93e3c4f686817fd64dad8a5c8356ddea": {
+          "version": "1.27.0",
+          "depConfigs": {
+            "git_aa": {
+              "version": "2.40.1",
+              "depConfigs": {},
+              "portRef": "git_aa@0.1.0"
+            }
+          },
+          "portRef": "rustup_rustlang@0.1.0"
+        },
+        "0c719c533251d13d9e84b3113733c9dcd9e48f978c02f3fc4e14816080f7a69e": {
+          "version": "2.40.1",
+          "depConfigs": {},
+          "portRef": "git_aa@0.1.0"
+        },
+        "ea6310372b0eea717059130bd9ad53908fa6cdd7008029f16b685826b484cc6a": {
+          "version": "1.38.0",
+          "depConfigs": {
+            "cargo_binstall_ghrel": {
+              "version": "v1.6.4",
+              "depConfigs": {},
+              "portRef": "cargo_binstall_ghrel@0.1.0"
+            },
+            "rust_rustup": {
+              "version": "1.77.1",
+              "depConfigs": {
+                "rustup_rustlang": {
+                  "version": "1.27.0",
+                  "depConfigs": {
+                    "git_aa": {
+                      "version": "2.40.1",
+                      "depConfigs": {},
+                      "portRef": "git_aa@0.1.0"
+                    }
+                  },
+                  "portRef": "rustup_rustlang@0.1.0"
+                }
+              },
+              "portRef": "rust_rustup@0.1.0",
+              "profile": "minimal"
+            }
+          },
+          "portRef": "cargobi_cratesio@0.1.0",
+          "crateName": "cargo-insta"
+        },
+        "402fae54fb94ffdba9cd2617602c7b33c55002275f3c3bb588615b01ff0c3c26": {
+          "version": "v1.6.4",
+          "depConfigs": {},
+          "portRef": "cargo_binstall_ghrel@0.1.0"
+        },
+        "4a077ef5a23a541cc6e372186951d640da541f7c4eba2613c2a1c427a5d95a5c": {
+          "version": "1.77.1",
+          "depConfigs": {
+            "rustup_rustlang": {
+              "version": "1.27.0",
+              "depConfigs": {
+                "git_aa": {
+                  "version": "2.40.1",
+                  "depConfigs": {},
+                  "portRef": "git_aa@0.1.0"
+                }
+              },
+              "portRef": "rustup_rustlang@0.1.0"
+            }
+          },
+          "portRef": "rust_rustup@0.1.0",
+          "profile": "minimal"
+        },
+        "d75bbd2d68c4de2bec570e3bda258bc1fc2bd2778c5d246d9e9c4b485b605b93": {
+          "version": "0.1.66",
+          "depConfigs": {
+            "cargo_binstall_ghrel": {
+              "version": "v1.6.4",
+              "depConfigs": {},
+              "portRef": "cargo_binstall_ghrel@0.1.0"
+            },
+            "rust_rustup": {
+              "version": "1.77.1",
+              "depConfigs": {
+                "rustup_rustlang": {
+                  "version": "1.27.0",
+                  "depConfigs": {
+                    "git_aa": {
+                      "version": "2.40.1",
+                      "depConfigs": {},
+                      "portRef": "git_aa@0.1.0"
+                    }
+                  },
+                  "portRef": "rustup_rustlang@0.1.0"
+                }
+              },
+              "portRef": "rust_rustup@0.1.0",
+              "profile": "minimal"
+            }
+          },
+          "portRef": "cargobi_cratesio@0.1.0",
+          "crateName": "cargo-chef"
+        },
+        "506a72e6989644a81705e01726ce79df885de54c5e9ccc76b3002085260b9480": {
+          "version": "v1.6.2",
+          "depConfigs": {},
+          "portRef": "opentofu_ghrel@0.1.0"
         }
       }
     },
@@ -121,11 +242,6 @@
             },
             "test": {
               "provides": [
-                {
-                  "ty": "posix.envVar",
-                  "key": "stuff",
-                  "val": "hola"
-                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___test"

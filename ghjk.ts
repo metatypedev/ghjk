@@ -12,8 +12,9 @@ install(
   ports.cpy_bs({}),
 );
 
-env("test", { vars: { stuff: "hola" } })
-  .install(ports.protoc());
+env("test", {
+  installs: [ports.protoc()],
+});
 
 export const secureConfig = stdSecureConfig({
   enableRuntimes: true,

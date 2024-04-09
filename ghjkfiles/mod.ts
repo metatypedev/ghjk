@@ -48,7 +48,7 @@ export type EnvDefArgs = {
    * top of a new env. If given a string, will use the identified env as a base
    * for the task env.
    */
-  envBase?: string | boolean;
+  base?: string | boolean;
   desc?: string;
   vars?: Record<string, string>;
 };
@@ -73,7 +73,7 @@ export type TaskDefArgs = {
   envVars?: Record<string, string>;
   allowedPortDeps?: AllowedPortDep[];
   installs?: InstallConfigFat[];
-  envBase?: string | boolean;
+  base?: string | boolean;
 };
 
 export class GhjkfileBuilder {
@@ -111,8 +111,8 @@ export class GhjkfileBuilder {
     // be declared before the `env` but still depend on it.
     // Order-indepency like this makes the `ghjk.ts` way less
     // brittle.
-    if (typeof args.envBase == "string") {
-      this.addEnv({ name: args.envBase });
+    if (typeof args.base == "string") {
+      this.addEnv({ name: args.base });
     }
 
     this.#tasks[args.name] = {
@@ -129,8 +129,8 @@ export class GhjkfileBuilder {
       env = new EnvBuilder(this, (fin) => finalizer = fin, args.name);
       this.#seenEnvs[args.name] = [env, finalizer!];
     }
-    if (args.envBase !== undefined) {
-      env.base(args.envBase);
+    if (args.base !== undefined) {
+      env.base(args.base);
     }
     if (args.installs) {
       env.install(...args.installs);
@@ -231,10 +231,10 @@ export class GhjkfileBuilder {
       const [_name, [_builder, finalizer]] of Object.entries(this.#seenEnvs)
     ) {
       const final = finalizer();
-      const { name, envBase } = final;
-      const envBaseResolved = typeof envBase === "string"
-        ? envBase
-        : envBase
+      const { name, base } = final;
+      const envBaseResolved = typeof base === "string"
+        ? base
+        : base
         ? defaultBaseEnv
         : null;
       all[name] = { ...final, envBaseResolved };
@@ -345,10 +345,10 @@ export class GhjkfileBuilder {
           this.#tasks,
         )
     ) {
-      const { workingDir, desc, dependsOn, envBase } = args;
-      const envBaseResolved = typeof envBase === "string"
-        ? envBase
-        : envBase
+      const { workingDir, desc, dependsOn, base } = args;
+      const envBaseResolved = typeof base === "string"
+        ? base
+        : base
         ? defaultBaseEnv
         : null;
 
@@ -486,7 +486,7 @@ export class GhjkfileBuilder {
 type EnvFinalizer = () => {
   name: string;
   installSetId: string;
-  envBase: string | boolean;
+  base: string | boolean;
   vars: Record<string, string>;
   desc?: string;
 };
@@ -511,7 +511,7 @@ export class EnvBuilder {
     setFinalizer(() => ({
       name: this.name,
       installSetId: this.#installSetId,
-      envBase: this.#base,
+      base: this.#base,
       vars: this.#vars,
       desc: this.#desc,
     }));
