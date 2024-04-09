@@ -8,6 +8,7 @@ import {
   localE2eTest,
 } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
+import dummy from "../ports/dummy.ts";
 import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
@@ -21,6 +22,12 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
+  // 0 megs
+  {
+    name: "dummy",
+    installConf: dummy(),
+    ePoint: `dummy`,
+  },
   // 2 megs
   {
     name: "jq",
@@ -223,12 +230,17 @@ function testMany(
               ),
               ePoints: [
                 ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                  cmd: `env ${sh} '${testCase.ePoint}'`,
+                  cmd: [...`env ${sh}`.split(" "), testCase.ePoint],
                 })),
                 // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long
                 // as it's the second sync
-                { cmd: "env bash -c 'timeout 1 ghjk env sync'" },
+                {
+                  cmd: [
+                    ..."env bash -c".split(" "),
+                    "timeout 1 ghjk envs cook",
+                  ],
+                },
               ],
               envVars: {
                 ...defaultEnvs,
@@ -238,7 +250,7 @@ function testMany(
             // building the test docker image might taka a while
             // but we don't want some bug spinlocking the ci for
             // an hour
-            300_000,
+            5 * 60 * 1000,
           ),
       },
     );

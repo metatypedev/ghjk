@@ -12,7 +12,7 @@ export type E2eTestCase = {
   name: string;
   tsGhjkfileStr: string;
   envVars?: Record<string, string>;
-  ePoints: { cmd: string; stdin?: string }[];
+  ePoints: { cmd: string | string[]; stdin?: string }[];
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
@@ -34,18 +34,6 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     // repo in the host fs to point to the copy of the
     // repo in the image
     .replaceAll(devGhjkPath, "file://$ghjk/")
-    // .replace(/\\/g, "\\\\")
-    //
-    // escape backticks
-    // .replace(/`/g, "\\`")
-    // escpape ${VAR} types of vars
-    // .replace(/\$\{([^\}]*)\}/g, "\\${$1}")
-    // escpae $VAR types of vars
-    // double dollar is treated as escpae so place a mark betewen
-    // .replace(/\$([A-Za-z])/g, "\\$<MARK>$1")
-    // .replace(/\$([A-Za-z])/g, "\\$<MARK>$1")
-    // remove mark
-    // .replace(/<MARK>/g, "")
     .replaceAll("$ghjk", "/ghjk");
 
   const dFile = dbg(dFileTemplate
@@ -162,7 +150,10 @@ export async function localE2eTest(testCase: E2eTestCase) {
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }
   for (const ePoint of ePoints) {
-    const cmdArr = ePoint.cmd.split(" ");
+    console.log({ ePoint });
+    const cmdArr = Array.isArray(ePoint.cmd)
+      ? ePoint.cmd
+      : ePoint.cmd.split(" ");
     const cmd = new Deno.Command(cmdArr[0], {
       args: cmdArr.splice(1),
       cwd: tmpDir.toString(),
