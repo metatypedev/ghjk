@@ -705,15 +705,17 @@ function getDepConfig(
   return { config: res.data, manifest: depPort };
 }
 
-/// This is a simpler version of the graph
-/// based installer that the rest of this module implements
-/// it resolves and installs a single config (and it's deps).
-/// This primarily is used to install the manifest.resolutionDeps
-/// which are required to do version resolution when building the
-/// graph
-/// FIXME: the usage of this function implies that resolution
-/// will be redone if a config specfied by different resolutionDeps
-/// Consider introducing a memoization scheme
+/**
+ * This is a simpler version of the graph based installer that
+ * the rest of this module implements.
+ * It resolves and installs a single config (and its deps).
+ * This primarily is used to install the manifest.resolutionDeps
+ * which are required to do version resolution when building the
+ * main graphs.
+ */
+// FIXME: the usage of this function implies that resolution
+// will be redone if a config specfied by different resolutionDeps
+// TODO: consider introducing a memoization scheme
 async function resolveAndInstall(
   scx: SyncCtx,
   set: InstallSetX,

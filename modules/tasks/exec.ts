@@ -118,7 +118,11 @@ export async function execTask(
       gcx,
       tasksConfig.envs[taskDef.envHash],
     );
-    const { env: installEnvs } = await cookPosixEnv(reducedEnv, taskEnvDir);
+    const { env: installEnvs } = await cookPosixEnv(
+      reducedEnv,
+      `taskEnv_${taskName}`,
+      taskEnvDir,
+    );
     logger.info("executing", taskName, args);
     await execTaskDeno(
       std_path.toFileUrl(gcx.ghjkfilePath).href,

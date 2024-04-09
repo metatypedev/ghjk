@@ -1,9 +1,9 @@
-function ghjk_reload --on-variable PWD --on-variable GHJK_ENV
+function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-variable GHJK_ENV
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
         eval $GHJK_CLEANUP_FISH
+        set --erase GHJK_CLEANUP_FISH
     end
-    set --erase GHJK_CLEANUP_FISH
 
     set --local cur_dir
     set --local local_ghjk_dir $GHJK_DIR
@@ -42,20 +42,38 @@ function ghjk_reload --on-variable PWD --on-variable GHJK_ENV
         if test -d $active_env_dir
             # load the shim
             . $active_env_dir/activate.fish
+            # export variables to assist in change detection
+            set --global --export GHJK_LAST_ENV_DIR $active_env_dir
+            set --global --export GHJK_LAST_ENV_DIR_CTIME (stat -c "%Y" $active_env_dir/activate.fish)
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             if test $active_env_dir/activate.fish -ot $cur_dir/ghjk.ts
                 set_color FF4500
-                echo "[ghjk] Detected drift from active environment ($active_env), please sync..."
+                if test $active_env = "default"
+                    echo "[ghjk] Possible drift from default environment, please sync..."
+                else
+                    echo "[ghjk] Possible drift from active environment ($active_env), please sync..."
+                end
                 set_color normal
             end
         else
             set_color FF4500
-            echo "[ghjk] Active environment ($active_env) not found, please sync..."
+            if test $active_env = "default"
+                echo "[ghjk] Default environment not found, please sync..."
+            else
+                echo "[ghjk] Active environment ($active_env) not found, please sync..."
+            end
             set_color normal
         end
+    end
+end
+
+# trigger reload the env dir loader ctime changes
+function ghjk_env_dir_watcher --on-event fish_postexec
+    if set --query GHJK_LAST_ENV_DIR; and test (stat -c "%Y" $GHJK_LAST_ENV_DIR/activate.fish) -gt "$GHJK_LAST_ENV_DIR_CTIME"
+        emit ghjk_env_dir_change
     end
 end
 

@@ -12,7 +12,7 @@ install(
   ports.cpy_bs({}),
 );
 
-env("test")
+env("test", { vars: { stuff: "hola" } })
   .install(ports.protoc());
 
 export const secureConfig = stdSecureConfig({

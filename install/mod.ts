@@ -33,18 +33,6 @@ const getHooksVfs = async () => ({
   ),
 });
 
-export async function detectShell(): Promise<string> {
-  let path = Deno.env.get("SHELL");
-  if (!path) {
-    try {
-      path = await $`ps -p ${Deno.ppid} -o comm=`.text();
-    } catch (err) {
-      throw new Error(`cannot get parent process name: ${err}`);
-    }
-  }
-  return std_path.basename(path, ".exe").toLowerCase().trim();
-}
-
 async function unpackVFS(
   vfs: Record<string, string>,
   baseDir: string,
@@ -101,24 +89,37 @@ interface InstallArgs {
   homeDir: string;
   ghjkShareDir: string;
   shellsToHook: string[];
-  /// The mark used when adding the hook to the user's shell rcs
-  /// Override t
+  /** The mark used when adding the hook to the user's shell rcs.
+   * Override to allow multiple hooks in your rc.
+   */
   shellHookMarker: string;
-  /// The ghjk bin is optional, one can always invoke it
-  /// using `deno run --flags uri/to/ghjk/main.ts`;
+  /**
+   * The ghjk bin is optional, one can always invoke it
+   * using `deno run --flags uri/to/ghjk/main.ts`;
+   */
   skipExecInstall: boolean;
-  /// The directory in which to install the ghjk exec
-  /// Preferrably, one that's in PATH
+  /** The directory in which to install the ghjk exec
+   * Preferrably, one that's in PATH
+   */
   ghjkExecInstallDir: string;
-  /// the deno exec to be used by the ghjk executable
-  /// by default will be "deno" i.e. whatever the shell resolves that to
+  /**
+   * The deno exec to be used by the ghjk executable
+   * by default will be "deno" i.e. whatever in $PATH that resolves that to.
+   */
   ghjkExecDenoExec: string;
-  /// The cache dir to use by the ghjk deno installation
+  /**
+   * The cache dir to use by the ghjk deno installation.
+   */
   ghjkDenoCacheDir?: string;
-  // Disable using a lockfile for the ghjk command
+  /**
+   * Disable using a lockfile for the ghjk command
+   */
   noLockfile: boolean;
 }
 
+/**
+ * @field:
+ */
 export const defaultInstallArgs: InstallArgs = {
   ghjkShareDir: std_path.resolve(dirs().shareDir, "ghjk"),
   homeDir: dirs().homeDir,
@@ -128,8 +129,10 @@ export const defaultInstallArgs: InstallArgs = {
   // TODO: respect xdg dirs
   ghjkExecInstallDir: std_path.resolve(dirs().homeDir, ".local", "bin"),
   ghjkExecDenoExec: Deno.execPath(),
-  // the default behvaior kicks in with ghjkDenoCacheDir is falsy
-  // ghjkDenoCacheDir: undefined,
+  /**
+   * the default behvaior kicks in with ghjkDenoCacheDir is falsy
+   * ghjkDenoCacheDir: undefined,
+   */
   noLockfile: false,
 };
 

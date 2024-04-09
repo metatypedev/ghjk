@@ -50,6 +50,7 @@ export type EnvDefArgs = {
    */
   envBase?: string | boolean;
   desc?: string;
+  vars?: Record<string, string>;
 };
 
 export type TaskFnArgs = {
@@ -139,6 +140,9 @@ export class GhjkfileBuilder {
     }
     if (args.desc) {
       env.desc(args.desc);
+    }
+    if (args.vars) {
+      env.vars(args.vars);
     }
     return env;
   }
@@ -245,7 +249,10 @@ export class GhjkfileBuilder {
         indie.push(name);
       }
     }
-    const processed = {} as Record<string, { installSetId?: string }>;
+    const processed = {} as Record<
+      string,
+      { installSetId?: string; vars: Record<string, string> }
+    >;
     const out: EnvsModuleConfig = { envs: {}, defaultEnv };
     const workingSet = [...indie];
     while (workingSet.length > 0) {
@@ -255,6 +262,11 @@ export class GhjkfileBuilder {
       const base = final.envBaseResolved
         ? processed[final.envBaseResolved]
         : null;
+
+      const processedVars = {
+        ...(base?.vars ?? {}),
+        ...final.vars,
+      };
 
       let processedInstallSetId: string | undefined;
       {
@@ -290,11 +302,14 @@ export class GhjkfileBuilder {
           }
         }
       }
-      processed[final.name] = { installSetId: processedInstallSetId };
+      processed[final.name] = {
+        installSetId: processedInstallSetId,
+        vars: processedVars,
+      };
       out.envs[final.name] = {
         desc: final.desc,
         provides: [
-          ...Object.entries(final.vars).map((
+          ...Object.entries(processedVars).map((
             [key, val],
           ) => {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };

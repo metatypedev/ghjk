@@ -6,7 +6,8 @@ import { $, PathRef } from "../../utils/mod.ts";
 const logger = getLogger(import.meta);
 
 export async function cookPosixEnv(
-  env: WellKnownEnvRecipeX,
+  recipe: WellKnownEnvRecipeX,
+  envName: string,
   envDir: string,
   createShellLoaders = false,
 ) {
@@ -25,11 +26,13 @@ export async function cookPosixEnv(
   const binPaths = [] as string[];
   const libPaths = [] as string[];
   const includePaths = [] as string[];
-  const vars = {} as Record<string, string>;
+  const vars = {
+    GHJK_ENV: envName,
+  } as Record<string, string>;
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
-  await Promise.all(env.provides.map((item) => {
+  await Promise.all(recipe.provides.map((item) => {
     switch (item.ty) {
       case "posix.exec":
         binPaths.push(item.absolutePath);
@@ -48,7 +51,7 @@ export async function cookPosixEnv(
             }" and "${item.val}"`,
           );
         }
-        vars[item.key] = vars[item.val];
+        vars[item.key] = item.val;
         break;
       default:
         throw Error(`unsupported provision type: ${(item as any).provision}`);
@@ -70,6 +73,7 @@ export async function cookPosixEnv(
       includePaths,
       includeShimDir,
     ),
+    $.path(envDir).join("recipe.json").writeJsonPretty(recipe),
   ]);
   // write loader for the env vars mandated by the installs
   logger.debug("adding vars to loader", vars);
@@ -158,6 +162,9 @@ async function writeLoader(
 ) {
   const activate = {
     posix: [
+      `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then
+    eval "$GHJK_CLEANUP_POSIX"
+fi`,
       `export GHJK_CLEANUP_POSIX="";`,
       ...Object.entries(env).map(([k, v]) =>
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
@@ -173,7 +180,10 @@ export ${k}="${v}:$${k}";
       ),
     ].join("\n"),
     fish: [
-      `set --erase GHJK_CLEANUP_FISH`,
+      `if set --query GHJK_CLEANUP_FISH
+    eval $GHJK_CLEANUP_FISH
+    set --erase GHJK_CLEANUP_FISH
+end`,
       ...Object.entries(env).map(([k, v]) =>
         `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
 set --global --export ${k} '${v}';`

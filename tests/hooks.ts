@@ -175,9 +175,9 @@ function testMany(
             { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
           ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
-          envs: {
+          envVars: {
             ...defaultEnvs,
-            ...testCase.envs,
+            ...testCase.envVars,
           },
         }),
     );

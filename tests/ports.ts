@@ -230,9 +230,9 @@ function testMany(
                 // as it's the second sync
                 { cmd: "env bash -c 'timeout 1 ghjk env sync'" },
               ],
-              envs: {
+              envVars: {
                 ...defaultEnvs,
-                ...testCase.envs,
+                ...testCase.envVars,
               },
             }),
             // building the test docker image might taka a while

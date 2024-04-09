@@ -111,7 +111,7 @@
         "config": {
           "envs": {
             "main": {
-              "desc": "The default default environment.",
+              "desc": "the default default environment.",
               "provides": [
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -121,6 +121,11 @@
             },
             "test": {
               "provides": [
+                {
+                  "ty": "posix.envVar",
+                  "key": "stuff",
+                  "val": "hola"
+                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___test"

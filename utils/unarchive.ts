@@ -8,9 +8,11 @@ import {
   std_untar,
 } from "../deps/ports.ts";
 
-/// Uses file extension to determine type
-/// Does not support extracting symlinks
-/// Does not support tarballs using [GnuSparse](https://www.gnu.org/software/tar/manual/html_node/Sparse-Recovery.html)
+/**
+ * - Uses file extension to determine archive type.
+ * - Does not support extracting symlinks
+ * - Does not support tarballs using {@link https://www.gnu.org/software/tar/manual/html_node/Sparse-Recovery.html | GnuSparse}
+ */
 export async function unarchive(
   path: string,
   dest = "./",
@@ -71,7 +73,9 @@ export async function untar(
   }
 }
 
-/// This does not close the reader
+/**
+ * This does not close the reader.
+ */
 export async function untarReader(
   reader: Deno.Reader,
   dest = "./",

@@ -1,23 +1,7 @@
-/*
-  Design:
-    - `$ ghjk env activate` to switch to default environment
-    - `$ ghjk envs list`
-    - `$ ghjk envs info`
-    - `$ ghjk env activate` - activate default environment
-    - `$ ghjk env activate $name` - activate $name environment
-    - `$ ghjk env src` - activate default environment
-    - `$ ghjk env src $name` - activate $name environment
-    - `$ ghjk env cook` - cooks default environment
-    - `$ ghjk env cook $name` - cooks $name environment
-    - `$ ghjk sync` - activates and cooks default environment
-    - `$ ghjk sync $name` - activates and cooks $name environment
-    - By default, all things go to the `main` environment
-*/
-
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
+import { $, detectShellPath, Json, unwrapParseRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { EnvsModuleConfigX, WellKnownProvision } from "./types.ts";
@@ -75,79 +59,107 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     gcx: GhjkCtx,
     ecx: EnvsCtx,
   ) {
-    const commands = {
-      src: new cliffy_cmd.Command()
-        .description(`Activate an environment.
-If invoked without any arguments, this will activate the default env [${ecx.config.defaultEnv}]`)
-        .arguments("[envName:string]")
-        .action(async function (_void, envName) {
-          $`fish `.env().spawn();
-        }),
-
-      cook: new cliffy_cmd.Command()
-        .description(`Cooks the environment to a posix shell.
-If invoked without any arguments, this will cook the active env [${ecx.activeEnv}]`)
-        .arguments("[envName:string]")
-        .action(async function (_void, envNameMaybe) {
-          const envName = envNameMaybe ?? ecx.activeEnv;
-          const env = ecx.config.envs[envName];
-          if (!env) {
-            throw new Error(`No env found under given name "${envName}"`);
-          }
-
-          // TODO: diff env and ask confirmation from user
-          const reducedEnv = await reduceStrangeProvisions(gcx, env);
-          const envDir = $.path(gcx.ghjkDir).join("envs", envName).toString();
-
-          await cookPosixEnv(reducedEnv, envDir, true);
-        }),
-
-      ls: new cliffy_cmd.Command()
-        .description("List environments defined in the ghjkfile.")
-        .action(() => {
-          console.log(
-            Object.entries(ecx.config.envs)
-              .map(([name, { desc }]) => `${name}${desc ? ": " + desc : ""}`)
-              .join("\n"),
-          );
-        }),
-
-      show: new cliffy_cmd.Command()
-        .description(`Show details about an environment.
-If invoked without any arguments, this will show info of the active env [${ecx.activeEnv}].
-        `)
-        .arguments("[envName:string]")
-        .action(function (_void, envNameMaybe) {
-          const envName = envNameMaybe ?? ecx.activeEnv;
-          if (!ecx.config.envs[envName]) {
-            throw new Error(`No env found under given name "${envName}"`);
-          }
-          printEnvInfo(gcx, ecx, envName);
-        }),
-    };
-    for (const [envName, { desc }] of Object.entries(ecx.config.envs)) {
-      const cmd = new cliffy_cmd.Command()
-        .action(function () {
-          printEnvInfo(gcx, ecx, envName);
-        });
-      if (desc) {
-        cmd.description(desc);
-      }
-      commands.show.command(envName, cmd);
-    }
-    const root = new cliffy_cmd
-      .Command()
-      .description("Envs module, reproducable posix shells environments.")
-      .alias("e")
-      // .alias("env")
-      .action(function () {
-        this.showHelp();
-      });
-    for (const [name, cmd] of Object.entries(commands)) {
-      root.command(name, cmd);
-    }
     return {
-      envs: root,
+      envs: new cliffy_cmd
+        .Command()
+        .description("Envs module, reproducable posix shells environments.")
+        .alias("e")
+        // .alias("env")
+        .action(function () {
+          this.showHelp();
+        })
+        .command(
+          "ls",
+          new cliffy_cmd.Command()
+            .description("List environments defined in the ghjkfile.")
+            .action(() => {
+              console.log(
+                Object.entries(ecx.config.envs)
+                  .map(([name, { desc }]) =>
+                    `${name}${desc ? ": " + desc : ""}`
+                  )
+                  .join("\n"),
+              );
+            }),
+        )
+        .command(
+          "activate",
+          new cliffy_cmd.Command()
+            .description(`Activate an environment.
+
+- If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`)
+            .arguments("[envName:string]")
+            .option(
+              "--shell <shell>",
+              "The shell to use. Tries to detect the current shell if not provided.",
+            )
+            .action(async function ({ shell: shellMaybe }, envNameMaybe) {
+              const shell = shellMaybe ?? await detectShellPath();
+              if (!shell) {
+                throw new Error(
+                  "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+                );
+              }
+              const envName = envNameMaybe ?? ecx.config.defaultEnv;
+              // FIXME: the ghjk process will be around and consumer resources
+              // with approach. Ideally, we'd detach the child and exit but this is blocked by
+              // https://github.com/denoland/deno/issues/5501 is closed
+              await $`${shell}`
+                .env({ GHJK_ENV: envName });
+            }),
+        )
+        .command(
+          "cook",
+          new cliffy_cmd.Command()
+            .description(`Cooks the environment to a posix shell.
+
+- If no [envName] is specified, this will cook the active env [${ecx.activeEnv}]`)
+            .arguments("[envName:string]")
+            .action(async function (_void, envNameMaybe) {
+              const envName = envNameMaybe ?? ecx.activeEnv;
+              await reduceAndCookEnv(gcx, ecx, envName);
+            }),
+        )
+        .command(
+          "show",
+          new cliffy_cmd.Command()
+            .description(`Show details about an environment.
+
+- If no [envName] is specified, this shows details of the active env [${ecx.activeEnv}].
+- If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].
+        `)
+            .arguments("[envName:string]")
+            .action(function (_void, envNameMaybe) {
+              const envName = envNameMaybe ?? ecx.activeEnv;
+              if (!ecx.config.envs[envName]) {
+                throw new Error(`No env found under given name "${envName}"`);
+              }
+              printEnvInfo(gcx, ecx, envName);
+            }),
+        ),
+      sync: new cliffy_cmd.Command()
+        .description(`Cooks and activates an environment.
+
+- If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
+- If the environment is already active, this doesn't launch a new shell.`)
+        .arguments("[envName:string]")
+        .option(
+          "--shell <shell>",
+          "The shell to use. Tries to detect the current shell if not provided.",
+        )
+        .action(async function ({ shell: shellMaybe }, envNameMaybe) {
+          const shell = shellMaybe ?? await detectShellPath();
+          if (!shell) {
+            throw new Error(
+              "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+            );
+          }
+          const envName = envNameMaybe ?? ecx.activeEnv;
+          await reduceAndCookEnv(gcx, ecx, envName);
+          if (ecx.activeEnv != envName) {
+            await $`${shell}`.env({ GHJK_ENV: envName });
+          }
+        }),
     };
   }
 
@@ -173,16 +185,35 @@ If invoked without any arguments, this will show info of the active env [${ecx.a
   }
 }
 
+async function reduceAndCookEnv(
+  gcx: GhjkCtx,
+  ecx: EnvsCtx,
+  envName: string,
+) {
+  const env = ecx.config.envs[envName];
+  if (!env) {
+    throw new Error(`No env found under given name "${envName}"`);
+  }
+
+  // TODO: diff env and ask confirmation from user
+  const reducedEnv = await reduceStrangeProvisions(gcx, env);
+  const envDir = $.path(gcx.ghjkDir).join("envs", envName);
+
+  await cookPosixEnv(reducedEnv, envName, envDir.toString(), true);
+  if (envName == ecx.config.defaultEnv) {
+    const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
+    await $.removeIfExists(defaultEnvDir);
+    await defaultEnvDir.createSymlinkTo(envDir, { kind: "relative" });
+  }
+}
+
 function printEnvInfo(
   gcx: GhjkCtx,
   ecx: EnvsCtx,
   envName: string,
 ) {
   const env = ecx.config.envs[envName];
-  const printBag = {
-    envName,
-    ...(env.desc ? { desc: env.desc } : {}),
-  } as Record<string, any>;
+  const printBag = {} as Record<string, any>;
   for (
     const prov of env
       .provides as (
@@ -234,8 +265,15 @@ function printEnvInfo(
       default:
     }
   }
-  console.log(Deno.inspect(printBag, {
-    depth: 10,
-    colors: isColorfulTty(),
-  }));
+  console.log(Deno.inspect(
+    {
+      ...printBag,
+      ...(env.desc ? { desc: env.desc } : {}),
+      envName,
+    },
+    {
+      depth: 10,
+      colors: isColorfulTty(),
+    },
+  ));
 }

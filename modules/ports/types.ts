@@ -79,7 +79,7 @@ const portManifest = zod.discriminatedUnion("ty", [
 const installConfigSimple = zod.object({
   version: zod.string()
     .nullish(),
-  // /// A place to put captured env vars
+  // // A place to put captured env vars
   // envVars: zod.record(zod.string(), zod.string()).nullish().default({}),
 }).passthrough();
 
@@ -249,7 +249,6 @@ export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
 >;
 
-// Describes the port itself
 export type PortManifest = zod.input<
   typeof validators.portManifest
 >;
@@ -261,12 +260,16 @@ export type DenoWorkerPortManifestX = zod.infer<
 export type AmbientAccessPortManifestX = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
-/// This is the transformed version of PortManifest, ready for consumption
+/**
+ * This is the transformed version of PortManifest, ready for consumption
+ */
 export type PortManifestX = zod.infer<
   typeof validators.portManifest
 >;
 
-/// PortDeps are used during the port build/install process
+/**
+ * PortDeps are used during the port build/install process
+ */
 export type PortDep = zod.infer<typeof validators.portDep>;
 export type PortDepFat = zod.infer<typeof validators.portDepFat>;
 
@@ -279,21 +282,39 @@ export type InstallConfigBaseLite = zod.input<
 export type InstallConfigBaseFat = zod.input<
   typeof validators.installConfigBaseFat
 >;
-/// Fat install configs include the port manifest within
+/**
+ * Fat install configs include the port manifest within.
+ */
 export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
-/// Fat install configs include the port manifest within
+/**
+ * Fat install configs include the port manifest within.
+ */
 export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
-/// Lite install configs refer to the port they use by name
+/**
+ * Lite install configs refer to the port they use by name.
+ */
 export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
-/// Lite install configs refer to the port they use by name
+/**
+ * Lite install configs refer to the port they use by name.
+ */
 export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
-// Describes a single installation done by a specific plugin.
+/**
+ * Describes a single installation done by a specific plugin.
+ */
 export type InstallConfig = zod.input<typeof validators.installConfig>;
-// Describes a single installation done by a specific plugin.
+/**
+ * Describes a single installation done by a specific plugin.
+ */
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+/**
+ * {@link InstallConfig} after the {@link InstallConfig.version} has been deternimed.
+ */
 export type InstallConfigResolved = zod.input<
   typeof validators.installConfigResolved
 >;
+/**
+ * {@inheritDoc InstallConfigResolved}
+ */
 export type InstallConfigResolvedX = zod.infer<
   typeof validators.installConfigResolved
 >;

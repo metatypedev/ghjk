@@ -44,7 +44,7 @@ export async function cli(args: CliArgs) {
           }),
       ),
     deno: new cliffy_cmd.Command()
-      .description("Access the deno cli used by ghjk.")
+      .description("Access the deno cli.")
       .useRawArgs()
       .action(async function (_, ...args) {
         logger().debug(args);

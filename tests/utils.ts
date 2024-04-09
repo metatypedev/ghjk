@@ -1,17 +1,17 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
-import { std_url } from "../deps/common.ts";
+import { std_assert, std_url } from "../deps/dev.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
 import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 import type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
-export type { TaskDefArgs } from "../mod.ts";
+export type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
   name: string;
   tsGhjkfileStr: string;
-  envs?: Record<string, string>;
+  envVars?: Record<string, string>;
   ePoints: { cmd: string; stdin?: string }[];
 };
 
@@ -22,7 +22,7 @@ const templateStrings = {
 };
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envs: testEnvs, ePoints, tsGhjkfileStr } = testCase;
+  const { name, envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
   const tag = `ghjk_e2e_${name}`;
   const env = {
     ...testEnvs,
@@ -76,7 +76,12 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     if (ePoint.stdin) {
       cmd = cmd.stdinText(ePoint.stdin!);
     }
-    await cmd;
+    try {
+      await cmd;
+    } catch (err) {
+      console.log(err);
+      throw err;
+    }
   }
   await $
     .raw`${dockerCmd} rmi '${tag}'`
@@ -84,7 +89,7 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
 }
 
 export async function localE2eTest(testCase: E2eTestCase) {
-  const { envs: testEnvs, ePoints, tsGhjkfileStr } = testCase;
+  const { envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
       prefix: "ghjk_le2e_",
@@ -104,6 +109,10 @@ export async function localE2eTest(testCase: E2eTestCase) {
     ZDOTDIR: ghjkShareDir.toString(),
     GHJK_SHARE_DIR: ghjkShareDir.toString(),
     PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
+    // shield tests from external envs
+    // TODO: use `clearEnv` when `dax` stabilizes it
+    // https://github.com/dsherret/dax/issues/63
+    GHJK_ENV: "main",
   };
   // install ghjk
   await install({
@@ -117,12 +126,25 @@ export async function localE2eTest(testCase: E2eTestCase) {
     // don't modify system shell configs
     shellsToHook: [],
   });
-  await $`${ghjkShareDir.join("ghjk").toString()} print config`
-    .cwd(tmpDir.toString())
-    .env(env);
-  await $`${ghjkShareDir.join("ghjk").toString()} ports sync`
-    .cwd(tmpDir.toString())
-    .env(env);
+  std_assert.assertEquals(
+    (await new Deno.Command(ghjkShareDir.join("ghjk").toString(), {
+      args: "print config".split(" "),
+      cwd: tmpDir.toString(),
+      env,
+      clearEnv: true,
+    }).spawn().status).code,
+    0,
+  );
+  std_assert.assertEquals(
+    (await new Deno.Command(ghjkShareDir.join("ghjk").toString(), {
+      args: "envs cook".split(" "),
+      cwd: tmpDir.toString(),
+      env,
+      clearEnv: true,
+    }).spawn().status)
+      .code,
+    0,
+  );
   /*
   // print the contents of the ghjk dir for debugging purposes
   const ghjkDirLen = ghjkDir.toString().length;
@@ -140,19 +162,26 @@ export async function localE2eTest(testCase: E2eTestCase) {
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }
   for (const ePoint of ePoints) {
-    let cmd = $.raw`${ePoint.cmd}`
-      .cwd(tmpDir.toString())
-      .env(env);
+    const cmdArr = ePoint.cmd.split(" ");
+    const cmd = new Deno.Command(cmdArr[0], {
+      args: cmdArr.splice(1),
+      cwd: tmpDir.toString(),
+      env,
+      clearEnv: true,
+      stdin: ePoint.stdin ? "piped" : "inherit",
+    }).spawn();
     if (ePoint.stdin) {
-      cmd = cmd.stdinText(ePoint.stdin);
+      const writer = cmd.stdin.getWriter();
+      await writer.write(new TextEncoder().encode(ePoint.stdin));
+      await writer.close();
     }
-    await cmd;
+    std_assert.assertEquals((await cmd.status).code, 0);
   }
   await tmpDir.remove({ recursive: true });
 }
 
 export function genTsGhjkFile(
-  { installConf, secureConf, taskDefs }: {
+  { installConf, secureConf, taskDefs, envDefs }: {
     installConf?: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
     taskDefs?: TaskDefArgs[];
@@ -180,16 +209,28 @@ export function genTsGhjkFile(
   );
   const tasks = (taskDefs ?? []).map(
     (def) => {
-      const { name, ...withoutName } = def;
       const stringifiedSection = JSON.stringify(
-        withoutName,
+        def,
         (_, val) =>
           typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
       );
       return $.dedent`
-      ghjk.task("${name}", {
+      ghjk.task({
         ...JSON.parse(\`${stringifiedSection}\`),
         fn: ${def.fn.toString()}
+      })`;
+    },
+  ).join("\n");
+  const envs = (envDefs ?? []).map(
+    (def) => {
+      const stringifiedSection = JSON.stringify(
+        def,
+        (_, val) =>
+          typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+      );
+      return $.dedent`
+      ghjk.env({
+        ...JSON.parse(\`${stringifiedSection}\`),
       })`;
     },
   ).join("\n");
@@ -208,5 +249,6 @@ ${serializedSecConf}
 export const secureConfig = JSON.parse(secConfStr);
 
 ${tasks}
+${envs}
 `;
 }
