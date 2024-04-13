@@ -30,7 +30,7 @@ export const manifest = {
   moduleSpecifier: import.meta.url,
   // FIXME: tar doens't support windows
   // TODO: platform disambiguated deps
-  deps: [tar_aa_id],
+  buildDeps: [tar_aa_id],
   // NOTE: node supports more archs than deno but we can't include it here
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };

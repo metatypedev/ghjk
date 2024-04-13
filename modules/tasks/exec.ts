@@ -9,7 +9,6 @@ import { execTaskDeno } from "./deno.ts";
 const logger = getLogger(import.meta);
 
 import { cookPosixEnv } from "../envs/posix.ts";
-import { reduceStrangeProvisions } from "../envs/reducer.ts";
 
 export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 

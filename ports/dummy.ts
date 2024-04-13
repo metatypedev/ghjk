@@ -20,7 +20,6 @@ const manifest = {
   name: "dummy",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };
 

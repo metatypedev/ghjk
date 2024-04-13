@@ -15,6 +15,7 @@ import * as deno from "./deno.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
 import { serializePlatform } from "../modules/ports/types/platform.ts";
+import { DePromisify } from "../port.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
@@ -28,6 +29,7 @@ type HostCtx = {
 export async function cli(args: CliArgs) {
   const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize()
     .toString();
+  const defer = [] as (() => Promise<any>)[];
 
   const subcmds: Record<string, any> = {
     print: new cliffy_cmd.Command()
@@ -64,10 +66,12 @@ export async function cli(args: CliArgs) {
     const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, blackboard: new Map() };
     const hcx = { fileHashMemoStore: new Map() };
 
-    const { subCommands: configCommands, serializedConfig } = await readConfig(
-      gcx,
-      hcx,
-    );
+    const { subCommands: configCommands, serializedConfig, writeLockFile } =
+      await readConfig(
+        gcx,
+        hcx,
+      );
+    defer.push(writeLockFile);
 
     for (const [cmdName, [cmd, src]] of Object.entries(configCommands)) {
       const conflict = subcmds[cmdName];
@@ -122,6 +126,7 @@ export async function cli(args: CliArgs) {
     cmd.command(name, subcmd);
   }
   await cmd.parse(Deno.args);
+  await Promise.all(defer.map((fn) => fn()));
 }
 
 async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
@@ -235,12 +240,6 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     configExt = await readAndSerializeConfig(hcx, configPath, curEnvVars);
   }
 
-  const newLockObj: zod.infer<typeof lockObjValidator> = {
-    version: "0",
-    platform: serializePlatform(Deno.build),
-    moduleEntries: {} as Record<string, unknown>,
-    config: configExt.config,
-  };
   const newHashObj: zod.infer<typeof hashObjValidator> = {
     version: "0",
     ghjkfileHash,
@@ -248,7 +247,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     readFileHashes: configExt.readFileHashes,
     listedFiles: configExt.listedFiles,
   };
-  const instances = [];
+  const instances = [] as [string, ModuleBase<unknown, unknown>, unknown][];
   for (const man of configExt.config.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
@@ -258,7 +257,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     const pMan = await instance.processManifest(
       gcx,
       man,
-      newLockObj.config.blackboard,
+      configExt.config.blackboard,
       lockEntries[man.id],
     );
     instances.push([man.id, instance, pMan] as const);
@@ -274,46 +273,53 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       subCommands[cmdName] = [cmd, man.id];
     }
   }
-  // generate the lock entries after *all* the modules
-  // are done processing their config to allow
-  // any shared stores to be properly populated
-  // e.g. the resolution memo store
-  newLockObj.moduleEntries = Object.fromEntries(
-    await Array.fromAsync(
-      instances.map(
-        async (
-          [id, instance, pMan],
-        ) => [id, await instance.genLockEntry(gcx, pMan)],
-      ),
-    ),
-  );
-  // avoid writing lockfile if nothing's changed
-  if (!foundLockObj || !deep_eql(newLockObj, foundLockObj)) {
-    await lockFilePath.writeJsonPretty(newLockObj);
-  }
   if (!foundHashObj || !deep_eql(newHashObj, foundHashObj)) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
+
   return {
     subCommands,
     serializedConfig: configExt.config,
+    async writeLockFile() {
+      const newLockObj: zod.infer<typeof lockObjValidator> = {
+        version: "0",
+        platform: serializePlatform(Deno.build),
+        moduleEntries: {} as Record<string, unknown>,
+        config: configExt!.config,
+      };
+
+      // generate the lock entries after *all* the modules
+      // are done processing their config to allow
+      // any shared stores to be properly populated
+      // e.g. the resolution memo store
+      newLockObj.moduleEntries = Object.fromEntries(
+        await Array.fromAsync(
+          instances.map(
+            async (
+              [id, instance, pMan],
+            ) => [id, await instance.genLockEntry(gcx, pMan)],
+          ),
+        ),
+      );
+      // avoid writing lockfile if nothing's changed
+      if (!foundLockObj || !deep_eql(newLockObj, foundLockObj)) {
+        await lockFilePath.writeJsonPretty(newLockObj);
+      }
+    },
   };
 }
 
 type HashStore = Record<string, string | null | undefined>;
 
-type SerializedConfigExt = {
-  config: SerializedConfig;
-  envVarHashes: HashStore;
-  readFileHashes: HashStore;
-  listedFiles: string[];
-};
+type SerializedConfigExt = DePromisify<
+  ReturnType<typeof readAndSerializeConfig>
+>;
 
 async function readAndSerializeConfig(
   hcx: HostCtx,
   configPath: PathRef,
   envVars: Record<string, string>,
-): Promise<SerializedConfigExt> {
+) {
   switch (configPath.extname()) {
     case "":
       logger().warn("config file has no extension, assuming deno config");

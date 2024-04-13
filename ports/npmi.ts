@@ -23,7 +23,7 @@ const manifest = {
   name: "npmi_npm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
+  buildDeps: [
     std_ports.node_org,
   ],
   // NOTE: enable all platforms. Restrictions will apply based

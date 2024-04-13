@@ -20,7 +20,7 @@ import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
-import { getInstallSetStore} from "./inter.ts"
+import { getInstallSetStore } from "./inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -65,33 +65,33 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     };
     // pre-process the install sets found in the config
     const setStore = getInstallSetStore(gcx);
-      for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
-        // install sets in the config use hash references to dedupe InstallConfigs,
-        // AllowedDepSets and AllowedDeps
-        // reify the references from the blackboard before continuing
-        const installs = hashedSet.installs.map((hash) =>
-          unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
-        );
-        const allowedDepSetHashed = unwrapParseCurry(
-          validators.allowDepSetHashed.safeParse(
-            bb[hashedSet.allowedDeps],
-          ),
-        );
-        const allowedDeps = Object.fromEntries(
-          Object.entries(allowedDepSetHashed).map((
-            [key, hash],
-          ) => [
-            key,
-            unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
-          ]),
-        );
-        const set: InstallSetX = {
-          installs,
-          allowedDeps,
-        };
-        pcx.config.sets[id] = set;
+    for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
+      // install sets in the config use hash references to dedupe InstallConfigs,
+      // AllowedDepSets and AllowedDeps
+      // reify the references from the blackboard before continuing
+      const installs = hashedSet.installs.map((hash) =>
+        unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
+      );
+      const allowedDepSetHashed = unwrapParseCurry(
+        validators.allowDepSetHashed.safeParse(
+          bb[hashedSet.allowedDeps],
+        ),
+      );
+      const allowedDeps = Object.fromEntries(
+        Object.entries(allowedDepSetHashed).map((
+          [key, hash],
+        ) => [
+          key,
+          unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
+        ]),
+      );
+      const set: InstallSetX = {
+        installs,
+        allowedDeps,
+      };
+      pcx.config.sets[id] = set;
       setStore.set(id, set);
-      }
+    }
 
     // register envrionment reducers for any
     // environemnts making use of install sets
@@ -121,9 +121,11 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         .command(
           "resolve",
           new cliffy_cmd.Command()
-            .description("TODO")
+            .description(`Resolve all installs declared in config.
+
+- Useful to pre-resolve and add all install configs to the lockfile.`)
             .action(async function () {
-              // syncCx contains a reference counted db connection
+              // scx contains a reference counted db connection
               // somewhere deep in there
               // so we need to use `using`
               await using scx = await syncCtxFromGhjk(gcx);

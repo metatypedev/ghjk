@@ -18,28 +18,21 @@ export function getInstallSetStore(
   return memoStore;
 }
 
-export type InstallMeta = {
-  instId: string;
-  version: string;
-  port: string;
-};
-
-export type InstallSetMeta = {
-  userInstalls: InstallMeta[];
-  buildInstalls: InstallMeta[];
-};
-
 export function installGraphToSetMeta(graph: InstallGraph) {
   function installMetaFromGraph(id: string) {
     const inst = graph.all[id]!;
+    const {
+      buildDepConfigs: _bDeps,
+      resolutionDepConfigs: _rDeps,
+      ...confWithoutDeps
+    } = inst.config;
     return {
-      port: inst.portRef,
       instId: inst.instId,
-      version: inst.config.version,
+      ...confWithoutDeps,
     };
   }
   const userInstallIds = new Set(graph.user);
-  const out: InstallSetMeta = {
+  const out = {
     userInstalls: graph.user.map(installMetaFromGraph),
     buildInstalls: Object.keys(graph.all)
       .filter((key) => !userInstallIds.has(key))

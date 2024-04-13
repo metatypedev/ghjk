@@ -25,7 +25,7 @@ export const manifest = {
   name: "rust_rustup",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [rustup_rustlang_id],
+  buildDeps: [rustup_rustlang_id],
   // NOTE: indirectly limited by rustup instead
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };

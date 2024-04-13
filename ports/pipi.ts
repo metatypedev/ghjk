@@ -23,7 +23,7 @@ const manifest = {
   name: "pipi_pypi",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_ports.cpy_bs_ghrel],
+  buildDeps: [std_ports.cpy_bs_ghrel],
   // NOTE: enable all platforms. Restrictions will apply based
   // cpy_bs support this way
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),

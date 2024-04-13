@@ -18,7 +18,7 @@ const manifest = {
   name: "mold_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
+  buildDeps: [
     // we have to use tar because their tarballs contain symlinks
     std_ports.tar_aa,
   ],

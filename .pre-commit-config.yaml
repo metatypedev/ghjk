@@ -35,6 +35,11 @@ repos:
           - commit-msg
   - repo: local
     hooks:
+      - id: ghjk-resolve
+        name: Ghjk resolve
+        language: system
+        entry: bash -c 'ghjk p resolve'
+        pass_filenames: false
       - id: deno-fmt
         name: Deno format
         language: system

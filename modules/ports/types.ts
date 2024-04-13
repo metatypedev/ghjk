@@ -36,7 +36,7 @@ const portManifestBase = zod.object({
   //   .nullish()
   //   // default value set after transformation
   //   .default("deferToNewer"),
-  deps: zod.array(portDep).nullish(),
+  buildDeps: zod.array(portDep).nullish(),
   resolutionDeps: zod.array(portDep).nullish(),
 }).passthrough();
 
@@ -84,7 +84,7 @@ const installConfigSimple = zod.object({
 }).passthrough();
 
 const installConfigBase = installConfigSimple.merge(zod.object({
-  depConfigs: zod.record(
+  buildDepConfigs: zod.record(
     portName,
     // FIXME: figure out cyclically putting `installConfigLite` here
     zod.unknown(),
@@ -117,7 +117,7 @@ const installConfigFat = stdInstallConfigFat;
 const installConfigResolved = installConfigLite.merge(zod.object({
   // NOTE: version is no longer nullish
   version: zod.string(),
-  // depConfigs: zod.record(
+  // buildDepConfigs: zod.record(
   //   portName,
   //   // FIXME: figure out cyclically putting `installConfigResolved` here
   //   zod.object({ version: zod.string() }).passthrough(),

@@ -1,6 +1,6 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, diff_kit, jsonHash, zod } from "../../deps/cli.ts";
+import { cliffy_cmd, zod } from "../../deps/cli.ts";
 import { $, detectShellPath, Json, unwrapParseRes } from "../../utils/mod.ts";
 import validators from "./types.ts";
 import type {
@@ -12,15 +12,13 @@ import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
-import { } from "../ports/inter.ts";
+import { getInstallSetStore, installGraphToSetMeta } from "../ports/inter.ts";
 import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
 import { isColorfulTty } from "../../utils/logger.ts";
-import getLogger from "../../utils/logger.ts";
-
-const logger = getLogger(import.meta);
+import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -133,14 +131,14 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
 - If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].
         `)
             .arguments("[envName:string]")
-            .action(function (_void, envNameMaybe) {
+            .action(async function (_void, envNameMaybe) {
               const envName = envNameMaybe ?? ecx.activeEnv;
               const env = ecx.config.envs[envName];
               if (!env) {
                 throw new Error(`No env found under given name "${envName}"`);
               }
               console.log(Deno.inspect(
-                showableEnv(gcx, env, envName),
+                await showableEnv(gcx, env, envName),
                 {
                   depth: 10,
                   colors: isColorfulTty(),
@@ -208,7 +206,8 @@ async function reduceAndCookEnv(
 
   // TODO: diff env and ask confirmation from user
   const envDir = $.path(gcx.ghjkDir).join("envs", envName);
-  const recipeShowable = showableEnv(gcx, recipe, envName);
+  /*
+  const recipeShowable = await showableEnv(gcx, recipe, envName);
   const oldRecipeShowable = {};
   {
     const recipeJsonPath = envDir.join("recipe.json");
@@ -219,28 +218,29 @@ async function reduceAndCookEnv(
       if (oldRecipParsed.success) {
         Object.assign(
           oldRecipeShowable,
-          showableEnv(gcx, oldRecipParsed.data, envName),
+          await showableEnv(gcx, oldRecipParsed.data, envName),
         );
       } else {
         logger.error(`invalid env recipe at ${recipeJsonPath}`);
       }
     }
   }
-  console.log(JSON.stringify(JSON.parse(jsonHash.canonicalize(recipeShowable)), undefined, 2))
-  // console.log(
-  //   diff_kit.diff(
-  //     JSON.stringify(jsonHash.canonicalize(oldRecipeShowable), undefined, 2),
-  //     JSON.stringify(jsonHash.canonicalize(recipeShowable), undefined, 2),
-  //     new diff_kit.DiffTerm(),
-  //   ),
-  // );
+  console.log(
+    diff_kit.diff(
+      // TODO: canonicalize objects
+      JSON.stringify(oldRecipeShowable, undefined, 2),
+      JSON.stringify(recipeShowable, undefined, 2),
+      // new diff_kit.DiffTerm(),
+    ),
+  );
   if (!await $.confirm("cook env?")) {
     return;
   }
+  */
 
   await cookPosixEnv({
     gcx,
-    recipe: recipe,
+    recipe,
     envName,
     envDir: envDir.toString(),
     createShellLoaders: true,
@@ -252,12 +252,13 @@ async function reduceAndCookEnv(
   }
 }
 
-function showableEnv(
+async function showableEnv(
   gcx: GhjkCtx,
   recipe: EnvRecipeX,
   envName: string,
 ) {
   const printBag = {} as Record<string, any>;
+  await using scx = await syncCtxFromGhjk(gcx);
   for (
     const prov of recipe
       .provides as (
@@ -291,19 +292,28 @@ function showableEnv(
           prov.absolutePath,
         ];
         break;
-      case "ghjk.ports.InstallSet":
-        // TODO: display raw install sets
+      case "ghjk.ports.InstallSet": {
+        const graph = await buildInstallGraph(scx, prov.set);
+        const setMeta = installGraphToSetMeta(graph);
         printBag.ports = {
           ...printBag.ports ?? {},
-          [`installSet_${Math.floor(Math.random() * 101)}`]: prov.set,
+          [`installSet_${Math.floor(Math.random() * 101)}`]: setMeta,
         };
         break;
+      }
       case "ghjk.ports.InstallSetRef": {
-        const graph = buildInstallGraph()
-        const installSetMetaStore = installGraphToSetMeta(gcx);
+        const setStore = getInstallSetStore(gcx);
+        const set = setStore.get(prov.setId);
+        if (!set) {
+          throw new Error(
+            `unable to find install set ref provisioned under id ${prov.setId}`,
+          );
+        }
+        const graph = await buildInstallGraph(scx, set);
+        const setMeta = installGraphToSetMeta(graph);
         printBag.ports = {
           ...printBag.ports ?? {},
-          [prov.setId]: installSetMetaStore.get(prov.setId),
+          [prov.setId]: setMeta,
         };
         break;
       }

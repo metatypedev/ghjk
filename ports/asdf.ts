@@ -22,7 +22,7 @@ export const manifest = {
   name: "asdf",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_ports.curl_aa, std_ports.git_aa, std_ports.asdf_plugin_git],
+  buildDeps: [std_ports.curl_aa, std_ports.git_aa, std_ports.asdf_plugin_git],
   // NOTE: we require the same port set for version resolution as well
   resolutionDeps: [
     std_ports.curl_aa,
@@ -49,7 +49,7 @@ export default function conf(
   const { port: pluginPort, ...liteConf } = asdf_plugin_git({
     pluginRepo: config.pluginRepo,
   });
-  const depConfigs = {
+  const buildDepConfigs = {
     [std_ports.asdf_plugin_git.name]: {
       ...liteConf,
       portRef: getPortRef(pluginPort),
@@ -58,8 +58,8 @@ export default function conf(
   return {
     ...confValidator.parse(config),
     port: manifest,
-    depConfigs,
-    resolutionDepConfigs: depConfigs,
+    buildDepConfigs,
+    resolutionDepConfigs: buildDepConfigs,
   };
 }
 

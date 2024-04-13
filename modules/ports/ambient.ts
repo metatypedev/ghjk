@@ -6,7 +6,7 @@ export class AmbientAccessPort extends PortBase {
   constructor(public manifest: AmbientAccessPortManifestX) {
     super();
     // dependencies make no sense for ambient ports
-    if (manifest.deps && manifest.deps.length > 0) {
+    if (manifest.buildDeps && manifest.buildDeps.length > 0) {
       throw new Error(
         `ambient access plugin has deps ${JSON.stringify(manifest)}`,
       );

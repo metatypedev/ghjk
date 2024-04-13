@@ -95,109 +95,6 @@ export async function syncCtxFromGhjk(
   };
 }
 
-export async function installFromGraphAndShimEnv(
-  scx: SyncCtx,
-  envDir: string,
-  graph: InstallGraph,
-  createShellLoaders = true,
-) {
-  const installArts = await installFromGraph(
-    scx,
-    graph,
-  );
-  // create the shims for the user's environment
-  const shimDir = $.path(envDir).join("shims");
-  await $.removeIfExists(shimDir);
-
-  const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
-    shimDir.join("bin").ensureDir(),
-    shimDir.join("lib").ensureDir(),
-    shimDir.join("include").ensureDir(),
-  ]);
-
-  // extract the env vars exported by the user specified
-  // installs and shim up their exported artifacts
-  const totalEnv: Record<string, [string, string]> = {};
-  // FIXME: detect shim conflicts
-  // FIXME: better support for multi installs
-  for (const instId of graph.user) {
-    const { binPaths, libPaths, includePaths, installPath, env } = installArts
-      .get(
-        instId,
-      )!;
-
-    for (const [key, val] of Object.entries(env)) {
-      const conflict = totalEnv[key];
-      if (conflict) {
-        throw new Error(
-          `duplicate env var found ${key} from sources ${instId} & ${
-            conflict[1]
-          }`,
-        );
-      }
-      totalEnv[key] = [val, instId];
-    }
-
-    // bin shims
-    void await shimLinkPaths(
-      binPaths,
-      installPath,
-      binShimDir.toString(),
-    );
-    // lib shims
-    void await shimLinkPaths(
-      libPaths,
-      installPath,
-      libShimDir.toString(),
-    );
-    // include shims
-    void await shimLinkPaths(
-      includePaths,
-      installPath,
-      includeShimDir.toString(),
-    );
-  }
-  // write loader for the env vars mandated by the installs
-  logger.debug("adding vars to loader", totalEnv);
-  // FIXME: prevent malicious env manipulations
-  let LD_LIBRARY_ENV: string;
-  switch (Deno.build.os) {
-    case "darwin":
-      LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
-      break;
-    case "linux":
-      LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
-      break;
-    default:
-      throw new Error(`unsupported os ${Deno.build.os}`);
-  }
-  const pathVars = {
-    PATH: `${envDir}/shims/bin`,
-    LIBRARY_PATH: `${envDir}/shims/lib`,
-    [LD_LIBRARY_ENV]: `${envDir}/shims/lib`,
-    C_INCLUDE_PATH: `${envDir}/shims/include`,
-    CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
-  };
-  // totalEnv contains info about the origin of the env
-  // which we don't need anymore
-  const simplifedTotalEnvs = Object.fromEntries(
-    Object.entries(totalEnv).map(([key, [val, _]]) => [key, val]),
-  );
-  if (createShellLoaders) {
-    await writeLoader(
-      envDir,
-      simplifedTotalEnvs,
-      pathVars,
-    );
-  }
-  return {
-    env: {
-      ...simplifedTotalEnvs,
-      ...pathVars,
-    },
-  };
-}
-
 export async function installFromGraph(
   scx: SyncCtx,
   graph: InstallGraph,
@@ -482,12 +379,12 @@ export async function buildInstallGraph(
 
     graph.all[installId] = inst;
 
-    if (!manifest.deps || manifest.deps.length == 0) {
+    if (!manifest.buildDeps || manifest.buildDeps.length == 0) {
       graph.indie.push(installId);
     } else {
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
-      for (const depId of manifest.deps) {
+      for (const depId of manifest.buildDeps) {
         const { manifest: depPort } = set.allowedDeps[depId.name];
         if (!depPort) {
           throw new Error(
@@ -500,7 +397,7 @@ export async function buildInstallGraph(
         // the conf is of the resolved kind which means
         // it's deps are also resolved
         const depInstall = validators.installConfigResolved.parse(
-          inst.config.depConfigs![depId.name],
+          inst.config.buildDepConfigs![depId.name],
         );
         const depInstallId = await getInstallHash(depInstall);
 
@@ -640,8 +537,8 @@ async function resolveConfig(
     // TODO: port version dependent portDep resolution
     // e.g. use python-2.7 if foo is resolved to <1.0 or use
     // python-3.x if foo is resolved to >1.0
-    const resolveDepConfigs = {} as Record<string, InstallConfigResolvedX>;
-    for (const dep of manifest.deps ?? []) {
+    const buildDepConfigs = {} as Record<string, InstallConfigResolvedX>;
+    for (const dep of manifest.buildDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
         set,
         manifest,
@@ -655,13 +552,13 @@ async function resolveConfig(
         depMan,
         depConf,
       );
-      resolveDepConfigs[dep.name] = depInstall;
+      buildDepConfigs[dep.name] = depInstall;
     }
 
     return validators.installConfigResolved.parse({
       ...config,
-      depConfigs: resolveDepConfigs,
       version,
+      buildDepConfigs,
     });
   }
 }
@@ -687,7 +584,7 @@ function getDepConfig(
   // install configuration of an allowed dep port
   // can be overriden by dependent ports
   const res = validators.installConfigLite.safeParse(
-    (resolutionDep ? config.resolutionDepConfigs : config.depConfigs)
+    (resolutionDep ? config.resolutionDepConfigs : config.buildDepConfigs)
       ?.[depId.name] ?? defaultDepInstall,
   );
   if (!res.success) {
@@ -740,7 +637,7 @@ async function resolveAndInstall(
       scx,
       depShimsRootPath,
       await Promise.all(
-        manifest.deps?.map(
+        manifest.buildDeps?.map(
           async (dep) => {
             const depConfig = getDepConfig(set, manifest, config, dep);
             // we not only resolve but install the dep here
@@ -1057,49 +954,4 @@ async function doInstallStage(
     downloadPath,
     installVersion,
   };
-}
-
-// create the loader scripts
-// loader scripts are responsible for exporting
-// different environment variables from the ports
-// and mainpulating the path strings
-async function writeLoader(
-  envDir: string,
-  env: Record<string, string>,
-  pathVars: Record<string, string>,
-) {
-  const activate = {
-    posix: [
-      `export GHJK_CLEANUP_POSIX="";`,
-      ...Object.entries(env).map(([k, v]) =>
-        // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${k}='$${k}';";
-export ${k}='${v}';`
-      ),
-      ...Object.entries(pathVars).map(([k, v]) =>
-        // NOTE: double quote the path vars for expansion
-        // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}";';
-export ${k}="${v}:$${k}";
-`
-      ),
-    ].join("\n"),
-    fish: [
-      `set --erase GHJK_CLEANUP_FISH`,
-      ...Object.entries(env).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
-set --global --export ${k} '${v}';`
-      ),
-      ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${k} (string match --invert --regex "^${envDir}" $${k});';
-set --global --export --prepend ${k} ${v};
-`
-      ),
-    ].join("\n"),
-  };
-  const envPathR = await $.path(envDir).ensureDir();
-  await Promise.all([
-    envPathR.join(`activate.fish`).writeText(activate.fish),
-    envPathR.join(`activate.sh`).writeText(activate.posix),
-  ]);
 }

@@ -21,7 +21,6 @@ export const manifest = {
   name: "terraform_hashicorp",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   platforms: osXarch([...ALL_OS], ["aarch64", "x86_64"]),
 };
 
