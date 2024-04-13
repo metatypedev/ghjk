@@ -4,6 +4,10 @@ import type { InstallGraph } from "./sync.ts"; // TODO: rename to install.ts
 
 export type InstallSetStore = Map<string, InstallSetX>;
 
+/**
+ * {@link InstallSetStore} provides a way for other modules to get
+ * install sets from the {@link import("./types.ts").PortsModuleConfig}
+ */
 export function getInstallSetStore(
   gcx: GhjkCtx,
 ) {
@@ -18,6 +22,9 @@ export function getInstallSetStore(
   return memoStore;
 }
 
+/**
+ * Get a user friendly description of an {@link InstallGraph}.
+ */
 export function installGraphToSetMeta(graph: InstallGraph) {
   function installMetaFromGraph(id: string) {
     const inst = graph.all[id]!;

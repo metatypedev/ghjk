@@ -1,5 +1,22 @@
 {
   "version": "3",
+  "packages": {
+    "specifiers": {
+      "npm:zod-validation-error": "npm:zod-validation-error@3.1.0_zod@3.22.4"
+    },
+    "npm": {
+      "zod-validation-error@3.1.0_zod@3.22.4": {
+        "integrity": "sha512-zujS6HqJjMZCsvjfbnRs7WI3PXN39ovTcY1n8a+KTm4kOH0ZXYsNiJkH1odZf4xZKMkBDL7M2rmQ913FCS1p9w==",
+        "dependencies": {
+          "zod": "zod@3.22.4"
+        }
+      },
+      "zod@3.22.4": {
+        "integrity": "sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==",
+        "dependencies": {}
+      }
+    }
+  },
   "remote": {
     "https://deno.land/std@0.116.0/_util/assert.ts": "2f868145a042a11d5ad0a3c748dcf580add8a0dbc0e876eaa0026303a5488f58",
     "https://deno.land/std@0.116.0/_util/os.ts": "dfb186cc4e968c770ab6cc3288bd65f4871be03b93beecae57d657232ecffcac",

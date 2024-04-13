@@ -82,7 +82,7 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-var
     end
 end
 
-# trigger reload the env dir loader ctime changes
+# trigger reload when the env dir loader ctime changes
 function ghjk_env_dir_watcher --on-event fish_postexec
     if set --query GHJK_LAST_ENV_DIR; and test (get_ctime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt "$GHJK_LAST_ENV_DIR_CTIME"
         emit ghjk_env_dir_change

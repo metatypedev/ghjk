@@ -89,6 +89,9 @@ ghjk_reload() {
 export GHJK_LAST_PWD="$PWD"
 
 precmd() {
+    # trigger reload when either 
+    #  - the PWD changes
+    #  - the env dir loader ctime changes
     if [ "$GHJK_LAST_PWD" != "$PWD" ] || 
         [ "$(get_ctime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_CTIME" ]; then
         ghjk_reload

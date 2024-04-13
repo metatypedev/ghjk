@@ -13,7 +13,6 @@ import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
   getResolutionMemo,
-  type InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
 import type { Blackboard } from "../../host/types.ts";
@@ -24,10 +23,6 @@ import { getInstallSetStore } from "./inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
-  /*
-   * A map from a setId found in the `PortsModuleConfigX` to the `InstallGraph`.
-   */
-  installGraphs: Map<string, Promise<InstallGraph>>;
 };
 
 const lockValidator = zod.object({
@@ -61,10 +56,9 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       config: {
         sets: {},
       },
-      installGraphs: new Map(),
     };
-    // pre-process the install sets found in the config
     const setStore = getInstallSetStore(gcx);
+    // pre-process the install sets found in the config
     for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
       // install sets in the config use hash references to dedupe InstallConfigs,
       // AllowedDepSets and AllowedDeps

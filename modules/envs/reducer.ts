@@ -11,6 +11,12 @@ import { wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<string, ProvisionReducer<Provision>>;
+
+/**
+ * In order to provide a means for other modules to define their own
+ * environment provisions, {@link ProvisionReducer}s can be registered
+ * here.
+ */
 export function getProvisionReducerStore(
   gcx: GhjkCtx,
 ) {

@@ -7,7 +7,7 @@
 // modify the Deno namespace before anyone touches it
 
 // NOTE: only import types
-import type { DriverRequests, DriverResponse } from "./deno.ts";
+import type { DriverRequests, DriverResponse } from "./mod.ts";
 
 self.onmessage = onMsg;
 

@@ -3,6 +3,7 @@
 //! and located close to their users
 
 export { z as zod } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+export * as zod_val_err from "npm:zod-validation-error";
 export * as semver from "https://deno.land/std@0.213.0/semver/mod.ts";
 export * as std_log from "https://deno.land/std@0.213.0/log/mod.ts";
 export * as std_log_levels from "https://deno.land/std@0.213.0/log/levels.ts";
