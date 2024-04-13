@@ -1,16 +1,22 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
-import type { WellKnownEnvRecipeX } from "./types.ts";
+import type { EnvRecipeX } from "./types.ts";
 import getLogger from "../../utils/logger.ts";
 import { $, PathRef } from "../../utils/mod.ts";
+import type { GhjkCtx } from "../types.ts";
+import { reduceStrangeProvisions } from "./reducer.ts";
 
 const logger = getLogger(import.meta);
 
 export async function cookPosixEnv(
-  recipe: WellKnownEnvRecipeX,
-  envName: string,
-  envDir: string,
-  createShellLoaders = false,
+  { gcx, recipe, envName, envDir, createShellLoaders = false }: {
+    gcx: GhjkCtx;
+    recipe: EnvRecipeX;
+    envName: string;
+    envDir: string;
+    createShellLoaders?: boolean;
+  },
 ) {
+  const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
   const shimDir = $.path(envDir).join("shims");
@@ -32,7 +38,7 @@ export async function cookPosixEnv(
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
-  await Promise.all(recipe.provides.map((item) => {
+  await Promise.all(reducedRecipe.provides.map((item) => {
     switch (item.ty) {
       case "posix.exec":
         binPaths.push(item.absolutePath);
@@ -73,7 +79,7 @@ export async function cookPosixEnv(
       includePaths,
       includeShimDir,
     ),
-    $.path(envDir).join("recipe.json").writeJsonPretty(recipe),
+    $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
   ]);
   // write loader for the env vars mandated by the installs
   logger.debug("adding vars to loader", vars);

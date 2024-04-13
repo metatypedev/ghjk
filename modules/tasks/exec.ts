@@ -114,14 +114,13 @@ export async function execTask(
     const taskEnvDir = await Deno.makeTempDir({
       prefix: `ghjkTaskEnv_${taskName}_`,
     });
-    const reducedEnv = await reduceStrangeProvisions(
-      gcx,
-      tasksConfig.envs[taskDef.envHash],
-    );
     const { env: installEnvs } = await cookPosixEnv(
-      reducedEnv,
-      `taskEnv_${taskName}`,
-      taskEnvDir,
+      {
+        gcx,
+        recipe: tasksConfig.envs[taskDef.envHash],
+        envName: `taskEnv_${taskName}`,
+        envDir: taskEnvDir,
+      },
     );
     logger.info("executing", taskName, args);
     await execTaskDeno(

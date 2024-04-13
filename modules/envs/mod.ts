@@ -1,22 +1,26 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, zod } from "../../deps/cli.ts";
+import { cliffy_cmd, diff_kit, jsonHash, zod } from "../../deps/cli.ts";
 import { $, detectShellPath, Json, unwrapParseRes } from "../../utils/mod.ts";
-
 import validators from "./types.ts";
-import type { EnvsModuleConfigX, WellKnownProvision } from "./types.ts";
+import type {
+  EnvRecipeX,
+  EnvsModuleConfigX,
+  WellKnownProvision,
+} from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
-
-import { Blackboard } from "../../host/types.ts";
-import { reduceStrangeProvisions } from "./reducer.ts";
+import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
-import { getInstallSetMetaStore } from "../ports/inter.ts";
+import { } from "../ports/inter.ts";
 import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
 import { isColorfulTty } from "../../utils/logger.ts";
+import getLogger from "../../utils/logger.ts";
+
+const logger = getLogger(import.meta);
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -131,10 +135,17 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             .arguments("[envName:string]")
             .action(function (_void, envNameMaybe) {
               const envName = envNameMaybe ?? ecx.activeEnv;
-              if (!ecx.config.envs[envName]) {
+              const env = ecx.config.envs[envName];
+              if (!env) {
                 throw new Error(`No env found under given name "${envName}"`);
               }
-              printEnvInfo(gcx, ecx, envName);
+              console.log(Deno.inspect(
+                showableEnv(gcx, env, envName),
+                {
+                  depth: 10,
+                  colors: isColorfulTty(),
+                },
+              ));
             }),
         ),
       sync: new cliffy_cmd.Command()
@@ -190,16 +201,50 @@ async function reduceAndCookEnv(
   ecx: EnvsCtx,
   envName: string,
 ) {
-  const env = ecx.config.envs[envName];
-  if (!env) {
+  const recipe = ecx.config.envs[envName];
+  if (!recipe) {
     throw new Error(`No env found under given name "${envName}"`);
   }
 
   // TODO: diff env and ask confirmation from user
-  const reducedEnv = await reduceStrangeProvisions(gcx, env);
   const envDir = $.path(gcx.ghjkDir).join("envs", envName);
+  const recipeShowable = showableEnv(gcx, recipe, envName);
+  const oldRecipeShowable = {};
+  {
+    const recipeJsonPath = envDir.join("recipe.json");
+    const oldRecipeRaw = await recipeJsonPath.readMaybeJson();
 
-  await cookPosixEnv(reducedEnv, envName, envDir.toString(), true);
+    if (oldRecipeRaw) {
+      const oldRecipParsed = validators.envRecipe.safeParse(oldRecipeRaw);
+      if (oldRecipParsed.success) {
+        Object.assign(
+          oldRecipeShowable,
+          showableEnv(gcx, oldRecipParsed.data, envName),
+        );
+      } else {
+        logger.error(`invalid env recipe at ${recipeJsonPath}`);
+      }
+    }
+  }
+  console.log(JSON.stringify(JSON.parse(jsonHash.canonicalize(recipeShowable)), undefined, 2))
+  // console.log(
+  //   diff_kit.diff(
+  //     JSON.stringify(jsonHash.canonicalize(oldRecipeShowable), undefined, 2),
+  //     JSON.stringify(jsonHash.canonicalize(recipeShowable), undefined, 2),
+  //     new diff_kit.DiffTerm(),
+  //   ),
+  // );
+  if (!await $.confirm("cook env?")) {
+    return;
+  }
+
+  await cookPosixEnv({
+    gcx,
+    recipe: recipe,
+    envName,
+    envDir: envDir.toString(),
+    createShellLoaders: true,
+  });
   if (envName == ecx.config.defaultEnv) {
     const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
     await $.removeIfExists(defaultEnvDir);
@@ -207,15 +252,14 @@ async function reduceAndCookEnv(
   }
 }
 
-function printEnvInfo(
+function showableEnv(
   gcx: GhjkCtx,
-  ecx: EnvsCtx,
+  recipe: EnvRecipeX,
   envName: string,
 ) {
-  const env = ecx.config.envs[envName];
   const printBag = {} as Record<string, any>;
   for (
-    const prov of env
+    const prov of recipe
       .provides as (
         | WellKnownProvision
         | InstallSetRefProvision
@@ -255,7 +299,8 @@ function printEnvInfo(
         };
         break;
       case "ghjk.ports.InstallSetRef": {
-        const installSetMetaStore = getInstallSetMetaStore(gcx);
+        const graph = buildInstallGraph()
+        const installSetMetaStore = installGraphToSetMeta(gcx);
         printBag.ports = {
           ...printBag.ports ?? {},
           [prov.setId]: installSetMetaStore.get(prov.setId),
@@ -265,15 +310,9 @@ function printEnvInfo(
       default:
     }
   }
-  console.log(Deno.inspect(
-    {
-      ...printBag,
-      ...(env.desc ? { desc: env.desc } : {}),
-      envName,
-    },
-    {
-      depth: 10,
-      colors: isColorfulTty(),
-    },
-  ));
+  return {
+    ...printBag,
+    ...(recipe.desc ? { desc: recipe.desc } : {}),
+    envName,
+  };
 }

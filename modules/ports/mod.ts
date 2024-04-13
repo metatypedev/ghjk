@@ -20,14 +20,14 @@ import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
-import { getInstallSetMetaStore, installGraphToSetMeta } from "./inter.ts";
+import { getInstallSetStore} from "./inter.ts"
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
   /*
    * A map from a setId found in the `PortsModuleConfigX` to the `InstallGraph`.
    */
-  installGraphs: Map<string, InstallGraph>;
+  installGraphs: Map<string, Promise<InstallGraph>>;
 };
 
 const lockValidator = zod.object({
@@ -40,7 +40,7 @@ const lockValidator = zod.object({
 type PortsLockEnt = zod.infer<typeof lockValidator>;
 
 export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
-  async processManifest(
+  processManifest(
     gcx: GhjkCtx,
     manifest: ModuleManifest,
     bb: Blackboard,
@@ -64,12 +64,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       installGraphs: new Map(),
     };
     // pre-process the install sets found in the config
-    {
-      // syncCx contains a reference counted db connection
-      // somewhere deep in there
-      // so we need to use `using`
-      await using syncCx = await syncCtxFromGhjk(gcx);
-      const installMetaStore = getInstallSetMetaStore(gcx);
+    const setStore = getInstallSetStore(gcx);
       for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
         // install sets in the config use hash references to dedupe InstallConfigs,
         // AllowedDepSets and AllowedDeps
@@ -94,12 +89,9 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           installs,
           allowedDeps,
         };
-        const installGraph = await buildInstallGraph(syncCx, set);
-        installMetaStore.set(id, installGraphToSetMeta(installGraph));
         pcx.config.sets[id] = set;
-        pcx.installGraphs.set(id, installGraph);
+      setStore.set(id, set);
       }
-    }
 
     // register envrionment reducers for any
     // environemnts making use of install sets
@@ -116,8 +108,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   }
 
   commands(
-    _gcx: GhjkCtx,
-    _pcx: PortsCtx,
+    gcx: GhjkCtx,
+    pcx: PortsCtx,
   ) {
     return {
       ports: new cliffy_cmd.Command()
@@ -126,6 +118,20 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           this.showHelp();
         })
         .description("Ports module, install programs into your env.")
+        .command(
+          "resolve",
+          new cliffy_cmd.Command()
+            .description("TODO")
+            .action(async function () {
+              // syncCx contains a reference counted db connection
+              // somewhere deep in there
+              // so we need to use `using`
+              await using scx = await syncCtxFromGhjk(gcx);
+              for (const [_id, set] of Object.entries(pcx.config.sets)) {
+                void await buildInstallGraph(scx, set);
+              }
+            }),
+        )
         .command(
           "outdated",
           new cliffy_cmd.Command()
