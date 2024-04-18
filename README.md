@@ -2,6 +2,13 @@
 
 ghjk /jk/ is a programmable runtime manager.
 
+> Ghjk is part of the
+> [Metatype ecosystem](https://github.com/metatypedev/metatype). Consider
+> checking out how this component integrates with the whole ecosystem and browse
+> the
+> [documentation](https://metatype.dev?utm_source=github&utm_medium=readme&utm_campaign=lade)
+> to see more examples.
+
 ## Features
 
 - install and manage tools (e.g. rustup, deno, node, etc.)
