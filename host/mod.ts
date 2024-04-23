@@ -5,7 +5,7 @@ import {
   zod,
   zod_val_err,
 } from "../deps/cli.ts";
-import logger, { isColorfulTty } from "../utils/logger.ts";
+import logger from "../utils/logger.ts";
 
 import {
   $,
@@ -156,10 +156,7 @@ export async function cli(args: CliArgs) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(Deno.inspect(serializedConfig, {
-                depth: 10,
-                colors: isColorfulTty(),
-              }));
+              console.log($.inspect(serializedConfig));
             }),
         ),
     );

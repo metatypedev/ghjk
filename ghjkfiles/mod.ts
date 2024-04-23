@@ -43,7 +43,7 @@ export type EnvDefArgs = {
   name: string;
   installs?: InstallConfigFat[];
   allowedPortDeps?: AllowedPortDep[];
-  /*
+  /**
    * If true or not set, will base the task's env on top
    * of the default env (usually `main`). If false, will build on
    * top of a new env. If given a string, will use the identified env as a base
@@ -62,12 +62,11 @@ export type TaskFnArgs = {
 
 export type TaskFn = (args: TaskFnArgs) => Promise<any> | any;
 
-/*
+/**
  * Configuration for a task.
  */
 export type TaskDefArgs = {
-  name: string;
-  fn: TaskFn;
+  name?: string;
   desc?: string;
   dependsOn?: string[];
   workingDir?: string | Path;
@@ -77,9 +76,17 @@ export type TaskDefArgs = {
   base?: string | boolean;
 };
 
+export type DenoTaskDefArgs = TaskDefArgs & {
+  fn: TaskFn;
+}
+
+type TaskDefTyped = (
+  DenoTaskDefArgs & { ty: "denoWorker@v1" }
+);
+
 export class GhjkfileBuilder {
   #installSets = new Map<string, InstallSet>();
-  #tasks = {} as Record<string, TaskDefArgs>;
+  #tasks = {} as Record<string, TaskDefTyped>;
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
 
@@ -106,7 +113,7 @@ export class GhjkfileBuilder {
     );
   }
 
-  addTask(args: TaskDefArgs) {
+  addTask(args: TaskDefTyped) {
     // NOTE: we make sure the env base declared here exists
     // this call is necessary to make sure that a `task` can
     // be declared before the `env` but still depend on it.
@@ -115,12 +122,13 @@ export class GhjkfileBuilder {
     if (typeof args.base == "string") {
       this.addEnv({ name: args.base });
     }
-
-    this.#tasks[args.name] = {
+    // const hash = objectHash(jsonHash.canonicalize(args as jsonHash.Tree));
+    const uuid = crypto.randomUUID();
+    this.#tasks[uuid] = {
       ...args,
       name,
     };
-    return args.name;
+    return uuid;
   }
 
   addEnv(args: EnvDefArgs) {
@@ -149,11 +157,11 @@ export class GhjkfileBuilder {
   }
 
   async execTask(
-    { name, workingDir, envVars, argv }: ExecTaskArgs,
+    { hash, workingDir, envVars, argv }: ExecTaskArgs,
   ) {
-    const task = this.#tasks[name];
+    const task = this.#tasks[hash];
     if (!task) {
-      throw new Error(`no task defined under "${name}"`);
+      throw new Error(`no task defined under "${hash}"`);
     }
     const custom$ = $.build$({
       commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
@@ -216,8 +224,9 @@ export class GhjkfileBuilder {
     return hash;
   }
 
-  // this processes the defined envs, normalizing dependency (i.e. "envBase")
-  // relationships to produce the standard EnvsModuleConfig
+  /** this processes the defined envs, normalizing dependency (i.e. "envBase")
+   * relationships to produce the standard EnvsModuleConfig
+   */
   #processEnvs(
     defaultEnv: string,
     defaultBaseEnv: string,
@@ -523,7 +532,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Provision a port install in the environment.
    */
   install(...configs: InstallConfigFat[]) {
@@ -533,7 +542,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * This is treated as a single set and will replace previously any configured set.
    */
   allowedPortDeps(deps: AllowedPortDep[]) {
@@ -541,7 +550,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Add an environment variable.
    */
   var(key: string, val: string) {
@@ -549,7 +558,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Add multiple environment variable.
    */
   vars(envVars: Record<string, string>) {
@@ -557,7 +566,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Description of the environment.
    */
   desc(str: string) {

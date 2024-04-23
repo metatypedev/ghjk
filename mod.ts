@@ -18,7 +18,7 @@ import {
   stdDeps,
   stdSecureConfig,
 } from "./ghjkfiles/mod.ts";
-import type { EnvDefArgs, TaskDefArgs, TaskFn } from "./ghjkfiles/mod.ts";
+import type { EnvDefArgs, DenoTaskDefArgs, TaskFn } from "./ghjkfiles/mod.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "./modules/tasks/deno.ts";
@@ -33,7 +33,7 @@ const mainEnv = file.addEnv({
   desc: "the default default environment.",
 });
 
-export type { EnvDefArgs, TaskDefArgs, TaskFn } from "./ghjkfiles/mod.ts";
+export type { EnvDefArgs, DenoTaskDefArgs, TaskFn } from "./ghjkfiles/mod.ts";
 export { $, logger, stdDeps, stdSecureConfig };
 
 // FIXME: ses.lockdown to freeze primoridials
@@ -59,23 +59,31 @@ export function install(...configs: InstallConfigFat[]) {
   mainEnv.install(...configs);
 }
 
-export function task(args: TaskDefArgs): string;
-export function task(name: string, args: Omit<TaskDefArgs, "name">): string;
+/**
+ * Define and register a task.
+ */
+export function task(args: DenoTaskDefArgs): string;
+export function task(name: string, args: Omit<DenoTaskDefArgs, "name">): string;
 export function task(name: string, fn: TaskFn): string;
+export function task(fn: TaskFn): string;
 export function task(
-  nameOrArgs: string | TaskDefArgs,
-  argsOrFn?: Omit<TaskDefArgs, "name"> | TaskFn,
+  nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
+  argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
 ): string {
-  let args: TaskDefArgs;
-  if (typeof nameOrArgs == "object") {
-    args = nameOrArgs;
+  let args: DenoTaskDefArgs;
+  if (typeof nameOrArgsOrFn == "object") {
+    args = nameOrArgsOrFn;
   } else if (typeof argsOrFn == "object") {
-    args = { ...argsOrFn, name: nameOrArgs };
+    args = { ...argsOrFn, name: nameOrArgsOrFn };
   } else if (argsOrFn) {
     args = {
-      name: nameOrArgs,
+      name: nameOrArgsOrFn,
       fn: argsOrFn,
     };
+  } else if (typeof nameOrArgsOrFn =="function"){
+    args = {
+      fn: argsOrFn
+    }
   } else {
     throw new Error("no function provided when defining task");
   }

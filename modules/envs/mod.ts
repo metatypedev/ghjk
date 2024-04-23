@@ -17,7 +17,6 @@ import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
-import { isColorfulTty } from "../../utils/logger.ts";
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 
 export type EnvsCtx = {
@@ -139,13 +138,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
                 throw new Error(`No env found under given name "${envName}"`);
               }
               // deno-lint-ignore no-console
-              console.log(Deno.inspect(
-                await showableEnv(gcx, env, envName),
-                {
-                  depth: 10,
-                  colors: isColorfulTty(),
-                },
-              ));
+              console.log($.inspect(await showableEnv(gcx, env, envName)));
             }),
         ),
       sync: new cliffy_cmd.Command()
