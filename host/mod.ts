@@ -117,6 +117,7 @@ export async function cli(args: CliArgs) {
               if (!ghjkShareDir) {
                 throw new Error("no ghjkfile found.");
               }
+              // deno-lint-ignore no-console
               console.log(ghjkShareDir);
             }),
         )
@@ -128,6 +129,7 @@ export async function cli(args: CliArgs) {
               if (!ghjkDir) {
                 throw new Error("no ghjkfile found.");
               }
+              // deno-lint-ignore no-console
               console.log(ghjkDir);
             }),
         )
@@ -139,6 +141,7 @@ export async function cli(args: CliArgs) {
               if (!ghjkfilePath) {
                 throw new Error("no ghjkfile found.");
               }
+              // deno-lint-ignore no-console
               console.log(ghjkfilePath);
             }),
         )
@@ -152,6 +155,7 @@ export async function cli(args: CliArgs) {
               if (!serializedConfig) {
                 throw new Error("no ghjkfile found.");
               }
+              // deno-lint-ignore no-console
               console.log(Deno.inspect(serializedConfig, {
                 depth: 10,
                 colors: isColorfulTty(),

@@ -1,4 +1,3 @@
-
 function get_ctime_ts 
     switch (uname -s | tr '[:upper:]' '[:lower:]')
         case "linux"

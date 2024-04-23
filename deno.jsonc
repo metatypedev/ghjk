@@ -18,6 +18,10 @@
       "play.ts"
     ],
     "rules": {
+      "include": [
+        "no-console",
+        "no-sync-fn-in-async-fn"
+      ],
       "exclude": [
         "no-explicit-any"
       ]

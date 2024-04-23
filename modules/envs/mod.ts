@@ -75,6 +75,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
           new cliffy_cmd.Command()
             .description("List environments defined in the ghjkfile.")
             .action(() => {
+              // deno-lint-ignore no-console
               console.log(
                 Object.entries(ecx.config.envs)
                   .map(([name, { desc }]) =>
@@ -137,6 +138,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
               if (!env) {
                 throw new Error(`No env found under given name "${envName}"`);
               }
+              // deno-lint-ignore no-console
               console.log(Deno.inspect(
                 await showableEnv(gcx, env, envName),
                 {

@@ -1,11 +1,12 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
-import { std_assert, std_url } from "../deps/dev.ts";
+import { std_url } from "../deps/dev.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
 import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 import type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
+import logger from "../utils/logger.ts";
 export type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
@@ -66,7 +67,7 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     try {
       await cmd;
     } catch (err) {
-      console.log(err);
+      logger(import.meta).error(err);
       throw err;
     }
   }
@@ -113,27 +114,12 @@ export async function localE2eTest(testCase: E2eTestCase) {
     shellsToHook: [],
   });
 
-  // TODO: use `clearEnv` when `dax` stabilizes it
-  // https://github.com/dsherret/dax/issues/63
-  std_assert.assertEquals(
-    (await new Deno.Command(ghjkShareDir.join("ghjk").toString(), {
-      args: "print config".split(" "),
-      cwd: tmpDir.toString(),
-      env,
-      clearEnv: true,
-    }).spawn().status).code,
-    0,
-  );
-  std_assert.assertEquals(
-    (await new Deno.Command(ghjkShareDir.join("ghjk").toString(), {
-      args: "envs cook".split(" "),
-      cwd: tmpDir.toString(),
-      env,
-      clearEnv: true,
-    }).spawn().status)
-      .code,
-    0,
-  );
+  await $`${ghjkShareDir.join("ghjk").toString()} print config`
+    .cwd(tmpDir.toString())
+    .env(env);
+  await $`${ghjkShareDir.join("ghjk").toString()} ports sync`
+    .cwd(tmpDir.toString())
+    .env(env);
   /*
   // print the contents of the ghjk dir for debugging purposes
   const ghjkDirLen = ghjkDir.toString().length;
@@ -151,23 +137,14 @@ export async function localE2eTest(testCase: E2eTestCase) {
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }
   for (const ePoint of ePoints) {
-    console.error({ ePoint });
-    const cmdArr = Array.isArray(ePoint.cmd)
-      ? ePoint.cmd
-      : ePoint.cmd.split(" ");
-    const cmd = new Deno.Command(cmdArr[0], {
-      args: cmdArr.splice(1),
-      cwd: tmpDir.toString(),
-      env,
-      clearEnv: true,
-      stdin: ePoint.stdin ? "piped" : "inherit",
-    }).spawn();
+    let cmd = $.raw`${ePoint.cmd}`
+      .cwd(tmpDir.toString())
+      .clearEnv()
+      .env(env);
     if (ePoint.stdin) {
-      const writer = cmd.stdin.getWriter();
-      await writer.write(new TextEncoder().encode(ePoint.stdin));
-      await writer.close();
+      cmd = cmd.stdinText(ePoint.stdin);
     }
-    std_assert.assertEquals((await cmd.status).code, 0);
+    await cmd;
   }
   await tmpDir.remove({ recursive: true });
 }
