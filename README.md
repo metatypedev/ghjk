@@ -2,6 +2,13 @@
 
 ghjk /jk/ is a programmable runtime manager.
 
+> Ghjk is part of the
+> [Metatype ecosystem](https://github.com/metatypedev/metatype). Consider
+> checking out how this component integrates with the whole ecosystem and browse
+> the
+> [documentation](https://metatype.dev?utm_source=github&utm_medium=readme&utm_campaign=ghjk)
+> to see more examples.
+
 ## Features
 
 - install and manage tools (e.g. rustup, deno, node, etc.)
@@ -15,8 +22,8 @@ ghjk /jk/ is a programmable runtime manager.
   - `x meta` -> `cargo run -p meta` (avoid conflicts and provide autocompletion)
 - [ ] load environment variables and prompt for missing ones
 - [ ] define build tasks with dependencies
-  - `task("build", {depends_on: [rust], if: Deno.build.os === "Macos" })`
-  - `task.bash("ls")`
+  - [x] `task("build", {depends_on: [rust], if: Deno.build.os === "Macos" })`
+  - [ ] `task.bash("ls")`
 - [x] compatible with continuous integration (e.g. github actions, gitlab)
 
 ## Getting started
@@ -90,7 +97,10 @@ ghjk.env("dev", {
     ports.cargobi({ crateName: "cargo-insta" }),
     ports.act(),
   ],
-});
+})
+  // use env hooks to run code on activation/deactivation
+  .onEnter(ghjk.task(($) => $`echo dev activated`))
+  .onExit(ghjk.task(($) => $`echo dev de-activated`));
 
 ghjk.env({
   name: "docker",
