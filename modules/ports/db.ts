@@ -11,7 +11,7 @@ import validators from "./types.ts";
 
 // NOTE: make sure any changes to here are backwards compatible
 const installRowValidator = zod.object({
-  version: zod.string(),
+  // version: zod.string(),
   installId: zod.string(),
   conf: validators.installConfigLite,
   manifest: validators.portManifest,
@@ -21,7 +21,9 @@ const installRowValidator = zod.object({
 }).passthrough();
 
 type InstallRowVersioned = zod.infer<typeof installRowValidator>;
-export type InstallRow = Omit<InstallRowVersioned, "version">;
+// FIXME: this breaks typescript
+// export type InstallRow = Omit<InstallRowVersioned, "version">;
+export type InstallRow = InstallRowVersioned;
 
 export abstract class InstallsDb {
   abstract all(): Promise<InstallRow[]>;

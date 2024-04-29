@@ -1,19 +1,19 @@
 import "../setup_logger.ts";
 import {
+  type DenoTaskDefArgs,
   dockerE2eTest,
   E2eTestCase,
   genTsGhjkFile,
   localE2eTest,
-  type TaskDefArgs,
 } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
-import { stdSecureConfig } from "../ghjkfiles/mod.ts";
+import { stdSecureConfig } from "../files/mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   stdin: string;
-  tasks: TaskDefArgs[];
+  tasks: DenoTaskDefArgs[];
   enableRuntimesOnMasterPDAL?: boolean;
 };
 const cases: CustomE2eTestCase[] = [

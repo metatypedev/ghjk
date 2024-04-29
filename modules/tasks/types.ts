@@ -24,6 +24,11 @@ const taskDefHashedBase = taskDefBase.merge(zod.object({
 const denoWorkerTaskDefBase = zod.object({
   ty: zod.literal("denoWorker@v1"),
   moduleSpecifier: zod.string().url().transform(relativeFileUrl),
+  /**
+   * A single module might host multiple tasks so we need keys to identify
+   * each with. Names aren't enough since some tasks are anonymous.
+   */
+  key: zod.string(),
 });
 
 const denoWorkerTaskDef = taskDefFullBase.merge(denoWorkerTaskDefBase);

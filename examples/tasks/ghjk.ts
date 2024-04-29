@@ -8,9 +8,7 @@ task("greet", async ({ $, argv: [name] }) => {
 
 const ha = task({
   name: "ha",
-  installs: [
-    ports.protoc(),
-  ],
+  installs: [ports.protoc()],
   envVars: { STUFF: "stuffier" },
   async fn({ $ }) {
     await $`echo $STUFF;
@@ -35,7 +33,11 @@ task("hum", {
   fn: () => logger().info(`hum`),
 });
 
+// not all tasks need to be named
+// anon tasks can't be accessed from the CLI
+const anon = task(() => logger().info("anon"));
+
 task("hey", {
-  dependsOn: ["hii", "ho"],
+  dependsOn: ["hii", "ho", anon],
   fn: () => logger().info(`hey`),
 });

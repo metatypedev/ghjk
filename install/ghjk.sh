@@ -3,8 +3,9 @@ export GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-__GHJK_SHARE_DIR__}"
 export DENO_DIR="${GHJK_DENO_DIR:-__DENO_CACHE_DIR}" 
 export DENO_NO_UPDATE_CHECK=1
 
-# NOTE: avoid putting too much in here as the ghjk bin is meant
-# to be optional.
+# NOTE: avoid putting too much in here as this is only one 
+# method of getting the ghjk bin which is all utlimately optional
+# anyways.
 
 # if ghjkfile var is set, set the GHJK_DIR overriding
 # any set by the user

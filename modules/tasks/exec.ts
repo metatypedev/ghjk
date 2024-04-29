@@ -69,10 +69,12 @@ export function buildTaskGraph(
             },
           );
         }
-        graph.revDepEdges[depTaskHash] = [
-          ...graph.revDepEdges[depTaskHash] ?? [],
-          hash,
-        ];
+        const revDepSet = graph.revDepEdges[depTaskHash];
+        if (revDepSet) {
+          revDepSet.push(hash);
+        } else {
+          graph.revDepEdges[depTaskHash] = [hash];
+        }
       }
       graph.depEdges[hash] = task.dependsOn;
     }
@@ -125,7 +127,11 @@ export async function execTask(
         envDir: taskEnvDir,
       },
     );
-    logger.info("executing", hashToName[taskHash] ?? taskHash, args);
+    logger.info(
+      "executing",
+      hashToName[taskHash] ?? taskDef.key ?? taskHash,
+      args,
+    );
 
     const envVars = {
       ...Deno.env.toObject(),
@@ -144,7 +150,7 @@ export async function execTask(
       await execTaskDeno(
         taskDef.moduleSpecifier,
         {
-          hash: taskHash,
+          key: taskDef.key,
           argv: args,
           envVars,
           workingDir: std_path.dirname(gcx.ghjkfilePath),

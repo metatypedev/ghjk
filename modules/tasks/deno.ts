@@ -31,7 +31,7 @@ export type DriverResponse = {
 };
 
 export type ExecTaskArgs = {
-  hash: string;
+  key: string;
   argv: string[];
   workingDir: string;
   envVars: Record<string, string>;

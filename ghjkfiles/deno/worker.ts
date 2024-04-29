@@ -37,7 +37,7 @@ async function serializeConfig(uri: string, envVars: Record<string, string>) {
   const { setup: setupLogger } = await import("../../utils/logger.ts");
   setupLogger();
   const mod = await import(uri);
-  const rawConfig = await mod.ghjk.getConfig(mod.secureConfig);
+  const rawConfig = await mod.ghjk.getConfig(uri, mod.secureConfig);
   const config = JSON.parse(JSON.stringify(rawConfig));
   return {
     config,

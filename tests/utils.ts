@@ -5,9 +5,9 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
-import type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
 import logger from "../utils/logger.ts";
-export type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
+import type { DenoTaskDefArgs, EnvDefArgs } from "../mod.ts";
+export type { DenoTaskDefArgs, EnvDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
   name: string;
@@ -153,7 +153,7 @@ export function genTsGhjkFile(
   { installConf, secureConf, taskDefs, envDefs }: {
     installConf?: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
-    taskDefs?: TaskDefArgs[];
+    taskDefs?: DenoTaskDefArgs[];
     envDefs?: EnvDefArgs[];
   },
 ) {

@@ -1,3 +1,5 @@
+//! This provides the backing implementation of the GHjkfile frontends.
+
 // NOTE: avoid adding sources of randomness
 // here to make the resulting config reasonably stable
 // across serializaiton. No random identifiers.
@@ -31,7 +33,7 @@ import { dax, jsonHash, objectHash } from "../deps/common.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
-import { TasksModuleConfig } from "../modules/tasks/types.ts";
+import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
 import {
   EnvRecipe,
@@ -63,7 +65,7 @@ export type TaskFnArgs = {
 export type TaskFn = (args: TaskFnArgs) => Promise<any> | any;
 
 /**
- * Configuration for a task.
+ * Configure a task under the given name or key.
  */
 export type TaskDefArgs = {
   name?: string;
@@ -78,11 +80,9 @@ export type TaskDefArgs = {
 
 export type DenoTaskDefArgs = TaskDefArgs & {
   fn: TaskFn;
-}
+};
 
-type TaskDefTyped = (
-  DenoTaskDefArgs & { ty: "denoWorker@v1" }
-);
+type TaskDefTyped = DenoTaskDefArgs & { ty: "denoWorker@v1" };
 
 export class GhjkfileBuilder {
   #installSets = new Map<string, InstallSet>();
@@ -122,13 +122,25 @@ export class GhjkfileBuilder {
     if (typeof args.base == "string") {
       this.addEnv({ name: args.base });
     }
-    // const hash = objectHash(jsonHash.canonicalize(args as jsonHash.Tree));
-    const uuid = crypto.randomUUID();
-    this.#tasks[uuid] = {
+    let hash;
+    switch (args.ty) {
+      case "denoWorker@v1":
+        // NOTE: we serialize the function to a string before
+        // hashing. We don't expect functions that close over values
+        // in task defs so we get to avoid requiring id `key`s
+        // the same way react needs on components.
+        hash = objectHash(jsonHash.canonicalize({
+          ...args,
+          fn: args.fn.toString(),
+        } as jsonHash.Tree));
+        break;
+      default:
+        throw new Error(`unexpected task type: ${args.ty}`);
+    }
+    this.#tasks[hash] = {
       ...args,
-      name,
     };
-    return uuid;
+    return hash;
   }
 
   addEnv(args: EnvDefArgs) {
@@ -157,11 +169,11 @@ export class GhjkfileBuilder {
   }
 
   async execTask(
-    { hash, workingDir, envVars, argv }: ExecTaskArgs,
+    { key, workingDir, envVars, argv }: ExecTaskArgs,
   ) {
-    const task = this.#tasks[hash];
+    const task = this.#tasks[key];
     if (!task) {
-      throw new Error(`no task defined under "${hash}"`);
+      throw new Error(`no task defined under "${key}"`);
     }
     const custom$ = $.build$({
       commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
@@ -170,18 +182,20 @@ export class GhjkfileBuilder {
   }
 
   toConfig(
-    { defaultEnv, defaultBaseEnv, secureConfig }: {
+    { defaultEnv, defaultBaseEnv, secureConfig, ghjkfileUrl }: {
       defaultEnv: string;
       defaultBaseEnv: string;
       secureConfig: PortsModuleSecureConfig | undefined;
+      ghjkfileUrl: string;
     },
   ) {
     try {
-      const envsConfig = this.#processEnvs(
-        defaultEnv,
+      const envsConfig = this.#processEnvs(defaultEnv, defaultBaseEnv);
+      const tasksConfig = this.#processTasks(
+        envsConfig,
         defaultBaseEnv,
+        ghjkfileUrl,
       );
-      const tasksConfig = this.#processTasks(envsConfig, defaultBaseEnv);
       const portsConfig = this.#processInstalls(
         secureConfig?.masterPortDepAllowList ?? stdDeps(),
       );
@@ -259,12 +273,13 @@ export class GhjkfileBuilder {
         indie.push(name);
       }
     }
+
     const processed = {} as Record<
       string,
       { installSetId?: string; vars: Record<string, string> }
     >;
-    const out: EnvsModuleConfig = { envs: {}, defaultEnv };
-    const workingSet = [...indie];
+    const moduleConfig: EnvsModuleConfig = { envs: {}, defaultEnv };
+    const workingSet = indie;
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
@@ -316,7 +331,7 @@ export class GhjkfileBuilder {
         installSetId: processedInstallSetId,
         vars: processedVars,
       };
-      out.envs[final.name] = {
+      moduleConfig.envs[final.name] = {
         desc: final.desc,
         provides: [
           ...Object.entries(processedVars).map((
@@ -332,7 +347,7 @@ export class GhjkfileBuilder {
           ty: "ghjk.ports.InstallSetRef",
           setId: processedInstallSetId,
         };
-        out.envs[final.name].provides.push(prov);
+        moduleConfig.envs[final.name].provides.push(prov);
       }
 
       const curRevDeps = revDeps.get(final.name);
@@ -341,21 +356,46 @@ export class GhjkfileBuilder {
         revDeps.delete(final.name);
       }
     }
-    return out;
+    // sanity checks
+    if (revDeps.size > 0) {
+      throw new Error("working set empty but pending items found");
+    }
+    return moduleConfig;
   }
 
-  #processTasks(envsConfig: EnvsModuleConfig, defaultBaseEnv: string) {
-    const out: TasksModuleConfig = {
+  #processTasks(
+    envsConfig: EnvsModuleConfig,
+    defaultBaseEnv: string,
+    ghjkfileUrl: string,
+  ) {
+    const indie = [] as string[];
+    const revDeps = new Map<string, string[]>();
+    for (const [key, args] of Object.entries(this.#tasks)) {
+      if (args.dependsOn && args.dependsOn.length > 0) {
+        for (const depHash of args.dependsOn) {
+          const revDepSet = revDeps.get(depHash);
+          if (revDepSet) {
+            revDepSet.push(key);
+          } else {
+            revDeps.set(depHash, [key]);
+          }
+        }
+      } else {
+        indie.push(key);
+      }
+    }
+    const workingSet = indie;
+    const hashToHash = {} as Record<string, string>;
+    const moduleConfig: TasksModuleConfig = {
       envs: {},
       tasks: {},
+      tasksNamed: {},
     };
-    for (
-      const [name, args] of Object
-        .entries(
-          this.#tasks,
-        )
-    ) {
+    while (workingSet.length > 0) {
+      const key = workingSet.pop()!;
+      const args = this.#tasks[key];
       const { workingDir, desc, dependsOn, base } = args;
+
       const envBaseResolved = typeof base === "string"
         ? base
         : base
@@ -412,7 +452,7 @@ export class GhjkfileBuilder {
         }
       }
       if (taskInstallSet.installs.length > 0) {
-        const setId = `ghjkTaskInstSet___${name}`;
+        const setId = `ghjkTaskInstSet___${key}`;
         this.#installSets.set(setId, taskInstallSet);
         const prov: InstallSetRefProvision = {
           ty: "ghjk.ports.InstallSetRef",
@@ -433,29 +473,64 @@ export class GhjkfileBuilder {
       const envHash = objectHash(
         jsonHash.canonicalize(taskEnvRecipe as jsonHash.Tree),
       );
-      out.envs[envHash] = taskEnvRecipe;
+      moduleConfig.envs[envHash] = taskEnvRecipe;
 
-      out.tasks[name] = {
-        name,
+      const def: TaskDefHashed = {
+        ty: args.ty,
+        key,
         workingDir: typeof workingDir == "object"
           ? workingDir.toString()
           : workingDir,
         desc,
-        dependsOn,
+        dependsOn: dependsOn?.map((hash) => hashToHash[hash]),
         envHash,
+        moduleSpecifier: ghjkfileUrl,
       };
+      const taskHash = objectHash(jsonHash.canonicalize(def as jsonHash.Tree));
+      moduleConfig.tasks[taskHash] = def;
+      hashToHash[key] = taskHash;
+
+      if (args.name) {
+        moduleConfig.tasksNamed[args.name] = taskHash;
+      }
+
+      const curRevDeps = revDeps.get(key);
+      if (curRevDeps) {
+        workingSet.push(...curRevDeps);
+        revDeps.delete(key);
+      }
     }
-    for (const [name, { dependsOn }] of Object.entries(out.tasks)) {
+
+    // do some sanity checks
+    for (const [key, { dependsOn }] of Object.entries(moduleConfig.tasks)) {
       for (const depName of dependsOn ?? []) {
-        if (!out.tasks[depName]) {
+        if (!moduleConfig.tasks[depName]) {
           throw new Error(
-            `task "${name}" depend on non-existent task "${depName}"`,
+            `task "${key}" depend on non-existent task "${depName}"`,
+            {
+              cause: {
+                workingSet,
+                revDeps,
+                moduleConfig,
+                tasks: this.#tasks,
+              },
+            },
           );
         }
       }
     }
+    if (revDeps.size > 0) {
+      throw new Error("working set empty but pending items found", {
+        cause: {
+          workingSet,
+          revDeps,
+          moduleConfig,
+          tasks: this.#tasks,
+        },
+      });
+    }
 
-    return out;
+    return moduleConfig;
   }
 
   #processInstalls(masterAllowList: AllowedPortDep[]) {

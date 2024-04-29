@@ -50,8 +50,8 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     gcx: GhjkCtx,
     tcx: TasksCtx,
   ) {
-    const commands = Object.entries(tcx.config.tasks).map(
-      ([name, task]) => {
+    const commands = Object.entries(tcx.config.tasksNamed).map(
+      ([name, hash]) => {
         const cliffyCmd = new cliffy_cmd.Command()
           .name(name)
           .useRawArgs()
@@ -64,8 +64,9 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
               args,
             );
           });
-        if (task.desc) {
-          cliffyCmd.description(task.desc);
+        const def = tcx.config.tasks[hash];
+        if (def.desc) {
+          cliffyCmd.description(def.desc);
         }
         return cliffyCmd;
       },
