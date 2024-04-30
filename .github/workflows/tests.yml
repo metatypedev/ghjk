@@ -31,6 +31,8 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - uses: pre-commit/action@v3.0.1
+        env:
+          SKIP: ghjk-resolve
 
   test-e2e:
     runs-on: "${{ matrix.os }}"

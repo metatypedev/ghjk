@@ -46,7 +46,7 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
-ENV GHJK_LOG=debug
+ENV GHJK_LOG=info
 ENV GHJK_INSTALL_EXE_DIR=/usr/bin
 ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
 # share the module cache of the image
@@ -67,7 +67,7 @@ RUN <<EOT
     cat $(which ghjk)
     export CLICOLOR_FORCE=1 
     ghjk print config
-    ghjk ports sync
+    ghjk envs cook
 EOT
 
 # activate ghjk non-interactive shells execs

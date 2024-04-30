@@ -117,7 +117,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await $`${ghjkShareDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
     .env(env);
-  await $`${ghjkShareDir.join("ghjk").toString()} ports sync`
+  await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
     .cwd(tmpDir.toString())
     .env(env);
   /*

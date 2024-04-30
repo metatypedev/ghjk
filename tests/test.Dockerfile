@@ -41,7 +41,7 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
-ENV GHJK_LOG=debug
+ENV GHJK_LOG=info
 ENV GHJK_INSTALL_EXE_DIR=/usr/bin
 ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
 # share the module cache of the image
