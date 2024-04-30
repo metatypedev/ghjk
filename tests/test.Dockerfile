@@ -32,7 +32,6 @@ ENV DENO_DIR=/deno-dir
 
 COPY deno.lock deno.jsonc ./
 COPY deps/* ./deps/
-COPY vendor/ ./vendor/
 RUN deno task cache
 
 COPY . ./
