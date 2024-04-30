@@ -28,6 +28,5 @@
         "no-explicit-any"
       ]
     }
-  },
-  "importMap": "./vendor/import_map.json"
+  }
 }

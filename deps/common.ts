@@ -12,8 +12,7 @@ export * as std_url from "https://deno.land/std@0.213.0/url/mod.ts";
 export * as std_path from "https://deno.land/std@0.213.0/path/mod.ts";
 export * as std_fs from "https://deno.land/std@0.213.0/fs/mod.ts";
 // export * as dax from "jsr:@david/dax@0.40.1";
-// this is actually vendored as dax doesn't support raw.github anymore
-export * as dax from "../vendor/raw.githubusercontent.com/Yohe-Am/dax/feat/63/cmds-clear-env/mod.ts";
+export * as dax from "jsr:@ghjk/dax@0.40.2-alpha-ghjk";
 
 export * as jsonHash from "https://deno.land/x/json_hash@0.2.0/mod.ts";
 export { default as objectHash } from "https://deno.land/x/object_hash@2.0.3/mod.ts";

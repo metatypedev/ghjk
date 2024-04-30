@@ -4,6 +4,7 @@
     "specifiers": {
       "jsr:@david/dax@0.40.1": "jsr:@david/dax@0.40.1",
       "jsr:@david/which@0.3": "jsr:@david/which@0.3.0",
+      "jsr:@ghjk/dax@0.40.2-alpha-ghjk": "jsr:@ghjk/dax@0.40.2-alpha-ghjk",
       "jsr:@std/assert@^0.221.0": "jsr:@std/assert@0.221.0",
       "jsr:@std/bytes@^0.221.0": "jsr:@std/bytes@0.221.0",
       "jsr:@std/fmt@^0.221.0": "jsr:@std/fmt@0.221.0",
@@ -31,6 +32,17 @@
       },
       "@david/which@0.3.0": {
         "integrity": "6bdb62c40ac90edcf328e854fa8103a8db21e7c326089cbe3c3a1cf7887d3204"
+      },
+      "@ghjk/dax@0.40.2-alpha-ghjk": {
+        "integrity": "87bc93e9947779cb2f3922fe277e21ea8c716de804b2627f80ba9e7bc3d0d019",
+        "dependencies": [
+          "jsr:@david/which@0.3",
+          "jsr:@std/fmt@^0.221.0",
+          "jsr:@std/fs@0.221.0",
+          "jsr:@std/io@0.221.0",
+          "jsr:@std/path@0.221.0",
+          "jsr:@std/streams@0.221.0"
+        ]
       },
       "@std/assert@0.221.0": {
         "integrity": "a5f1aa6e7909dbea271754fd4ab3f4e687aeff4873b4cef9a320af813adb489a"
