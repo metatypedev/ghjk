@@ -34,9 +34,7 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
 
 async function serializeConfig(uri: string, envVars: Record<string, string>) {
   const shimHandle = shimDenoNamespace(envVars);
-  const { setup: setupLogger } = await import(
-    "../utils/logger.ts"
-  );
+  const { setup: setupLogger } = await import("../../utils/logger.ts");
   setupLogger();
   const mod = await import(uri);
   const rawConfig = await mod.ghjk.getConfig(mod.secureConfig);

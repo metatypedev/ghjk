@@ -230,7 +230,7 @@ function testMany(
               ),
               ePoints: [
                 ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                  cmd: [...`env ${sh}`.split(" "), testCase.ePoint],
+                  cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
                 })),
                 /* // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long

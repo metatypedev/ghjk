@@ -169,18 +169,18 @@ export async function getInstallHash(install: InstallConfigResolvedX) {
   return `${install.portRef}!${hashHex}`;
 }
 
-export type PathRef = dax.PathRef;
+export type Path = dax.Path;
 
 export function defaultCommandBuilder() {
   const builder = new dax.CommandBuilder()
     .printCommand(true);
-  builder.setPrintCommandLogger((_, cmd) => {
+  builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
     // TODO: remove when https://github.com/dsherret/dax/pull/203
     // is merged
     return logger().debug(
       "spawning",
-      $.stripAnsi(cmd).split(/\s/),
+      cmd,
     );
   });
   return builder;
@@ -196,10 +196,10 @@ export const $ = dax.build$(
           iterableLimit: 500,
         });
       },
-      pathToString(path: dax.PathRef) {
+      pathToString(path: Path) {
         return path.toString();
       },
-      async removeIfExists(path: dax.PathRef | string) {
+      async removeIfExists(path: Path | string) {
         const pathRef = $.path(path);
         if (await pathRef.exists()) {
           await pathRef.remove({ recursive: true });
@@ -371,7 +371,7 @@ export async function downloadFile(
 
   await $.path(downloadPath).ensureDir();
 
-  await tmpFilePath.copyFile(fileDwnPath);
+  await tmpFilePath.copy(fileDwnPath);
   return downloadPath.toString();
 }
 

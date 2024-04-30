@@ -10,6 +10,7 @@ const files = (await Array.fromAsync(
       "play.ts",
       ".ghjk/**",
       ".deno-dir/**",
+      "vendor/**",
     ],
   }),
 )).map((ref) => ref.path.toString());

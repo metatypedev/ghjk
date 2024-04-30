@@ -12,7 +12,7 @@ import {
   bufferHashHex,
   Json,
   objectHashHex,
-  PathRef,
+  Path,
   stringHashHex,
 } from "../utils/mod.ts";
 import validators, { SerializedConfig } from "./types.ts";
@@ -362,7 +362,7 @@ type SerializedConfigExt = DePromisify<
 
 async function readAndSerializeConfig(
   hcx: HostCtx,
-  configPath: PathRef,
+  configPath: Path,
   envVars: Record<string, string>,
 ) {
   switch (configPath.extname()) {
@@ -407,7 +407,7 @@ async function readAndSerializeConfig(
 
 function validateRawConfig(
   raw: unknown,
-  configPath: PathRef,
+  configPath: Path,
 ): SerializedConfig {
   const res = validators.serializedConfig.safeParse(raw);
   if (!res.success) {
@@ -432,7 +432,7 @@ const lockObjValidator = zod.object({
  * from modules. It's primary purpose is as a memo store to avoid
  * re-serialization on each CLI invocation.
  */
-async function readLockFile(lockFilePath: PathRef) {
+async function readLockFile(lockFilePath: Path) {
   const rawStr = await lockFilePath.readMaybeText();
   if (!rawStr) return;
   try {
@@ -469,7 +469,7 @@ const hashObjValidator = zod.object({
  * do "cache invalidation" on ghjkfiles, re-serializing them if
  * any of the digests change.
  */
-async function readHashFile(hashFilePath: PathRef) {
+async function readHashFile(hashFilePath: Path) {
   const rawStr = await hashFilePath.readMaybeText();
   if (!rawStr) return;
   try {
@@ -502,7 +502,7 @@ async function envVarDigests(all: Record<string, string>, accessed: string[]) {
   return hashes;
 }
 
-async function fileDigests(hcx: HostCtx, readFiles: string[], cwd: PathRef) {
+async function fileDigests(hcx: HostCtx, readFiles: string[], cwd: Path) {
   const cwdStr = cwd.toString();
   const readFileHashes = {} as DigestsMap;
   await Promise.all(readFiles.map(async (path) => {
@@ -531,7 +531,7 @@ async function fileDigests(hcx: HostCtx, readFiles: string[], cwd: PathRef) {
  * Returns the hash digest of a file. Makes use of a memo
  * to dedupe work.
  */
-function fileDigestHex(hcx: HostCtx, path: PathRef) {
+function fileDigestHex(hcx: HostCtx, path: Path) {
   const absolute = path.resolve().toString();
   let promise = hcx.fileHashMemoStore.get(absolute);
   if (!promise) {

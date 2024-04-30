@@ -8,14 +8,16 @@
     "exclude": [
       "**/*.md",
       ".ghjk/**",
-      ".deno-dir/**"
+      ".deno-dir/**",
+      "vendor/**"
     ]
   },
   "lint": {
     "exclude": [
       ".deno-dir/**",
       "ghjk.ts",
-      "play.ts"
+      "play.ts",
+      "vendor/**"
     ],
     "rules": {
       "include": [
@@ -26,5 +28,6 @@
         "no-explicit-any"
       ]
     }
-  }
+  },
+  "importMap": "./vendor/import_map.json"
 }

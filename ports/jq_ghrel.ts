@@ -71,7 +71,7 @@ export class Port extends GithubReleasePort {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = $.path(args.downloadPath).resolve(fileName);
 
-    await fileDwnPath.copyFile(
+    await fileDwnPath.copy(
       (await installPath
         .join("bin")
         .ensureDir())

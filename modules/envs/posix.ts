@@ -1,7 +1,7 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
 import type { EnvRecipeX } from "./types.ts";
 import getLogger from "../../utils/logger.ts";
-import { $, PathRef } from "../../utils/mod.ts";
+import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
 
@@ -120,7 +120,7 @@ export async function cookPosixEnv(
 /// This expands globs found in the targetPaths
 async function shimLinkPaths(
   targetPaths: string[],
-  shimDir: PathRef,
+  shimDir: Path,
 ) {
   // map of filename to shimPath
   const shims: Record<string, string> = {};

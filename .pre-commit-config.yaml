@@ -38,7 +38,7 @@ repos:
       - id: ghjk-resolve
         name: Ghjk resolve
         language: system
-        entry: bash -c 'ghjk p resolve'
+        entry: bash -c 'deno run --unstable -A main.ts p resolve'
         pass_filenames: false
       - id: deno-fmt
         name: Deno format

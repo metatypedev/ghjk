@@ -16,6 +16,7 @@ import logger from "../utils/logger.ts";
 import {
   $,
   defaultCommandBuilder,
+  Path,
   thinInstallConfig,
   unwrapParseRes,
 } from "../utils/mod.ts";
@@ -69,7 +70,7 @@ export type TaskDefArgs = {
   fn: TaskFn;
   desc?: string;
   dependsOn?: string[];
-  workingDir?: string | dax.PathRef;
+  workingDir?: string | Path;
   envVars?: Record<string, string>;
   allowedPortDeps?: AllowedPortDep[];
   installs?: InstallConfigFat[];
