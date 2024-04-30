@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "GHJK_LOG=debug deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
+    "test": "GHJK_LOG=info deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
     "cache": "deno cache deps/*",
     "check": "deno run -A check.ts"
   },
@@ -8,16 +8,22 @@
     "exclude": [
       "**/*.md",
       ".ghjk/**",
-      ".deno-dir/**"
+      ".deno-dir/**",
+      "vendor/**"
     ]
   },
   "lint": {
     "exclude": [
       ".deno-dir/**",
       "ghjk.ts",
-      "play.ts"
+      "play.ts",
+      "vendor/**"
     ],
     "rules": {
+      "include": [
+        "no-console",
+        "no-sync-fn-in-async-fn"
+      ],
       "exclude": [
         "no-explicit-any"
       ]

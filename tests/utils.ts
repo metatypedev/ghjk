@@ -1,18 +1,19 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
-import { std_url } from "../deps/common.ts";
+import { std_url } from "../deps/dev.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
 import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
-import type { TaskDefArgs } from "../mod.ts";
-export type { TaskDefArgs } from "../mod.ts";
+import type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
+import logger from "../utils/logger.ts";
+export type { EnvDefArgs, TaskDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
   name: string;
   tsGhjkfileStr: string;
-  envs?: Record<string, string>;
-  ePoints: { cmd: string; stdin?: string }[];
+  envVars?: Record<string, string>;
+  ePoints: { cmd: string | string[]; stdin?: string }[];
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
@@ -22,7 +23,7 @@ const templateStrings = {
 };
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envs: testEnvs, ePoints, tsGhjkfileStr } = testCase;
+  const { name, envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
   const tag = `ghjk_e2e_${name}`;
   const env = {
     ...testEnvs,
@@ -34,18 +35,6 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     // repo in the host fs to point to the copy of the
     // repo in the image
     .replaceAll(devGhjkPath, "file://$ghjk/")
-    // .replace(/\\/g, "\\\\")
-    //
-    // escape backticks
-    // .replace(/`/g, "\\`")
-    // escpape ${VAR} types of vars
-    // .replace(/\$\{([^\}]*)\}/g, "\\${$1}")
-    // escpae $VAR types of vars
-    // double dollar is treated as escpae so place a mark betewen
-    // .replace(/\$([A-Za-z])/g, "\\$<MARK>$1")
-    // .replace(/\$([A-Za-z])/g, "\\$<MARK>$1")
-    // remove mark
-    // .replace(/<MARK>/g, "")
     .replaceAll("$ghjk", "/ghjk");
 
   const dFile = dbg(dFileTemplate
@@ -70,13 +59,17 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
       ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
         .flat(),
       tag,
-      ePoint.cmd,
-    ]}`
+    ]} ${ePoint.cmd}`
       .env(env);
     if (ePoint.stdin) {
       cmd = cmd.stdinText(ePoint.stdin!);
     }
-    await cmd;
+    try {
+      await cmd;
+    } catch (err) {
+      logger(import.meta).error(err);
+      throw err;
+    }
   }
   await $
     .raw`${dockerCmd} rmi '${tag}'`
@@ -84,7 +77,7 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
 }
 
 export async function localE2eTest(testCase: E2eTestCase) {
-  const { envs: testEnvs, ePoints, tsGhjkfileStr } = testCase;
+  const { envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
       prefix: "ghjk_le2e_",
@@ -104,6 +97,9 @@ export async function localE2eTest(testCase: E2eTestCase) {
     ZDOTDIR: ghjkShareDir.toString(),
     GHJK_SHARE_DIR: ghjkShareDir.toString(),
     PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
+    // shield tests from external envs
+    GHJK_ENV: "main",
+    HOME: tmpDir.toString(),
   };
   // install ghjk
   await install({
@@ -117,10 +113,11 @@ export async function localE2eTest(testCase: E2eTestCase) {
     // don't modify system shell configs
     shellsToHook: [],
   });
+
   await $`${ghjkShareDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
     .env(env);
-  await $`${ghjkShareDir.join("ghjk").toString()} ports sync`
+  await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
     .cwd(tmpDir.toString())
     .env(env);
   /*
@@ -142,6 +139,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   for (const ePoint of ePoints) {
     let cmd = $.raw`${ePoint.cmd}`
       .cwd(tmpDir.toString())
+      .clearEnv()
       .env(env);
     if (ePoint.stdin) {
       cmd = cmd.stdinText(ePoint.stdin);
@@ -151,16 +149,17 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await tmpDir.remove({ recursive: true });
 }
 
-export function tsGhjkFileFromInstalls(
-  { installConf, secureConf, taskDefs }: {
-    installConf: InstallConfigFat | InstallConfigFat[];
+export function genTsGhjkFile(
+  { installConf, secureConf, taskDefs, envDefs }: {
+    installConf?: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
-    taskDefs: TaskDefArgs[];
+    taskDefs?: TaskDefArgs[];
+    envDefs?: EnvDefArgs[];
   },
 ) {
-  const installConfArray = Array.isArray(installConf)
-    ? installConf
-    : [installConf];
+  const installConfArray = installConf
+    ? Array.isArray(installConf) ? installConf : [installConf]
+    : [];
 
   const serializedPortsInsts = JSON.stringify(
     installConfArray,
@@ -177,18 +176,30 @@ export function tsGhjkFileFromInstalls(
     secureConf ?? null,
     (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
   );
-  const tasks = taskDefs.map(
+  const tasks = (taskDefs ?? []).map(
     (def) => {
-      const { name, ...withoutName } = def;
       const stringifiedSection = JSON.stringify(
-        withoutName,
+        def,
         (_, val) =>
           typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
       );
       return $.dedent`
-      ghjk.task("${name}", {
+      ghjk.task({
         ...JSON.parse(\`${stringifiedSection}\`),
         fn: ${def.fn.toString()}
+      })`;
+    },
+  ).join("\n");
+  const envs = (envDefs ?? []).map(
+    (def) => {
+      const stringifiedSection = JSON.stringify(
+        def,
+        (_, val) =>
+          typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+      );
+      return $.dedent`
+      ghjk.env({
+        ...JSON.parse(\`${stringifiedSection}\`),
       })`;
     },
   ).join("\n");
@@ -207,5 +218,6 @@ ${serializedSecConf}
 export const secureConfig = JSON.parse(secConfStr);
 
 ${tasks}
+${envs}
 `;
 }

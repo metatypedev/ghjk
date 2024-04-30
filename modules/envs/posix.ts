@@ -1,18 +1,25 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
-import type { WellKnownEnvRecipeX } from "./types.ts";
+import type { EnvRecipeX } from "./types.ts";
 import getLogger from "../../utils/logger.ts";
-import { $, PathRef } from "../../utils/mod.ts";
+import { $, Path } from "../../utils/mod.ts";
+import type { GhjkCtx } from "../types.ts";
+import { reduceStrangeProvisions } from "./reducer.ts";
 
 const logger = getLogger(import.meta);
 
 export async function cookPosixEnv(
-  env: WellKnownEnvRecipeX,
-  envDir: string,
-  createShellLoaders = false,
+  { gcx, recipe, envName, envDir, createShellLoaders = false }: {
+    gcx: GhjkCtx;
+    recipe: EnvRecipeX;
+    envName: string;
+    envDir: string;
+    createShellLoaders?: boolean;
+  },
 ) {
+  const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
+  await $.removeIfExists(envDir);
   // create the shims for the user's environment
   const shimDir = $.path(envDir).join("shims");
-  await $.removeIfExists(shimDir);
 
   const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
     shimDir.join("bin").ensureDir(),
@@ -25,11 +32,13 @@ export async function cookPosixEnv(
   const binPaths = [] as string[];
   const libPaths = [] as string[];
   const includePaths = [] as string[];
-  const vars = {} as Record<string, string>;
+  const vars = {
+    GHJK_ENV: envName,
+  } as Record<string, string>;
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
-  await Promise.all(env.provides.map((item) => {
+  await Promise.all(reducedRecipe.provides.map((item) => {
     switch (item.ty) {
       case "posix.exec":
         binPaths.push(item.absolutePath);
@@ -48,7 +57,7 @@ export async function cookPosixEnv(
             }" and "${item.val}"`,
           );
         }
-        vars[item.key] = vars[item.val];
+        vars[item.key] = item.val;
         break;
       default:
         throw Error(`unsupported provision type: ${(item as any).provision}`);
@@ -70,6 +79,7 @@ export async function cookPosixEnv(
       includePaths,
       includeShimDir,
     ),
+    $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
   ]);
   // write loader for the env vars mandated by the installs
   logger.debug("adding vars to loader", vars);
@@ -110,7 +120,7 @@ export async function cookPosixEnv(
 /// This expands globs found in the targetPaths
 async function shimLinkPaths(
   targetPaths: string[],
-  shimDir: PathRef,
+  shimDir: Path,
 ) {
   // map of filename to shimPath
   const shims: Record<string, string> = {};
@@ -156,8 +166,11 @@ async function writeLoader(
   env: Record<string, string>,
   pathVars: Record<string, string>,
 ) {
-  const loader = {
+  const activate = {
     posix: [
+      `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then
+    eval "$GHJK_CLEANUP_POSIX"
+fi`,
       `export GHJK_CLEANUP_POSIX="";`,
       ...Object.entries(env).map(([k, v]) =>
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
@@ -173,7 +186,10 @@ export ${k}="${v}:$${k}";
       ),
     ].join("\n"),
     fish: [
-      `set --erase GHJK_CLEANUP_FISH`,
+      `if set --query GHJK_CLEANUP_FISH
+    eval $GHJK_CLEANUP_FISH
+    set --erase GHJK_CLEANUP_FISH
+end`,
       ...Object.entries(env).map(([k, v]) =>
         `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
 set --global --export ${k} '${v}';`
@@ -187,7 +203,7 @@ set --global --export --prepend ${k} ${v};
   };
   const envPathR = await $.path(envDir).ensureDir();
   await Promise.all([
-    envPathR.join(`loader.fish`).writeText(loader.fish),
-    envPathR.join(`loader.sh`).writeText(loader.posix),
+    envPathR.join(`activate.fish`).writeText(activate.fish),
+    envPathR.join(`activate.sh`).writeText(activate.posix),
   ]);
 }

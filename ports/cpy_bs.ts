@@ -36,7 +36,7 @@ export const manifest = {
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   // python-build-standalone use zstd tarballs
-  deps: [tar_aa_id, zstd_aa_id],
+  buildDeps: [tar_aa_id, zstd_aa_id],
   platforms: osXarch(["linux", "darwin", "windows"], ["x86_64", "aarch64"]),
 };
 

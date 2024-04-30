@@ -17,7 +17,6 @@ const manifest = {
   name: "temporal_cli_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 

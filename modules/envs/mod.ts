@@ -1,24 +1,24 @@
-/*
-  Design:
-    - `$ ghjk env activate` to switch to default environment
-    - `$ ghjk env list`
-    - `$ ghjk env info`
-    - By default, all things go to the `main` environment
-*/
-
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
-
+import { $, detectShellPath, Json, unwrapParseRes } from "../../utils/mod.ts";
 import validators from "./types.ts";
-import type { EnvsModuleConfigX } from "./types.ts";
+import type {
+  EnvRecipeX,
+  EnvsModuleConfigX,
+  WellKnownProvision,
+} from "./types.ts";
 import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
-
-import { Blackboard } from "../../host/types.ts";
-import { reduceStrangeProvisions } from "./reducer.ts";
+import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
+import { getInstallSetStore, installGraphToSetMeta } from "../ports/inter.ts";
+import type {
+  InstallSetProvision,
+  InstallSetRefProvision,
+} from "../ports/types.ts";
+import { isColorfulTty } from "../../utils/logger.ts";
+import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -49,7 +49,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
       validators.envsModuleConfig.safeParse(manifest.config),
     );
 
-    const activeEnv = config.defaultEnv;
+    const activeEnv = Deno.env.get("GHJK_ENV") ?? config.defaultEnv;
 
     return Promise.resolve({
       activeEnv,
@@ -57,34 +57,121 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     });
   }
 
-  command(
+  commands(
     gcx: GhjkCtx,
     ecx: EnvsCtx,
   ) {
-    const root: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd
-      .Command()
-      .description("Envs module, the cornerstone")
-      .alias("e")
-      .alias("env")
-      .action(function () {
-        this.showHelp();
-      })
-      .command(
-        "sync",
-        new cliffy_cmd.Command().description("Syncs the environment.")
-          .action(async () => {
-            const envName = ecx.activeEnv;
+    return {
+      envs: new cliffy_cmd
+        .Command()
+        .description("Envs module, reproducable posix shells environments.")
+        .alias("e")
+        // .alias("env")
+        .action(function () {
+          this.showHelp();
+        })
+        .command(
+          "ls",
+          new cliffy_cmd.Command()
+            .description("List environments defined in the ghjkfile.")
+            .action(() => {
+              // deno-lint-ignore no-console
+              console.log(
+                Object.entries(ecx.config.envs)
+                  .map(([name, { desc }]) =>
+                    `${name}${desc ? ": " + desc : ""}`
+                  )
+                  .join("\n"),
+              );
+            }),
+        )
+        .command(
+          "activate",
+          new cliffy_cmd.Command()
+            .description(`Activate an environment.
 
-            const env = ecx.config.envs[envName];
-            // TODO: diff env and ask confirmation from user
-            const reducedEnv = await reduceStrangeProvisions(gcx, env);
-            const envDir = $.path(gcx.ghjkDir).join("envs", envName).toString();
+- If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`)
+            .arguments("[envName:string]")
+            .option(
+              "--shell <shell>",
+              "The shell to use. Tries to detect the current shell if not provided.",
+            )
+            .action(async function ({ shell: shellMaybe }, envNameMaybe) {
+              const shell = shellMaybe ?? await detectShellPath();
+              if (!shell) {
+                throw new Error(
+                  "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+                );
+              }
+              const envName = envNameMaybe ?? ecx.config.defaultEnv;
+              // FIXME: the ghjk process will be around and consumer resources
+              // with approach. Ideally, we'd detach the child and exit but this is blocked by
+              // https://github.com/denoland/deno/issues/5501 is closed
+              await $`${shell}`
+                .env({ GHJK_ENV: envName });
+            }),
+        )
+        .command(
+          "cook",
+          new cliffy_cmd.Command()
+            .description(`Cooks the environment to a posix shell.
 
-            await cookPosixEnv(reducedEnv, envDir, true);
-          }),
-      )
-      .description("Envs module.");
-    return root;
+- If no [envName] is specified, this will cook the active env [${ecx.activeEnv}]`)
+            .arguments("[envName:string]")
+            .action(async function (_void, envNameMaybe) {
+              const envName = envNameMaybe ?? ecx.activeEnv;
+              await reduceAndCookEnv(gcx, ecx, envName);
+            }),
+        )
+        .command(
+          "show",
+          new cliffy_cmd.Command()
+            .description(`Show details about an environment.
+
+- If no [envName] is specified, this shows details of the active env [${ecx.activeEnv}].
+- If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].
+        `)
+            .arguments("[envName:string]")
+            .action(async function (_void, envNameMaybe) {
+              const envName = envNameMaybe ?? ecx.activeEnv;
+              const env = ecx.config.envs[envName];
+              if (!env) {
+                throw new Error(`No env found under given name "${envName}"`);
+              }
+              // deno-lint-ignore no-console
+              console.log(Deno.inspect(
+                await showableEnv(gcx, env, envName),
+                {
+                  depth: 10,
+                  colors: isColorfulTty(),
+                },
+              ));
+            }),
+        ),
+      sync: new cliffy_cmd.Command()
+        .description(`Cooks and activates an environment.
+
+- If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
+- If the environment is already active, this doesn't launch a new shell.`)
+        .arguments("[envName:string]")
+        .option(
+          "--shell <shell>",
+          "The shell to use. Tries to detect the current shell if not provided.",
+        )
+        .action(async function ({ shell: shellMaybe }, envNameMaybe) {
+          const shell = shellMaybe ?? await detectShellPath();
+          if (!shell) {
+            throw new Error(
+              "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+            );
+          }
+          const envName = envNameMaybe ?? ecx.activeEnv;
+          await reduceAndCookEnv(gcx, ecx, envName);
+          if (ecx.activeEnv != envName) {
+            await $`${shell}`.env({ GHJK_ENV: envName });
+          }
+        }),
+    };
   }
 
   loadLockEntry(
@@ -107,4 +194,137 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
       version: "0",
     };
   }
+}
+
+async function reduceAndCookEnv(
+  gcx: GhjkCtx,
+  ecx: EnvsCtx,
+  envName: string,
+) {
+  const recipe = ecx.config.envs[envName];
+  if (!recipe) {
+    throw new Error(`No env found under given name "${envName}"`);
+  }
+
+  // TODO: diff env and ask confirmation from user
+  const envDir = $.path(gcx.ghjkDir).join("envs", envName);
+  /*
+  const recipeShowable = await showableEnv(gcx, recipe, envName);
+  const oldRecipeShowable = {};
+  {
+    const recipeJsonPath = envDir.join("recipe.json");
+    const oldRecipeRaw = await recipeJsonPath.readMaybeJson();
+
+    if (oldRecipeRaw) {
+      const oldRecipParsed = validators.envRecipe.safeParse(oldRecipeRaw);
+      if (oldRecipParsed.success) {
+        Object.assign(
+          oldRecipeShowable,
+          await showableEnv(gcx, oldRecipParsed.data, envName),
+        );
+      } else {
+        logger.error(`invalid env recipe at ${recipeJsonPath}`);
+      }
+    }
+  }
+  console.log(
+    diff_kit.diff(
+      // TODO: canonicalize objects
+      JSON.stringify(oldRecipeShowable, undefined, 2),
+      JSON.stringify(recipeShowable, undefined, 2),
+      // new diff_kit.DiffTerm(),
+    ),
+  );
+  if (!await $.confirm("cook env?")) {
+    return;
+  }
+  */
+
+  await cookPosixEnv({
+    gcx,
+    recipe,
+    envName,
+    envDir: envDir.toString(),
+    createShellLoaders: true,
+  });
+  if (envName == ecx.config.defaultEnv) {
+    const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
+    await $.removeIfExists(defaultEnvDir);
+    await defaultEnvDir.createSymlinkTo(envDir, { kind: "relative" });
+  }
+}
+
+async function showableEnv(
+  gcx: GhjkCtx,
+  recipe: EnvRecipeX,
+  envName: string,
+) {
+  const printBag = {} as Record<string, any>;
+  await using scx = await syncCtxFromGhjk(gcx);
+  for (
+    const prov of recipe
+      .provides as (
+        | WellKnownProvision
+        | InstallSetRefProvision
+        | InstallSetProvision
+      )[]
+  ) {
+    switch (prov.ty) {
+      case "posix.envVar":
+        printBag.envVars = {
+          ...printBag.envVars ?? {},
+          [prov.key]: prov.val,
+        };
+        break;
+      case "posix.exec":
+        printBag.execs = [
+          ...printBag.execs ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "posix.sharedLib":
+        printBag.sharedLibs = [
+          ...printBag.sharedLibs ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "posix.headerFile":
+        printBag.headerFiles = [
+          ...printBag.headerFiles ?? [],
+          prov.absolutePath,
+        ];
+        break;
+      case "ghjk.ports.InstallSet": {
+        const graph = await buildInstallGraph(scx, prov.set);
+        const setMeta = installGraphToSetMeta(graph);
+        printBag.ports = {
+          ...printBag.ports ?? {},
+          [`installSet_${Math.floor(Math.random() * 101)}`]: setMeta,
+        };
+        break;
+      }
+      case "ghjk.ports.InstallSetRef": {
+        const setStore = getInstallSetStore(gcx);
+        const set = setStore.get(prov.setId);
+        if (!set) {
+          throw new Error(
+            `unable to find install set ref provisioned under id ${prov.setId}`,
+          );
+        }
+        const graph = await buildInstallGraph(scx, set);
+        const setMeta = installGraphToSetMeta(graph);
+        printBag.ports = {
+          ...printBag.ports ?? {},
+          [prov.setId]: setMeta,
+        };
+        break;
+      }
+      default:
+    }
+  }
+  return {
+    ...printBag,
+    ...(recipe.desc ? { desc: recipe.desc } : {}),
+    envName,
+  };
 }

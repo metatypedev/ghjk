@@ -13,20 +13,16 @@ import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
   getResolutionMemo,
-  type InstallGraph,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
 import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
+import { getInstallSetStore } from "./inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
-  /*
-   * A map from a setId found in the `PortsModuleConfigX` to the `InstallGraph`.
-   */
-  installGraphs: Map<string, InstallGraph>;
 };
 
 const lockValidator = zod.object({
@@ -39,7 +35,7 @@ const lockValidator = zod.object({
 type PortsLockEnt = zod.infer<typeof lockValidator>;
 
 export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
-  async processManifest(
+  processManifest(
     gcx: GhjkCtx,
     manifest: ModuleManifest,
     bb: Blackboard,
@@ -60,41 +56,35 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       config: {
         sets: {},
       },
-      installGraphs: new Map(),
     };
+    const setStore = getInstallSetStore(gcx);
     // pre-process the install sets found in the config
-    {
-      // syncCx contains a reference counted db connection
-      // somewhere deep in there
-      // so we need to use `using`
-      await using syncCx = await syncCtxFromGhjk(gcx);
-      for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
-        // install sets in the config use hash references to dedupe InstallConfigs,
-        // AllowedDepSets and AllowedDeps
-        // reify the references from the blackboard before continuing
-        const installs = hashedSet.installs.map((hash) =>
-          unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
-        );
-        const allowedDepSetHashed = unwrapParseCurry(
-          validators.allowDepSetHashed.safeParse(
-            bb[hashedSet.allowedDeps],
-          ),
-        );
-        const allowedDeps = Object.fromEntries(
-          Object.entries(allowedDepSetHashed).map((
-            [key, hash],
-          ) => [
-            key,
-            unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
-          ]),
-        );
-        const set: InstallSetX = {
-          installs,
-          allowedDeps,
-        };
-        pcx.config.sets[id] = set;
-        pcx.installGraphs.set(id, await buildInstallGraph(syncCx, set));
-      }
+    for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
+      // install sets in the config use hash references to dedupe InstallConfigs,
+      // AllowedDepSets and AllowedDeps
+      // reify the references from the blackboard before continuing
+      const installs = hashedSet.installs.map((hash) =>
+        unwrapParseCurry(validators.installConfigFat.safeParse(bb[hash]))
+      );
+      const allowedDepSetHashed = unwrapParseCurry(
+        validators.allowDepSetHashed.safeParse(
+          bb[hashedSet.allowedDeps],
+        ),
+      );
+      const allowedDeps = Object.fromEntries(
+        Object.entries(allowedDepSetHashed).map((
+          [key, hash],
+        ) => [
+          key,
+          unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
+        ]),
+      );
+      const set: InstallSetX = {
+        installs,
+        allowedDeps,
+      };
+      pcx.config.sets[id] = set;
+      setStore.set(id, set);
     }
 
     // register envrionment reducers for any
@@ -111,32 +101,50 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     return pcx;
   }
 
-  command(
-    _gcx: GhjkCtx,
-    _pcx: PortsCtx,
+  commands(
+    gcx: GhjkCtx,
+    pcx: PortsCtx,
   ) {
-    return new cliffy_cmd.Command()
-      .alias("p")
-      .action(function () {
-        this.showHelp();
-      })
-      .description("Ports module, install programs into your env.")
-      .command(
-        "outdated",
-        new cliffy_cmd.Command()
-          .description("TODO")
-          .action(function () {
-            throw new Error("TODO");
-          }),
-      )
-      .command(
-        "cleanup",
-        new cliffy_cmd.Command()
-          .description("TODO")
-          .action(function () {
-            throw new Error("TODO");
-          }),
-      );
+    return {
+      ports: new cliffy_cmd.Command()
+        .alias("p")
+        .action(function () {
+          this.showHelp();
+        })
+        .description("Ports module, install programs into your env.")
+        .command(
+          "resolve",
+          new cliffy_cmd.Command()
+            .description(`Resolve all installs declared in config.
+
+- Useful to pre-resolve and add all install configs to the lockfile.`)
+            .action(async function () {
+              // scx contains a reference counted db connection
+              // somewhere deep in there
+              // so we need to use `using`
+              await using scx = await syncCtxFromGhjk(gcx);
+              for (const [_id, set] of Object.entries(pcx.config.sets)) {
+                void await buildInstallGraph(scx, set);
+              }
+            }),
+        )
+        .command(
+          "outdated",
+          new cliffy_cmd.Command()
+            .description("TODO")
+            .action(function () {
+              throw new Error("TODO");
+            }),
+        )
+        .command(
+          "cleanup",
+          new cliffy_cmd.Command()
+            .description("TODO")
+            .action(function () {
+              throw new Error("TODO");
+            }),
+        ),
+    };
   }
   loadLockEntry(
     gcx: GhjkCtx,

@@ -40,29 +40,24 @@ export function installSetReducer(gcx: GhjkCtx) {
 }
 
 export function installSetRefReducer(gcx: GhjkCtx, pcx: PortsCtx) {
-  return async (provisions: InstallSetRefProvision[]) => {
-    if (provisions.length > 1) {
-      throw new Error(
-        'only one "ghjkPorts" provision per environment is supported',
-      );
-    }
-    const { setId } = unwrapParseRes(
-      validators.installSetRefProvision.safeParse(provisions[0]),
-      {},
-      "error parsing env provision",
-    );
-    const installGraph = pcx.installGraphs.get(setId);
-    if (!installGraph) {
-      throw new Error(
-        `provisioned install set under id "${setId}" not found`,
-      );
-    }
-    await using scx = await syncCtxFromGhjk(gcx);
-    const installArts = await installFromGraph(scx, installGraph);
-
-    const out = await reduceInstArts(installGraph, installArts);
-    return out;
-  };
+  const directReducer = installSetReducer(gcx);
+  return (provisions: InstallSetRefProvision[]) =>
+    directReducer(provisions.map(
+      (prov) => {
+        const { setId } = unwrapParseRes(
+          validators.installSetRefProvision.safeParse(prov),
+          {},
+          "error parsing env provision",
+        );
+        const set = pcx.config.sets[setId];
+        if (!set) {
+          throw new Error(
+            `provisioned install set under id "${setId}" not found`,
+          );
+        }
+        return { ty: "ghjk.ports.InstallSet", set };
+      },
+    ));
 }
 
 async function reduceInstArts(

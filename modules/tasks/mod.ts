@@ -46,13 +46,13 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     };
   }
 
-  command(
+  commands(
     gcx: GhjkCtx,
     tcx: TasksCtx,
   ) {
     const commands = Object.entries(tcx.config.tasks).map(
       ([name, task]) => {
-        let cliffyCmd = new cliffy_cmd.Command()
+        const cliffyCmd = new cliffy_cmd.Command()
           .name(name)
           .useRawArgs()
           .action(async (_, ...args) => {
@@ -65,22 +65,23 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
             );
           });
         if (task.desc) {
-          cliffyCmd = cliffyCmd.description(task.desc);
+          cliffyCmd.description(task.desc);
         }
-
         return cliffyCmd;
       },
     );
-    let root: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
+    const root = new cliffy_cmd.Command()
       .alias("x")
       .action(function () {
         this.showHelp();
       })
       .description("Tasks module.");
     for (const cmd of commands) {
-      root = root.command(cmd.getName(), cmd);
+      root.command(cmd.getName(), cmd);
     }
-    return root;
+    return {
+      tasks: root,
+    };
   }
 
   loadLockEntry(

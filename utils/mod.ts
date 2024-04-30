@@ -122,9 +122,11 @@ export function tryDepExecShimPath(
   return path;
 }
 
-// Lifted from https://deno.land/x/hextools@v1.0.0
-// MIT License
-// Copyright (c) 2020 Santiago Aguilar Hernández
+/**
+ * Lifted from https://deno.land/x/hextools@v1.0.0
+ * MIT License
+ * Copyright (c) 2020 Santiago Aguilar Hernández
+ */
 export function bufferToHex(buffer: ArrayBuffer): string {
   return Array.prototype.map.call(
     new Uint8Array(buffer),
@@ -139,6 +141,7 @@ export async function bufferHashHex(
   const hashBuf = await crypto.subtle.digest(algo, buf);
   return bufferToHex(hashBuf);
 }
+
 export async function stringHashHex(
   val: string,
   algo: AlgorithmIdentifier = "SHA-256",
@@ -163,21 +166,21 @@ export function getPortRef(manifest: PortManifest) {
 export async function getInstallHash(install: InstallConfigResolvedX) {
   const fullHashHex = await objectHashHex(install as jsonHash.Tree);
   const hashHex = fullHashHex.slice(0, 8);
-  return `${install.portRef}+${hashHex}`;
+  return `${install.portRef}!${hashHex}`;
 }
 
-export type PathRef = dax.PathRef;
+export type Path = dax.Path;
 
 export function defaultCommandBuilder() {
   const builder = new dax.CommandBuilder()
     .printCommand(true);
-  builder.setPrintCommandLogger((_, cmd) => {
+  builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
     // TODO: remove when https://github.com/dsherret/dax/pull/203
     // is merged
     return logger().debug(
       "spawning",
-      $.stripAnsi(cmd).split(/\s/),
+      cmd,
     );
   });
   return builder;
@@ -193,10 +196,10 @@ export const $ = dax.build$(
           iterableLimit: 500,
         });
       },
-      pathToString(path: dax.PathRef) {
+      pathToString(path: Path) {
         return path.toString();
       },
-      async removeIfExists(path: dax.PathRef | string) {
+      async removeIfExists(path: Path | string) {
         const pathRef = $.path(path);
         if (await pathRef.exists()) {
           await pathRef.remove({ recursive: true });
@@ -340,7 +343,10 @@ export type DownloadFileArgs = {
   mode?: number;
   headers?: Record<string, string>;
 };
-/// This avoid re-downloading a file if it's already successfully downloaded before.
+
+/**
+ * This avoid re-downloading a file if it's already successfully downloaded before.
+ */
 export async function downloadFile(
   args: DownloadFileArgs,
 ) {
@@ -365,11 +371,11 @@ export async function downloadFile(
 
   await $.path(downloadPath).ensureDir();
 
-  await tmpFilePath.copyFile(fileDwnPath);
+  await tmpFilePath.copy(fileDwnPath);
   return downloadPath.toString();
 }
 
-/* *
+/**
  * This returns a tmp path that's guaranteed to be
  * on the same file system as targetDir by
  * checking if $TMPDIR satisfies that constraint
@@ -402,8 +408,19 @@ export async function sameFsTmpRoot(
   // take care of it
   return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
 }
+
 export type Rc<T> = ReturnType<typeof rc<T>>;
 
+/**
+ * A reference counted box that runs the dispose method when all refernces
+ * are disposed of..
+ * @example Basic usage
+ * ```
+ * using myVar = rc(setTimeout(() => console.log("hola)), clearTimeout)
+ * spawnOtherThing(myVar.clone());
+ * // dispose will only run here as long as `spawnOtherThing` has no references
+ * ```
+ */
 export function rc<T>(val: T, onDrop: (val: T) => void) {
   const rc = {
     counter: 1,
@@ -429,6 +446,10 @@ export function rc<T>(val: T, onDrop: (val: T) => void) {
 
 export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
 
+/**
+ * A reference counted box that makse use of `asyncDispose`.
+ * `async using myVar = asyncRc(setTimeout(() => console.log("hola)), clearTimeout)`
+ */
 export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
   const rc = {
     counter: 1,
@@ -499,6 +520,11 @@ export async function expandGlobsAndAbsolutize(path: string, wd: string) {
   }
   return [std_path.resolve(wd, path)];
 }
+
+/**
+ * Unwrap the result object returned by the `safeParse` method
+ * on zod schemas.
+ */
 export function unwrapParseRes<In, Out>(
   res: zod.SafeParseReturnType<In, Out>,
   cause: object = {},
@@ -513,4 +539,29 @@ export function unwrapParseRes<In, Out>(
     });
   }
   return res.data;
+}
+
+/**
+ * Attempts to detect the shell in use by the user.
+ */
+export async function detectShellPath(): Promise<string | undefined> {
+  let path = Deno.env.get("SHELL");
+  if (!path) {
+    try {
+      path = await $`ps -p ${Deno.ppid} -o comm=`.text();
+    } catch {
+      return;
+    }
+  }
+  return path;
+}
+
+/**
+ * {@inheritdoc detectShellPath}
+ */
+export async function detectShell(): Promise<string | undefined> {
+  const shellPath = await detectShellPath();
+  return shellPath
+    ? std_path.basename(shellPath, ".exe").toLowerCase().trim()
+    : undefined;
 }

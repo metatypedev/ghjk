@@ -4,10 +4,11 @@ import { stdSecureConfig } from "../mod.ts";
 import {
   dockerE2eTest,
   E2eTestCase,
+  genTsGhjkFile,
   localE2eTest,
-  tsGhjkFileFromInstalls,
 } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
+import dummy from "../ports/dummy.ts";
 import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
@@ -21,6 +22,12 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
+  // 0 megs
+  {
+    name: "dummy",
+    installConf: dummy(),
+    ePoint: `dummy`,
+  },
   // 2 megs
   {
     name: "jq",
@@ -214,7 +221,7 @@ function testMany(
           std_async.deadline(
             testFn({
               ...testCase,
-              tsGhjkfileStr: tsGhjkFileFromInstalls(
+              tsGhjkfileStr: genTsGhjkFile(
                 {
                   installConf: testCase.installConf,
                   secureConf: testCase.secureConf,
@@ -223,22 +230,27 @@ function testMany(
               ),
               ePoints: [
                 ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                  cmd: `env ${sh} '${testCase.ePoint}'`,
+                  cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
                 })),
-                // FIXME: better tests for the `InstallDb`
+                /* // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long
                 // as it's the second sync
-                { cmd: "env bash -c 'timeout 1 ghjk env sync'" },
+                {
+                  cmd: [
+                    ..."env".split(" "),
+                    "bash -c 'timeout 1 ghjk envs cook'",
+                  ],
+                }, */
               ],
-              envs: {
+              envVars: {
                 ...defaultEnvs,
-                ...testCase.envs,
+                ...testCase.envVars,
               },
             }),
             // building the test docker image might taka a while
             // but we don't want some bug spinlocking the ci for
             // an hour
-            300_000,
+            5 * 60 * 1000,
           ),
       },
     );

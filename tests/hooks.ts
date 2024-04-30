@@ -2,8 +2,8 @@ import "../setup_logger.ts";
 import {
   dockerE2eTest,
   E2eTestCase,
+  genTsGhjkFile,
   localE2eTest,
-  tsGhjkFileFromInstalls,
 } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../port.ts";
@@ -171,13 +171,13 @@ function testMany(
       () =>
         testFn({
           ...testCase,
-          tsGhjkfileStr: tsGhjkFileFromInstalls(
+          tsGhjkfileStr: genTsGhjkFile(
             { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
           ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
-          envs: {
+          envVars: {
             ...defaultEnvs,
-            ...testCase.envs,
+            ...testCase.envVars,
           },
         }),
     );

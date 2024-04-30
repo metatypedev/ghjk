@@ -1,6 +1,6 @@
 //! this loads the ghjk.ts module and provides a program for it
 
-import { std_url } from "../deps/common.ts";
+import { std_url } from "../../deps/common.ts";
 
 export type DriverRequests = {
   ty: "serialize";

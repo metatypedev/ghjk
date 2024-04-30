@@ -8,22 +8,22 @@ export abstract class ModuleBase<Ctx, LockEnt> {
     _gcx: GhjkCtx,
   ): Promise<void> | void {} */
   abstract processManifest(
-    ctx: GhjkCtx,
+    gcx: GhjkCtx,
     manifest: ModuleManifest,
     bb: Blackboard,
     lockEnt: LockEnt | undefined,
   ): Promise<Ctx> | Ctx;
   // returns undefined if previous lock entry is no longer valid
   abstract loadLockEntry(
-    ctx: GhjkCtx,
+    gcx: GhjkCtx,
     raw: Json,
   ): Promise<LockEnt | undefined> | LockEnt | undefined;
   abstract genLockEntry(
-    ctx: GhjkCtx,
-    manifest: Ctx,
+    gcx: GhjkCtx,
+    mcx: Ctx,
   ): Promise<Json> | Json;
-  abstract command(
-    ctx: GhjkCtx,
-    pman: Ctx,
-  ): cliffy_cmd.Command<any, any, any, any>;
+  abstract commands(
+    gcx: GhjkCtx,
+    mcx: Ctx,
+  ): Record<string, cliffy_cmd.Command<any>>;
 }

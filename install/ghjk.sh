@@ -3,6 +3,9 @@ export GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-__GHJK_SHARE_DIR__}"
 export DENO_DIR="${GHJK_DENO_DIR:-__DENO_CACHE_DIR}" 
 export DENO_NO_UPDATE_CHECK=1
 
+# NOTE: avoid putting too much in here as the ghjk bin is meant
+# to be optional.
+
 # if ghjkfile var is set, set the GHJK_DIR overriding
 # any set by the user
 if [ -n "${GHJKFILE+x}" ]; then
@@ -36,4 +39,4 @@ fi
 # we don't want to quote $lock_flag as it's not exactly a single
 # string param to deno
 # shellcheck disable=SC2086
-__DENO_EXEC__ run --unstable-kv --unstable-worker-options -A $lock_flag __MAIN_TS_URL__ "$@"
+exec __DENO_EXEC__ run --unstable-kv --unstable-worker-options -A $lock_flag __MAIN_TS_URL__ "$@"

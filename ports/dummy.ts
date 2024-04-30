@@ -5,18 +5,33 @@ import type {
   InstallArgs,
   InstallConfigSimple,
 } from "../port.ts";
-import { $, ALL_ARCH, ALL_OS, osXarch, PortBase, std_fs } from "../port.ts";
+import {
+  $,
+  ALL_ARCH,
+  ALL_OS,
+  osXarch,
+  PortBase,
+  std_fs,
+  zod,
+} from "../port.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
   name: "dummy",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };
 
-export default function conf(config: InstallConfigSimple = {}) {
+const confValidator = zod.object({
+  output: zod.string().nullish(),
+});
+
+export type DummyInstallConf =
+  & InstallConfigSimple
+  & zod.input<typeof confValidator>;
+
+export default function conf(config: DummyInstallConf = {}) {
   return {
     ...config,
     port: manifest,
@@ -35,10 +50,11 @@ export class Port extends PortBase {
   }
 
   async download(args: DownloadArgs) {
+    const conf = confValidator.parse(args.config);
     // TODO: windows suport
     await $.path(args.downloadPath).join("bin", "dummy").writeText(
       `#!/bin/sh 
-echo 'dummy hey'`,
+echo ${conf.output ?? "dummy hey"}`,
       {
         mode: 0o700,
       },
