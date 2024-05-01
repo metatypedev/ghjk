@@ -14,7 +14,7 @@ export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
-  portsConfig: TasksModuleConfigX,
+  tasksConfig: TasksModuleConfigX,
   // env: Blackboard,
 ) {
   const graph = {
@@ -24,8 +24,8 @@ export function buildTaskGraph(
     // edges from dependent to dependency
     depEdges: {} as Record<string, string[] | undefined>,
   };
-  for (const [hash, task] of Object.entries(portsConfig.tasks)) {
-    if (!portsConfig.envs[task.envHash]) {
+  for (const [hash, task] of Object.entries(tasksConfig.tasks)) {
+    if (!tasksConfig.envs[task.envHash]) {
       throw new Error(
         `unable to find env referenced by task "${hash}" under hash "${task.envHash}"`,
       );
@@ -38,7 +38,7 @@ export function buildTaskGraph(
           name: string,
           depHash: string,
         ): TaskDefHashedX | undefined => {
-          const depTask = portsConfig.tasks[depHash];
+          const depTask = tasksConfig.tasks[depHash];
           if (!depTask) {
             throw new Error(`specified dependency task doesn't exist`, {
               cause: {
@@ -146,9 +146,9 @@ export async function execTask(
         ),
       ),
     };
-    if (taskDef.ty == "denoWorker@v1") {
+    if (taskDef.ty == "denoFile@v1") {
       await execTaskDeno(
-        taskDef.moduleSpecifier,
+        $.path(gcx.ghjkfilePath).toFileUrl().toString(),
         {
           key: taskDef.key,
           argv: args,

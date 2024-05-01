@@ -194,6 +194,7 @@ export const $ = dax.build$(
         return Deno.inspect(val, {
           colors: isColorfulTty(),
           iterableLimit: 500,
+          depth: 10,
         });
       },
       pathToString(path: Path) {

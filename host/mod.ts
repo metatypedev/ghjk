@@ -17,7 +17,7 @@ import {
 } from "../utils/mod.ts";
 import validators, { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
-import * as denoFile from "../ghjkfiles/deno/mod.ts";
+import * as denoFile from "../files/deno/mod.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
 import { serializePlatform } from "../modules/ports/types/platform.ts";

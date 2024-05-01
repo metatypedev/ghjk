@@ -95,7 +95,7 @@ export function task(
   } else {
     throw new Error("no function provided when defining task");
   }
-  return file.addTask({ ...args, ty: "denoWorker@v1" });
+  return file.addTask({ ...args, ty: "denoFile@v1" });
 }
 
 export function env(args: EnvDefArgs): EnvBuilder;

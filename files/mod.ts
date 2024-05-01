@@ -80,9 +80,20 @@ export type TaskDefArgs = {
 
 export type DenoTaskDefArgs = TaskDefArgs & {
   fn: TaskFn;
+  /**
+   * In order to key the right task when ghjk is requesting
+   * execution of a specific task, we identify each using a hash.
+   * The {@field fn} is `toString`ed in the hash input.
+   * If a ghjkfile is produing identical tasks through a loop for
+   * instance, it can provide a none to disambiguate beteween each
+   * through hash differences.
+   *
+   * NOTE: the nonce must be stable across serialization.
+   */
+  nonce?: string;
 };
 
-type TaskDefTyped = DenoTaskDefArgs & { ty: "denoWorker@v1" };
+type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 
 export class GhjkfileBuilder {
   #installSets = new Map<string, InstallSet>();
@@ -101,7 +112,7 @@ export class GhjkfileBuilder {
 
     const set = this.#getSet(setId);
     set.installs.push(config);
-    logger().debug("install added", config);
+    logger(import.meta).debug("install added", config);
   }
 
   setAllowedPortDeps(setId: string, deps: AllowedPortDep[]) {
@@ -124,13 +135,11 @@ export class GhjkfileBuilder {
     }
     let hash;
     switch (args.ty) {
-      case "denoWorker@v1":
-        // NOTE: we serialize the function to a string before
-        // hashing. We don't expect functions that close over values
-        // in task defs so we get to avoid requiring id `key`s
-        // the same way react needs on components.
+      case "denoFile@v1":
         hash = objectHash(jsonHash.canonicalize({
           ...args,
+          // NOTE: we serialize the function to a string before
+          // hashing.
           fn: args.fn.toString(),
         } as jsonHash.Tree));
         break;
@@ -182,7 +191,7 @@ export class GhjkfileBuilder {
   }
 
   toConfig(
-    { defaultEnv, defaultBaseEnv, secureConfig, ghjkfileUrl }: {
+    { defaultEnv, defaultBaseEnv, secureConfig }: {
       defaultEnv: string;
       defaultBaseEnv: string;
       secureConfig: PortsModuleSecureConfig | undefined;
@@ -194,7 +203,6 @@ export class GhjkfileBuilder {
       const tasksConfig = this.#processTasks(
         envsConfig,
         defaultBaseEnv,
-        ghjkfileUrl,
       );
       const portsConfig = this.#processInstalls(
         secureConfig?.masterPortDepAllowList ?? stdDeps(),
@@ -255,22 +263,21 @@ export class GhjkfileBuilder {
       const [_name, [_builder, finalizer]] of Object.entries(this.#seenEnvs)
     ) {
       const final = finalizer();
-      const { name, base } = final;
-      const envBaseResolved = typeof base === "string"
-        ? base
-        : base
+      const envBaseResolved = typeof final.base === "string"
+        ? final.base
+        : final.base
         ? defaultBaseEnv
         : null;
-      all[name] = { ...final, envBaseResolved };
+      all[final.name] = { ...final, envBaseResolved };
       if (envBaseResolved) {
-        let parentRevDeps = revDeps.get(envBaseResolved);
-        if (!parentRevDeps) {
-          parentRevDeps = [];
-          revDeps.set(envBaseResolved, parentRevDeps);
+        const parentRevDeps = revDeps.get(envBaseResolved);
+        if (parentRevDeps) {
+          parentRevDeps.push(final.name);
+        } else {
+          revDeps.set(envBaseResolved, [final.name]);
         }
-        parentRevDeps.push(final.name);
       } else {
-        indie.push(name);
+        indie.push(final.name);
       }
     }
 
@@ -366,18 +373,27 @@ export class GhjkfileBuilder {
   #processTasks(
     envsConfig: EnvsModuleConfig,
     defaultBaseEnv: string,
-    ghjkfileUrl: string,
   ) {
     const indie = [] as string[];
+    const deps = new Map<string, string[]>();
     const revDeps = new Map<string, string[]>();
+    const nameToKey = Object.fromEntries(
+      Object.entries(this.#tasks)
+        .filter(([_, { name }]) => !!name)
+        .map(([hash, { name }]) => [name, hash] as const),
+    );
     for (const [key, args] of Object.entries(this.#tasks)) {
       if (args.dependsOn && args.dependsOn.length > 0) {
-        for (const depHash of args.dependsOn) {
-          const revDepSet = revDeps.get(depHash);
-          if (revDepSet) {
-            revDepSet.push(key);
+        const depKeys = args.dependsOn.map((nameOrKey) =>
+          nameToKey[nameOrKey] ?? nameOrKey
+        );
+        deps.set(key, depKeys);
+        for (const depKey of depKeys) {
+          const depRevDeps = revDeps.get(depKey);
+          if (depRevDeps) {
+            depRevDeps.push(key);
           } else {
-            revDeps.set(depHash, [key]);
+            revDeps.set(depKey, [key]);
           }
         }
       } else {
@@ -385,7 +401,7 @@ export class GhjkfileBuilder {
       }
     }
     const workingSet = indie;
-    const hashToHash = {} as Record<string, string>;
+    const keyToHash = {} as Record<string, string>;
     const moduleConfig: TasksModuleConfig = {
       envs: {},
       tasks: {},
@@ -482,22 +498,36 @@ export class GhjkfileBuilder {
           ? workingDir.toString()
           : workingDir,
         desc,
-        dependsOn: dependsOn?.map((hash) => hashToHash[hash]),
+        dependsOn: dependsOn?.map((keyOrHash) =>
+          keyToHash[nameToKey[keyOrHash] ?? keyOrHash]
+        ),
         envHash,
-        moduleSpecifier: ghjkfileUrl,
       };
       const taskHash = objectHash(jsonHash.canonicalize(def as jsonHash.Tree));
       moduleConfig.tasks[taskHash] = def;
-      hashToHash[key] = taskHash;
+      keyToHash[key] = taskHash;
 
       if (args.name) {
         moduleConfig.tasksNamed[args.name] = taskHash;
       }
+      logger(import.meta).info("processed task", {
+        name: args.name,
+        dependsOn,
+        mappedDO: def.dependsOn,
+      });
+      for (const revDepKey of revDeps.get(key) ?? []) {
+        const revDepDeps = deps.get(revDepKey)!;
+        // swap remove
+        const idx = revDepDeps.indexOf(key);
+        const last = revDepDeps.pop()!;
+        if (revDepDeps.length > idx) {
+          revDepDeps[idx] = last;
+        }
 
-      const curRevDeps = revDeps.get(key);
-      if (curRevDeps) {
-        workingSet.push(...curRevDeps);
-        revDeps.delete(key);
+        if (revDepDeps.length == 0) {
+          deps.delete(revDepKey);
+          workingSet.push(revDepKey);
+        }
       }
     }
 
@@ -513,13 +543,14 @@ export class GhjkfileBuilder {
                 revDeps,
                 moduleConfig,
                 tasks: this.#tasks,
+                nameToKey,
               },
             },
           );
         }
       }
     }
-    if (revDeps.size > 0) {
+    if (deps.size > 0) {
       throw new Error("working set empty but pending items found", {
         cause: {
           workingSet,

@@ -58,6 +58,11 @@
           "version": "v1.5.5,",
           "buildDepConfigs": {},
           "portRef": "zstd_aa@0.1.0"
+        },
+        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
+          "version": "v26.1",
+          "buildDepConfigs": {},
+          "portRef": "protoc_ghrel@0.1.0"
         }
       }
     },
