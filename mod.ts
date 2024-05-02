@@ -12,12 +12,7 @@ import type {
 } from "./modules/ports/types.ts";
 import logger from "./utils/logger.ts";
 import { $ } from "./utils/mod.ts";
-import {
-  EnvBuilder,
-  GhjkfileBuilder,
-  stdDeps,
-  stdSecureConfig,
-} from "./files/mod.ts";
+import { EnvBuilder, Ghjkfile, stdDeps, stdSecureConfig } from "./files/mod.ts";
 import type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./files/mod.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
@@ -25,7 +20,7 @@ import type { ExecTaskArgs } from "./modules/tasks/deno.ts";
 
 const DEFAULT_BASE_ENV_NAME = "main";
 
-const file = new GhjkfileBuilder();
+const file = new Ghjkfile();
 const mainEnv = file.addEnv({
   name: DEFAULT_BASE_ENV_NAME,
   base: false,

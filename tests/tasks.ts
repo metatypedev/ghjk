@@ -1,21 +1,30 @@
 import "../setup_logger.ts";
 import {
-  type DenoTaskDefArgs,
   dockerE2eTest,
   E2eTestCase,
   genTsGhjkFile,
   localE2eTest,
+  type TaskDef,
 } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
 import { stdSecureConfig } from "../files/mod.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
-  ePoint: string;
-  stdin: string;
-  tasks: DenoTaskDefArgs[];
-  enableRuntimesOnMasterPDAL?: boolean;
-};
+type CustomE2eTestCase =
+  & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
+  & {
+    ePoint: string;
+    stdin: string;
+    enableRuntimesOnMasterPDAL?: boolean;
+  }
+  & (
+    | {
+      tasks: TaskDef[];
+    }
+    | {
+      ghjk_ts: string;
+    }
+  );
 const cases: CustomE2eTestCase[] = [
   {
     name: "base",
@@ -63,7 +72,7 @@ ghjk x protoc`,
     name: "port_deps",
     tasks: [{
       name: "test",
-      // node depends on tar_aa
+      // pipi depends on cpy_bs
       installs: [...ports.pipi({ packageName: "pre-commit" })],
       allowedPortDeps: ghjk.stdDeps({ enableRuntimes: true }),
       fn: async ({ $ }) => {
@@ -118,6 +127,31 @@ ghjk x eddy
 test (cat eddy) = 'ed edd eddy'
 `,
   },
+  {
+    name: "anon tasks",
+    ghjk_ts: `
+export { ghjk } from "$ghjk/mod.ts";
+import { task } from "$ghjk/mod.ts";
+
+task({
+  dependsOn: [
+    task({
+      dependsOn: [
+        task(({ $ }) => $\`/bin/sh -c 'echo ed > ed'\`),
+      ],
+      fn: ({ $ }) => $\`/bin/sh -c 'echo $(/bin/cat ed) edd > edd'\`,
+    }),
+  ],
+  name: "eddy",
+  fn: ({ $ }) => $\`/bin/sh -c 'echo $(/bin/cat edd) eddy > eddy'\`    
+});
+`,
+    ePoint: `fish`,
+    stdin: `
+ghjk x eddy
+test (cat eddy) = 'ed edd eddy'
+`,
+  },
 ];
 
 function testMany(
@@ -132,14 +166,16 @@ function testMany(
       () =>
         testFn({
           ...testCase,
-          tsGhjkfileStr: genTsGhjkFile(
-            {
-              taskDefs: testCase.tasks,
-              secureConf: stdSecureConfig({
-                enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
-              }),
-            },
-          ),
+          tsGhjkfileStr: "ghjk_ts" in testCase
+            ? testCase.ghjk_ts
+            : genTsGhjkFile(
+              {
+                taskDefs: testCase.tasks,
+                secureConf: stdSecureConfig({
+                  enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
+                }),
+              },
+            ),
           ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
           envVars: {
             ...defaultEnvs,

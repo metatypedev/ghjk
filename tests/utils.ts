@@ -7,7 +7,7 @@ import type {
 } from "../modules/ports/types.ts";
 import logger from "../utils/logger.ts";
 import type { DenoTaskDefArgs, EnvDefArgs } from "../mod.ts";
-export type { DenoTaskDefArgs, EnvDefArgs } from "../mod.ts";
+export type { EnvDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
   name: string;
@@ -149,11 +149,14 @@ export async function localE2eTest(testCase: E2eTestCase) {
   await tmpDir.remove({ recursive: true });
 }
 
+export type TaskDef =
+  & Omit<DenoTaskDefArgs, "fn">
+  & Required<Pick<DenoTaskDefArgs, "fn">>;
 export function genTsGhjkFile(
   { installConf, secureConf, taskDefs, envDefs }: {
     installConf?: InstallConfigFat | InstallConfigFat[];
     secureConf?: PortsModuleSecureConfig;
-    taskDefs?: DenoTaskDefArgs[];
+    taskDefs?: TaskDef[];
     envDefs?: EnvDefArgs[];
   },
 ) {

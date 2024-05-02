@@ -1,4 +1,4 @@
-//! This provides the backing implementation of the GHjkfile frontends.
+//! This provides the backing implementation of the Ghjkfile frontends.
 
 // NOTE: avoid adding sources of randomness
 // here to make the resulting config reasonably stable
@@ -79,27 +79,58 @@ export type TaskDefArgs = {
 };
 
 export type DenoTaskDefArgs = TaskDefArgs & {
-  fn: TaskFn;
+  /**
+   * The logic to run when the task is invoked.
+   *
+   * Note: functions are optional for tasks. If none is set,
+   * it'll be a no-op. The task it depends on will still be run.
+   */
+  fn?: TaskFn;
   /**
    * In order to key the right task when ghjk is requesting
    * execution of a specific task, we identify each using a hash.
    * The {@field fn} is `toString`ed in the hash input.
-   * If a ghjkfile is produing identical tasks through a loop for
+   * If a ghjkfile is produing identical anonymous tasks for
    * instance, it can provide a none to disambiguate beteween each
    * through hash differences.
    *
    * NOTE: the nonce must be stable across serialization.
+   * NOTE: closing over values is generally ill-advised on tasks
+   * fns. If you want to close over values, make sure they're stable
+   * across re-serializations.
    */
   nonce?: string;
 };
 
 type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 
-export class GhjkfileBuilder {
+export class Ghjkfile {
   #installSets = new Map<string, InstallSet>();
   #tasks = {} as Record<string, TaskDefTyped>;
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
+
+  /* dump() {
+    return {
+      installSets: Object.fromEntries(this.#installSets),
+      bb: Object.fromEntries(this.#bb),
+      seenEnvs: Object.fromEntries(
+        Object.entries(this.#seenEnvs).map((
+          [key, [_builder, finalizer]],
+        ) => [key, finalizer()]),
+      ),
+      tasks: Object.fromEntries(
+        Object.entries(this.#tasks).map(([key, task]) => [key, {
+          ...task,
+          ...(task.ty === "denoFile@v1"
+            ? {
+              fn: task.fn.toString(),
+            }
+            : {}),
+        }]),
+      ),
+    };
+  } */
 
   addInstall(setId: string, configUnclean: InstallConfigFat) {
     const config = unwrapParseRes(
@@ -138,9 +169,13 @@ export class GhjkfileBuilder {
       case "denoFile@v1":
         hash = objectHash(jsonHash.canonicalize({
           ...args,
-          // NOTE: we serialize the function to a string before
-          // hashing.
-          fn: args.fn.toString(),
+          ...(args.fn
+            ? {
+              // NOTE: we serialize the function to a string before
+              // hashing.
+              fn: args.fn.toString(),
+            }
+            : {}),
         } as jsonHash.Tree));
         break;
       default:
@@ -184,10 +219,15 @@ export class GhjkfileBuilder {
     if (!task) {
       throw new Error(`no task defined under "${key}"`);
     }
-    const custom$ = $.build$({
-      commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
-    });
-    await task.fn({ argv, env: envVars, $: custom$ });
+    if (task.ty != "denoFile@v1") {
+      throw new Error(`task under "${key}" has unexpected type ${task.ty}`);
+    }
+    if (task.fn) {
+      const custom$ = $.build$({
+        commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
+      });
+      await task.fn({ argv, env: envVars, $: custom$ });
+    }
   }
 
   toConfig(
@@ -510,11 +550,6 @@ export class GhjkfileBuilder {
       if (args.name) {
         moduleConfig.tasksNamed[args.name] = taskHash;
       }
-      logger(import.meta).info("processed task", {
-        name: args.name,
-        dependsOn,
-        mappedDO: def.dependsOn,
-      });
       for (const revDepKey of revDeps.get(key) ?? []) {
         const revDepDeps = deps.get(revDepKey)!;
         // swap remove
@@ -612,13 +647,13 @@ type EnvFinalizer = () => {
 // all to avoid exposing the function in the public api
 export class EnvBuilder {
   #installSetId: string;
-  #file: GhjkfileBuilder;
+  #file: Ghjkfile;
   #base: string | boolean = true;
   #vars: Record<string, string> = {};
   #desc?: string;
 
   constructor(
-    file: GhjkfileBuilder,
+    file: Ghjkfile,
     setFinalizer: (fin: EnvFinalizer) => void,
     public name: string,
   ) {
