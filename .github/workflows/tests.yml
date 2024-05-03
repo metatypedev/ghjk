@@ -52,18 +52,16 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
-
-      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
-        # we need coreutils on max for the `timeout` command
-        run: brew install fish zsh coreutils
       - name: Cache deno dir
-        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
-          key: deno-mac-${{ hashFiles('**/deno.lock') }}
+          key: deno-${{ hashFiles('**/deno.lock') }}
       - if: "${{ matrix.e2eType == 'docker' }}"
         uses: docker/setup-buildx-action@v3
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+        # we need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils
       - run: deno task test
 
   test-e2e-compat:
@@ -76,42 +74,9 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - uses: docker/setup-buildx-action@v3
-      - shell: bash
-        env:
-          TAG: test-image
-        run: |
-          docker buildx build --platform linux/arm64 --build-arg DENO_VERSION=$DENO_VERSION -t $TAG -f - .<<"DFILE"
-            ARG DENO_VERSION=1.42.1
-            FROM denoland/deno:bin-1.42.1 AS deno
-            FROM debian:12
-            COPY --from=deno /deno /usr/local/bin/deno
-            RUN set -eux; \
-                apt-get update; \
-                apt install --no-install-recommends --assume-yes \
-                # ambient deps \
-                # TODO: explicit libarchive \
-                zstd \
-                tar \
-                # TODO: explicit cc \
-                build-essential \
-                # test deps \
-                bash \
-                fish \
-                zsh \
-                # asdf deps \
-                git \
-                curl \
-                xz-utils \
-                unzip \
-                ca-certificates \
-                ;
-            WORKDIR /ghjk
-            COPY . .
-            ENV GHJK_TEST_E2E_TYPE=local
-            ENTRYPOINT deno task test
-          DFILE
-
-          docker run --platform linux/arm64 -it --rm $TAG
+      - env: 
+          DOCKER_PLATFORM: linux/arm64
+        run: deno task test
 
 
   test-action:

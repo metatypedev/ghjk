@@ -15,6 +15,9 @@ export type E2eTestCase = {
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
+const dockerPlatform = Deno.env.get("DOCKER_PLATFORM")
+  ? `--platform=${Deno.env.get("DOCKER_PLATFORM")}`
+  : "";
 const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
 const templateStrings = {
   addConfig: `#{{CMD_ADD_CONFIG}}`,
@@ -56,14 +59,14 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     ));
 
   await $
-    .raw`${dockerCmd} buildx build ${
+    .raw`${dockerCmd} buildx build ${dockerPlatform} ${
     Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
   } --tag '${tag}' --network=host --output type=docker -f- .`
     .env(env)
     .stdinText(dFile);
 
   for (const ePoint of ePoints) {
-    let cmd = $.raw`${dockerCmd} run --rm ${[
+    let cmd = $.raw`${dockerCmd} run ${dockerPlatform} --rm ${[
       /* we want to enable interactivity when piping in */
       ePoint.stdin ? "-i " : "",
       ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
