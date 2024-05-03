@@ -72,7 +72,7 @@ jobs:
       - run: deno task test
 
   test-e2e-compat:
-    runs-on: macos-14
+    runs-on: custom-macos
     container:
       image: debian:12
       options: --platform linux/arm64
