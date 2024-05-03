@@ -72,10 +72,7 @@ jobs:
       - run: deno task test
 
   test-e2e-compat:
-    runs-on: custom-macos
-    container:
-      image: debian:12
-      options: --platform linux/arm64
+    runs-on: macos-14
     env:
       GHJK_TEST_E2E_TYPE: "local"
     steps:
@@ -83,12 +80,47 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
-      - name: Cache deno dir
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.DENO_DIR }}
-          key: deno-linux-${{ hashFiles('**/deno.lock') }}
-      - run: deno task test
+      - uses: docker/setup-buildx-action@v3
+      - uses: actions-hub/docker/cli@master
+        env:
+          SKIP_LOGIN: true
+      - shell: bash
+        env:
+          TAG: test-image
+        run: |
+          docker buildx build --network=host --build-arg DENO_VERSION=$DENO_VERSION -t $TAG -f - .<<"DFILE"
+            ARG DENO_VERSION=1.42.1
+            FROM denoland/deno:bin-1.42.1 AS deno
+            FROM debian:12
+            COPY --from=deno /deno /usr/local/bin/deno
+            RUN set -eux; \
+                apt-get update; \
+                apt install --no-install-recommends --assume-yes \
+                # ambient deps \
+                # TODO: explicit libarchive \
+                zstd \
+                tar \
+                # TODO: explicit cc \
+                build-essential \
+                # test deps \
+                bash \
+                fish \
+                zsh \
+                # asdf deps \
+                git \
+                curl \
+                xz-utils \
+                unzip \
+                ca-certificates \
+                ;
+            WORKDIR /ghjk
+            COPY . .
+            ENV GHJK_TEST_E2E_TYPE=local
+            ENTRYPOINT deno task test
+          DFILE
+
+          docker run -it --rm $TAG
+
 
   test-action:
     runs-on: ubuntu-latest
