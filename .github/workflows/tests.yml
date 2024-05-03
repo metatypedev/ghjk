@@ -72,7 +72,7 @@ jobs:
       - run: deno task test
 
   test-e2e-compat:
-    runs-on: macos-14
+    runs-on: custom-macos
     env:
       GHJK_TEST_E2E_TYPE: "local"
     steps:
