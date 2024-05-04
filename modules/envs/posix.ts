@@ -35,6 +35,8 @@ export async function cookPosixEnv(
   const vars = {
     GHJK_ENV: envName,
   } as Record<string, string>;
+  const onEnterHooks = [] as string[];
+  const onExitHooks = [] as string[];
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
@@ -58,6 +60,10 @@ export async function cookPosixEnv(
           );
         }
         vars[item.key] = item.val;
+        break;
+      case "hook.onEnter.posixExec":
+        break;
+      case "hook.onExit.posixExec":
         break;
       default:
         throw Error(`unsupported provision type: ${(item as any).provision}`);
