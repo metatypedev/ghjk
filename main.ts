@@ -17,7 +17,7 @@ if (import.meta.main) {
   }
   await cli({
     ghjkShareDir: Deno.env.get("GHJK_SHARE_DIR") ??
-      std_path.resolve(dirs().shareDir, "ghjk"),
+      dirs().shareDir.resolve("ghjk").toString(),
     ghjkfilePath: ghjkfile ? std_path.resolve(Deno.cwd(), ghjkfile) : undefined,
   });
 } else {

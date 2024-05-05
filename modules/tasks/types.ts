@@ -26,6 +26,13 @@ const denoWorkerTaskDefBase = zod.object({
    * A single module might host multiple tasks so we need keys to identify
    * each with. Names aren't enough since some tasks are anonymous.
    */
+  // This field primarily exists as an optimization actually.
+  // The tasksModuleConfig keys the tasks by their hash
+  // but we use a separate key when asking for exec from the denoFile.
+  // This is because the denoFile only constructs the hashes for the config
+  // laziliy but uses separate task keys internally due to different hashing concerns.
+  // This key will correspond to the internal keys used by the denoFile
+  // and not the config.
   key: zod.string(),
 });
 
@@ -44,8 +51,13 @@ const taskDefHashed =
 
 const tasksModuleConfig = zod.object({
   envs: zod.record(zod.string(), envsValidators.envRecipe),
+  /**
+   * Tasks can be keyed with any old string. The keys
+   * that also appear in {@field tasksNamed} will shown
+   * in the CLI.
+   */
   tasks: zod.record(zod.string(), taskDefHashed),
-  tasksNamed: zod.record(taskName, zod.string()),
+  tasksNamed: taskName.array(),
 });
 
 const validators = {

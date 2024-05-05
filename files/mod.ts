@@ -4,6 +4,8 @@
 // here to make the resulting config reasonably stable
 // across serializaiton. No random identifiers.
 
+import { multibase32, multibase64 } from "../deps/common.ts";
+
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
 import type {
@@ -18,6 +20,7 @@ import logger from "../utils/logger.ts";
 import {
   $,
   defaultCommandBuilder,
+  objectHash,
   Path,
   thinInstallConfig,
   unwrapParseRes,
@@ -29,15 +32,15 @@ import * as node from "../ports/node.ts";
 import type { SerializedConfig } from "../host/types.ts";
 import * as std_modules from "../modules/std.ts";
 // tasks
-import { dax, jsonHash, objectHash } from "../deps/common.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
 import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
-import {
+import type {
   EnvRecipe,
   EnvsModuleConfig,
+  Provision,
   WellKnownProvision,
 } from "../modules/envs/types.ts";
 
@@ -54,15 +57,27 @@ export type EnvDefArgs = {
   base?: string | boolean;
   desc?: string;
   vars?: Record<string, string>;
+  /**
+   * Task to execute when environment is activated.
+   */
+  onEnter?: string | string[];
+  /**
+   * Task to execute when environment is deactivated.
+   */
+  onExit?: string | string[];
 };
 
 export type TaskFnArgs = {
-  $: dax.$Type;
+  $: ReturnType<typeof task$>;
   argv: string[];
   env: Record<string, string>;
+  workingDir: string;
 };
 
-export type TaskFn = (args: TaskFnArgs) => Promise<any> | any;
+export type TaskFn = (
+  $: ReturnType<typeof task$>,
+  args: TaskFnArgs,
+) => Promise<any> | any;
 
 /**
  * Configure a task under the given name or key.
@@ -106,7 +121,7 @@ type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 
 export class Ghjkfile {
   #installSets = new Map<string, InstallSet>();
-  #tasks = {} as Record<string, TaskDefTyped>;
+  #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
 
@@ -164,27 +179,37 @@ export class Ghjkfile {
     if (typeof args.base == "string") {
       this.addEnv({ name: args.base });
     }
-    let hash;
-    switch (args.ty) {
-      case "denoFile@v1":
-        hash = objectHash(jsonHash.canonicalize({
-          ...args,
-          ...(args.fn
-            ? {
-              // NOTE: we serialize the function to a string before
-              // hashing.
-              fn: args.fn.toString(),
-            }
-            : {}),
-        } as jsonHash.Tree));
-        break;
-      default:
-        throw new Error(`unexpected task type: ${args.ty}`);
+    let key = args.name;
+    if (!key) {
+      switch (args.ty) {
+        case "denoFile@v1": {
+          const { fn, workingDir, ...argsRest } = args;
+          key = objectHash(JSON.parse(JSON.stringify({
+            ...argsRest,
+            workingDir: workingDir instanceof Path
+              ? workingDir.toString()
+              : workingDir,
+            ...(fn
+              ? {
+                // NOTE: we serialize the function to a string before
+                // hashing.
+                fn: fn.toString(),
+              }
+              : {}),
+          })));
+          key = multibase64.base64urlpad.encode(
+            multibase32.base32.decode(key),
+          );
+          break;
+        }
+        default:
+          throw new Error(`unexpected task type: ${args.ty}`);
+      }
     }
-    this.#tasks[hash] = {
+    this.#tasks.set(key, {
       ...args,
-    };
-    return hash;
+    });
+    return key;
   }
 
   addEnv(args: EnvDefArgs) {
@@ -209,13 +234,19 @@ export class Ghjkfile {
     if (args.vars) {
       env.vars(args.vars);
     }
+    if (args.onEnter) {
+      env.onEnter(...args.onEnter);
+    }
+    if (args.onExit) {
+      env.onEnter(...args.onExit);
+    }
     return env;
   }
 
   async execTask(
     { key, workingDir, envVars, argv }: ExecTaskArgs,
   ) {
-    const task = this.#tasks[key];
+    const task = this.#tasks.get(key);
     if (!task) {
       throw new Error(`no task defined under "${key}"`);
     }
@@ -223,10 +254,8 @@ export class Ghjkfile {
       throw new Error(`task under "${key}" has unexpected type ${task.ty}`);
     }
     if (task.fn) {
-      const custom$ = $.build$({
-        commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
-      });
-      await task.fn({ argv, env: envVars, $: custom$ });
+      const custom$ = task$(argv, envVars, workingDir);
+      await task.fn(custom$, { argv, env: envVars, $: custom$, workingDir });
     }
   }
 
@@ -278,7 +307,7 @@ export class Ghjkfile {
 
   #addToBlackboard(inp: unknown) {
     // jsonHash.digest is async
-    const hash = objectHash(jsonHash.canonicalize(inp as jsonHash.Tree));
+    const hash = objectHash(JSON.parse(JSON.stringify(inp)));
 
     if (!this.#bb.has(hash)) {
       this.#bb.set(hash, inp);
@@ -378,6 +407,41 @@ export class Ghjkfile {
         installSetId: processedInstallSetId,
         vars: processedVars,
       };
+      const hooks = [
+        ...final.onEnterHookTasks.map(
+          (key) => [key, "hook.onEnter.posixExec"] as const,
+        ),
+        ...final.onExitHookTasks.map(
+          (key) => [key, "hook.onExit.posixExec"] as const,
+        ),
+      ].map(([taskKey, ty]) => {
+        const task = this.#tasks.get(taskKey);
+        if (!task) {
+          throw new Error("unable to find task for onEnterHook", {
+            cause: {
+              env: final.name,
+              taskKey,
+            },
+          });
+        }
+        if (task.ty == "denoFile@v1") {
+          const prov: InlineTaskHookProvision = {
+            ty: "inline.hook.ghjkTask",
+            finalTy: ty,
+            taskKey,
+          };
+          return prov;
+        }
+        throw new Error(
+          `unsupported task type "${task.ty}" used for environment hook`,
+          {
+            cause: {
+              taskKey,
+              task,
+            },
+          },
+        );
+      });
       moduleConfig.envs[final.name] = {
         desc: final.desc,
         provides: [
@@ -387,6 +451,8 @@ export class Ghjkfile {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
+          // env hooks
+          ...hooks,
         ],
       };
       if (processedInstallSetId) {
@@ -422,7 +488,7 @@ export class Ghjkfile {
         .filter(([_, { name }]) => !!name)
         .map(([hash, { name }]) => [name, hash] as const),
     );
-    for (const [key, args] of Object.entries(this.#tasks)) {
+    for (const [key, args] of this.#tasks) {
       if (args.dependsOn && args.dependsOn.length > 0) {
         const depKeys = args.dependsOn.map((nameOrKey) =>
           nameToKey[nameOrKey] ?? nameOrKey
@@ -441,15 +507,15 @@ export class Ghjkfile {
       }
     }
     const workingSet = indie;
-    const keyToHash = {} as Record<string, string>;
+    const localToFinalKey = {} as Record<string, string>;
     const moduleConfig: TasksModuleConfig = {
       envs: {},
       tasks: {},
-      tasksNamed: {},
+      tasksNamed: [],
     };
     while (workingSet.length > 0) {
       const key = workingSet.pop()!;
-      const args = this.#tasks[key];
+      const args = this.#tasks.get(key)!;
       const { workingDir, desc, dependsOn, base } = args;
 
       const envBaseResolved = typeof base === "string"
@@ -526,9 +592,7 @@ export class Ghjkfile {
         }),
       );
 
-      const envHash = objectHash(
-        jsonHash.canonicalize(taskEnvRecipe as jsonHash.Tree),
-      );
+      const envHash = objectHash(JSON.parse(JSON.stringify(taskEnvRecipe)));
       moduleConfig.envs[envHash] = taskEnvRecipe;
 
       const def: TaskDefHashed = {
@@ -539,16 +603,18 @@ export class Ghjkfile {
           : workingDir,
         desc,
         dependsOn: dependsOn?.map((keyOrHash) =>
-          keyToHash[nameToKey[keyOrHash] ?? keyOrHash]
+          localToFinalKey[nameToKey[keyOrHash] ?? keyOrHash]
         ),
         envHash,
       };
-      const taskHash = objectHash(jsonHash.canonicalize(def as jsonHash.Tree));
-      moduleConfig.tasks[taskHash] = def;
-      keyToHash[key] = taskHash;
+      const taskHash = objectHash(def);
+      // we prefer the name as a key if present
+      const finalKey = args.name ?? taskHash;
+      moduleConfig.tasks[finalKey] = def;
+      localToFinalKey[key] = finalKey;
 
       if (args.name) {
-        moduleConfig.tasksNamed[args.name] = taskHash;
+        moduleConfig.tasksNamed.push(args.name);
       }
       for (const revDepKey of revDeps.get(key) ?? []) {
         const revDepDeps = deps.get(revDepKey)!;
@@ -596,6 +662,26 @@ export class Ghjkfile {
       });
     }
 
+    for (const [_name, env] of Object.entries(envsConfig.envs)) {
+      env.provides = env.provides.map(
+        (prov) => {
+          if (
+            prov.ty == "inline.hook.ghjkTask"
+          ) {
+            const inlineProv = prov as InlineTaskHookProvision;
+            const taskKey = localToFinalKey[inlineProv.taskKey];
+            const out: WellKnownProvision = {
+              ty: inlineProv.finalTy,
+              program: "ghjk",
+              arguments: ["x", taskKey],
+            };
+            return out;
+          }
+          return prov;
+        },
+      );
+    }
+
     return moduleConfig;
   }
 
@@ -640,6 +726,8 @@ type EnvFinalizer = () => {
   base: string | boolean;
   vars: Record<string, string>;
   desc?: string;
+  onEnterHookTasks: string[];
+  onExitHookTasks: string[];
 };
 
 // this class will be exposed to users and thus features
@@ -651,6 +739,8 @@ export class EnvBuilder {
   #base: string | boolean = true;
   #vars: Record<string, string> = {};
   #desc?: string;
+  #onEnterHookTasks: string[] = [];
+  #onExitHookTasks: string[] = [];
 
   constructor(
     file: Ghjkfile,
@@ -665,6 +755,8 @@ export class EnvBuilder {
       base: this.#base,
       vars: this.#vars,
       desc: this.#desc,
+      onExitHookTasks: this.#onExitHookTasks,
+      onEnterHookTasks: this.#onEnterHookTasks,
     }));
   }
 
@@ -714,11 +806,27 @@ export class EnvBuilder {
     this.#desc = str;
     return this;
   }
+
+  /**
+   * Tasks to execute on enter.
+   */
+  onEnter(...taskKey: string[]) {
+    this.#onEnterHookTasks.push(...taskKey);
+    return this;
+  }
+
+  /**
+   * Tasks to execute on enter.
+   */
+  onExit(...taskKey: string[]) {
+    this.#onExitHookTasks.push(...taskKey);
+    return this;
+  }
 }
 
 export function stdSecureConfig(
   args: {
-    additionalAllowedPorts?: PortsModuleSecureConfig["masterPortDepAllowList"];
+    additionalAllowedPorts?: (InstallConfigFat | AllowedPortDep)[];
     enableRuntimes?: boolean;
   } & Pick<PortsModuleSecureConfig, "defaultEnv" | "defaultBaseEnv">,
 ): PortsModuleSecureConfig {
@@ -726,7 +834,17 @@ export function stdSecureConfig(
   const out: PortsModuleSecureConfig = {
     masterPortDepAllowList: [
       ...stdDeps({ enableRuntimes }),
-      ...additionalAllowedPorts ?? [],
+      ...additionalAllowedPorts?.map(
+        (dep: any) => {
+          const res = portsValidators.allowedPortDep.safeParse(dep);
+          if (res.success) return res.data;
+          const out: AllowedPortDep = {
+            manifest: dep.port,
+            defaultInst: thinInstallConfig(dep),
+          };
+          return portsValidators.allowedPortDep.parse(out);
+        },
+      ) ?? [],
     ],
   };
   return out;
@@ -742,12 +860,41 @@ export function stdDeps(args = { enableRuntimes: false }) {
         node.default(),
         cpy.default(),
       ].map((fatInst) => {
-        return portsValidators.allowedPortDep.parse({
+        const out: AllowedPortDep = {
           manifest: fatInst.port,
           defaultInst: thinInstallConfig(fatInst),
-        });
+        };
+        return portsValidators.allowedPortDep.parse(out);
       }),
     );
   }
   return out;
 }
+
+function task$(
+  argv: string[],
+  env: Record<string, string | undefined>,
+  workingDir: string,
+) {
+  const custom$ = Object.assign(
+    // NOTE: order is important on who assigns to who
+    // here
+    $.build$({
+      commandBuilder: defaultCommandBuilder().env(env).cwd(workingDir),
+    }),
+    {
+      argv,
+      env,
+      workingDir,
+    },
+  );
+  return custom$;
+}
+
+type InlineTaskHookProvision = Provision & {
+  ty: "inline.hook.ghjkTask";
+  finalTy:
+    | "hook.onEnter.posixExec"
+    | "hook.onExit.posixExec";
+  taskKey: string;
+};

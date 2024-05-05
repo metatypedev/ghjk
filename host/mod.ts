@@ -1,19 +1,12 @@
-import {
-  cliffy_cmd,
-  deep_eql,
-  jsonHash,
-  zod,
-  zod_val_err,
-} from "../deps/cli.ts";
+import { cliffy_cmd, deep_eql, zod, zod_val_err } from "../deps/cli.ts";
 import logger from "../utils/logger.ts";
-
 import {
   $,
-  bufferHashHex,
+  bufferHashAsync,
   Json,
-  objectHashHex,
+  objectHash,
   Path,
-  stringHashHex,
+  stringHash,
 } from "../utils/mod.ts";
 import validators, { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
@@ -227,9 +220,9 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     const platformMatch = () =>
       serializePlatform(Deno.build) == foundLockObj.platform;
 
-    const envHashesMatch = async () => {
+    const envHashesMatch = () => {
       const oldHashes = foundHashObj!.envVarHashes;
-      const newHashes = await envVarDigests(curEnvVars, [
+      const newHashes = envVarDigests(curEnvVars, [
         ...Object.keys(oldHashes),
       ]);
       return deep_eql(oldHashes, newHashes);
@@ -262,7 +255,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
       foundHashObj &&
       foundHashObj.ghjkfileHash == ghjkfileHash &&
       platformMatch() &&
-      await envHashesMatch() &&
+      envHashesMatch() &&
       await fileListingsMatch() &&
       await fileHashesMatch()
     ) {
@@ -372,7 +365,7 @@ async function readAndSerializeConfig(
         configPath.toFileUrl().href,
         envVars,
       );
-      const envVarHashes = await envVarDigests(envVars, res.accessedEnvKeys);
+      const envVarHashes = envVarDigests(envVars, res.accessedEnvKeys);
       const cwd = $.path(Deno.cwd());
       const cwdStr = cwd.toString();
       const listedFiles = res.listedFiles
@@ -485,7 +478,7 @@ async function readHashFile(hashFilePath: Path) {
   }
 }
 
-async function envVarDigests(all: Record<string, string>, accessed: string[]) {
+function envVarDigests(all: Record<string, string>, accessed: string[]) {
   const hashes = {} as DigestsMap;
   for (const key of accessed) {
     const val = all[key];
@@ -493,7 +486,7 @@ async function envVarDigests(all: Record<string, string>, accessed: string[]) {
       // use null if the serializer accessed
       hashes[key] = null;
     } else {
-      hashes[key] = await stringHashHex(val);
+      hashes[key] = stringHash(val);
     }
   }
   return hashes;
@@ -502,21 +495,21 @@ async function envVarDigests(all: Record<string, string>, accessed: string[]) {
 async function fileDigests(hcx: HostCtx, readFiles: string[], cwd: Path) {
   const cwdStr = cwd.toString();
   const readFileHashes = {} as DigestsMap;
-  await Promise.all(readFiles.map(async (path) => {
-    const pathRef = cwd.resolve(path);
-    const relativePath = pathRef
+  await Promise.all(readFiles.map(async (pathStr) => {
+    const path = cwd.resolve(pathStr);
+    const relativePath = path
       .toString()
       .replace(cwdStr, ".");
     // FIXME: stream read into hash to improve mem usage
-    const stat = await pathRef.lstat();
+    const stat = await path.lstat();
     if (stat) {
       const contentHash = (stat.isFile || stat.isSymlink)
-        ? await fileDigestHex(hcx, pathRef)
+        ? await fileDigestHex(hcx, path)
         : null;
-      readFileHashes[relativePath] = await objectHashHex({
-        ...stat,
+      readFileHashes[relativePath] = objectHash({
+        ...JSON.parse(JSON.stringify(stat)),
         contentHash,
-      } as jsonHash.Tree);
+      });
     } else {
       readFileHashes[relativePath] = null;
     }
@@ -537,7 +530,7 @@ function fileDigestHex(hcx: HostCtx, path: Path) {
   }
   return promise;
   async function inner() {
-    return await bufferHashHex(
+    return await bufferHashAsync(
       await path.readBytes(),
     );
   }

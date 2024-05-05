@@ -131,7 +131,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   {
     const confHome = await ghjkShareDir.join(".config").ensureDir();
     const fishConfDir = await confHome.join("fish").ensureDir();
-    await fishConfDir.join("config.fish").createSymlinkTo(
+    await fishConfDir.join("config.fish").symlinkTo(
       ghjkShareDir.join("env.fish").toString(),
     );
     env["XDG_CONFIG_HOME"] = confHome.toString();

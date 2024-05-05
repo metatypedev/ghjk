@@ -47,8 +47,8 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const config = unwrapParseCurry(
       validators.envsModuleConfig.safeParse(manifest.config),
     );
-
-    const activeEnv = Deno.env.get("GHJK_ENV") ?? config.defaultEnv;
+    const setEnv = Deno.env.get("GHJK_ENV");
+    const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
     return Promise.resolve({
       activeEnv,
@@ -243,7 +243,7 @@ async function reduceAndCookEnv(
   if (envName == ecx.config.defaultEnv) {
     const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
     await $.removeIfExists(defaultEnvDir);
-    await defaultEnvDir.createSymlinkTo(envDir, { kind: "relative" });
+    await defaultEnvDir.symlinkTo(envDir, { kind: "relative" });
   }
 }
 

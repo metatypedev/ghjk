@@ -30,8 +30,8 @@ const cases: CustomE2eTestCase[] = [
     name: "base",
     tasks: [{
       name: "greet",
-      fn: async ({ $, argv: [name] }) => {
-        await $`echo Hello ${name}!`;
+      fn: async ($, { argv: [name], workingDir }) => {
+        await $`echo Hello ${name} from ${workingDir}!`;
       },
     }],
     ePoint: `fish`,
@@ -46,8 +46,9 @@ test (ghjk x greet world) = 'Hello world!'`,
       envVars: {
         NAME: "moon",
       },
-      fn: async ({ $ }) => {
+      async fn($) {
         await $`echo Hello $NAME!`;
+        await $`echo Hello ${$.env["NAME"]!}!`;
       },
     }],
     ePoint: `fish`,
@@ -60,7 +61,7 @@ test (ghjk x greet world) = 'Hello moon!'`,
     tasks: [{
       name: "protoc",
       installs: [ports.protoc()],
-      fn: async ({ $ }) => {
+      async fn($) {
         await $`protoc --version`;
       },
     }],
@@ -75,7 +76,7 @@ ghjk x protoc`,
       // pipi depends on cpy_bs
       installs: [...ports.pipi({ packageName: "pre-commit" })],
       allowedPortDeps: ghjk.stdDeps({ enableRuntimes: true }),
-      fn: async ({ $ }) => {
+      async fn($) {
         await $`pre-commit --version`;
       },
     }],
@@ -89,7 +90,7 @@ ghjk x protoc`,
       name: "test",
       // node depends on tar_aa
       installs: [ports.node()],
-      fn: async ({ $ }) => {
+      async fn($) {
         await $`node --version`;
       },
     }],
@@ -102,21 +103,21 @@ ghjk x protoc`,
       {
         name: "ed",
         dependsOn: [],
-        fn: async ({ $ }) => {
+        async fn($) {
           await $`/bin/sh -c 'echo ed > ed'`;
         },
       },
       {
         name: "edd",
         dependsOn: ["ed"],
-        fn: async ({ $ }) => {
+        async fn($) {
           await $`/bin/sh -c 'echo $(/bin/cat ed) edd > edd'`;
         },
       },
       {
         name: "eddy",
         dependsOn: ["edd"],
-        fn: async ({ $ }) => {
+        async fn($) {
           await $`/bin/sh -c 'echo $(/bin/cat edd) eddy > eddy'`;
         },
       },
@@ -137,13 +138,13 @@ task({
   dependsOn: [
     task({
       dependsOn: [
-        task(({ $ }) => $\`/bin/sh -c 'echo ed > ed'\`),
+        task(($) => $\`/bin/sh -c 'echo ed > ed'\`),
       ],
-      fn: ({ $ }) => $\`/bin/sh -c 'echo $(/bin/cat ed) edd > edd'\`,
+      fn: ($) => $\`/bin/sh -c 'echo $(/bin/cat ed) edd > edd'\`,
     }),
   ],
   name: "eddy",
-  fn: ({ $ }) => $\`/bin/sh -c 'echo $(/bin/cat edd) eddy > eddy'\`    
+  fn: ($) => $\`/bin/sh -c 'echo $(/bin/cat edd) eddy > eddy'\`    
 });
 `,
     ePoint: `fish`,

@@ -141,7 +141,7 @@ export class Port extends PortBase {
     await tmpDirPath.join("bin").ensureDir();
     for (const [name] of bins) {
       await tmpDirPath.join("bin", name)
-        .createSymlinkTo(
+        .symlinkTo(
           installPath
             .join("node_modules", ".bin", name)
             .toString(),

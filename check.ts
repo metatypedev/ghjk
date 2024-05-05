@@ -1,5 +1,4 @@
 #!/bin/env -S ghjk deno run --allow-env --allow-run --allow-read --allow-write=.
-// # FIXME: find a way to resolve !DENO_EXEC_PATH in shebangs
 
 import "./setup_logger.ts";
 import { $ } from "./utils/mod.ts";

@@ -2,7 +2,7 @@ export { ghjk } from "../../mod.ts";
 import { logger, task } from "../../mod.ts";
 import * as ports from "../../ports/mod.ts";
 
-task("greet", async ({ $, argv: [name] }) => {
+task("greet", async ($, { argv: [name] }) => {
   await $`echo Hello ${name}!`;
 });
 
@@ -10,7 +10,7 @@ const ha = task({
   name: "ha",
   installs: [ports.protoc()],
   envVars: { STUFF: "stuffier" },
-  async fn({ $ }) {
+  async fn($) {
     await $`echo $STUFF;
       protoc --version;
       `;
@@ -34,7 +34,7 @@ task("hum", {
 });
 
 // not all tasks need to be named
-// anon tasks can't be accessed from the CLI
+// but anon tasks can't be accessed from the CLI
 const anon = task(() => logger().info("anon"));
 
 task("hey", {

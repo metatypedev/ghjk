@@ -51,6 +51,8 @@ export const ghjk = Object.freeze({
     },
   ),
   execTask: Object.freeze(
+    // TODO: do we need to source the default base env from
+    // the secure config here?
     (args: ExecTaskArgs) => file.execTask(args),
   ),
 });

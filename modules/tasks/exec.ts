@@ -86,15 +86,14 @@ export async function execTask(
   gcx: GhjkCtx,
   tasksConfig: TasksModuleConfigX,
   taskGraph: TaskGraph,
-  targetName: string,
+  targetKey: string,
   args: string[],
   // taskEnv: TaskEnvX,
   // installGraph: InstallGraph,
 ): Promise<void> {
-  const targetHash = tasksConfig.tasksNamed[targetName];
-  let workSet = new Set([targetHash]);
+  let workSet = new Set([targetKey]);
   {
-    const stack = [targetHash];
+    const stack = [targetKey];
     while (stack.length > 0) {
       const taskHash = stack.pop()!;
       const taskDef = tasksConfig.tasks[taskHash];
@@ -102,9 +101,6 @@ export async function execTask(
       workSet = new Set([...workSet.keys(), ...taskDef.dependsOn ?? []]);
     }
   }
-  const hashToName = Object.fromEntries(
-    Object.entries(tasksConfig.tasksNamed).map(([name, hash]) => [hash, name]),
-  );
   const pendingDepEdges = new Map(
     Object.entries(taskGraph.depEdges).map(([key, val]) => [key, val!]),
   );
@@ -113,23 +109,23 @@ export async function execTask(
     throw new Error("something went wrong, task graph starting set is empty");
   }
   while (pendingTasks.length > 0) {
-    const taskHash = pendingTasks.pop()!;
-    const taskDef = tasksConfig.tasks[taskHash];
+    const taskKey = pendingTasks.pop()!;
+    const taskDef = tasksConfig.tasks[taskKey];
 
     const taskEnvDir = await Deno.makeTempDir({
-      prefix: `ghjkTaskEnv_${taskHash}_`,
+      prefix: `ghjkTaskEnv_${taskKey}_`,
     });
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
         recipe: tasksConfig.envs[taskDef.envHash],
-        envName: `taskEnv_${taskHash}`,
+        envName: `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
     );
     logger.info(
       "executing",
-      hashToName[taskHash] ?? taskDef.key ?? taskHash,
+      taskKey,
       args,
     );
 
@@ -168,15 +164,15 @@ export async function execTask(
     }
     $.removeIfExists(taskEnvDir);
 
-    workSet.delete(taskHash);
-    const dependentTasks = (taskGraph.revDepEdges[taskHash] ?? [])
+    workSet.delete(taskKey);
+    const dependentTasks = (taskGraph.revDepEdges[taskKey] ?? [])
       .filter((name) => workSet.has(name));
     const readyTasks = [];
     for (const parentId of dependentTasks) {
       const parentDeps = pendingDepEdges.get(parentId)!;
 
       // swap remove from parent pending deps list
-      const idx = parentDeps.indexOf(taskHash);
+      const idx = parentDeps.indexOf(taskKey);
       const last = parentDeps.pop()!;
       if (parentDeps.length > idx) {
         parentDeps[idx] = last;

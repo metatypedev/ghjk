@@ -10,7 +10,7 @@ const posixFileProvisionTypes = [
   "posix.headerFile",
 ] as const;
 
-const hookProvisionTypes = [
+export const hookProvisionTypes = [
   "hook.onEnter.posixExec",
   "hook.onExit.posixExec",
 ] as const;
@@ -20,6 +20,7 @@ const hookProvisionTypes = [
 export const wellKnownProvisionTypes = [
   "posix.envVar",
   ...posixFileProvisionTypes,
+  ...hookProvisionTypes,
 ] as const;
 
 const wellKnownProvision = zod.discriminatedUnion(
