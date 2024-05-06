@@ -9,7 +9,6 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: DenoFileSecureConfig;
-  ignore?: boolean;
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [

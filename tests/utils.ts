@@ -17,6 +17,8 @@ export type E2eTestCase = {
   envVars?: Record<string, string>;
   ePoints: { cmd: string | string[]; stdin?: string }[];
   timeout_ms?: number;
+  ignore?: boolean;
+  only?: boolean;
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
@@ -248,6 +250,9 @@ export function harness(
     for (const testCase of cases) {
       Deno.test(
         `${group}/${testCase.name}`,
+        {
+          ignore: testCase.ignore,
+        },
         () =>
           std_async.deadline(
             runner({
