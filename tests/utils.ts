@@ -77,7 +77,7 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     }
   }
   await $
-    .raw`${dockerCmd} rmi '${tag}'`
+    .raw`${dockerCmd} rmi --no-prune '${tag}'`
     .env(env);
 }
 
