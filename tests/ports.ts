@@ -13,6 +13,10 @@ import type {
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 
+console.log({
+  build: Deno.build,
+});
+
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
