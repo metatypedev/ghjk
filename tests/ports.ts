@@ -139,6 +139,7 @@ const cases: CustomE2eTestCase[] = [
       // executrable
       ? `which meta && wasmedge --version`
       : `meta --version && wasmedge --version`,
+    ignore: Deno.build.os == "linux" && Deno.build.arch == "aarch64",
   },
   // 77 meg +
   {

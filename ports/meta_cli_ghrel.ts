@@ -75,6 +75,9 @@ export class Port extends GithubReleasePort {
       default:
         throw new Error(`unsupported: ${platform}`);
     }
+    if (platform.os == "linux" && platform.arch) {
+      throw new Error(`unsupported: ${platform}`);
+    }
     return [
       this.releaseArtifactUrl(
         installVersion,
