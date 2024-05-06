@@ -122,7 +122,7 @@ export async function cli(args: CliArgs) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(ghjkShareDir);
+              console.log(ghjkShareDir.toString());
             }),
         )
         .command(
@@ -134,7 +134,7 @@ export async function cli(args: CliArgs) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(gcx.ghjkDir);
+              console.log(gcx.ghjkDir.toString());
             }),
         )
         .command(
@@ -142,11 +142,11 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path of the ghjk.ts used")
             .action(function () {
-              if (!gcx) {
+              if (!gcx?.ghjkfilePath) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(gcx.ghjkfilePath);
+              console.log(gcx.ghjkfilePath.toString());
             }),
         )
         .command(
