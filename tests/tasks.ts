@@ -1,14 +1,8 @@
 import "../setup_logger.ts";
-import {
-  dockerE2eTest,
-  E2eTestCase,
-  genTsGhjkFile,
-  localE2eTest,
-  type TaskDef,
-} from "./utils.ts";
+import { E2eTestCase, genTsGhjkFile, harness, type TaskDef } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
-import { stdSecureConfig } from "../files/mod.ts";
+import { stdSecureConfig } from "../mod.ts";
 
 type CustomE2eTestCase =
   & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
@@ -22,7 +16,7 @@ type CustomE2eTestCase =
       tasks: TaskDef[];
     }
     | {
-      ghjk_ts: string;
+      ghjkTs: string;
     }
   );
 const cases: CustomE2eTestCase[] = [
@@ -36,32 +30,30 @@ const cases: CustomE2eTestCase[] = [
     }],
     ePoint: `fish`,
     stdin: `
-cat ghjk.ts
-test (ghjk x greet world) = 'Hello world!'`,
+test (ghjk x greet world) = "Hello world from $PWD!"`,
   },
   {
     name: "env_vars",
     tasks: [{
       name: "greet",
       envVars: {
-        NAME: "moon",
+        LUNA: "moon",
+        SOL: "sun",
       },
-      async fn($) {
-        await $`echo Hello $NAME!`;
-        await $`echo Hello ${$.env["NAME"]!}!`;
+      fn: async ($) => {
+        await $`echo "Hello $SOL & ${$.env["LUNA"]!}"!`;
       },
     }],
     ePoint: `fish`,
     stdin: `
-cat ghjk.ts
-test (ghjk x greet world) = 'Hello moon!'`,
+test (ghjk x greet world) = 'Hello sun & moon!'`,
   },
   {
     name: "ports",
     tasks: [{
       name: "protoc",
       installs: [ports.protoc()],
-      async fn($) {
+      fn: async ($) => {
         await $`protoc --version`;
       },
     }],
@@ -76,7 +68,7 @@ ghjk x protoc`,
       // pipi depends on cpy_bs
       installs: [...ports.pipi({ packageName: "pre-commit" })],
       allowedPortDeps: ghjk.stdDeps({ enableRuntimes: true }),
-      async fn($) {
+      fn: async ($) => {
         await $`pre-commit --version`;
       },
     }],
@@ -90,7 +82,7 @@ ghjk x protoc`,
       name: "test",
       // node depends on tar_aa
       installs: [ports.node()],
-      async fn($) {
+      fn: async ($) => {
         await $`node --version`;
       },
     }],
@@ -103,21 +95,21 @@ ghjk x protoc`,
       {
         name: "ed",
         dependsOn: [],
-        async fn($) {
+        fn: async ($) => {
           await $`/bin/sh -c 'echo ed > ed'`;
         },
       },
       {
         name: "edd",
         dependsOn: ["ed"],
-        async fn($) {
+        fn: async ($) => {
           await $`/bin/sh -c 'echo $(/bin/cat ed) edd > edd'`;
         },
       },
       {
         name: "eddy",
         dependsOn: ["edd"],
-        async fn($) {
+        fn: async ($) => {
           await $`/bin/sh -c 'echo $(/bin/cat edd) eddy > eddy'`;
         },
       },
@@ -129,8 +121,8 @@ test (cat eddy) = 'ed edd eddy'
 `,
   },
   {
-    name: "anon tasks",
-    ghjk_ts: `
+    name: "anon",
+    ghjkTs: `
 export { ghjk } from "$ghjk/mod.ts";
 import { task } from "$ghjk/mod.ts";
 
@@ -155,51 +147,16 @@ test (cat eddy) = 'ed edd eddy'
   },
 ];
 
-function testMany(
-  testGroup: string,
-  cases: CustomE2eTestCase[],
-  testFn: (inp: E2eTestCase) => Promise<void>,
-  defaultEnvs: Record<string, string> = {},
-) {
-  for (const testCase of cases) {
-    Deno.test(
-      `${testGroup} - ${testCase.name}`,
-      () =>
-        testFn({
-          ...testCase,
-          tsGhjkfileStr: "ghjk_ts" in testCase
-            ? testCase.ghjk_ts
-            : genTsGhjkFile(
-              {
-                taskDefs: testCase.tasks,
-                secureConf: stdSecureConfig({
-                  enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
-                }),
-              },
-            ),
-          ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
-          envVars: {
-            ...defaultEnvs,
-            ...testCase.envVars,
-          },
-        }),
-    );
-  }
-}
-
-const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-if (e2eType == "both") {
-  testMany("tasksDockerE2eTest", cases, dockerE2eTest);
-  testMany(`tasksLocalE2eTest`, cases, localE2eTest);
-} else if (e2eType == "local") {
-  testMany("tasksLocalE2eTest", cases, localE2eTest);
-} else if (
-  e2eType == "docker" ||
-  !e2eType
-) {
-  testMany("tasksDockerE2eTest", cases, dockerE2eTest);
-} else {
-  throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-  );
-}
+harness(cases.map((testCase) => ({
+  ...testCase,
+  tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
+    {
+      taskDefs: testCase.tasks,
+      secureConf: stdSecureConfig({
+        enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
+      }),
+    },
+  ),
+  ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
+  name: `tasks/${testCase.name}`,
+})));

@@ -1,23 +1,14 @@
 import "../setup_logger.ts";
-import { std_async } from "../deps/dev.ts";
-import { stdSecureConfig } from "../mod.ts";
-import {
-  dockerE2eTest,
-  E2eTestCase,
-  genTsGhjkFile,
-  localE2eTest,
-} from "./utils.ts";
+import { DenoFileSecureConfig, stdSecureConfig } from "../mod.ts";
+import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
 import dummy from "../ports/dummy.ts";
-import type {
-  InstallConfigFat,
-  PortsModuleSecureConfig,
-} from "../modules/ports/types.ts";
+import type { InstallConfigFat } from "../modules/ports/types.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
-  secureConf?: PortsModuleSecureConfig;
+  secureConf?: DenoFileSecureConfig;
   ignore?: boolean;
 };
 // order tests by download size to make failed runs less expensive
@@ -206,33 +197,20 @@ const cases: CustomE2eTestCase[] = [
   },
 ];
 
-function testMany(
-  testGroup: string,
-  cases: CustomE2eTestCase[],
-  testFn: (inp: E2eTestCase) => Promise<void>,
-  defaultEnvs: Record<string, string> = {},
-) {
-  for (const testCase of cases) {
-    Deno.test(
-      {
-        name: `${testGroup} - ${testCase.name}`,
-        ignore: testCase.ignore,
-        fn: () =>
-          std_async.deadline(
-            testFn({
-              ...testCase,
-              tsGhjkfileStr: genTsGhjkFile(
-                {
-                  installConf: testCase.installConf,
-                  secureConf: testCase.secureConf,
-                  taskDefs: [],
-                },
-              ),
-              ePoints: [
-                ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                  cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
-                })),
-                /* // FIXME: better tests for the `InstallDb`
+harness(cases.map((testCase) => ({
+  ...testCase,
+  tsGhjkfileStr: genTsGhjkFile(
+    {
+      installConf: testCase.installConf,
+      secureConf: testCase.secureConf,
+      taskDefs: [],
+    },
+  ),
+  ePoints: [
+    ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+      cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
+    })),
+    /* // FIXME: better tests for the `InstallDb`
                 // installs db means this shouldn't take too long
                 // as it's the second sync
                 {
@@ -241,35 +219,10 @@ function testMany(
                     "bash -c 'timeout 1 ghjk envs cook'",
                   ],
                 }, */
-              ],
-              envVars: {
-                ...defaultEnvs,
-                ...testCase.envVars,
-              },
-            }),
-            // building the test docker image might taka a while
-            // but we don't want some bug spinlocking the ci for
-            // an hour
-            5 * 60 * 1000,
-          ),
-      },
-    );
-  }
-}
-
-const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-if (e2eType == "both") {
-  testMany("portsDockerE2eTest", cases, dockerE2eTest);
-  testMany(`portsLocalE2eTest`, cases, localE2eTest);
-} else if (e2eType == "local") {
-  testMany("portsLocalE2eTest", cases, localE2eTest);
-} else if (
-  e2eType == "docker" ||
-  !e2eType
-) {
-  testMany("portsDockerE2eTest", cases, dockerE2eTest);
-} else {
-  throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-  );
-}
+  ],
+  // building the test docker image might taka a while
+  // but we don't want some bug spinlocking the ci for
+  // an hour
+  timeout_ms: 5 * 60 * 1000,
+  name: `ports/${testCase.name}`,
+})));

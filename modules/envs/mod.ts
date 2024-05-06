@@ -142,8 +142,9 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             }),
         ),
       sync: new cliffy_cmd.Command()
-        .description(`Cooks and activates an environment.
+        .description(`Synchronize your shell to what's in your config.
 
+Just simply cooks and activates an environment.
 - If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`)
         .arguments("[envName:string]")

@@ -56,7 +56,6 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
         const cmd = new cliffy_cmd.Command()
           .name(key)
           .arguments("[argv...]")
-          .hidden()
           .action(async (_, ...args) => {
             await execTask(
               gcx,

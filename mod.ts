@@ -5,14 +5,16 @@
 
 import "./setup_logger.ts";
 
+import { zod } from "./deps/common.ts";
 // ports specific imports
+import portsValidators from "./modules/ports/types.ts";
 import type {
+  AllowedPortDep,
   InstallConfigFat,
-  PortsModuleSecureConfig,
 } from "./modules/ports/types.ts";
 import logger from "./utils/logger.ts";
-import { $ } from "./utils/mod.ts";
-import { EnvBuilder, Ghjkfile, stdDeps, stdSecureConfig } from "./files/mod.ts";
+import { $, thinInstallConfig } from "./utils/mod.ts";
+import { EnvBuilder, Ghjkfile, stdDeps } from "./files/mod.ts";
 import type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./files/mod.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
@@ -37,7 +39,7 @@ export const ghjk = Object.freeze({
   getConfig: Object.freeze(
     (
       ghjkfileUrl: string,
-      secureConfig: PortsModuleSecureConfig | undefined,
+      secureConfig: DenoFileSecureConfig | undefined,
     ) => {
       const defaultEnv = secureConfig?.defaultEnv ?? DEFAULT_BASE_ENV_NAME;
       const defaultBaseEnv = secureConfig?.defaultBaseEnv ??
@@ -45,8 +47,9 @@ export const ghjk = Object.freeze({
       return file.toConfig({
         defaultEnv,
         defaultBaseEnv,
-        secureConfig,
         ghjkfileUrl,
+        masterPortDepAllowList: secureConfig?.masterPortDepAllowList ??
+          stdDeps(),
       });
     },
   ),
@@ -69,28 +72,37 @@ export function install(...configs: InstallConfigFat[]) {
  */
 export function task(args: DenoTaskDefArgs): string;
 export function task(name: string, args: Omit<DenoTaskDefArgs, "name">): string;
-export function task(name: string, fn: TaskFn): string;
-export function task(fn: TaskFn): string;
+export function task(
+  name: string,
+  fn: TaskFn,
+  args?: Omit<DenoTaskDefArgs, "fn" | "name">,
+): string;
+export function task(fn: TaskFn, args?: Omit<DenoTaskDefArgs, "fn">): string;
 export function task(
   nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
   argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
+  argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
 ): string {
   let args: DenoTaskDefArgs;
   if (typeof nameOrArgsOrFn == "object") {
     args = nameOrArgsOrFn;
   } else if (typeof nameOrArgsOrFn == "function") {
     args = {
+      ...(argsOrFn ?? {}),
       fn: nameOrArgsOrFn,
     };
   } else if (typeof argsOrFn == "object") {
     args = { ...argsOrFn, name: nameOrArgsOrFn };
   } else if (argsOrFn) {
     args = {
+      ...(argsMaybe ?? {}),
       name: nameOrArgsOrFn,
       fn: argsOrFn,
     };
   } else {
-    throw new Error("no function provided when defining task");
+    args = {
+      name: nameOrArgsOrFn,
+    };
   }
   return file.addTask({ ...args, ty: "denoFile@v1" });
 }
@@ -105,4 +117,49 @@ export function env(
     ? nameOrArgs
     : { ...argsMaybe, name: nameOrArgs };
   return file.addEnv(args);
+}
+
+const denoFileSecureConfig = zod.object({
+  masterPortDepAllowList: zod.array(portsValidators.allowedPortDep).nullish(),
+  // TODO: move into envs/types
+  defaultEnv: zod.string().nullish(),
+  defaultBaseEnv: zod.string().nullish(),
+});
+/*
+ * This is a secure sections of the config intended to be direct exports
+ * from the config script instead of the global variable approach the
+ * main [`GhjkConfig`] can take.
+ */
+export type DenoFileSecureConfig = zod.input<
+  typeof denoFileSecureConfig
+>;
+export type DenoFileSecureConfigX = zod.input<
+  typeof denoFileSecureConfig
+>;
+
+function stdSecureConfig(
+  args: {
+    additionalAllowedPorts?: (InstallConfigFat | AllowedPortDep)[];
+    enableRuntimes?: boolean;
+  } & Pick<DenoFileSecureConfig, "defaultEnv" | "defaultBaseEnv">,
+) {
+  const { additionalAllowedPorts, enableRuntimes = false } = args;
+  const out: DenoFileSecureConfig = {
+    ...args,
+    masterPortDepAllowList: [
+      ...stdDeps({ enableRuntimes }),
+      ...additionalAllowedPorts?.map(
+        (dep: any) => {
+          const res = portsValidators.allowedPortDep.safeParse(dep);
+          if (res.success) return res.data;
+          const out: AllowedPortDep = {
+            manifest: dep.port,
+            defaultInst: thinInstallConfig(dep),
+          };
+          return portsValidators.allowedPortDep.parse(out);
+        },
+      ) ?? [],
+    ],
+  };
+  return out;
 }

@@ -1,4 +1,3 @@
-import { std_path } from "../../deps/cli.ts";
 import { $, DePromisify } from "../../utils/mod.ts";
 
 import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
@@ -143,13 +142,18 @@ export async function execTask(
       ),
     };
     if (taskDef.ty == "denoFile@v1") {
+      if (!gcx.ghjkfilePath) {
+        throw new Error(
+          "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
+        );
+      }
       await execTaskDeno(
         $.path(gcx.ghjkfilePath).toFileUrl().toString(),
         {
           key: taskDef.key,
           argv: args,
           envVars,
-          workingDir: std_path.dirname(gcx.ghjkfilePath),
+          workingDir: gcx.ghjkfilePath.parentOrThrow().toString(),
         },
       );
     } else {

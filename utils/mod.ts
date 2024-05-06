@@ -221,10 +221,10 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-export async function findConfig(path: string) {
+export async function findEntryRecursive(path: string, name: string) {
   let current = $.path(path);
   while (true) {
-    const location = `${current}/ghjk.ts`;
+    const location = `${current}/${name}`;
     if (await $.path(location).exists()) {
       return location;
     }
@@ -234,7 +234,6 @@ export async function findConfig(path: string) {
     }
     current = nextCurrent;
   }
-  return null;
 }
 
 export function home_dir(): string | null {

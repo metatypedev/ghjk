@@ -1,12 +1,14 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
 import { std_url } from "../deps/dev.ts";
+import { std_async } from "../deps/dev.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
-import type {
-  InstallConfigFat,
-  PortsModuleSecureConfig,
-} from "../modules/ports/types.ts";
+import type { InstallConfigFat } from "../modules/ports/types.ts";
 import logger from "../utils/logger.ts";
-import type { DenoTaskDefArgs, EnvDefArgs } from "../mod.ts";
+import type {
+  DenoFileSecureConfig,
+  DenoTaskDefArgs,
+  EnvDefArgs,
+} from "../mod.ts";
 export type { EnvDefArgs } from "../mod.ts";
 
 export type E2eTestCase = {
@@ -14,6 +16,7 @@ export type E2eTestCase = {
   tsGhjkfileStr: string;
   envVars?: Record<string, string>;
   ePoints: { cmd: string | string[]; stdin?: string }[];
+  timeout_ms?: number;
 };
 
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
@@ -24,7 +27,7 @@ const templateStrings = {
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
   const { name, envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
-  const tag = `ghjk_e2e_${name}`;
+  const tag = `ghjk_e2e_${name}`.toLowerCase();
   const env = {
     ...testEnvs,
   };
@@ -97,8 +100,6 @@ export async function localE2eTest(testCase: E2eTestCase) {
     ZDOTDIR: ghjkShareDir.toString(),
     GHJK_SHARE_DIR: ghjkShareDir.toString(),
     PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
-    // shield tests from external envs
-    GHJK_ENV: "main",
     HOME: tmpDir.toString(),
   };
   // install ghjk
@@ -116,9 +117,11 @@ export async function localE2eTest(testCase: E2eTestCase) {
 
   await $`${ghjkShareDir.join("ghjk").toString()} print config`
     .cwd(tmpDir.toString())
+    .clearEnv()
     .env(env);
   await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
     .cwd(tmpDir.toString())
+    .clearEnv()
     .env(env);
   /*
   // print the contents of the ghjk dir for debugging purposes
@@ -155,7 +158,7 @@ export type TaskDef =
 export function genTsGhjkFile(
   { installConf, secureConf, taskDefs, envDefs }: {
     installConf?: InstallConfigFat | InstallConfigFat[];
-    secureConf?: PortsModuleSecureConfig;
+    secureConf?: DenoFileSecureConfig;
     taskDefs?: TaskDef[];
     envDefs?: EnvDefArgs[];
   },
@@ -223,4 +226,36 @@ export const secureConfig = JSON.parse(secConfStr);
 ${tasks}
 ${envs}
 `;
+}
+
+export function harness(
+  cases: E2eTestCase[],
+) {
+  const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
+  let runners = [[dockerE2eTest, "e2eDocker" as string] as const];
+  if (e2eType == "both") {
+    runners.push([localE2eTest, "e2eLocal"]);
+  } else if (e2eType == "local") {
+    runners = [[localE2eTest, "e2eLocal"]];
+  } else if (
+    e2eType && e2eType != "docker"
+  ) {
+    throw new Error(
+      `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
+    );
+  }
+  for (const [runner, group] of runners) {
+    for (const testCase of cases) {
+      Deno.test(
+        `${group}/${testCase.name}`,
+        () =>
+          std_async.deadline(
+            runner({
+              ...testCase,
+            }),
+            testCase.timeout_ms ?? 1 * 60 * 1000,
+          ),
+      );
+    }
+  }
 }

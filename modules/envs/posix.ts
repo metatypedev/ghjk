@@ -1,10 +1,10 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
 import type { EnvRecipeX } from "./types.ts";
-import getLogger from "../../utils/logger.ts";
 import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
 import { ghjk_fish, ghjk_sh } from "../../install/utils.ts";
+import getLogger from "../../utils/logger.ts";
 
 const logger = getLogger(import.meta);
 
@@ -17,6 +17,7 @@ export async function cookPosixEnv(
     createShellLoaders?: boolean;
   },
 ) {
+  logger.debug("cooking env", envName, { envDir });
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
@@ -90,8 +91,6 @@ export async function cookPosixEnv(
     ),
     $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
   ]);
-  // write loader for the env vars mandated by the installs
-  logger.debug("adding vars to loader", vars);
   // FIXME: prevent malicious env manipulations
   let LD_LIBRARY_ENV: string;
   switch (Deno.build.os) {
@@ -112,6 +111,7 @@ export async function cookPosixEnv(
     CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
   };
   if (createShellLoaders) {
+    // write loader for the env vars mandated by the installs
     await writeActivators(
       gcx,
       envDir,
@@ -217,7 +217,7 @@ export ${key}='${val}';`
       ...Object.entries(pathVars).map(([key, val]) =>
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${key}="\${${key}%:}";';
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "^${val}" | tr "\\n" ":");${key}="\${${key}%:}";';
 export ${key}="${val}:$${key}";
 `
       ),
@@ -245,7 +245,7 @@ set --global --export ${key} '${val}';`
       ),
       "\n# path vars",
       ...Object.entries(pathVars).map(([key, val]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex "^${envDir}" $${key});';
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex "^${val}" $${key});';
 set --global --export --prepend ${key} ${val};
 `
       ),

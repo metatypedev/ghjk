@@ -14,7 +14,6 @@ import type {
   InstallSet,
   InstallSetRefProvision,
   PortsModuleConfigHashed,
-  PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 import logger from "../utils/logger.ts";
 import {
@@ -260,11 +259,11 @@ export class Ghjkfile {
   }
 
   toConfig(
-    { defaultEnv, defaultBaseEnv, secureConfig }: {
+    { defaultEnv, defaultBaseEnv, masterPortDepAllowList }: {
       defaultEnv: string;
       defaultBaseEnv: string;
-      secureConfig: PortsModuleSecureConfig | undefined;
       ghjkfileUrl: string;
+      masterPortDepAllowList: AllowedPortDep[];
     },
   ) {
     try {
@@ -274,10 +273,11 @@ export class Ghjkfile {
         defaultBaseEnv,
       );
       const portsConfig = this.#processInstalls(
-        secureConfig?.masterPortDepAllowList ?? stdDeps(),
+        masterPortDepAllowList ?? stdDeps(),
       );
 
       const config: SerializedConfig = {
+        blackboard: Object.fromEntries(this.#bb.entries()),
         modules: [{
           id: std_modules.ports,
           config: portsConfig,
@@ -288,7 +288,6 @@ export class Ghjkfile {
           id: std_modules.envs,
           config: envsConfig,
         }],
-        blackboard: Object.fromEntries(this.#bb.entries()),
       };
       return config;
     } catch (cause) {
@@ -822,32 +821,6 @@ export class EnvBuilder {
     this.#onExitHookTasks.push(...taskKey);
     return this;
   }
-}
-
-export function stdSecureConfig(
-  args: {
-    additionalAllowedPorts?: (InstallConfigFat | AllowedPortDep)[];
-    enableRuntimes?: boolean;
-  } & Pick<PortsModuleSecureConfig, "defaultEnv" | "defaultBaseEnv">,
-): PortsModuleSecureConfig {
-  const { additionalAllowedPorts, enableRuntimes = false } = args;
-  const out: PortsModuleSecureConfig = {
-    masterPortDepAllowList: [
-      ...stdDeps({ enableRuntimes }),
-      ...additionalAllowedPorts?.map(
-        (dep: any) => {
-          const res = portsValidators.allowedPortDep.safeParse(dep);
-          if (res.success) return res.data;
-          const out: AllowedPortDep = {
-            manifest: dep.port,
-            defaultInst: thinInstallConfig(dep),
-          };
-          return portsValidators.allowedPortDep.parse(out);
-        },
-      ) ?? [],
-    ],
-  };
-  return out;
 }
 
 export function stdDeps(args = { enableRuntimes: false }) {

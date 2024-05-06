@@ -144,12 +144,6 @@ const allowedPortDep = zod.object({
   defaultInst: installConfigLite,
 });
 
-const portsModuleSecureConfig = zod.object({
-  masterPortDepAllowList: zod.array(allowedPortDep).nullish(),
-  defaultEnv: zod.string().nullish(),
-  defaultBaseEnv: zod.string().nullish(),
-});
-
 const allowDepSet = zod.record(zod.string(), allowedPortDep);
 
 const allowDepSetHashed = zod.record(zod.string(), zod.string());
@@ -219,7 +213,6 @@ const validators = {
   installConfig,
   installConfigResolved,
   portManifest,
-  portsModuleSecureConfig,
   portsModuleConfig,
   portsModuleConfigHashed,
   allowedPortDep,
@@ -341,18 +334,6 @@ export type InstallSetRefProvisionX = zod.infer<
 
 export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
 export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
-
-/*
- * This is a secure sections of the config intended to be direct exports
- * from the config script instead of the global variable approach the
- * main [`GhjkConfig`] can take.
- */
-export type PortsModuleSecureConfig = zod.input<
-  typeof validators.portsModuleSecureConfig
->;
-export type PortsModuleSecureConfigX = zod.input<
-  typeof validators.portsModuleSecureConfig
->;
 
 export type InstallSet = zod.input<typeof validators.installSet>;
 export type InstallSetX = zod.infer<

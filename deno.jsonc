@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "GHJK_LOG=info deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
+    "test": "deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
     "cache": "deno cache deps/*",
     "check": "./check.ts"
   },

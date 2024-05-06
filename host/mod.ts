@@ -19,57 +19,68 @@ import { DePromisify } from "../port.ts";
 export interface CliArgs {
   ghjkShareDir: string;
   ghjkfilePath?: string;
+  ghjkDirPath?: string;
 }
 
 type HostCtx = {
   fileHashMemoStore: Map<string, Promise<string>>;
+  curEnvVars: Record<string, string>;
 };
 
 export async function cli(args: CliArgs) {
-  const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize()
-    .toString();
   // items to run at end of function
   const defer = [] as (() => Promise<any>)[];
 
-  const subcmds: Record<string, any> = {};
-
+  const ghjkShareDir = $.path(args.ghjkShareDir).resolve().normalize();
   let serializedConfig: object | undefined;
-  let ghjkDir: string | undefined;
-  let ghjkfilePath: string | undefined;
+  let gcx: GhjkCtx | undefined;
+
+  if (!args.ghjkDirPath && args.ghjkfilePath) {
+    args.ghjkDirPath = $.path(args.ghjkfilePath).parentOrThrow().join(".ghjk")
+      .toString();
+  }
+
+  const subcmds: Record<string, any> = {};
 
   // most of the CLI is only avail if there's a
   // ghjkfile detected
-  if (args.ghjkfilePath) {
-    ghjkfilePath = $.path(args.ghjkfilePath).resolve().normalize()
-      .toString();
-    ghjkDir = $.path(ghjkfilePath).parentOrThrow().join(".ghjk")
-      .toString();
-    logger().debug({ ghjkfilePath, ghjkDir });
+  if (args.ghjkDirPath) {
+    gcx = {
+      ghjkShareDir,
+      ghjkDir: $.path(args.ghjkDirPath).resolve().normalize(),
+      ghjkfilePath: args.ghjkfilePath
+        ? $.path(args.ghjkfilePath).resolve().normalize()
+        : undefined,
+      blackboard: new Map(),
+    };
+    logger().debug({ ghjkfilePath: gcx.ghjkfilePath, ghjkDir: gcx?.ghjkDir });
 
-    const gcx = { ghjkShareDir, ghjkfilePath, ghjkDir, blackboard: new Map() };
-    const hcx = { fileHashMemoStore: new Map() };
+    if (!await gcx.ghjkDir.join(".gitignore").exists()) {
+      gcx.ghjkDir.join(".gitignore").writeText($.dedent`
+        envs
+        hash.json`);
+    }
 
-    const {
-      subCommands: configCommands,
-      serializedConfig: config,
-      writeLockFile,
-    } = await readConfig(
-      gcx,
-      hcx,
-    );
-    serializedConfig = config;
-    // lock entries are generated across program usage
-    // so we defer writing it out until the end
-    defer.push(writeLockFile);
+    // this returns nothing if no valid lockifle or ghjkfile
+    // is found
+    const commands = await commandsFromConfig(gcx);
+    if (commands) {
+      serializedConfig = commands.config;
+      // lock entries are generated across program usage
+      // so we defer writing it out until the end
+      defer.push(commands.writeLockFile);
 
-    for (const [cmdName, [cmd, src]] of Object.entries(configCommands)) {
-      const conflict = subcmds[cmdName];
-      if (conflict) {
-        throw new Error(
-          `CLI command conflict under name "${cmdName}" from host and module "${src}"`,
-        );
+      for (
+        const [cmdName, [cmd, src]] of Object.entries(commands.subCommands)
+      ) {
+        const conflict = subcmds[cmdName];
+        if (conflict) {
+          throw new Error(
+            `CLI command conflict under name "${cmdName}" from host and module "${src}"`,
+          );
+        }
+        subcmds[cmdName] = cmd;
       }
-      subcmds[cmdName] = cmd;
     }
   }
 
@@ -119,11 +130,11 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path where ghjk is installed in.")
             .action(function () {
-              if (!ghjkDir) {
+              if (!gcx) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(ghjkDir);
+              console.log(gcx.ghjkDir);
             }),
         )
         .command(
@@ -131,11 +142,11 @@ export async function cli(args: CliArgs) {
           new cliffy_cmd.Command()
             .description("Print the path of the ghjk.ts used")
             .action(function () {
-              if (!ghjkfilePath) {
+              if (!gcx) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log(ghjkfilePath);
+              console.log(gcx.ghjkfilePath);
             }),
         )
         .command(
@@ -144,12 +155,20 @@ export async function cli(args: CliArgs) {
             .description(
               "Print the extracted ans serialized config from the ghjkfile",
             )
-            .action(function () {
+            .option(
+              "--json",
+              `Use json format when printing config.`,
+            )
+            .action(function ({ json }) {
               if (!serializedConfig) {
                 throw new Error("no ghjkfile found.");
               }
               // deno-lint-ignore no-console
-              console.log($.inspect(serializedConfig));
+              console.log(
+                json
+                  ? JSON.stringify(serializedConfig)
+                  : $.inspect(serializedConfig),
+              );
             }),
         ),
     );
@@ -160,42 +179,41 @@ export async function cli(args: CliArgs) {
   await Promise.all(defer.map((fn) => fn()));
 }
 
-async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
-  const configPath = $.path(gcx.ghjkfilePath);
-  const configFileStat = await configPath.stat();
-  // FIXME: subset of ghjk commands should be functional
-  // even if config file not found
-  if (!configFileStat) {
-    throw new Error("unable to locate config file", {
-      cause: gcx,
-    });
-  }
-  const ghjkDirPath = $.path(gcx.ghjkDir);
-  if (!await ghjkDirPath.join(".gitignore").exists()) {
-    ghjkDirPath.join(".gitignore").writeText($.dedent`
-        envs
-        hash.json`);
-  }
-  const lockFilePath = ghjkDirPath.join("lock.json");
-  const hashFilePath = ghjkDirPath.join("hash.json");
+async function commandsFromConfig(gcx: GhjkCtx) {
+  const hcx: HostCtx = {
+    fileHashMemoStore: new Map(),
+    curEnvVars: Deno.env.toObject(),
+  };
 
-  // command name to [cmd, source module id]
-  const subCommands = {} as Record<string, [cliffy_cmd.Command, string]>;
-  const lockEntries = {} as Record<string, unknown>;
+  const lockFilePath = gcx.ghjkDir.join("lock.json");
+  const hashFilePath = gcx.ghjkDir.join("hash.json");
 
   const foundLockObj = await readLockFile(lockFilePath);
   const foundHashObj = await readHashFile(hashFilePath);
 
-  const ghjkfileHash = await fileDigestHex(hcx, configPath);
+  const lockEntries = {} as Record<string, unknown>;
 
-  const curEnvVars = Deno.env.toObject();
+  const ghjkfileHash = await gcx.ghjkfilePath?.exists()
+    ? await fileDigestHex(hcx, gcx.ghjkfilePath!)
+    : undefined;
 
   let configExt: SerializedConfigExt | null = null;
   // TODO: figure out cross platform lockfiles :O
   if (
     foundLockObj && // lockfile found
-    foundLockObj.version == "0"
+    foundHashObj &&
+    foundLockObj.version == "0" &&
+    // avoid reserializing the config if
+    // the ghjkfile and environment is _satisfcatorily_
+    // similar. "cache validation"
+    await isHashFileValid(hcx, foundLockObj, foundHashObj, ghjkfileHash)
   ) {
+    configExt = {
+      config: foundLockObj.config,
+      envVarHashes: foundHashObj.envVarHashes,
+      readFileHashes: foundHashObj.readFileHashes,
+      listedFiles: foundHashObj.listedFiles,
+    };
     logger().debug("loading lockfile", lockFilePath);
     for (const man of foundLockObj.config.modules) {
       const mod = std_modules.map[man.id];
@@ -216,65 +234,13 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
         entry as Json,
       );
     }
-
-    const platformMatch = () =>
-      serializePlatform(Deno.build) == foundLockObj.platform;
-
-    const envHashesMatch = () => {
-      const oldHashes = foundHashObj!.envVarHashes;
-      const newHashes = envVarDigests(curEnvVars, [
-        ...Object.keys(oldHashes),
-      ]);
-      return deep_eql(oldHashes, newHashes);
-    };
-
-    const cwd = $.path(Deno.cwd());
-    const fileHashesMatch = async () => {
-      const oldHashes = foundHashObj!.readFileHashes;
-      const newHashes = await fileDigests(hcx, [
-        ...Object.keys(oldHashes),
-      ], cwd);
-      return deep_eql(oldHashes, newHashes);
-    };
-
-    const fileListingsMatch = async () => {
-      const oldListed = foundHashObj!.listedFiles;
-      for (const path of oldListed) {
-        if (!await cwd.resolve(path).exists()) {
-          return false;
-        }
-      }
-      return true;
-    };
-    // avoid reserializing the config if
-    // the ghjkfile and environment is _satisfcatorily_
-    // similar. "cache validation"
-    if (
-      // NOTE: these are ordered by the amount effort it takes
-      // to check each
-      foundHashObj &&
-      foundHashObj.ghjkfileHash == ghjkfileHash &&
-      platformMatch() &&
-      envHashesMatch() &&
-      await fileListingsMatch() &&
-      await fileHashesMatch()
-    ) {
-      configExt = {
-        config: foundLockObj.config,
-        envVarHashes: foundHashObj.envVarHashes,
-        readFileHashes: foundHashObj.readFileHashes,
-        listedFiles: foundHashObj.listedFiles,
-      };
-    }
+  } else if (gcx.ghjkfilePath) {
+    logger().info("serializing ghjkfile", gcx.ghjkfilePath);
+    configExt = await readGhjkfile(hcx, gcx.ghjkfilePath);
+  } else {
+    // nothing to get the commands from
+    return;
   }
-
-  // configExt will be falsy if no lockfile was found
-  // or if it failed cache validation
-  if (!configExt) {
-    logger().info("serializing ghjkfile", configPath);
-    configExt = await readAndSerializeConfig(hcx, configPath, curEnvVars);
-  }
-
   const newHashObj: zod.infer<typeof hashObjValidator> = {
     version: "0",
     ghjkfileHash,
@@ -282,7 +248,10 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
     readFileHashes: configExt.readFileHashes,
     listedFiles: configExt.listedFiles,
   };
+  // command name to [cmd, source module id]
+  const subCommands = {} as Record<string, [cliffy_cmd.Command, string]>;
   const instances = [] as [string, ModuleBase<unknown, unknown>, unknown][];
+
   for (const man of configExt.config.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
@@ -314,7 +283,7 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
 
   return {
     subCommands,
-    serializedConfig: configExt.config,
+    config: configExt.config,
     async writeLockFile() {
       const newLockObj: zod.infer<typeof lockObjValidator> = {
         version: "0",
@@ -344,16 +313,60 @@ async function readConfig(gcx: GhjkCtx, hcx: HostCtx) {
   };
 }
 
+async function isHashFileValid(
+  hcx: HostCtx,
+  foundLockFile: zod.infer<typeof lockObjValidator>,
+  foundHashFile: zod.infer<typeof hashObjValidator>,
+  ghjkfileHash?: string,
+) {
+  const platformMatch = () =>
+    serializePlatform(Deno.build) == foundLockFile.platform;
+
+  const envHashesMatch = () => {
+    const oldHashes = foundHashFile!.envVarHashes;
+    const newHashes = envVarDigests(hcx.curEnvVars, [
+      ...Object.keys(oldHashes),
+    ]);
+    return deep_eql(oldHashes, newHashes);
+  };
+
+  const cwd = $.path(Deno.cwd());
+  const fileHashesMatch = async () => {
+    const oldHashes = foundHashFile!.readFileHashes;
+    const newHashes = await fileDigests(hcx, [
+      ...Object.keys(oldHashes),
+    ], cwd);
+    return deep_eql(oldHashes, newHashes);
+  };
+
+  const fileListingsMatch = async () => {
+    const oldListed = foundHashFile!.listedFiles;
+    for (const path of oldListed) {
+      if (!await cwd.resolve(path).exists()) {
+        return false;
+      }
+    }
+    return true;
+  };
+  // NOTE: these are ordered by the amount effort it takes
+  // to check each
+  // we only check file hash of the ghjk file if it's present
+  return (ghjkfileHash ? foundHashFile.ghjkfileHash == ghjkfileHash : true) &&
+    platformMatch() &&
+    envHashesMatch() &&
+    await fileListingsMatch() &&
+    await fileHashesMatch();
+}
+
 type DigestsMap = Record<string, string | null | undefined>;
 
 type SerializedConfigExt = DePromisify<
-  ReturnType<typeof readAndSerializeConfig>
+  ReturnType<typeof readGhjkfile>
 >;
 
-async function readAndSerializeConfig(
+async function readGhjkfile(
   hcx: HostCtx,
   configPath: Path,
-  envVars: Record<string, string>,
 ) {
   switch (configPath.extname()) {
     case "":
@@ -363,9 +376,9 @@ async function readAndSerializeConfig(
       logger().debug("serializing ts config", configPath);
       const res = await denoFile.getSerializedConfig(
         configPath.toFileUrl().href,
-        envVars,
+        hcx.curEnvVars,
       );
-      const envVarHashes = envVarDigests(envVars, res.accessedEnvKeys);
+      const envVarHashes = envVarDigests(hcx.curEnvVars, res.accessedEnvKeys);
       const cwd = $.path(Deno.cwd());
       const cwdStr = cwd.toString();
       const listedFiles = res.listedFiles
@@ -446,7 +459,7 @@ async function readLockFile(lockFilePath: Path) {
 
 const hashObjValidator = zod.object({
   version: zod.string(),
-  ghjkfileHash: zod.string(),
+  ghjkfileHash: zod.string().nullish(),
   envVarHashes: zod.record(zod.string(), zod.string().nullish()),
   readFileHashes: zod.record(zod.string(), zod.string().nullish()),
   listedFiles: zod.string().array(),
