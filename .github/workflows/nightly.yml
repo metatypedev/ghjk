@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  DENO_VERSION: "1.42.1"
+  DENO_VERSION: "1.43.1"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@32fe7ad4eab41d5e62189208afa6fe17112a5563
+      - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
         with:
           installer-url: ./install.ts
         env: 
