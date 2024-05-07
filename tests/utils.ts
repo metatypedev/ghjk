@@ -26,6 +26,7 @@ const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
 const templateStrings = {
   addConfig: `#{{CMD_ADD_CONFIG}}`,
 };
+const noRmi = Deno.env.get("DOCKER_NO_RMI");
 
 export async function dockerE2eTest(testCase: E2eTestCase) {
   const { name, envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
@@ -76,9 +77,11 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
       throw err;
     }
   }
-  await $
-    .raw`${dockerCmd} rmi --no-prune '${tag}'`
-    .env(env);
+  if (!noRmi) {
+    await $
+      .raw`${dockerCmd} rmi '${tag}'`
+      .env(env);
+  }
 }
 
 export async function localE2eTest(testCase: E2eTestCase) {

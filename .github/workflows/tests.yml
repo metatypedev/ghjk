@@ -14,6 +14,8 @@ env:
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
+  # removing the images after every test is unncessary
+  DOCKER_NO_RMI: 1
 
 jobs:
   changes:
