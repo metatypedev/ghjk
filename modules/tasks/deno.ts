@@ -31,7 +31,7 @@ export type DriverResponse = {
 };
 
 export type ExecTaskArgs = {
-  name: string;
+  key: string;
   argv: string[];
   workingDir: string;
   envVars: Record<string, string>;
@@ -106,12 +106,12 @@ async function rpc(moduleUri: string, req: DriverRequests) {
 }
 
 export async function execTaskDeno(
-  configUri: string,
+  moduleUri: string,
   args: ExecTaskArgs,
 ) {
-  const resp = await rpc(configUri, {
+  const resp = await rpc(moduleUri, {
     ty: "exec",
-    uri: configUri,
+    uri: moduleUri,
     args,
   });
   if (resp.ty != "exec") {

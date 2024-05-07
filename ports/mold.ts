@@ -92,7 +92,7 @@ export class Port extends GithubReleasePort {
     );
     if ((args.config as unknown as MoldInstallConfig).replaceLd) {
       await installPath.join("bin", "ld")
-        .createSymlinkTo(installPath.join("bin", "mold").toString(), {
+        .symlinkTo(installPath.join("bin", "mold").toString(), {
           kind: "relative",
         });
     }

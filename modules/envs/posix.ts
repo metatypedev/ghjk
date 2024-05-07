@@ -1,9 +1,10 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
 import type { EnvRecipeX } from "./types.ts";
-import getLogger from "../../utils/logger.ts";
 import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
+import { ghjk_fish, ghjk_sh } from "../../install/utils.ts";
+import getLogger from "../../utils/logger.ts";
 
 const logger = getLogger(import.meta);
 
@@ -16,6 +17,7 @@ export async function cookPosixEnv(
     createShellLoaders?: boolean;
   },
 ) {
+  logger.debug("cooking env", envName, { envDir });
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
@@ -35,6 +37,8 @@ export async function cookPosixEnv(
   const vars = {
     GHJK_ENV: envName,
   } as Record<string, string>;
+  const onEnterHooks = [] as [string, string[]][];
+  const onExitHooks = [] as [string, string[]][];
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
@@ -59,6 +63,12 @@ export async function cookPosixEnv(
         }
         vars[item.key] = item.val;
         break;
+      case "hook.onEnter.posixExec":
+        onEnterHooks.push([item.program, item.arguments]);
+        break;
+      case "hook.onExit.posixExec":
+        onExitHooks.push([item.program, item.arguments]);
+        break;
       default:
         throw Error(`unsupported provision type: ${(item as any).provision}`);
     }
@@ -81,8 +91,6 @@ export async function cookPosixEnv(
     ),
     $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
   ]);
-  // write loader for the env vars mandated by the installs
-  logger.debug("adding vars to loader", vars);
   // FIXME: prevent malicious env manipulations
   let LD_LIBRARY_ENV: string;
   switch (Deno.build.os) {
@@ -103,10 +111,14 @@ export async function cookPosixEnv(
     CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
   };
   if (createShellLoaders) {
-    await writeLoader(
+    // write loader for the env vars mandated by the installs
+    await writeActivators(
+      gcx,
       envDir,
       vars,
       pathVars,
+      onEnterHooks,
+      onExitHooks,
     );
   }
   return {
@@ -151,56 +163,104 @@ async function shimLinkPaths(
         throw error;
       }
     }
-    await shimPath.createSymlinkTo(filePath, { kind: "absolute" });
+    await shimPath.symlinkTo(filePath, { kind: "absolute" });
     shims[fileName] = shimPath.toString();
   }
   return shims;
 }
 
-// create the loader scripts
-// loader scripts are responsible for exporting
-// different environment variables from the ports
-// and mainpulating the path strings
-async function writeLoader(
+/**
+ * Create the activate scripts.
+ *
+ * Activate scripts are responsible for:
+ * - exporting different environment variables from the ports
+ * - mainpulating the path strings
+ * - running the environment hooks
+ */
+async function writeActivators(
+  gcx: GhjkCtx,
   envDir: string,
   env: Record<string, string>,
   pathVars: Record<string, string>,
+  onEnterHooks: [string, string[]][],
+  onExitHooks: [string, string[]][],
 ) {
+  // ghjk.sh sets the DENO_DIR so we can usually
+  // assume it's set
+  const denoDir = Deno.env.get("DENO_DIR") ?? "";
+  const ghjkShimName = "__ghjk_shim";
+  const onEnterHooksEscaped = onEnterHooks.map(
+    ([cmd, args]) =>
+      [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
+        .join(" ").replaceAll("'", "'\\''"),
+  );
+  const onExitHooksEscaped = onExitHooks.map(
+    ([cmd, args]) =>
+      [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
+        .join(" ").replaceAll("'", "'\\''"),
+  );
   const activate = {
+    //
+    // posix shell version
     posix: [
       `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then
     eval "$GHJK_CLEANUP_POSIX"
 fi`,
       `export GHJK_CLEANUP_POSIX="";`,
-      ...Object.entries(env).map(([k, v]) =>
+      "\n# env vars",
+      ...Object.entries(env).map(([key, val]) =>
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${k}='$${k}';";
-export ${k}='${v}';`
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${key}='$${key}';";
+export ${key}='${val}';`
       ),
-      ...Object.entries(pathVars).map(([k, v]) =>
+      "\n# path vars",
+      ...Object.entries(pathVars).map(([key, val]) =>
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}";';
-export ${k}="${v}:$${k}";
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "^${val}" | tr "\\n" ":");${key}="\${${key}%:}";';
+export ${key}="${val}:$${key}";
 `
       ),
+      "\n# hooks that want to invoke ghjk are made to rely",
+      "# on this shim instead improving latency",
+      ghjk_sh(gcx, denoDir, ghjkShimName),
+      "\n# on enter hooks",
+      ...onEnterHooksEscaped,
+      "\n# on exit hooks",
+      ...onExitHooksEscaped.map(
+        (command) => `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${command};';`,
+      ),
     ].join("\n"),
+    //
+    // fish version
     fish: [
       `if set --query GHJK_CLEANUP_FISH
     eval $GHJK_CLEANUP_FISH
     set --erase GHJK_CLEANUP_FISH
 end`,
-      ...Object.entries(env).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
-set --global --export ${k} '${v}';`
+      "\n# env vars",
+      ...Object.entries(env).map(([key, val]) =>
+        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${key} '$${key}';";
+set --global --export ${key} '${val}';`
       ),
-      ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${k} (string match --invert --regex "^${envDir}" $${k});';
-set --global --export --prepend ${k} ${v};
+      "\n# path vars",
+      ...Object.entries(pathVars).map(([key, val]) =>
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex "^${val}" $${key});';
+set --global --export --prepend ${key} ${val};
 `
+      ),
+      "\n# hooks that want to invoke ghjk are made to rely",
+      "# on this shim instead improving latency",
+      ghjk_fish(gcx, denoDir, ghjkShimName),
+      "\n# on enter hooks",
+      ...onEnterHooksEscaped,
+      "\n# on exit hooks",
+      ...onExitHooksEscaped.map(
+        (command) => `set --global --append GHJK_CLEANUP_FISH '${command};';`,
       ),
     ].join("\n"),
   };
+
   const envPathR = await $.path(envDir).ensureDir();
   await Promise.all([
     envPathR.join(`activate.fish`).writeText(activate.fish),

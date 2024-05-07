@@ -31,6 +31,11 @@ export function getProvisionReducerStore(
   return store;
 }
 
+/**
+ * Looks at each provision in the recipe and if it's not a type of
+ * {@link WellKnownProvision}, looks for reducers in
+ * {@link ProvisionReducer} to convert it to one.
+ */
 export async function reduceStrangeProvisions(
   gcx: GhjkCtx,
   env: EnvRecipeX,

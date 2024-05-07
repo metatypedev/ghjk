@@ -1,10 +1,5 @@
 import "../setup_logger.ts";
-import {
-  dockerE2eTest,
-  E2eTestCase,
-  genTsGhjkFile,
-  localE2eTest,
-} from "./utils.ts";
+import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../port.ts";
 
@@ -97,6 +92,7 @@ dummy
 `;
 
 const fishScript = `
+set fish_trace 1
 dummy; or exit 101
 test $DUMMY_ENV = "dummy"; or exit 102
 
@@ -123,34 +119,34 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 };
 const cases: CustomE2eTestCase[] = [
   {
-    name: "hook_test_bash_interactive",
+    name: "bash_interactive",
     // -s: read from stdin
     // -l: login/interactive mode
     ePoint: `bash -sl`,
     stdin: bashInteractiveScript,
   },
   {
-    name: "hook_test_bash_scripting",
+    name: "bash_scripting",
     ePoint: `bash -s`,
     stdin: posixNonInteractiveScript,
   },
   {
-    name: "hook_test_zsh_interactive",
+    name: "zsh_interactive",
     ePoint: `zsh -sl`,
     stdin: zshInteractiveScript,
   },
   {
-    name: "hook_test_zsh_scripting",
+    name: "zsh_scripting",
     ePoint: `zsh -s`,
     stdin: posixNonInteractiveScript,
   },
   {
-    name: "hook_test_fish_interactive",
+    name: "fish_interactive",
     ePoint: `fish -l`,
     stdin: fishScript,
   },
   {
-    name: "hook_test_fish_scripting",
+    name: "fish_scripting",
     ePoint: `fish`,
     // the fish implementation triggers changes
     // on any pwd changes so it's identical to
@@ -159,44 +155,12 @@ const cases: CustomE2eTestCase[] = [
   },
 ];
 
-function testMany(
-  testGroup: string,
-  cases: CustomE2eTestCase[],
-  testFn: (inp: E2eTestCase) => Promise<void>,
-  defaultEnvs: Record<string, string> = {},
-) {
-  for (const testCase of cases) {
-    Deno.test(
-      `${testGroup} - ${testCase.name}`,
-      () =>
-        testFn({
-          ...testCase,
-          tsGhjkfileStr: genTsGhjkFile(
-            { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
-          ),
-          ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
-          envVars: {
-            ...defaultEnvs,
-            ...testCase.envVars,
-          },
-        }),
-    );
-  }
-}
-
-const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-if (e2eType == "both") {
-  testMany("hooksDockerE2eTest", cases, dockerE2eTest);
-  testMany(`hooksLocalE2eTest`, cases, localE2eTest);
-} else if (e2eType == "local") {
-  testMany("hooksLocalE2eTest", cases, localE2eTest);
-} else if (
-  e2eType == "docker" ||
-  !e2eType
-) {
-  testMany("hooksDockerE2eTest", cases, dockerE2eTest);
-} else {
-  throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-  );
-}
+harness(cases.map((testCase) => ({
+  ...testCase,
+  tsGhjkfileStr: genTsGhjkFile(
+    { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
+  ),
+  ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
+  name: `reloadHooks/${testCase.name}`,
+  timeout_ms: 5 * 60 * 1000,
+})));

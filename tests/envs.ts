@@ -1,18 +1,29 @@
 import "../setup_logger.ts";
 import {
-  dockerE2eTest,
   E2eTestCase,
   type EnvDefArgs,
   genTsGhjkFile,
-  localE2eTest,
+  harness,
 } from "./utils.ts";
+import { stdSecureConfig } from "../mod.ts";
 import dummy from "../ports/dummy.ts";
+import type { DenoFileSecureConfig } from "../mod.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
-  ePoint: string;
-  stdin: string;
-  envs: EnvDefArgs[];
-};
+type CustomE2eTestCase =
+  & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
+  & {
+    ePoint: string;
+    stdin: string;
+  }
+  & (
+    | {
+      envs: EnvDefArgs[];
+      secureConfig?: DenoFileSecureConfig;
+    }
+    | {
+      ghjkTs: string;
+    }
+  );
 
 const envVarTestEnvs: EnvDefArgs[] = [
   {
@@ -39,6 +50,7 @@ const envVarTestsPosix = `
 set -ex
 # by default, we should be in main
 [ "$SONG" = "ditto" ] || exit 101
+[ "$GHJK_ENV" = "main" ] || exit 1011
 
 ghjk envs cook sss
 . .ghjk/envs/sss/activate.sh
@@ -46,21 +58,26 @@ ghjk envs cook sss
 # so they should inherit it's env vars
 [ "$SONG" = "ditto" ] || exit 102
 [ "$SING" = "Seoul Sonyo Sound" ] || exit 103
+[ "$GHJK_ENV" = "sss" ] || exit 1012
 
 # go back to main and "sss" variables shouldn't be around
 . .ghjk/envs/main/activate.sh
 [ "$SONG" = "ditto" ] || exit 104
 [ "$SING" = "Seoul Sonyo Sound" ] && exit 105
+[ "$GHJK_ENV" = "main" ] || exit 1013
 
 # env base is false for "yuki" and thus no vars from "main"
 ghjk envs cook yuki
 . .ghjk/envs/yuki/activate.sh
 [ "$SONG" = "ditto" ] && exit 102
 [ "$HUMM" = "Soul Lady" ] || exit 103
+[ "$GHJK_ENV" = "yuki" ] || exit 1014
 `;
 const envVarTestsFish = `
+set fish_trace 1
 # by default, we should be in main
 test "$SONG" = "ditto"; or exit 101;
+test "$GHJK_ENV" = "main"; or exit 1010;
 
 ghjk envs cook sss
 . .ghjk/envs/sss/activate.fish
@@ -68,17 +85,20 @@ ghjk envs cook sss
 # so they should inherit it's env vars
 test "$SONG" = "ditto"; or exit 103
 test "$SING" = "Seoul Sonyo Sound"; or exit 104
+test "$GHJK_ENV" = "sss"; or exit 1011;
 
 # go back to main and "sss" variables shouldn't be around
 . .ghjk/envs/main/activate.fish
 test $SONG" = "ditto"; or exit 105
 test $SING" = "Seoul Sonyo Sound"; and exit 106
+test "$GHJK_ENV" = "main"; or exit 1012;
 
 # env base is false for "yuki" and thus no vars from "main"
 ghjk envs cook yuki
 . .ghjk/envs/yuki/activate.fish
 test "$SONG" = "ditto"; and exit 107
 test "$HUMM" = "Soul Lady"; or exit 108
+test "$GHJK_ENV" = "yuki"; or exit 1013;
 `;
 
 const installTestEnvs: EnvDefArgs[] = [
@@ -111,6 +131,7 @@ ghjk envs cook foo
 `;
 
 const installTestsFish = `
+set fish_trace 1
 # by default, we should be in main
 test (dummy) = "main"; or exit 101;
 
@@ -159,46 +180,27 @@ const cases: CustomE2eTestCase[] = [
     envs: installTestEnvs,
     stdin: installTestsFish,
   },
+  {
+    name: "default_env_loader",
+    ePoint: "fish",
+    envs: envVarTestEnvs,
+    secureConfig: stdSecureConfig({ defaultEnv: "yuki" }),
+    stdin: `
+set fish_trace 1
+# env base is false for "yuki" and thus no vars from "main"
+test "$GHJK_ENV" = "yuki"; or exit 106
+test "$SONG" = "ditto"; and exit 107
+test "$HUMM" = "Soul Lady"; or exit 108
+`,
+  },
 ];
 
-function testMany(
-  testGroup: string,
-  cases: CustomE2eTestCase[],
-  testFn: (inp: E2eTestCase) => Promise<void>,
-  defaultEnvs: Record<string, string> = {},
-) {
-  for (const testCase of cases) {
-    Deno.test(
-      `${testGroup} - ${testCase.name}`,
-      () =>
-        testFn({
-          ...testCase,
-          tsGhjkfileStr: genTsGhjkFile(
-            { envDefs: testCase.envs },
-          ),
-          ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
-          envVars: {
-            ...defaultEnvs,
-            ...testCase.envVars,
-          },
-        }),
-    );
-  }
-}
-
-const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-if (e2eType == "both") {
-  testMany("envsDockerE2eTest", cases, dockerE2eTest);
-  testMany(`envsLocalE2eTest`, cases, localE2eTest);
-} else if (e2eType == "local") {
-  testMany("envsLocalE2eTest", cases, localE2eTest);
-} else if (
-  e2eType == "docker" ||
-  !e2eType
-) {
-  testMany("envsDockerE2eTest", cases, dockerE2eTest);
-} else {
-  throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-  );
-}
+harness(cases.map((testCase) => ({
+  ...testCase,
+  tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
+    { envDefs: testCase.envs, secureConf: testCase.secureConfig },
+  ),
+  ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
+  name: `envs/${testCase.name}`,
+  timeout_ms: 5 * 60 * 1000,
+})));

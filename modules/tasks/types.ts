@@ -6,28 +6,65 @@ import envsValidators from "../envs/types.ts";
 const taskName = zod.string().regex(/[^\s]/);
 
 const taskDefBase = zod.object({
-  name: zod.string(),
-  dependsOn: taskName.array().nullish(),
+  ty: zod.string(),
   desc: zod.string().nullish(),
   workingDir: zod.string().nullish(),
+  dependsOn: zod.string().array().nullish(),
 });
 
-const taskDef = taskDefBase.merge(zod.object({
+const taskDefFullBase = taskDefBase.merge(zod.object({
   env: envsValidators.envRecipe,
 }));
 
-const taskDefHashed = taskDefBase.merge(zod.object({
+const taskDefHashedBase = taskDefBase.merge(zod.object({
   envHash: zod.string(),
 }));
 
+const denoWorkerTaskDefBase = zod.object({
+  ty: zod.literal("denoFile@v1"),
+  /**
+   * A single module might host multiple tasks so we need keys to identify
+   * each with. Names aren't enough since some tasks are anonymous.
+   */
+  // This field primarily exists as an optimization actually.
+  // The tasksModuleConfig keys the tasks by their hash
+  // but we use a separate key when asking for exec from the denoFile.
+  // This is because the denoFile only constructs the hashes for the config
+  // laziliy but uses separate task keys internally due to different hashing concerns.
+  // This key will correspond to the internal keys used by the denoFile
+  // and not the config.
+  key: zod.string(),
+});
+
+const denoWorkerTaskDef = taskDefFullBase.merge(denoWorkerTaskDefBase);
+const denoWorkerTaskDefHashed = taskDefHashedBase.merge(denoWorkerTaskDefBase);
+
+const taskDef =
+  // zod.discriminatedUnion("ty", [
+  denoWorkerTaskDef;
+// ]);
+
+const taskDefHashed =
+  // zod.discriminatedUnion("ty", [
+  denoWorkerTaskDefHashed;
+// ]);
+
 const tasksModuleConfig = zod.object({
   envs: zod.record(zod.string(), envsValidators.envRecipe),
-  tasks: zod.record(taskName, taskDefHashed),
+  /**
+   * Tasks can be keyed with any old string. The keys
+   * that also appear in {@field tasksNamed} will shown
+   * in the CLI.
+   */
+  tasks: zod.record(zod.string(), taskDefHashed),
+  tasksNamed: taskName.array(),
 });
 
 const validators = {
   taskDef,
   taskDefHashed,
+  denoWorkerTaskDefHashed,
+  denoWorkerTaskDef,
   tasksModuleConfig,
 };
 export default validators;

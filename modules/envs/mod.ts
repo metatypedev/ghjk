@@ -17,7 +17,6 @@ import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
-import { isColorfulTty } from "../../utils/logger.ts";
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 
 export type EnvsCtx = {
@@ -48,8 +47,8 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const config = unwrapParseCurry(
       validators.envsModuleConfig.safeParse(manifest.config),
     );
-
-    const activeEnv = Deno.env.get("GHJK_ENV") ?? config.defaultEnv;
+    const setEnv = Deno.env.get("GHJK_ENV");
+    const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
     return Promise.resolve({
       activeEnv,
@@ -139,18 +138,13 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
                 throw new Error(`No env found under given name "${envName}"`);
               }
               // deno-lint-ignore no-console
-              console.log(Deno.inspect(
-                await showableEnv(gcx, env, envName),
-                {
-                  depth: 10,
-                  colors: isColorfulTty(),
-                },
-              ));
+              console.log($.inspect(await showableEnv(gcx, env, envName)));
             }),
         ),
       sync: new cliffy_cmd.Command()
-        .description(`Cooks and activates an environment.
+        .description(`Synchronize your shell to what's in your config.
 
+Just simply cooks and activates an environment.
 - If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`)
         .arguments("[envName:string]")
@@ -250,7 +244,7 @@ async function reduceAndCookEnv(
   if (envName == ecx.config.defaultEnv) {
     const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
     await $.removeIfExists(defaultEnvDir);
-    await defaultEnvDir.createSymlinkTo(envDir, { kind: "relative" });
+    await defaultEnvDir.symlinkTo(envDir, { kind: "relative" });
   }
 }
 

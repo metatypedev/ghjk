@@ -50,24 +50,28 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     gcx: GhjkCtx,
     tcx: TasksCtx,
   ) {
+    const namedSet = new Set(tcx.config.tasksNamed);
     const commands = Object.entries(tcx.config.tasks).map(
-      ([name, task]) => {
-        const cliffyCmd = new cliffy_cmd.Command()
-          .name(name)
-          .useRawArgs()
+      ([key, def]) => {
+        const cmd = new cliffy_cmd.Command()
+          .name(key)
+          .arguments("[argv...]")
           .action(async (_, ...args) => {
             await execTask(
               gcx,
               tcx.config,
               tcx.taskGraph,
-              name,
+              key,
               args,
             );
           });
-        if (task.desc) {
-          cliffyCmd.description(task.desc);
+        if (def.desc) {
+          cmd.description(def.desc);
         }
-        return cliffyCmd;
+        if (!namedSet.has(key)) {
+          cmd.hidden();
+        }
+        return cmd;
       },
     );
     const root = new cliffy_cmd.Command()

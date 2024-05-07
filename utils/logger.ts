@@ -164,7 +164,7 @@ Deno.permissions.query({
     }
   });
 
-export function isColorfulTty(outFile = Deno.stdout) {
+export function isColorfulTty(outFile = Deno.stderr) {
   if (colorEnvFlagSet) {
     return true;
   }

@@ -1,4 +1,4 @@
-import { deep_eql, jsonHash, std_fs, std_path, zod } from "../../deps/cli.ts";
+import { deep_eql, std_fs, std_path, zod } from "../../deps/cli.ts";
 import getLogger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type {
@@ -22,7 +22,7 @@ import {
   DePromisify,
   getInstallHash,
   getPortRef,
-  objectHashHex,
+  objectHash,
   type Rc,
   rc,
   sameFsTmpRoot,
@@ -119,9 +119,9 @@ export async function installFromGraph(
         dir: tmpPath,
         prefix: `shims_${installId}_`,
       });
-      for (
-        const [depInstallId, depPortName] of graph.depEdges[installId] ?? []
-      ) {
+      await Promise.all((graph.depEdges[installId] ?? []).map(async (
+        [depInstallId, depPortName],
+      ) => {
         const depArts = installCtx.artifacts.get(depInstallId);
         if (!depArts) {
           throw new Error(
@@ -153,7 +153,7 @@ export async function installFromGraph(
           ),
           env: depArts.env,
         };
-      }
+      }));
       return { totalDepArts, depShimsRootPath };
     },
 
@@ -341,7 +341,7 @@ export async function buildInstallGraph(
       manifest,
       instLite,
     );
-    const instId = await getInstallHash(resolvedConfig);
+    const instId = getInstallHash(resolvedConfig);
 
     // no dupes allowed in user specified insts
     if (graph.user.includes(instId)) {
@@ -399,7 +399,7 @@ export async function buildInstallGraph(
         const depInstall = validators.installConfigResolved.parse(
           inst.config.buildDepConfigs![depId.name],
         );
-        const depInstallId = await getInstallHash(depInstall);
+        const depInstallId = getInstallHash(depInstall);
 
         // only add the install configuration for this dep port
         // if specific hash hasn't seen before
@@ -458,13 +458,13 @@ export async function buildInstallGraph(
 // This takes user specified InstallConfigs and resolves
 // their versions to a known, installable version
 // It also resolves any dependencies that the config specifies
-async function resolveConfig(
+function resolveConfig(
   scx: SyncCtx,
   set: InstallSetX,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
 ) {
-  const hash = await objectHashHex(config as jsonHash.Tree);
+  const hash = objectHash(JSON.parse(JSON.stringify(config)));
   let promise = scx.memoStore.get(hash);
   if (!promise) {
     promise = inner();
@@ -620,7 +620,7 @@ async function resolveAndInstall(
   configLite: InstallConfigLiteX,
 ) {
   const config = await resolveConfig(scx, set, manifest, configLite);
-  const installId = await getInstallHash(config);
+  const installId = getInstallHash(config);
 
   const cached = await scx.db.val.get(installId);
   // we skip it if it's already installed
@@ -717,45 +717,48 @@ async function getShimmedDepArts(
   installs: [string, string][],
 ) {
   const totalDepArts: DepArts = {};
-  for (
-    const [installId, portName] of installs
-  ) {
-    const installRow = await scx.db.val.get(installId);
-    if (!installRow || !installRow.installArts) {
-      throw new Error(
-        `artifacts not found for "${installId}" not found in db when shimming totalDepArts`,
-        {
-          cause: { installs },
-        },
-      );
-    }
-    const installArts = installRow.installArts;
-    const shimDir = $.path(shimsRootPath).resolve(installId);
-    const [binShimDir, libShimDir, includeShimDir] = (await Promise.all([
-      shimDir.join("bin").ensureDir(),
-      shimDir.join("lib").ensureDir(),
-      shimDir.join("include").ensureDir(),
-    ])).map($.pathToString);
+  await Promise.all(
+    installs
+      .map(
+        async ([installId, portName]) => {
+          const installRow = await scx.db.val.get(installId);
+          if (!installRow || !installRow.installArts) {
+            throw new Error(
+              `artifacts not found for "${installId}" not found in db when shimming totalDepArts`,
+              {
+                cause: { installs },
+              },
+            );
+          }
+          const installArts = installRow.installArts;
+          const shimDir = $.path(shimsRootPath).resolve(installId);
+          const [binShimDir, libShimDir, includeShimDir] = (await Promise.all([
+            shimDir.join("bin").ensureDir(),
+            shimDir.join("lib").ensureDir(),
+            shimDir.join("include").ensureDir(),
+          ])).map($.pathToString);
 
-    totalDepArts[portName] = {
-      execs: await shimLinkPaths(
-        installArts.binPaths,
-        installArts.installPath,
-        binShimDir,
+          totalDepArts[portName] = {
+            execs: await shimLinkPaths(
+              installArts.binPaths,
+              installArts.installPath,
+              binShimDir,
+            ),
+            libs: await shimLinkPaths(
+              installArts.libPaths,
+              installArts.installPath,
+              libShimDir,
+            ),
+            includes: await shimLinkPaths(
+              installArts.includePaths,
+              installArts.installPath,
+              includeShimDir,
+            ),
+            env: installArts.env,
+          };
+        },
       ),
-      libs: await shimLinkPaths(
-        installArts.libPaths,
-        installArts.installPath,
-        libShimDir,
-      ),
-      includes: await shimLinkPaths(
-        installArts.includePaths,
-        installArts.installPath,
-        includeShimDir,
-      ),
-      env: installArts.env,
-    };
-  }
+  );
   return totalDepArts;
 }
 
@@ -797,7 +800,7 @@ async function shimLinkPaths(
         throw error;
       }
     }
-    await $.path(shimPath).createSymlinkTo(filePath, { type: "file" });
+    await $.path(shimPath).symlinkTo(filePath, { type: "file" });
     shims[fileName] = shimPath;
   }
   return shims;

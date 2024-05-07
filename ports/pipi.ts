@@ -146,7 +146,7 @@ export class Port extends PortBase {
     // the cpy_bs port smuggles out the real path of it's python executable
     const realPyExecPath =
       args.depArts[std_ports.cpy_bs_ghrel.name].env.REAL_PYTHON_EXEC_PATH;
-    (await venvPath.join("bin", "python3").remove()).createSymlinkTo(
+    (await venvPath.join("bin", "python3").remove()).symlinkTo(
       realPyExecPath,
     );
 

@@ -1,4 +1,4 @@
-ARG DENO_VERSION=1.42.1
+ARG DENO_VERSION=1.43.1
 
 FROM denoland/deno:bin-$DENO_VERSION AS deno
 

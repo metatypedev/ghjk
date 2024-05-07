@@ -137,6 +137,11 @@ TBD: this feature is in development.
 
 TBD: this feature is still in development.
 
+#### Anonymous tasks
+
+Tasks that aren't give names can not be invoked from the CLI. They can be useful
+for tasks that are meant to be common dependencies of other tasks.
+
 ### Secure configs
 
 Certain options are configured through the `secureConfig` object.

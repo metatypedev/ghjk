@@ -1,11 +1,18 @@
 import {
+  _DaxPath as Path,
   dax,
-  jsonHash,
+  json_canonicalize,
+  multibase32,
+  multihasher,
+  multisha2,
   std_fs,
   std_path,
-  std_url,
+  syncSha256,
   zod,
 } from "../deps/common.ts";
+// class re-exports are tricky. We want al importers
+// of path to get it from here so we rename in common.ts
+export { _DaxPath as Path } from "../deps/common.ts";
 import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./modules"
 import type {
@@ -18,6 +25,7 @@ import type {
 } from "../modules/ports/types.ts";
 
 export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
+export type DeArrayify<T> = T extends Array<infer Inner> ? Inner : T;
 const literalSchema = zod.union([
   zod.string(),
   zod.number(),
@@ -46,13 +54,13 @@ export function pathsWithDepArts(
   const includesSet = new Set();
   for (const [_, { execs, libs, includes }] of Object.entries(depArts)) {
     for (const [_, binPath] of Object.entries(execs)) {
-      pathSet.add(std_path.dirname(binPath));
+      pathSet.add($.path(binPath).parentOrThrow());
     }
     for (const [_, libPath] of Object.entries(libs)) {
-      libSet.add(std_path.dirname(libPath));
+      libSet.add($.path(libPath).parentOrThrow());
     }
     for (const [_, incPath] of Object.entries(includes)) {
-      includesSet.add(std_path.dirname(incPath));
+      includesSet.add($.path(incPath).parentOrThrow());
     }
   }
 
@@ -122,54 +130,50 @@ export function tryDepExecShimPath(
   return path;
 }
 
-/**
- * Lifted from https://deno.land/x/hextools@v1.0.0
- * MIT License
- * Copyright (c) 2020 Santiago Aguilar Hernández
- */
-export function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.prototype.map.call(
-    new Uint8Array(buffer),
-    (b) => b.toString(16).padStart(2, "0"),
-  ).join("");
-}
+const syncSha256Hasher = multihasher.from({
+  code: multisha2.sha256.code,
+  name: multisha2.sha256.name,
+  encode: (input) => syncSha256(input),
+});
 
-export async function bufferHashHex(
-  buf: ArrayBuffer,
-  algo: AlgorithmIdentifier = "SHA-256",
+export async function bufferHashAsync(
+  buf: Uint8Array,
 ) {
-  const hashBuf = await crypto.subtle.digest(algo, buf);
-  return bufferToHex(hashBuf);
+  const hashBuf = await multisha2.sha256.digest(buf);
+  const hashStr = multibase32.base32.encode(hashBuf.bytes);
+  return hashStr;
 }
 
-export async function stringHashHex(
+export function bufferHash(
+  buf: Uint8Array,
+) {
+  const hashBuf = syncSha256Hasher.digest(buf);
+  if (hashBuf instanceof Promise) throw new Error("impossible");
+  const hashStr = multibase32.base32.encode(hashBuf.bytes);
+  return hashStr;
+}
+
+export function stringHash(
   val: string,
-  algo: AlgorithmIdentifier = "SHA-256",
 ) {
   const arr = new TextEncoder().encode(val);
-  return await bufferHashHex(arr, algo);
+  return bufferHash(arr);
 }
 
-export async function objectHashHex(
-  object: jsonHash.Tree,
-  algo: jsonHash.DigestAlgorithmType = "SHA-256",
+export function objectHash(
+  object: Json,
 ) {
-  const hashBuf = await jsonHash.digest(algo, object);
-  const hashHex = bufferToHex(hashBuf);
-  return hashHex;
+  return stringHash(json_canonicalize(object));
 }
 
 export function getPortRef(manifest: PortManifest) {
   return `${manifest.name}@${manifest.version}`;
 }
 
-export async function getInstallHash(install: InstallConfigResolvedX) {
-  const fullHashHex = await objectHashHex(install as jsonHash.Tree);
-  const hashHex = fullHashHex.slice(0, 8);
-  return `${install.portRef}!${hashHex}`;
+export function getInstallHash(install: InstallConfigResolvedX) {
+  const fullHashHex = objectHash(JSON.parse(JSON.stringify(install)));
+  return `${install.portRef}!${fullHashHex}`;
 }
-
-export type Path = dax.Path;
 
 export function defaultCommandBuilder() {
   const builder = new dax.CommandBuilder()
@@ -189,11 +193,14 @@ export function defaultCommandBuilder() {
 export const $ = dax.build$(
   {
     commandBuilder: defaultCommandBuilder(),
+    requestBuilder: new dax.RequestBuilder()
+      .showProgress(Deno.stderr.isTerminal()),
     extras: {
       inspect(val: unknown) {
         return Deno.inspect(val, {
           colors: isColorfulTty(),
           iterableLimit: 500,
+          depth: 10,
         });
       },
       pathToString(path: Path) {
@@ -214,20 +221,19 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-export async function findConfig(path: string) {
-  let current = path;
+export async function findEntryRecursive(path: string, name: string) {
+  let current = $.path(path);
   while (true) {
-    const location = `${current}/ghjk.ts`;
-    if (await std_fs.exists(location)) {
+    const location = `${current}/${name}`;
+    if (await $.path(location).exists()) {
       return location;
     }
-    const nextCurrent = std_path.dirname(current);
-    if (nextCurrent == "/" && current == "/") {
+    const nextCurrent = $.path(current).parent();
+    if (!nextCurrent) {
       break;
     }
     current = nextCurrent;
   }
-  return null;
 }
 
 export function home_dir(): string | null {
@@ -249,7 +255,7 @@ export function dirs() {
   }
   return {
     homeDir: home,
-    shareDir: std_path.resolve(home, ".local", "share"),
+    shareDir: $.path(home).resolve(".local", "share"),
   };
 }
 
@@ -261,19 +267,18 @@ if (Number.isNaN(AVAIL_CONCURRENCY)) {
   throw new Error(`Value of DENO_JOBS is NAN: ${Deno.env.get("DENO_JOBS")}`);
 }
 
-export async function importRaw(spec: string) {
+export async function importRaw(spec: string, timeout: dax.Delay = "1m") {
   const url = new URL(spec);
   if (url.protocol == "file:") {
-    return await Deno.readTextFile(url.pathname);
+    return await $.path(url.pathname).readText();
   }
   if (url.protocol.match(/^http/)) {
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      throw new Error(
-        `error importing raw using fetch from ${spec}: ${resp.status} - ${resp.statusText}`,
-      );
+    let request = $.request(url).timeout(timeout);
+    const integrity = url.searchParams.get("integrity");
+    if (integrity) {
+      request = request.integrity(integrity);
     }
-    return await resp.text();
+    return await request.text();
   }
   throw new Error(
     `error importing raw from ${spec}: unrecognized protocol ${url.protocol}`,
@@ -351,7 +356,7 @@ export async function downloadFile(
   args: DownloadFileArgs,
 ) {
   const { name, mode, url, downloadPath, tmpDirPath, headers } = {
-    name: std_url.basename(args.url),
+    name: $.path(args.url).basename(),
     mode: 0o666,
     headers: {},
     ...args,
@@ -366,7 +371,6 @@ export async function downloadFile(
 
   await $.request(url)
     .header(headers)
-    .showProgress()
     .pipeToPath(tmpFilePath, { create: true, mode });
 
   await $.path(downloadPath).ensureDir();

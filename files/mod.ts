@@ -1,6 +1,10 @@
+//! This provides the backing implementation of the Ghjkfile frontends.
+
 // NOTE: avoid adding sources of randomness
 // here to make the resulting config reasonably stable
 // across serializaiton. No random identifiers.
+
+import { multibase32, multibase64 } from "../deps/common.ts";
 
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
@@ -10,12 +14,12 @@ import type {
   InstallSet,
   InstallSetRefProvision,
   PortsModuleConfigHashed,
-  PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 import logger from "../utils/logger.ts";
 import {
   $,
   defaultCommandBuilder,
+  objectHash,
   Path,
   thinInstallConfig,
   unwrapParseRes,
@@ -27,15 +31,15 @@ import * as node from "../ports/node.ts";
 import type { SerializedConfig } from "../host/types.ts";
 import * as std_modules from "../modules/std.ts";
 // tasks
-import { dax, jsonHash, objectHash } from "../deps/common.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
-import { TasksModuleConfig } from "../modules/tasks/types.ts";
+import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
-import {
+import type {
   EnvRecipe,
   EnvsModuleConfig,
+  Provision,
   WellKnownProvision,
 } from "../modules/envs/types.ts";
 
@@ -43,7 +47,7 @@ export type EnvDefArgs = {
   name: string;
   installs?: InstallConfigFat[];
   allowedPortDeps?: AllowedPortDep[];
-  /*
+  /**
    * If true or not set, will base the task's env on top
    * of the default env (usually `main`). If false, will build on
    * top of a new env. If given a string, will use the identified env as a base
@@ -52,22 +56,33 @@ export type EnvDefArgs = {
   base?: string | boolean;
   desc?: string;
   vars?: Record<string, string>;
+  /**
+   * Task to execute when environment is activated.
+   */
+  onEnter?: string | string[];
+  /**
+   * Task to execute when environment is deactivated.
+   */
+  onExit?: string | string[];
 };
 
 export type TaskFnArgs = {
-  $: dax.$Type;
+  $: ReturnType<typeof task$>;
   argv: string[];
   env: Record<string, string>;
+  workingDir: string;
 };
 
-export type TaskFn = (args: TaskFnArgs) => Promise<any> | any;
+export type TaskFn = (
+  $: ReturnType<typeof task$>,
+  args: TaskFnArgs,
+) => Promise<any> | any;
 
-/*
- * Configuration for a task.
+/**
+ * Configure a task under the given name or key.
  */
 export type TaskDefArgs = {
-  name: string;
-  fn: TaskFn;
+  name?: string;
   desc?: string;
   dependsOn?: string[];
   workingDir?: string | Path;
@@ -77,11 +92,59 @@ export type TaskDefArgs = {
   base?: string | boolean;
 };
 
-export class GhjkfileBuilder {
+export type DenoTaskDefArgs = TaskDefArgs & {
+  /**
+   * The logic to run when the task is invoked.
+   *
+   * Note: functions are optional for tasks. If none is set,
+   * it'll be a no-op. The task it depends on will still be run.
+   */
+  fn?: TaskFn;
+  /**
+   * In order to key the right task when ghjk is requesting
+   * execution of a specific task, we identify each using a hash.
+   * The {@field fn} is `toString`ed in the hash input.
+   * If a ghjkfile is produing identical anonymous tasks for
+   * instance, it can provide a none to disambiguate beteween each
+   * through hash differences.
+   *
+   * NOTE: the nonce must be stable across serialization.
+   * NOTE: closing over values is generally ill-advised on tasks
+   * fns. If you want to close over values, make sure they're stable
+   * across re-serializations.
+   */
+  nonce?: string;
+};
+
+type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
+
+export class Ghjkfile {
   #installSets = new Map<string, InstallSet>();
-  #tasks = {} as Record<string, TaskDefArgs>;
+  #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
+
+  /* dump() {
+    return {
+      installSets: Object.fromEntries(this.#installSets),
+      bb: Object.fromEntries(this.#bb),
+      seenEnvs: Object.fromEntries(
+        Object.entries(this.#seenEnvs).map((
+          [key, [_builder, finalizer]],
+        ) => [key, finalizer()]),
+      ),
+      tasks: Object.fromEntries(
+        Object.entries(this.#tasks).map(([key, task]) => [key, {
+          ...task,
+          ...(task.ty === "denoFile@v1"
+            ? {
+              fn: task.fn.toString(),
+            }
+            : {}),
+        }]),
+      ),
+    };
+  } */
 
   addInstall(setId: string, configUnclean: InstallConfigFat) {
     const config = unwrapParseRes(
@@ -94,7 +157,7 @@ export class GhjkfileBuilder {
 
     const set = this.#getSet(setId);
     set.installs.push(config);
-    logger().debug("install added", config);
+    logger(import.meta).debug("install added", config);
   }
 
   setAllowedPortDeps(setId: string, deps: AllowedPortDep[]) {
@@ -106,7 +169,7 @@ export class GhjkfileBuilder {
     );
   }
 
-  addTask(args: TaskDefArgs) {
+  addTask(args: TaskDefTyped) {
     // NOTE: we make sure the env base declared here exists
     // this call is necessary to make sure that a `task` can
     // be declared before the `env` but still depend on it.
@@ -115,12 +178,37 @@ export class GhjkfileBuilder {
     if (typeof args.base == "string") {
       this.addEnv({ name: args.base });
     }
-
-    this.#tasks[args.name] = {
+    let key = args.name;
+    if (!key) {
+      switch (args.ty) {
+        case "denoFile@v1": {
+          const { fn, workingDir, ...argsRest } = args;
+          key = objectHash(JSON.parse(JSON.stringify({
+            ...argsRest,
+            workingDir: workingDir instanceof Path
+              ? workingDir.toString()
+              : workingDir,
+            ...(fn
+              ? {
+                // NOTE: we serialize the function to a string before
+                // hashing.
+                fn: fn.toString(),
+              }
+              : {}),
+          })));
+          key = multibase64.base64urlpad.encode(
+            multibase32.base32.decode(key),
+          );
+          break;
+        }
+        default:
+          throw new Error(`unexpected task type: ${args.ty}`);
+      }
+    }
+    this.#tasks.set(key, {
       ...args,
-      name,
-    };
-    return args.name;
+    });
+    return key;
   }
 
   addEnv(args: EnvDefArgs) {
@@ -145,40 +233,51 @@ export class GhjkfileBuilder {
     if (args.vars) {
       env.vars(args.vars);
     }
+    if (args.onEnter) {
+      env.onEnter(...args.onEnter);
+    }
+    if (args.onExit) {
+      env.onEnter(...args.onExit);
+    }
     return env;
   }
 
   async execTask(
-    { name, workingDir, envVars, argv }: ExecTaskArgs,
+    { key, workingDir, envVars, argv }: ExecTaskArgs,
   ) {
-    const task = this.#tasks[name];
+    const task = this.#tasks.get(key);
     if (!task) {
-      throw new Error(`no task defined under "${name}"`);
+      throw new Error(`no task defined under "${key}"`);
     }
-    const custom$ = $.build$({
-      commandBuilder: defaultCommandBuilder().env(envVars).cwd(workingDir),
-    });
-    await task.fn({ argv, env: envVars, $: custom$ });
+    if (task.ty != "denoFile@v1") {
+      throw new Error(`task under "${key}" has unexpected type ${task.ty}`);
+    }
+    if (task.fn) {
+      const custom$ = task$(argv, envVars, workingDir);
+      await task.fn(custom$, { argv, env: envVars, $: custom$, workingDir });
+    }
   }
 
   toConfig(
-    { defaultEnv, defaultBaseEnv, secureConfig }: {
+    { defaultEnv, defaultBaseEnv, masterPortDepAllowList }: {
       defaultEnv: string;
       defaultBaseEnv: string;
-      secureConfig: PortsModuleSecureConfig | undefined;
+      ghjkfileUrl: string;
+      masterPortDepAllowList: AllowedPortDep[];
     },
   ) {
     try {
-      const envsConfig = this.#processEnvs(
-        defaultEnv,
+      const envsConfig = this.#processEnvs(defaultEnv, defaultBaseEnv);
+      const tasksConfig = this.#processTasks(
+        envsConfig,
         defaultBaseEnv,
       );
-      const tasksConfig = this.#processTasks(envsConfig, defaultBaseEnv);
       const portsConfig = this.#processInstalls(
-        secureConfig?.masterPortDepAllowList ?? stdDeps(),
+        masterPortDepAllowList ?? stdDeps(),
       );
 
       const config: SerializedConfig = {
+        blackboard: Object.fromEntries(this.#bb.entries()),
         modules: [{
           id: std_modules.ports,
           config: portsConfig,
@@ -189,7 +288,6 @@ export class GhjkfileBuilder {
           id: std_modules.envs,
           config: envsConfig,
         }],
-        blackboard: Object.fromEntries(this.#bb.entries()),
       };
       return config;
     } catch (cause) {
@@ -208,7 +306,7 @@ export class GhjkfileBuilder {
 
   #addToBlackboard(inp: unknown) {
     // jsonHash.digest is async
-    const hash = objectHash(jsonHash.canonicalize(inp as jsonHash.Tree));
+    const hash = objectHash(JSON.parse(JSON.stringify(inp)));
 
     if (!this.#bb.has(hash)) {
       this.#bb.set(hash, inp);
@@ -216,8 +314,9 @@ export class GhjkfileBuilder {
     return hash;
   }
 
-  // this processes the defined envs, normalizing dependency (i.e. "envBase")
-  // relationships to produce the standard EnvsModuleConfig
+  /** this processes the defined envs, normalizing dependency (i.e. "envBase")
+   * relationships to produce the standard EnvsModuleConfig
+   */
   #processEnvs(
     defaultEnv: string,
     defaultBaseEnv: string,
@@ -232,30 +331,30 @@ export class GhjkfileBuilder {
       const [_name, [_builder, finalizer]] of Object.entries(this.#seenEnvs)
     ) {
       const final = finalizer();
-      const { name, base } = final;
-      const envBaseResolved = typeof base === "string"
-        ? base
-        : base
+      const envBaseResolved = typeof final.base === "string"
+        ? final.base
+        : final.base
         ? defaultBaseEnv
         : null;
-      all[name] = { ...final, envBaseResolved };
+      all[final.name] = { ...final, envBaseResolved };
       if (envBaseResolved) {
-        let parentRevDeps = revDeps.get(envBaseResolved);
-        if (!parentRevDeps) {
-          parentRevDeps = [];
-          revDeps.set(envBaseResolved, parentRevDeps);
+        const parentRevDeps = revDeps.get(envBaseResolved);
+        if (parentRevDeps) {
+          parentRevDeps.push(final.name);
+        } else {
+          revDeps.set(envBaseResolved, [final.name]);
         }
-        parentRevDeps.push(final.name);
       } else {
-        indie.push(name);
+        indie.push(final.name);
       }
     }
+
     const processed = {} as Record<
       string,
       { installSetId?: string; vars: Record<string, string> }
     >;
-    const out: EnvsModuleConfig = { envs: {}, defaultEnv };
-    const workingSet = [...indie];
+    const moduleConfig: EnvsModuleConfig = { envs: {}, defaultEnv };
+    const workingSet = indie;
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
@@ -307,7 +406,42 @@ export class GhjkfileBuilder {
         installSetId: processedInstallSetId,
         vars: processedVars,
       };
-      out.envs[final.name] = {
+      const hooks = [
+        ...final.onEnterHookTasks.map(
+          (key) => [key, "hook.onEnter.posixExec"] as const,
+        ),
+        ...final.onExitHookTasks.map(
+          (key) => [key, "hook.onExit.posixExec"] as const,
+        ),
+      ].map(([taskKey, ty]) => {
+        const task = this.#tasks.get(taskKey);
+        if (!task) {
+          throw new Error("unable to find task for onEnterHook", {
+            cause: {
+              env: final.name,
+              taskKey,
+            },
+          });
+        }
+        if (task.ty == "denoFile@v1") {
+          const prov: InlineTaskHookProvision = {
+            ty: "inline.hook.ghjkTask",
+            finalTy: ty,
+            taskKey,
+          };
+          return prov;
+        }
+        throw new Error(
+          `unsupported task type "${task.ty}" used for environment hook`,
+          {
+            cause: {
+              taskKey,
+              task,
+            },
+          },
+        );
+      });
+      moduleConfig.envs[final.name] = {
         desc: final.desc,
         provides: [
           ...Object.entries(processedVars).map((
@@ -316,6 +450,8 @@ export class GhjkfileBuilder {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
+          // env hooks
+          ...hooks,
         ],
       };
       if (processedInstallSetId) {
@@ -323,7 +459,7 @@ export class GhjkfileBuilder {
           ty: "ghjk.ports.InstallSetRef",
           setId: processedInstallSetId,
         };
-        out.envs[final.name].provides.push(prov);
+        moduleConfig.envs[final.name].provides.push(prov);
       }
 
       const curRevDeps = revDeps.get(final.name);
@@ -332,21 +468,55 @@ export class GhjkfileBuilder {
         revDeps.delete(final.name);
       }
     }
-    return out;
+    // sanity checks
+    if (revDeps.size > 0) {
+      throw new Error("working set empty but pending items found");
+    }
+    return moduleConfig;
   }
 
-  #processTasks(envsConfig: EnvsModuleConfig, defaultBaseEnv: string) {
-    const out: TasksModuleConfig = {
+  #processTasks(
+    envsConfig: EnvsModuleConfig,
+    defaultBaseEnv: string,
+  ) {
+    const indie = [] as string[];
+    const deps = new Map<string, string[]>();
+    const revDeps = new Map<string, string[]>();
+    const nameToKey = Object.fromEntries(
+      Object.entries(this.#tasks)
+        .filter(([_, { name }]) => !!name)
+        .map(([hash, { name }]) => [name, hash] as const),
+    );
+    for (const [key, args] of this.#tasks) {
+      if (args.dependsOn && args.dependsOn.length > 0) {
+        const depKeys = args.dependsOn.map((nameOrKey) =>
+          nameToKey[nameOrKey] ?? nameOrKey
+        );
+        deps.set(key, depKeys);
+        for (const depKey of depKeys) {
+          const depRevDeps = revDeps.get(depKey);
+          if (depRevDeps) {
+            depRevDeps.push(key);
+          } else {
+            revDeps.set(depKey, [key]);
+          }
+        }
+      } else {
+        indie.push(key);
+      }
+    }
+    const workingSet = indie;
+    const localToFinalKey = {} as Record<string, string>;
+    const moduleConfig: TasksModuleConfig = {
       envs: {},
       tasks: {},
+      tasksNamed: [],
     };
-    for (
-      const [name, args] of Object
-        .entries(
-          this.#tasks,
-        )
-    ) {
+    while (workingSet.length > 0) {
+      const key = workingSet.pop()!;
+      const args = this.#tasks.get(key)!;
       const { workingDir, desc, dependsOn, base } = args;
+
       const envBaseResolved = typeof base === "string"
         ? base
         : base
@@ -403,7 +573,7 @@ export class GhjkfileBuilder {
         }
       }
       if (taskInstallSet.installs.length > 0) {
-        const setId = `ghjkTaskInstSet___${name}`;
+        const setId = `ghjkTaskInstSet___${key}`;
         this.#installSets.set(setId, taskInstallSet);
         const prov: InstallSetRefProvision = {
           ty: "ghjk.ports.InstallSetRef",
@@ -421,32 +591,97 @@ export class GhjkfileBuilder {
         }),
       );
 
-      const envHash = objectHash(
-        jsonHash.canonicalize(taskEnvRecipe as jsonHash.Tree),
-      );
-      out.envs[envHash] = taskEnvRecipe;
+      const envHash = objectHash(JSON.parse(JSON.stringify(taskEnvRecipe)));
+      moduleConfig.envs[envHash] = taskEnvRecipe;
 
-      out.tasks[name] = {
-        name,
+      const def: TaskDefHashed = {
+        ty: args.ty,
+        key,
         workingDir: typeof workingDir == "object"
           ? workingDir.toString()
           : workingDir,
         desc,
-        dependsOn,
+        dependsOn: dependsOn?.map((keyOrHash) =>
+          localToFinalKey[nameToKey[keyOrHash] ?? keyOrHash]
+        ),
         envHash,
       };
-    }
-    for (const [name, { dependsOn }] of Object.entries(out.tasks)) {
-      for (const depName of dependsOn ?? []) {
-        if (!out.tasks[depName]) {
-          throw new Error(
-            `task "${name}" depend on non-existent task "${depName}"`,
-          );
+      const taskHash = objectHash(def);
+      // we prefer the name as a key if present
+      const finalKey = args.name ?? taskHash;
+      moduleConfig.tasks[finalKey] = def;
+      localToFinalKey[key] = finalKey;
+
+      if (args.name) {
+        moduleConfig.tasksNamed.push(args.name);
+      }
+      for (const revDepKey of revDeps.get(key) ?? []) {
+        const revDepDeps = deps.get(revDepKey)!;
+        // swap remove
+        const idx = revDepDeps.indexOf(key);
+        const last = revDepDeps.pop()!;
+        if (revDepDeps.length > idx) {
+          revDepDeps[idx] = last;
+        }
+
+        if (revDepDeps.length == 0) {
+          deps.delete(revDepKey);
+          workingSet.push(revDepKey);
         }
       }
     }
 
-    return out;
+    // do some sanity checks
+    for (const [key, { dependsOn }] of Object.entries(moduleConfig.tasks)) {
+      for (const depName of dependsOn ?? []) {
+        if (!moduleConfig.tasks[depName]) {
+          throw new Error(
+            `task "${key}" depend on non-existent task "${depName}"`,
+            {
+              cause: {
+                workingSet,
+                revDeps,
+                moduleConfig,
+                tasks: this.#tasks,
+                nameToKey,
+              },
+            },
+          );
+        }
+      }
+    }
+    if (deps.size > 0) {
+      throw new Error("working set empty but pending items found", {
+        cause: {
+          workingSet,
+          revDeps,
+          moduleConfig,
+          tasks: this.#tasks,
+        },
+      });
+    }
+
+    for (const [_name, env] of Object.entries(envsConfig.envs)) {
+      env.provides = env.provides.map(
+        (prov) => {
+          if (
+            prov.ty == "inline.hook.ghjkTask"
+          ) {
+            const inlineProv = prov as InlineTaskHookProvision;
+            const taskKey = localToFinalKey[inlineProv.taskKey];
+            const out: WellKnownProvision = {
+              ty: inlineProv.finalTy,
+              program: "ghjk",
+              arguments: ["x", taskKey],
+            };
+            return out;
+          }
+          return prov;
+        },
+      );
+    }
+
+    return moduleConfig;
   }
 
   #processInstalls(masterAllowList: AllowedPortDep[]) {
@@ -490,6 +725,8 @@ type EnvFinalizer = () => {
   base: string | boolean;
   vars: Record<string, string>;
   desc?: string;
+  onEnterHookTasks: string[];
+  onExitHookTasks: string[];
 };
 
 // this class will be exposed to users and thus features
@@ -497,13 +734,15 @@ type EnvFinalizer = () => {
 // all to avoid exposing the function in the public api
 export class EnvBuilder {
   #installSetId: string;
-  #file: GhjkfileBuilder;
+  #file: Ghjkfile;
   #base: string | boolean = true;
   #vars: Record<string, string> = {};
   #desc?: string;
+  #onEnterHookTasks: string[] = [];
+  #onExitHookTasks: string[] = [];
 
   constructor(
-    file: GhjkfileBuilder,
+    file: Ghjkfile,
     setFinalizer: (fin: EnvFinalizer) => void,
     public name: string,
   ) {
@@ -515,6 +754,8 @@ export class EnvBuilder {
       base: this.#base,
       vars: this.#vars,
       desc: this.#desc,
+      onExitHookTasks: this.#onExitHookTasks,
+      onEnterHookTasks: this.#onEnterHookTasks,
     }));
   }
 
@@ -523,7 +764,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Provision a port install in the environment.
    */
   install(...configs: InstallConfigFat[]) {
@@ -533,7 +774,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * This is treated as a single set and will replace previously any configured set.
    */
   allowedPortDeps(deps: AllowedPortDep[]) {
@@ -541,7 +782,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Add an environment variable.
    */
   var(key: string, val: string) {
@@ -549,7 +790,7 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Add multiple environment variable.
    */
   vars(envVars: Record<string, string>) {
@@ -557,29 +798,29 @@ export class EnvBuilder {
     return this;
   }
 
-  /*
+  /**
    * Description of the environment.
    */
   desc(str: string) {
     this.#desc = str;
     return this;
   }
-}
 
-export function stdSecureConfig(
-  args: {
-    additionalAllowedPorts?: PortsModuleSecureConfig["masterPortDepAllowList"];
-    enableRuntimes?: boolean;
-  } & Pick<PortsModuleSecureConfig, "defaultEnv" | "defaultBaseEnv">,
-): PortsModuleSecureConfig {
-  const { additionalAllowedPorts, enableRuntimes = false } = args;
-  const out: PortsModuleSecureConfig = {
-    masterPortDepAllowList: [
-      ...stdDeps({ enableRuntimes }),
-      ...additionalAllowedPorts ?? [],
-    ],
-  };
-  return out;
+  /**
+   * Tasks to execute on enter.
+   */
+  onEnter(...taskKey: string[]) {
+    this.#onEnterHookTasks.push(...taskKey);
+    return this;
+  }
+
+  /**
+   * Tasks to execute on enter.
+   */
+  onExit(...taskKey: string[]) {
+    this.#onExitHookTasks.push(...taskKey);
+    return this;
+  }
 }
 
 export function stdDeps(args = { enableRuntimes: false }) {
@@ -592,12 +833,41 @@ export function stdDeps(args = { enableRuntimes: false }) {
         node.default(),
         cpy.default(),
       ].map((fatInst) => {
-        return portsValidators.allowedPortDep.parse({
+        const out: AllowedPortDep = {
           manifest: fatInst.port,
           defaultInst: thinInstallConfig(fatInst),
-        });
+        };
+        return portsValidators.allowedPortDep.parse(out);
       }),
     );
   }
   return out;
 }
+
+function task$(
+  argv: string[],
+  env: Record<string, string | undefined>,
+  workingDir: string,
+) {
+  const custom$ = Object.assign(
+    // NOTE: order is important on who assigns to who
+    // here
+    $.build$({
+      commandBuilder: defaultCommandBuilder().env(env).cwd(workingDir),
+    }),
+    {
+      argv,
+      env,
+      workingDir,
+    },
+  );
+  return custom$;
+}
+
+type InlineTaskHookProvision = Provision & {
+  ty: "inline.hook.ghjkTask";
+  finalTy:
+    | "hook.onEnter.posixExec"
+    | "hook.onExit.posixExec";
+  taskKey: string;
+};

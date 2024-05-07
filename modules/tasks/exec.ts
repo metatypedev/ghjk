@@ -1,4 +1,3 @@
-import { std_path } from "../../deps/cli.ts";
 import { $, DePromisify } from "../../utils/mod.ts";
 
 import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
@@ -14,7 +13,7 @@ export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
-  portsConfig: TasksModuleConfigX,
+  tasksConfig: TasksModuleConfigX,
   // env: Blackboard,
 ) {
   const graph = {
@@ -24,25 +23,25 @@ export function buildTaskGraph(
     // edges from dependent to dependency
     depEdges: {} as Record<string, string[] | undefined>,
   };
-  for (const [name, task] of Object.entries(portsConfig.tasks)) {
-    if (!portsConfig.envs[task.envHash]) {
+  for (const [hash, task] of Object.entries(tasksConfig.tasks)) {
+    if (!tasksConfig.envs[task.envHash]) {
       throw new Error(
-        `unable to find env referenced by task "${name}" under hash "${task.envHash}"`,
+        `unable to find env referenced by task "${hash}" under hash "${task.envHash}"`,
       );
     }
     if (!task.dependsOn || task.dependsOn.length == 0) {
-      graph.indie.push(name);
+      graph.indie.push(hash);
     } else {
-      for (const depTaskName of task.dependsOn) {
+      for (const depTaskHash of task.dependsOn) {
         const testCycle = (
           name: string,
-          depName: string,
+          depHash: string,
         ): TaskDefHashedX | undefined => {
-          const depTask = portsConfig.tasks[depName];
+          const depTask = tasksConfig.tasks[depHash];
           if (!depTask) {
             throw new Error(`specified dependency task doesn't exist`, {
               cause: {
-                depTaskName,
+                depHash,
                 task,
               },
             });
@@ -55,7 +54,7 @@ export function buildTaskGraph(
           }
         };
 
-        const cycleSource = testCycle(name, depTaskName);
+        const cycleSource = testCycle(hash, depTaskHash);
         if (
           cycleSource
         ) {
@@ -69,12 +68,14 @@ export function buildTaskGraph(
             },
           );
         }
-        graph.revDepEdges[depTaskName] = [
-          ...graph.revDepEdges[depTaskName] ?? [],
-          name,
-        ];
+        const revDepSet = graph.revDepEdges[depTaskHash];
+        if (revDepSet) {
+          revDepSet.push(hash);
+        } else {
+          graph.revDepEdges[depTaskHash] = [hash];
+        }
       }
-      graph.depEdges[name] = task.dependsOn;
+      graph.depEdges[hash] = task.dependsOn;
     }
   }
   return graph;
@@ -84,17 +85,17 @@ export async function execTask(
   gcx: GhjkCtx,
   tasksConfig: TasksModuleConfigX,
   taskGraph: TaskGraph,
-  targetName: string,
+  targetKey: string,
   args: string[],
   // taskEnv: TaskEnvX,
   // installGraph: InstallGraph,
 ): Promise<void> {
-  let workSet = new Set([targetName]);
+  let workSet = new Set([targetKey]);
   {
-    const stack = [targetName];
+    const stack = [targetKey];
     while (stack.length > 0) {
-      const taskName = stack.pop()!;
-      const taskDef = tasksConfig.tasks[taskName];
+      const taskHash = stack.pop()!;
+      const taskDef = tasksConfig.tasks[taskHash];
       stack.push(...taskDef.dependsOn ?? []);
       workSet = new Set([...workSet.keys(), ...taskDef.dependsOn ?? []]);
     }
@@ -102,58 +103,80 @@ export async function execTask(
   const pendingDepEdges = new Map(
     Object.entries(taskGraph.depEdges).map(([key, val]) => [key, val!]),
   );
-  const pendingTasks = taskGraph.indie.filter((name) => workSet.has(name));
+  const pendingTasks = taskGraph.indie.filter((hash) => workSet.has(hash));
   if (pendingTasks.length == 0) {
     throw new Error("something went wrong, task graph starting set is empty");
   }
   while (pendingTasks.length > 0) {
-    const taskName = pendingTasks.pop()!;
-    const taskDef = tasksConfig.tasks[taskName];
+    const taskKey = pendingTasks.pop()!;
+    const taskDef = tasksConfig.tasks[taskKey];
 
     const taskEnvDir = await Deno.makeTempDir({
-      prefix: `ghjkTaskEnv_${taskName}_`,
+      prefix: `ghjkTaskEnv_${taskKey}_`,
     });
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
         recipe: tasksConfig.envs[taskDef.envHash],
-        envName: `taskEnv_${taskName}`,
+        envName: `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
     );
-    logger.info("executing", taskName, args);
-    await execTaskDeno(
-      std_path.toFileUrl(gcx.ghjkfilePath).href,
-      {
-        name: taskName,
-        argv: args,
-        envVars: {
-          ...Deno.env.toObject(),
-          ...Object.fromEntries(
-            Object.entries(installEnvs).map(
-              (
-                [key, val],
-              ) => [
-                key,
-                key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
-              ],
-            ),
-          ),
-        },
-        workingDir: std_path.dirname(gcx.ghjkfilePath),
-      },
+    logger.info(
+      "executing",
+      taskKey,
+      args,
     );
+
+    const envVars = {
+      ...Deno.env.toObject(),
+      ...Object.fromEntries(
+        Object.entries(installEnvs).map(
+          (
+            [key, val],
+          ) => [
+            key,
+            key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
+          ],
+        ),
+      ),
+    };
+    if (taskDef.ty == "denoFile@v1") {
+      if (!gcx.ghjkfilePath) {
+        throw new Error(
+          "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
+        );
+      }
+      await execTaskDeno(
+        $.path(gcx.ghjkfilePath).toFileUrl().toString(),
+        {
+          key: taskDef.key,
+          argv: args,
+          envVars,
+          workingDir: gcx.ghjkfilePath.parentOrThrow().toString(),
+        },
+      );
+    } else {
+      throw new Error(
+        `unsupported task type "${taskDef.ty}"`,
+        {
+          cause: {
+            taskDef,
+          },
+        },
+      );
+    }
     $.removeIfExists(taskEnvDir);
 
-    workSet.delete(taskName);
-    const dependentTasks = (taskGraph.revDepEdges[taskName] ?? [])
+    workSet.delete(taskKey);
+    const dependentTasks = (taskGraph.revDepEdges[taskKey] ?? [])
       .filter((name) => workSet.has(name));
     const readyTasks = [];
     for (const parentId of dependentTasks) {
       const parentDeps = pendingDepEdges.get(parentId)!;
 
       // swap remove from parent pending deps list
-      const idx = parentDeps.indexOf(taskName);
+      const idx = parentDeps.indexOf(taskKey);
       const last = parentDeps.pop()!;
       if (parentDeps.length > idx) {
         parentDeps[idx] = last;

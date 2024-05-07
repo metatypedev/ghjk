@@ -1,4 +1,5 @@
 import { zod } from "../deps/common.ts";
+import type { Path } from "../utils/mod.ts";
 
 // TODO: better module ident/versioning
 const moduleId = zod.string().regex(/[^ @]*/);
@@ -11,9 +12,9 @@ const moduleManifest = zod.object({
 export type ModuleId = zod.infer<typeof moduleId>;
 export type ModuleManifest = zod.infer<typeof moduleManifest>;
 export type GhjkCtx = {
-  ghjkfilePath: string;
-  ghjkDir: string;
-  ghjkShareDir: string;
+  ghjkfilePath?: Path;
+  ghjkDir: Path;
+  ghjkShareDir: Path;
   blackboard: Map<string, unknown>;
 };
 

@@ -62,7 +62,7 @@ the game in ghjk so we prefer to err on the side of modularity.
     argument to `getConfig`.
 - `ghjk/mod.ts` exposes a bunch of helpers for authoring conventional `ghjk.ts`
   but as far as the host is concerned, it's only aware of the
-  `getConfig(secureConfig?): SerializedConfig` interface.
+  `getConfig(ghjkfileUrl, secureConfig?): SerializedConfig` interface.
 
 ### Ghjkdir
 

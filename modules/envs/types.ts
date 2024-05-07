@@ -10,11 +10,17 @@ const posixFileProvisionTypes = [
   "posix.headerFile",
 ] as const;
 
+export const hookProvisionTypes = [
+  "hook.onEnter.posixExec",
+  "hook.onExit.posixExec",
+] as const;
+
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
   ...posixFileProvisionTypes,
+  ...hookProvisionTypes,
 ] as const;
 
 const wellKnownProvision = zod.discriminatedUnion(
@@ -25,6 +31,13 @@ const wellKnownProvision = zod.discriminatedUnion(
       key: zod.string(),
       val: zod.string(),
     }),
+    ...hookProvisionTypes.map((ty) =>
+      zod.object({
+        ty: zod.literal(ty),
+        program: zod.string(),
+        arguments: zod.string().array(),
+      })
+    ),
     ...posixFileProvisionTypes.map((ty) =>
       zod.object({ ty: zod.literal(ty), absolutePath })
     ),

@@ -5,12 +5,12 @@
     "ports": {
       "version": "0",
       "configResolutions": {
-        "95dbc2b8c604a5996b88c5b1b4fb0c10b3e0d9cac68f57eb915b012c44288e93": {
-          "version": "v0.2.61",
+        "bciqjlw6cxddajjmznoemlmnu7mgbbm7a3hfmnd2x5oivwajmiqui5ey": {
+          "version": "v0.2.62",
           "buildDepConfigs": {},
           "portRef": "act_ghrel@0.1.0"
         },
-        "076a5b8ee3bdc68ebf20a696378458465042bb7dc1e49ac2dc98e5fa0dab3e25": {
+        "bciqao2s3r3r33ruox4qknfrxqrmemuccxn64dze2ylojrzp2bwvt4ji": {
           "version": "3.7.0",
           "buildDepConfigs": {
             "cpy_bs_ghrel": {
@@ -33,7 +33,7 @@
           "portRef": "pipi_pypi@0.1.0",
           "packageName": "pre-commit"
         },
-        "84ecde630296f01e7cb8443c58d1596d668c357a0d9837c0a678b8a541ed0a39": {
+        "bciqij3g6mmbjn4a6ps4eipcy2fmw2zumgv5a3gbxycthroffihwquoi": {
           "version": "3.12.3",
           "buildDepConfigs": {
             "tar_aa": {
@@ -49,17 +49,17 @@
           },
           "portRef": "cpy_bs_ghrel@0.1.0"
         },
-        "9e3fa7742c431c34ae7ba8d1e907e50c937ccfb631fb4dcfb7a1773742abe267": {
+        "bciqj4p5hoqweghbuvz52rupja7sqze34z63dd62nz632c5zxikv6ezy": {
           "version": "1.34",
           "buildDepConfigs": {},
           "portRef": "tar_aa@0.1.0"
         },
-        "4f16c72030e922711abf15474d30e3cb232b18144beb73322b297edecfcdb86f": {
+        "bciqe6fwheayositrdk7rkr2ngdr4wizldakex23tgivss7w6z7g3q3y": {
           "version": "v1.5.5,",
           "buildDepConfigs": {},
           "portRef": "zstd_aa@0.1.0"
         },
-        "a79698808eea53aedd8e83387b2f44e90a1a48d76193c5ccf0fc6efe29bd70f6": {
+        "bciqkpfuyqchouu5o3whigod3f5coscq2jdlwde6fztypy3x6fg6xb5q": {
           "version": "v26.1",
           "buildDepConfigs": {},
           "portRef": "protoc_ghrel@0.1.0"
@@ -81,20 +81,20 @@
           "sets": {
             "ghjkEnvProvInstSet___main": {
               "installs": [
-                "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f",
-                "2a0176fec803325cc31d4a9b15f77f4e07938cc4",
-                "b6c49b375643a285e20b6ec0f7a692214bd0f392"
+                "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
+                "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
+                "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
               ],
-              "allowedDeps": "3c71ccb92f3785a685b27d7b897fef4b80ad6b24"
+              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             },
             "ghjkEnvProvInstSet___test": {
               "installs": [
-                "aa103d26454710ca5d7f43358123341380389864",
-                "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f",
-                "2a0176fec803325cc31d4a9b15f77f4e07938cc4",
-                "b6c49b375643a285e20b6ec0f7a692214bd0f392"
+                "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
+                "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
+                "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
+                "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
               ],
-              "allowedDeps": "3c71ccb92f3785a685b27d7b897fef4b80ad6b24"
+              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             }
           }
         }
@@ -102,8 +102,24 @@
       {
         "id": "tasks",
         "config": {
-          "envs": {},
-          "tasks": {}
+          "envs": {
+            "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja": {
+              "provides": []
+            }
+          },
+          "tasks": {
+            "bciqe2qc66fi4voc5zoaujvysa3yffxgokfpsuxpebchmflgjaceeqry": {
+              "ty": "denoFile@v1",
+              "key": "UEiB15QTt_KnJPsbHJIOCnssrKFfjKyZxq8UqIFTCsXb3SA==",
+              "envHash": "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja"
+            },
+            "bciqezzz3obs4torm2uxhgwloj6meas2wvmpnxobmwib4ey6x226qpza": {
+              "ty": "denoFile@v1",
+              "key": "UEiAGQuHMWAC4VRQJE9YCMI99mgodAeTV86EAv8ROiTRRHA==",
+              "envHash": "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja"
+            }
+          },
+          "tasksNamed": []
         }
       },
       {
@@ -113,6 +129,22 @@
             "main": {
               "desc": "the default default environment.",
               "provides": [
+                {
+                  "ty": "hook.onEnter.posixExec",
+                  "program": "ghjk",
+                  "arguments": [
+                    "x",
+                    "bciqezzz3obs4torm2uxhgwloj6meas2wvmpnxobmwib4ey6x226qpza"
+                  ]
+                },
+                {
+                  "ty": "hook.onExit.posixExec",
+                  "program": "ghjk",
+                  "arguments": [
+                    "x",
+                    "bciqe2qc66fi4voc5zoaujvysa3yffxgokfpsuxpebchmflgjaceeqry"
+                  ]
+                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
@@ -133,7 +165,7 @@
       }
     ],
     "blackboard": {
-      "c4cf06e095dadfbdd5e26070bc2b7baffc5ff45f": {
+      "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi": {
         "port": {
           "ty": "denoWorker@v1",
           "name": "act_ghrel",
@@ -149,7 +181,7 @@
           "moduleSpecifier": "file:///ports/act.ts"
         }
       },
-      "2a0176fec803325cc31d4a9b15f77f4e07938cc4": {
+      "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i": {
         "port": {
           "ty": "denoWorker@v1",
           "name": "pipi_pypi",
@@ -183,7 +215,7 @@
         },
         "packageName": "pre-commit"
       },
-      "b6c49b375643a285e20b6ec0f7a692214bd0f392": {
+      "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q": {
         "port": {
           "ty": "denoWorker@v1",
           "name": "cpy_bs_ghrel",
@@ -207,7 +239,7 @@
           "moduleSpecifier": "file:///ports/cpy_bs.ts"
         }
       },
-      "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2": {
+      "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia": {
         "manifest": {
           "ty": "ambientAccess@v1",
           "name": "tar_aa",
@@ -227,7 +259,7 @@
           "portRef": "tar_aa@0.1.0"
         }
       },
-      "9d26d0d90f6ecdd69d0705a042b01a344aa626ee": {
+      "bciqfl5s36w335ducrb6f6gwb3vuwup7vzqwwg67pq42xtkngsnxqobi": {
         "manifest": {
           "ty": "ambientAccess@v1",
           "name": "git_aa",
@@ -261,7 +293,7 @@
           "portRef": "git_aa@0.1.0"
         }
       },
-      "3c447f912abf18883bd05314f946740975ee0dd3": {
+      "bciqcfe7qyxmokpn6pgtaj35r5qg74jkehuu6cvyrtcsnegvwlm64oqy": {
         "manifest": {
           "ty": "ambientAccess@v1",
           "name": "curl_aa",
@@ -295,7 +327,7 @@
           "portRef": "curl_aa@0.1.0"
         }
       },
-      "dfb0f5e74666817e6ab8cbceca0c9da271142bca": {
+      "bciqgkpwxjmo5phw5se4ugyiz4xua3xrd54quzmk7wdwpq3vghglogjy": {
         "manifest": {
           "ty": "ambientAccess@v1",
           "name": "unzip_aa",
@@ -317,7 +349,7 @@
           "portRef": "unzip_aa@0.1.0"
         }
       },
-      "d9122eff1fe3ef56872e53dae725ff3ccb37472e": {
+      "bciqmcvyepuficjj3mwshsbfecwdmzch5gwxqo557icnq4zujtdllh4a": {
         "manifest": {
           "ty": "ambientAccess@v1",
           "name": "zstd_aa",
@@ -337,7 +369,7 @@
           "portRef": "zstd_aa@0.1.0"
         }
       },
-      "5314c90de340dfd1ef21421dcbdcba726b4d03b9": {
+      "bciqk4ivbyqvpxwcaj5reufmveqldiizo6xmqiqq7njtaczgappydoka": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "rustup_rustlang",
@@ -368,7 +400,7 @@
           "portRef": "rustup_rustlang@0.1.0"
         }
       },
-      "ebba9b42698f7f065a359575f195153ca1adba7b": {
+      "bciqjcmf46h2h6teenwbsda35igg4hea6ro5vh6nfieehk4jkuiqaj2a": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "rust_rustup",
@@ -404,7 +436,7 @@
           "portRef": "rust_rustup@0.1.0"
         }
       },
-      "45999e7561d7f6a661191f58ee35e67755d375e0": {
+      "bciqpgt5wsiw4y7qzovqbt2yrdgq5mvhhjpcg6cxzt4w4taudyen44ca": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "cargo_binstall_ghrel",
@@ -421,7 +453,7 @@
           "portRef": "cargo_binstall_ghrel@0.1.0"
         }
       },
-      "b80f4de14adc81c11569bf5f3a2d10b92ad5f1a7": {
+      "bciqo7cq7igschrhers3wiibbqpaavdf33fdfdalr4cu7gxr7cblifby": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "pnpm_ghrel",
@@ -440,7 +472,7 @@
           "portRef": "pnpm_ghrel@0.1.0"
         }
       },
-      "16e0e281e0f961fcc805896fc146d2c011c8d694": {
+      "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "asdf_plugin_git",
@@ -469,7 +501,7 @@
           "portRef": "asdf_plugin_git@0.1.0"
         }
       },
-      "65ca6fb1b829a92d6423b3ea701d9602d84cf6f8": {
+      "bciqboouqnp54fnumgxvl7uay2k6ho4vhlbibvgoyyt5yt3rkwqaohzi": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "node_org",
@@ -493,7 +525,7 @@
           "portRef": "node_org@0.1.0"
         }
       },
-      "d82c92542f0ed9c49a0383922c1d968ba88f0c4b": {
+      "bciqctvtiscapp6cmlaxuaxnyac664hs3y3xsa5kqh4ctmhbsiehusly": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "cpy_bs_ghrel",
@@ -520,21 +552,21 @@
           "portRef": "cpy_bs_ghrel@0.1.0"
         }
       },
-      "3c71ccb92f3785a685b27d7b897fef4b80ad6b24": {
-        "tar_aa": "e0d1f160d2d7755765f6f01a27a0c33a02ff98d2",
-        "git_aa": "9d26d0d90f6ecdd69d0705a042b01a344aa626ee",
-        "curl_aa": "3c447f912abf18883bd05314f946740975ee0dd3",
-        "unzip_aa": "dfb0f5e74666817e6ab8cbceca0c9da271142bca",
-        "zstd_aa": "d9122eff1fe3ef56872e53dae725ff3ccb37472e",
-        "rustup_rustlang": "5314c90de340dfd1ef21421dcbdcba726b4d03b9",
-        "rust_rustup": "ebba9b42698f7f065a359575f195153ca1adba7b",
-        "cargo_binstall_ghrel": "45999e7561d7f6a661191f58ee35e67755d375e0",
-        "pnpm_ghrel": "b80f4de14adc81c11569bf5f3a2d10b92ad5f1a7",
-        "asdf_plugin_git": "16e0e281e0f961fcc805896fc146d2c011c8d694",
-        "node_org": "65ca6fb1b829a92d6423b3ea701d9602d84cf6f8",
-        "cpy_bs_ghrel": "d82c92542f0ed9c49a0383922c1d968ba88f0c4b"
+      "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi": {
+        "tar_aa": "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia",
+        "git_aa": "bciqfl5s36w335ducrb6f6gwb3vuwup7vzqwwg67pq42xtkngsnxqobi",
+        "curl_aa": "bciqcfe7qyxmokpn6pgtaj35r5qg74jkehuu6cvyrtcsnegvwlm64oqy",
+        "unzip_aa": "bciqgkpwxjmo5phw5se4ugyiz4xua3xrd54quzmk7wdwpq3vghglogjy",
+        "zstd_aa": "bciqmcvyepuficjj3mwshsbfecwdmzch5gwxqo557icnq4zujtdllh4a",
+        "rustup_rustlang": "bciqk4ivbyqvpxwcaj5reufmveqldiizo6xmqiqq7njtaczgappydoka",
+        "rust_rustup": "bciqjcmf46h2h6teenwbsda35igg4hea6ro5vh6nfieehk4jkuiqaj2a",
+        "cargo_binstall_ghrel": "bciqpgt5wsiw4y7qzovqbt2yrdgq5mvhhjpcg6cxzt4w4taudyen44ca",
+        "pnpm_ghrel": "bciqo7cq7igschrhers3wiibbqpaavdf33fdfdalr4cu7gxr7cblifby",
+        "asdf_plugin_git": "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli",
+        "node_org": "bciqboouqnp54fnumgxvl7uay2k6ho4vhlbibvgoyyt5yt3rkwqaohzi",
+        "cpy_bs_ghrel": "bciqctvtiscapp6cmlaxuaxnyac664hs3y3xsa5kqh4ctmhbsiehusly"
       },
-      "aa103d26454710ca5d7f43358123341380389864": {
+      "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa": {
         "port": {
           "ty": "denoWorker@v1",
           "name": "protoc_ghrel",

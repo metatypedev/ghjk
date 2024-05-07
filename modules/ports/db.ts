@@ -2,12 +2,16 @@
 /// <reference lib="deno.unstable" />
 
 import { zod } from "../../deps/common.ts";
+// import type { PathRef } from "../../utils/mod.ts";
+// import { $ } from "../../utils/mod.ts";
 import validators from "./types.ts";
+// import getLogger from "../../utils/logger.ts";
 
 // const logger = getLogger(import.meta);
 
 // NOTE: make sure any changes to here are backwards compatible
 const installRowValidator = zod.object({
+  // version: zod.string(),
   installId: zod.string(),
   conf: validators.installConfigLite,
   manifest: validators.portManifest,
@@ -16,7 +20,10 @@ const installRowValidator = zod.object({
   progress: zod.enum(["downloaded", "installed"]),
 }).passthrough();
 
-export type InstallRow = zod.infer<typeof installRowValidator>;
+type InstallRowVersioned = zod.infer<typeof installRowValidator>;
+// FIXME: this breaks typescript
+// export type InstallRow = Omit<InstallRowVersioned, "version">;
+export type InstallRow = InstallRowVersioned;
 
 export abstract class InstallsDb {
   abstract all(): Promise<InstallRow[]>;
@@ -63,10 +70,10 @@ class DenoKvInstallsDb extends InstallsDb {
   }
 }
 
-// TODO: implement me
-/*
+/* // TODO: implement me
+
 class InlineInstallsDb extends InstallsDb {
-  #map = new Map<string, InstallRow>();
+  #map = new Map<string, InstallRowVersioned>();
   #dbDir: PathRef;
   constructor(
     dbDir: string,
@@ -80,17 +87,26 @@ class InlineInstallsDb extends InstallsDb {
   async get(id: string): Promise<InstallRow | undefined> {
     let row = this.#map.get(id);
     if (!row) {
-      const res = installRowValidator.safeParse(
-        await this.#dbDir.join(`${id}.meta`).readMaybeJson(),
-      );
-      if (!res.success) {
-        logger.warn()
+      const raw = await this.#dbDir.join(`${id}.meta`).readMaybeText();
+      if (raw) {
+        try {
+          const rawParsed = installRowValidator.parse(JSON.parse(raw));
+          if (rowParsed.version != "0") {
+            throw new Error(`unexpected version string: ${rowParsed.version}`);
+          }
+          row = rowParsed;
+          this.#map.set(id, row);
+        } catch (err) {
+          logger.warn(`error parsing install meta for "${id}"`, err);
+        }
       }
     }
     return row;
   }
   set(id: string, row: InstallRow): Promise<void> {
-    this.#map.set(id, row);
+    const versioned =  { ...row, version: "0" };
+    await this.#dbDir.join(`${id}.meta`).writeJsonPretty(versioned);
+    this.#map.set(id, versioned);
     throw new Error("Method not implemented.");
   }
   delete(id: string): Promise<void> {
@@ -100,4 +116,4 @@ class InlineInstallsDb extends InstallsDb {
   [Symbol.dispose](): void {
     throw new Error("Method not implemented.");
   }
-}*/
+} */
