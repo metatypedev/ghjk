@@ -9,7 +9,7 @@ import type {
   DenoTaskDefArgs,
   EnvDefArgs,
 } from "../mod.ts";
-export type { EnvDefArgs } from "../mod.ts";
+import type { TaskDefNice } from "../mod.ts";
 import { ALL_OS } from "../port.ts";
 import { ALL_ARCH } from "../port.ts";
 
