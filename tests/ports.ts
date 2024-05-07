@@ -12,10 +12,7 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
-
-console.log({
-  build: Deno.build,
-});
+import { testTargetPlatform } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
@@ -143,7 +140,7 @@ const cases: CustomE2eTestCase[] = [
       // executrable
       ? `which meta && wasmedge --version`
       : `meta --version && wasmedge --version`,
-    ignore: Deno.build.os == "linux" && Deno.build.arch == "aarch64",
+    ignore: testTargetPlatform == "linux/aarch64",
   },
   // 77 meg +
   {
