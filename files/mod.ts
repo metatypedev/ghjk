@@ -470,7 +470,12 @@ export class Ghjkfile {
     }
     // sanity checks
     if (revDeps.size > 0) {
-      throw new Error("working set empty but pending items found");
+      throw new Error(`working set empty but pending items found`, {
+        cause: {
+          revDeps,
+          workingSet,
+        },
+      });
     }
     return moduleConfig;
   }

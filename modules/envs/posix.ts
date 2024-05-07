@@ -39,38 +39,41 @@ export async function cookPosixEnv(
   } as Record<string, string>;
   const onEnterHooks = [] as [string, string[]][];
   const onExitHooks = [] as [string, string[]][];
+  const installSetIds = [] as string[];
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
   await Promise.all(reducedRecipe.provides.map((item) => {
-    switch (item.ty) {
+    const wellKnownProv = item.wellKnownProvision;
+    switch (wellKnownProv.ty) {
       case "posix.exec":
-        binPaths.push(item.absolutePath);
+        binPaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.sharedLib":
-        libPaths.push(item.absolutePath);
+        libPaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.headerFile":
-        includePaths.push(item.absolutePath);
+        includePaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.envVar":
-        if (vars[item.key]) {
+        if (vars[wellKnownProv.key]) {
           throw new Error(
-            `env var conflict cooking unix env: key "${item.key}" has entries "${
-              vars[item.key]
-            }" and "${item.val}"`,
+            `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
+              vars[wellKnownProv.key]
+            }" and "${wellKnownProv.val}"`,
           );
         }
-        vars[item.key] = item.val;
+        vars[wellKnownProv.key] = wellKnownProv.val;
+        installSetIds.push(item.installSetIdProvision!.id);
         break;
       case "hook.onEnter.posixExec":
-        onEnterHooks.push([item.program, item.arguments]);
+        onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
         break;
       case "hook.onExit.posixExec":
-        onExitHooks.push([item.program, item.arguments]);
+        onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
         break;
       default:
-        throw Error(`unsupported provision type: ${(item as any).provision}`);
+        throw Error(`unsupported provision type: ${(wellKnownProv as any).provision}`);
     }
   }));
   void await Promise.all([

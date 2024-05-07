@@ -132,8 +132,9 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           "outdated",
           new cliffy_cmd.Command()
             .description("TODO")
-            .action(function () {
-              throw new Error("TODO");
+            .action(async () => {
+              await using scx = await syncCtxFromGhjk(gcx);
+
             }),
         )
         .command(
@@ -180,3 +181,5 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     };
   }
 }
+
+

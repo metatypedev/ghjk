@@ -2,10 +2,12 @@ import { unwrapParseRes } from "../../port.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
+  InstallSetIdProvision,
   Provision,
   ProvisionReducer,
   WellKnownEnvRecipeX,
   WellKnownProvision,
+  WellKnownProvisionFat,
 } from "./types.ts";
 import { wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
@@ -51,11 +53,11 @@ export async function reduceStrangeProvisions(
     }
     bin.push(item);
   }
-  const reducedSet = [] as WellKnownProvision[];
+  const reducedSet = [] as WellKnownProvisionFat[];
   for (const [ty, items] of Object.entries(bins)) {
     if (wellKnownProvisionTypes.includes(ty as any)) {
       reducedSet.push(
-        ...items.map((item) => validators.wellKnownProvision.parse(item)),
+        ...items.map((item) => ({wellKnownProvision: validators.wellKnownProvision.parse(item), installSetIdProvision: null,})),
       );
       continue;
     }
@@ -68,11 +70,11 @@ export async function reduceStrangeProvisions(
     const reduced = await reducer(items);
     reducedSet.push(
       ...reduced.map((prov) =>
-        unwrapParseRes(
+        ({wellKnownProvision: unwrapParseRes(
           validators.wellKnownProvision.safeParse(prov),
           { prov },
           `error parsing reduced provision`,
-        )
+        ), installSetIdProvision: null})
       ),
     );
   }

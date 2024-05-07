@@ -156,7 +156,7 @@ Just simply cooks and activates an environment.
           const shell = shellMaybe ?? await detectShellPath();
           if (!shell) {
             throw new Error(
-              "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+              "unable to detect shell in use. Use `--shell` flag to explicitly pass shell program.",
             );
           }
           const envName = envNameMaybe ?? ecx.activeEnv;

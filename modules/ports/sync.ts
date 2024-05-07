@@ -29,6 +29,7 @@ import {
 } from "../../utils/mod.ts";
 import { type InstallsDb, installsDbKv } from "./db.ts";
 import type { GhjkCtx } from "../types.ts";
+import { PortsCtx } from "./mod.ts";
 
 const logger = getLogger(import.meta);
 
@@ -454,6 +455,84 @@ export async function buildInstallGraph(
 
   return graph;
 }
+
+// async function getCurrentLatestVersionComparison(
+//   scx: SyncCtx,
+//   pcx: PortsCtx,
+// ) {
+//   // TODO: get InstallSetX, where: from pcx,
+//   // TODO: get PortMainfestX, where: ??
+//   // TODO: get InstallConfigLiteX, where: ??
+
+  
+
+//   const installSets = validators.portsModuleConfig.parse(pcx.config);
+//   const 
+//   for (const inst of installSets.sets) {
+
+//   }
+
+//   const config = pcx.config.sets;
+
+//   const resolvedResolutionDeps = [] as [string, string][];
+//   for (const dep of manifest.resolutionDeps ?? []) {
+//     const { manifest: depMan, config: depConf } = getDepConfig(
+//       set,
+//       manifest,
+//       config,
+//       dep,
+//       true,
+//     );
+
+//     // get the version resolved config of the dependency
+//     const depInstId = await resolveAndInstall(
+//       scx,
+//       set,
+//       depMan,
+//       depConf,
+//     );
+//     resolvedResolutionDeps.push([depInstId.installId, depMan.name]);
+//   }
+
+//   const depShimsRootPath = await Deno.makeTempDir({
+//     dir: scx.tmpPath,
+//     prefix: `shims_resDeps_${manifest.name}_`,
+//   });
+//   const resolutionDepArts = await getShimmedDepArts(
+//     scx,
+//     depShimsRootPath,
+//     resolvedResolutionDeps,
+//   );
+
+//   // finally resolve the versino
+//   let version;
+//   // TODO: fuzzy matching
+//   const port = getPortImpl(manifest);
+//   const listAllArgs = {
+//     depArts: resolutionDepArts,
+//     config,
+//     manifest,
+//   };
+//   if (config.version) {
+//     logger.info("resolving given version", config);
+//     const allVersions = await port.listAll(listAllArgs);
+//     // TODO: fuzzy matching
+//     const match = allVersions.find((version) =>
+//       version.match(new RegExp(`^v?${config.version}$`))
+//     );
+//     if (!match) {
+//       throw new Error(`error resolving verison: not found`, {
+//         cause: { config, manifest },
+//       });
+//     }
+//     version = match;
+//   } else {
+//     logger.info("resolving latest version", config);
+//     const latestStable = await port.latestStable(listAllArgs);
+//     version = latestStable;
+//   }
+//   await $.removeIfExists(depShimsRootPath);
+// }
 
 // This takes user specified InstallConfigs and resolves
 // their versions to a known, installable version

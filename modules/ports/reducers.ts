@@ -1,7 +1,7 @@
 //! Integration between Ports and Envs module
 
 import { expandGlobsAndAbsolutize, unwrapParseRes } from "../../utils/mod.ts";
-import type { WellKnownProvision } from "../envs/types.ts";
+import type { WellKnownProvisionFat } from "../envs/types.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
 import type { PortsCtx } from "./mod.ts";
@@ -64,7 +64,7 @@ async function reduceInstArts(
   installGraph: InstallGraph,
   installArts: Map<string, InstallArtifacts>,
 ) {
-  const out: WellKnownProvision[] = [];
+  const out: WellKnownProvisionFat[] = [];
 
   // use this to track seen env vars to report conflicts
   const foundEnvVars: Record<string, [string, string]> = {};
@@ -93,9 +93,12 @@ async function reduceInstArts(
       }
       foundEnvVars[key] = [val, instId];
       out.push({
-        ty: "posix.envVar",
-        key,
-        val,
+        wellKnownProvision: {
+          ty: "posix.envVar",
+          key,
+          val,
+        },
+        installSetIdProvision: { ty: "posix.envVar", id: instId },
       });
     }
     const expandCurry = (path: string) =>
@@ -112,20 +115,29 @@ async function reduceInstArts(
     out.push(
       ...binPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "posix.exec" as const,
-          absolutePath,
+          wellKnownProvision: {
+            ty: "posix.exec" as const,
+            absolutePath,
+          },
+          installSetIdProvision: null,
         }))
       ),
       ...libPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "posix.sharedLib" as const,
-          absolutePath,
+          wellKnownProvision: {
+            ty: "posix.sharedLib" as const,
+            absolutePath,
+          },
+          installSetIdProvision: null,
         }))
       ),
       ...includePathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          ty: "posix.headerFile" as const,
-          absolutePath,
+          wellKnownProvision: {
+            ty: "posix.headerFile" as const,
+            absolutePath,
+          },
+          installSetIdProvision: null,
         }))
       ),
     );

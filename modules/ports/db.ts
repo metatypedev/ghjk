@@ -13,7 +13,7 @@ import validators from "./types.ts";
 const installRowValidator = zod.object({
   // version: zod.string(),
   installId: zod.string(),
-  conf: validators.installConfigLite,
+  conf: validators.installConfigResolved,
   manifest: validators.portManifest,
   installArts: validators.installArtifacts.nullish(),
   downloadArts: validators.downloadArtifacts,
