@@ -73,7 +73,9 @@ export async function cookPosixEnv(
         onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
         break;
       default:
-        throw Error(`unsupported provision type: ${(wellKnownProv as any).provision}`);
+        throw Error(
+          `unsupported provision type: ${(wellKnownProv as any).provision}`,
+        );
     }
   }));
   void await Promise.all([

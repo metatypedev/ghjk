@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { Json, unwrapParseRes } from "../../utils/mod.ts";
+import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
   installSetProvisionTy,
@@ -12,13 +12,20 @@ import type { GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
+  getDepConfig,
   getResolutionMemo,
+  resolveAndInstall,
+  SyncCtx,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
 import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
-import type { Provision, ProvisionReducer } from "../envs/types.ts";
+import type {
+  Provision,
+  ProvisionReducer,
+  WellKnownEnvRecipeX,
+} from "../envs/types.ts";
 import { getInstallSetStore } from "./inter.ts";
 
 export type PortsCtx = {
@@ -133,8 +140,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           new cliffy_cmd.Command()
             .description("TODO")
             .action(async () => {
-              await using scx = await syncCtxFromGhjk(gcx);
-
+              await using _scx = await syncCtxFromGhjk(gcx);
             }),
         )
         .command(
@@ -182,4 +188,68 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   }
 }
 
+async function _getCurrentLatestVersionComparison(
+  gcx: GhjkCtx,
+  scx: SyncCtx,
+  _pcx: PortsCtx,
+) {
+  // TODO: get InstallSetX, where: from pcx,
+  // TODO: get PortMainfestX, where: ??
+  // TODO: get InstallConfigLiteX, where: ??
 
+  // TODO: remove the placeholder `envName`
+  const envName = "default";
+  const envDir = $.path(gcx.ghjkDir).join("envs", envName);
+  const recipePath = envDir.join("recipe.json").toString();
+
+  // read from `recipe.json` and get installSetIds
+  const recipeJson = JSON.parse(await Deno.readTextFile(recipePath));
+  const reducedRecipe = recipeJson as WellKnownEnvRecipeX;
+
+  const db = scx.db.val;
+
+  // get the current version for the ports
+  for (
+    const { wellKnownProvision: _, installSetIdProvision } of reducedRecipe
+      .provides
+  ) {
+    if (!installSetIdProvision) {
+      continue;
+    }
+    const setId = installSetIdProvision?.id;
+    const installSet = await db.get(setId);
+
+    if (!installSet) {
+      throw new Error("InstallSetId not found in InstallsDb", {
+        cause: {
+          setId,
+        },
+      });
+    }
+
+    const manifest = installSet.manifest;
+    const config = installSet.conf;
+
+    // TODO: resolve
+    let set: InstallSetX;
+
+    const resolvedResolutionDeps = [] as [string, string][];
+    for (const dep of manifest.resolutionDeps ?? []) {
+      const { manifest: depManifest, config: depConf } = getDepConfig(
+        set!,
+        manifest,
+        config,
+        dep,
+      );
+
+      // TODO: avoid reinstall, infact just do a resolve
+      const depInstId = await resolveAndInstall(
+        scx,
+        set!,
+        depManifest,
+        depConf,
+      );
+      resolvedResolutionDeps.push([depInstId.installId, depManifest.name]);
+    }
+  }
+}
