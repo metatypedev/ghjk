@@ -6,6 +6,8 @@ import type {
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
 import type { TaskDefNice } from "../mod.ts";
+import { ALL_OS } from "../port.ts";
+import { ALL_ARCH } from "../port.ts";
 
 export type E2eTestCase = {
   name: string;
@@ -14,7 +16,24 @@ export type E2eTestCase = {
   ePoints: { cmd: string; stdin?: string }[];
 };
 
+export const testTargetPlatform = Deno.env.get("DOCKER_PLATFORM") ??
+  (Deno.build.os + "/" + Deno.build.arch);
+
+if (
+  !([...ALL_OS] as string[]).includes(testTargetPlatform.split("/")[0]) ||
+  !([...ALL_ARCH] as string[]).includes(testTargetPlatform.split("/")[1])
+) {
+  throw new Error(`unsupported test platform: ${testTargetPlatform}`);
+}
+
+const dockerPlatform = `--platform=${
+  testTargetPlatform
+    .replace("x86_64", "amd64")
+    .replace("aarch64", "arm64")
+}`;
+
 const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
+
 const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
 const templateStrings = {
   addConfig: `#{{CMD_ADD_CONFIG}}`,
@@ -56,14 +75,14 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
     ));
 
   await $
-    .raw`${dockerCmd} buildx build ${
+    .raw`${dockerCmd} buildx build ${dockerPlatform} ${
     Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
   } --tag '${tag}' --network=host --output type=docker -f- .`
     .env(env)
     .stdinText(dFile);
 
   for (const ePoint of ePoints) {
-    let cmd = $.raw`${dockerCmd} run --rm ${[
+    let cmd = $.raw`${dockerCmd} run ${dockerPlatform} --rm ${[
       /* we want to enable interactivity when piping in */
       ePoint.stdin ? "-i " : "",
       ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])

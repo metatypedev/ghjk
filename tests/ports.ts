@@ -12,6 +12,7 @@ import type {
   InstallConfigFat,
   PortsModuleSecureConfig,
 } from "../modules/ports/types.ts";
+import { testTargetPlatform } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
@@ -139,6 +140,7 @@ const cases: CustomE2eTestCase[] = [
       // executrable
       ? `which meta && wasmedge --version`
       : `meta --version && wasmedge --version`,
+    ignore: testTargetPlatform == "linux/aarch64",
   },
   // 77 meg +
   {

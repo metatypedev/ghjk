@@ -147,6 +147,7 @@ export class Port extends PortBase {
     }
     const { installVersion, platform } = args;
     const arch = platform.arch;
+    let postfix = "pgo+lto-full";
     let os;
     switch (platform.os) {
       case "windows":
@@ -157,6 +158,9 @@ export class Port extends PortBase {
         // but it breaks python extensions support so we
         // must use glibc
         os = "unknown-linux-gnu";
+        if (arch == "aarch64") {
+          postfix = "lto-full";
+        }
         break;
       case "darwin":
         os = "apple-darwin";
@@ -165,7 +169,7 @@ export class Port extends PortBase {
         throw new Error(`unsupported: ${platform}`);
     }
     const urls = [
-      `https://github.com/${this.repoOwner}/${this.repoName}/releases/download/${tag}/cpython-${installVersion}+${tag}-${arch}-${os}-pgo+lto-full.tar.zst`,
+      `https://github.com/${this.repoOwner}/${this.repoName}/releases/download/${tag}/cpython-${installVersion}+${tag}-${arch}-${os}-${postfix}.tar.zst`,
     ];
     await Promise.all(
       urls.map(dwnUrlOut)

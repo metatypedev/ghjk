@@ -23,7 +23,7 @@ repos:
                 gh_action/.*.js
             )$
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.27.0
+    rev: 0.28.2
     hooks:
       - id: check-dependabot
       - id: check-github-workflows
