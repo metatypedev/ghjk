@@ -47,7 +47,7 @@ jobs:
             platform: darwin/x86_64
             e2eType: "local"
           - os: macos-14
-            platform: darwin/arm64
+            platform: darwin/aarch64
             e2eType: "local"
           # - os: windows-latest
           #   e2eType: "local"
@@ -69,7 +69,7 @@ jobs:
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils
       - env: 
-          DOCKER_PLATFORM: linux/arm64
+          DOCKER_PLATFORM: ${{ matrix.platform }}
         run: deno task test
 
 
