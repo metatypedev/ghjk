@@ -153,4 +153,5 @@ env("main")
 `,
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envHooks/${testCase.name}`,
+  timeout_ms: 5 * 60 * 1000,
 })));
