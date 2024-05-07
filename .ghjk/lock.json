@@ -89,10 +89,7 @@
             },
             "ghjkEnvProvInstSet___test": {
               "installs": [
-                "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
-                "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
-                "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
-                "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
+                "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa"
               ],
               "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             }
@@ -126,6 +123,14 @@
         "id": "envs",
         "config": {
           "envs": {
+            "test": {
+              "provides": [
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet___test"
+                }
+              ]
+            },
             "main": {
               "desc": "the default default environment.",
               "provides": [
@@ -148,14 +153,6 @@
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
-                }
-              ]
-            },
-            "test": {
-              "provides": [
-                {
-                  "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet___test"
                 }
               ]
             }

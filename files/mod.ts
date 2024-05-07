@@ -333,7 +333,7 @@ export class Ghjkfile {
       const final = finalizer();
       const envBaseResolved = typeof final.base === "string"
         ? final.base
-        : final.base
+        : final.base && defaultBaseEnv != final.name
         ? defaultBaseEnv
         : null;
       all[final.name] = { ...final, envBaseResolved };
