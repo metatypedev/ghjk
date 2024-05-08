@@ -280,7 +280,10 @@ export function harness(
             runner({
               ...testCase,
             }),
-            testCase.timeout_ms ?? 1 * 60 * 1000,
+            // building the test docker image might taka a while
+            // but we don't want some bug spinlocking the ci for
+            // an hour
+            testCase.timeout_ms ?? 5 * 60 * 1000,
           ),
       );
     }

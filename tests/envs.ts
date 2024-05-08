@@ -202,5 +202,4 @@ harness(cases.map((testCase) => ({
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envs/${testCase.name}`,
-  timeout_ms: 5 * 60 * 1000,
 })));

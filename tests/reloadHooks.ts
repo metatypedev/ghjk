@@ -162,5 +162,4 @@ harness(cases.map((testCase) => ({
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `reloadHooks/${testCase.name}`,
-  timeout_ms: 5 * 60 * 1000,
 })));

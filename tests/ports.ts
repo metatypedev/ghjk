@@ -221,9 +221,5 @@ harness(cases.map((testCase) => ({
                   ],
                 }, */
   ],
-  // building the test docker image might taka a while
-  // but we don't want some bug spinlocking the ci for
-  // an hour
-  timeout_ms: 5 * 60 * 1000,
   name: `ports/${testCase.name}`,
 })));
