@@ -711,7 +711,7 @@ export async function resolveAndInstall(
 }
 
 // This assumes that the installs are already in the db
-async function getShimmedDepArts(
+export async function getShimmedDepArts(
   scx: SyncCtx,
   shimsRootPath: string,
   installs: [string, string][],

@@ -13,9 +13,10 @@ import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
   getDepConfig,
+  getPortImpl,
   getResolutionMemo,
+  getShimmedDepArts,
   resolveAndInstall,
-  SyncCtx,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
 import type { Blackboard } from "../../host/types.ts";
@@ -139,8 +140,17 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           "outdated",
           new cliffy_cmd.Command()
             .description("TODO")
-            .action(async () => {
-              await using _scx = await syncCtxFromGhjk(gcx);
+            .option("-u, --update-port <portname>", "Update specific port")
+            .option("-n, --update-no-confirm", "Update all ports")
+            .action(async (_opts) => {
+              const {
+                installedPortsVersions: _installed,
+                latestPortsVersions: _latest,
+              } = await getCurrentLatestVersionComparison(gcx);
+
+              // update selectively and the whole ports
+
+              // display the versions in table
             }),
         )
         .command(
@@ -188,14 +198,14 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   }
 }
 
-async function _getCurrentLatestVersionComparison(
+async function getCurrentLatestVersionComparison(
   gcx: GhjkCtx,
-  scx: SyncCtx,
-  _pcx: PortsCtx,
 ) {
   // TODO: get InstallSetX, where: from pcx,
   // TODO: get PortMainfestX, where: ??
   // TODO: get InstallConfigLiteX, where: ??
+
+  await using scx = await syncCtxFromGhjk(gcx);
 
   // TODO: remove the placeholder `envName`
   const envName = "default";
@@ -208,7 +218,9 @@ async function _getCurrentLatestVersionComparison(
 
   const db = scx.db.val;
 
-  // get the current version for the ports
+  const installedPortsVersion = new Map<string, string>();
+  const latestPortsVersion = new Map<string, string>();
+  // get the current/installed version for the ports
   for (
     const { wellKnownProvision: _, installSetIdProvision } of reducedRecipe
       .provides
@@ -251,5 +263,52 @@ async function _getCurrentLatestVersionComparison(
       );
       resolvedResolutionDeps.push([depInstId.installId, depManifest.name]);
     }
+
+    const depShimsRootPath = await Deno.makeTempDir({
+      dir: scx.tmpPath,
+      prefix: `shims_resDeps_${manifest.name}_`,
+    });
+    const resolutionDepArts = await getShimmedDepArts(
+      scx,
+      depShimsRootPath,
+      resolvedResolutionDeps,
+    );
+
+    // finally resolve the version
+    let version;
+    // TODO: fuzzy matching
+    const port = getPortImpl(manifest);
+    const listAllArgs = {
+      depArts: resolutionDepArts,
+      config,
+      manifest,
+    };
+    if (config.version) {
+      const allVersions = await port.listAll(listAllArgs);
+      // TODO: fuzzy matching
+      const match = allVersions.find((version) =>
+        version.match(new RegExp(`^v?${config.version}$`))
+      );
+      if (!match) {
+        throw new Error(`error resolving verison: not found`, {
+          cause: { config, manifest },
+        });
+      }
+      version = match;
+      installedPortsVersion.set(setId, version);
+    } else {
+      throw new Error("Port Version not found in the Config");
+    }
+
+    // get the latest version of the port
+    const latestStable = await port.latestStable(listAllArgs);
+    latestPortsVersion.set(setId, latestStable);
+
+    await $.removeIfExists(depShimsRootPath);
   }
+
+  return {
+    installedPortsVersions: installedPortsVersion,
+    latestPortsVersions: latestPortsVersion,
+  };
 }
