@@ -4,11 +4,22 @@ import { cliffy_cmd, zod } from "../../deps/cli.ts";
 import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
+  installProvisionTy,
   installSetProvisionTy,
   installSetRefProvisionTy,
 } from "./types.ts";
-import type { InstallSetX, PortsModuleConfigX } from "./types.ts";
-import type { GhjkCtx, ModuleManifest } from "../types.ts";
+import envsValidators from "../envs/types.ts";
+import type {
+  AllowedPortDep,
+  InstallProvision,
+  InstallSetX,
+  PortsModuleConfigX,
+} from "./types.ts";
+import {
+  type GhjkCtx,
+  type ModuleManifest,
+  portsCtxBlackboardKey,
+} from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
@@ -22,12 +33,9 @@ import {
 import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
-import type {
-  Provision,
-  ProvisionReducer,
-  WellKnownEnvRecipeX,
-} from "../envs/types.ts";
+import type { Provision, ProvisionReducer } from "../envs/types.ts";
 import { getInstallSetStore } from "./inter.ts";
+import { getEnvsCtx } from "../utils.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -65,6 +73,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         sets: {},
       },
     };
+
     const setStore = getInstallSetStore(gcx);
     // pre-process the install sets found in the config
     for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
@@ -100,12 +109,15 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     const reducerStore = getProvisionReducerStore(gcx);
     reducerStore.set(
       installSetRefProvisionTy,
-      installSetRefReducer(gcx, pcx) as ProvisionReducer<Provision>,
+      installSetRefReducer(gcx, pcx) as ProvisionReducer<Provision, Provision>,
     );
     reducerStore.set(
       installSetProvisionTy,
-      installSetReducer(gcx) as ProvisionReducer<Provision>,
+      installSetReducer(gcx) as ProvisionReducer<Provision, Provision>,
     );
+
+    gcx.blackboard.set(portsCtxBlackboardKey, pcx);
+    // console.log($.inspect(pcx.config.sets));
     return pcx;
   }
 
@@ -143,10 +155,32 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
             .option("-u, --update-port <portname>", "Update specific port")
             .option("-n, --update-no-confirm", "Update all ports")
             .action(async (_opts) => {
+              const envsCtx = getEnvsCtx(gcx);
+              const envName = envsCtx.activeEnv;
+
+              let allowedDeps = {};
+              const installSets = pcx.config.sets;
+
+              for (const [_id, instSet] of Object.entries(installSets)) {
+                const set = unwrapParseRes(
+                  validators.installSet.safeParse(instSet),
+                  {
+                    envName,
+                    instSet,
+                  },
+                  "error parsing install set for the current env",
+                );
+                allowedDeps = set.allowedDeps;
+              }
+
               const {
                 installedPortsVersions: _installed,
                 latestPortsVersions: _latest,
-              } = await getCurrentLatestVersionComparison(gcx);
+              } = await getCurrentLatestVersionComparison(
+                gcx,
+                envName,
+                allowedDeps,
+              );
 
               // update selectively and the whole ports
 
@@ -200,6 +234,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
 async function getCurrentLatestVersionComparison(
   gcx: GhjkCtx,
+  envName: string,
+  allowedDeps: Record<string, AllowedPortDep>,
 ) {
   // TODO: get InstallSetX, where: from pcx,
   // TODO: get PortMainfestX, where: ??
@@ -207,28 +243,33 @@ async function getCurrentLatestVersionComparison(
 
   await using scx = await syncCtxFromGhjk(gcx);
 
-  // TODO: remove the placeholder `envName`
-  const envName = "default";
   const envDir = $.path(gcx.ghjkDir).join("envs", envName);
   const recipePath = envDir.join("recipe.json").toString();
 
   // read from `recipe.json` and get installSetIds
   const recipeJson = JSON.parse(await Deno.readTextFile(recipePath));
-  const reducedRecipe = recipeJson as WellKnownEnvRecipeX;
+  const reducedRecipe = unwrapParseRes(
+    envsValidators.envRecipe.safeParse(recipeJson),
+    {
+      envName,
+      recipePath,
+    },
+    "error parsing recipe.json",
+  );
+
+  const installProvisions = reducedRecipe.provides.filter((prov) =>
+    prov.ty === installProvisionTy
+  ) as InstallProvision[];
 
   const db = scx.db.val;
 
-  const installedPortsVersion = new Map<string, string>();
-  const latestPortsVersion = new Map<string, string>();
+  const installedPortsVersions = new Map<string, string>();
+  const latestPortsVersions = new Map<string, string>();
   // get the current/installed version for the ports
   for (
-    const { wellKnownProvision: _, installSetIdProvision } of reducedRecipe
-      .provides
+    const installProv of installProvisions
   ) {
-    if (!installSetIdProvision) {
-      continue;
-    }
-    const setId = installSetIdProvision?.id;
+    const setId = installProv.instId;
     const installSet = await db.get(setId);
 
     if (!installSet) {
@@ -242,13 +283,10 @@ async function getCurrentLatestVersionComparison(
     const manifest = installSet.manifest;
     const config = installSet.conf;
 
-    // TODO: resolve
-    let set: InstallSetX;
-
     const resolvedResolutionDeps = [] as [string, string][];
     for (const dep of manifest.resolutionDeps ?? []) {
       const { manifest: depManifest, config: depConf } = getDepConfig(
-        set!,
+        allowedDeps,
         manifest,
         config,
         dep,
@@ -257,7 +295,7 @@ async function getCurrentLatestVersionComparison(
       // TODO: avoid reinstall, infact just do a resolve
       const depInstId = await resolveAndInstall(
         scx,
-        set!,
+        allowedDeps,
         depManifest,
         depConf,
       );
@@ -274,41 +312,26 @@ async function getCurrentLatestVersionComparison(
       resolvedResolutionDeps,
     );
 
-    // finally resolve the version
-    let version;
-    // TODO: fuzzy matching
     const port = getPortImpl(manifest);
     const listAllArgs = {
       depArts: resolutionDepArts,
       config,
       manifest,
     };
-    if (config.version) {
-      const allVersions = await port.listAll(listAllArgs);
-      // TODO: fuzzy matching
-      const match = allVersions.find((version) =>
-        version.match(new RegExp(`^v?${config.version}$`))
-      );
-      if (!match) {
-        throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest },
-        });
-      }
-      version = match;
-      installedPortsVersion.set(setId, version);
-    } else {
-      throw new Error("Port Version not found in the Config");
-    }
+
+    // get the current Version
+    const currentVersion = config.version;
+    installedPortsVersions.set(setId, currentVersion);
 
     // get the latest version of the port
     const latestStable = await port.latestStable(listAllArgs);
-    latestPortsVersion.set(setId, latestStable);
+    latestPortsVersions.set(setId, latestStable);
 
     await $.removeIfExists(depShimsRootPath);
   }
 
   return {
-    installedPortsVersions: installedPortsVersion,
-    latestPortsVersions: latestPortsVersion,
+    installedPortsVersions: installedPortsVersions,
+    latestPortsVersions: latestPortsVersions,
   };
 }

@@ -8,7 +8,11 @@ import type {
   EnvsModuleConfigX,
   WellKnownProvision,
 } from "./types.ts";
-import type { GhjkCtx, ModuleManifest } from "../types.ts";
+import {
+  envsCtxBlackboardKey,
+  type GhjkCtx,
+  type ModuleManifest,
+} from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
@@ -50,10 +54,14 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const setEnv = Deno.env.get("GHJK_ENV");
     const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
-    return Promise.resolve({
+    const envsCtx = {
       activeEnv,
       config,
-    });
+    };
+
+    _ctx.blackboard.set(envsCtxBlackboardKey, envsCtx);
+
+    return Promise.resolve(envsCtx);
   }
 
   commands(

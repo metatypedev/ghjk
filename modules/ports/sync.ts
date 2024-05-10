@@ -2,6 +2,7 @@ import { deep_eql, std_fs, std_path, zod } from "../../deps/cli.ts";
 import getLogger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type {
+  AllowedPortDep,
   AmbientAccessPortManifestX,
   DenoWorkerPortManifestX,
   DepArts,
@@ -337,7 +338,7 @@ export async function buildInstallGraph(
     });
     const resolvedConfig = await resolveConfig(
       scx,
-      set,
+      set.allowedDeps,
       manifest,
       instLite,
     );
@@ -460,7 +461,7 @@ export async function buildInstallGraph(
 // It also resolves any dependencies that the config specifies
 function resolveConfig(
   scx: SyncCtx,
-  set: InstallSetX,
+  allowedDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
 ) {
@@ -477,7 +478,7 @@ function resolveConfig(
     const resolvedResolutionDeps = [] as [string, string][];
     for (const dep of manifest.resolutionDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
-        set,
+        allowedDeps,
         manifest,
         config,
         dep,
@@ -487,7 +488,7 @@ function resolveConfig(
       // get the version resolved config of the dependency
       const depInstId = await resolveAndInstall(
         scx,
-        set,
+        allowedDeps,
         depMan,
         depConf,
       );
@@ -540,7 +541,7 @@ function resolveConfig(
     const buildDepConfigs = {} as Record<string, InstallConfigResolvedX>;
     for (const dep of manifest.buildDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
-        set,
+        allowedDeps,
         manifest,
         config,
         dep,
@@ -548,7 +549,7 @@ function resolveConfig(
       // get the version resolved config of the dependency
       const depInstall = await resolveConfig(
         scx,
-        set,
+        allowedDeps,
         depMan,
         depConf,
       );
@@ -568,14 +569,14 @@ function resolveConfig(
 // for the portsConfig.allowedDeps
 // No version resolution takes place
 export function getDepConfig(
-  set: InstallSetX,
+  allowedDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
   depId: PortDep,
   resolutionDep = false,
 ) {
   const { manifest: depPort, defaultInst: defaultDepInstall } =
-    set.allowedDeps[depId.name];
+    allowedDeps[depId.name];
   if (!depPort) {
     throw new Error(
       `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
@@ -615,11 +616,11 @@ export function getDepConfig(
 // TODO: consider introducing a memoization scheme
 export async function resolveAndInstall(
   scx: SyncCtx,
-  set: InstallSetX,
+  allowedDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   configLite: InstallConfigLiteX,
 ) {
-  const config = await resolveConfig(scx, set, manifest, configLite);
+  const config = await resolveConfig(scx, allowedDeps, manifest, configLite);
   const installId = getInstallHash(config);
 
   const cached = await scx.db.val.get(installId);
@@ -639,11 +640,11 @@ export async function resolveAndInstall(
       await Promise.all(
         manifest.buildDeps?.map(
           async (dep) => {
-            const depConfig = getDepConfig(set, manifest, config, dep);
+            const depConfig = getDepConfig(allowedDeps, manifest, config, dep);
             // we not only resolve but install the dep here
             const { installId } = await resolveAndInstall(
               scx,
-              set,
+              allowedDeps,
               depConfig.manifest,
               depConfig.config,
             );

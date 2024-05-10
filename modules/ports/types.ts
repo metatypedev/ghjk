@@ -178,6 +178,12 @@ const installSetRefProvision = zod.object({
   setId: zod.string(),
 });
 
+export const installProvisionTy = "ghjk.ports.Install";
+export const installProvision = zod.object({
+  ty: zod.literal(installProvisionTy),
+  instId: zod.string(),
+});
+
 const downloadArtifacts = zod.object({
   installVersion: zod.string(),
   downloadPath: zod.string(),
@@ -220,6 +226,7 @@ const validators = {
   allowDepSetHashed,
   installSetProvision,
   installSetRefProvision,
+  installProvision,
   installSet,
   installSetHashed,
   string: zod.string(),
@@ -321,6 +328,8 @@ export type InstallSetProvision = zod.input<
 export type InstallSetProvisionX = zod.infer<
   typeof validators.installSetProvision
 >;
+
+export type InstallProvision = zod.infer<typeof validators.installProvision>;
 
 /*
  * Provisions an [`InstallSet`] that's been pre-defined in the [`PortsModuleConfigX`].

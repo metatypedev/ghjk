@@ -1,7 +1,7 @@
 //! Integration between Ports and Envs module
 
 import { expandGlobsAndAbsolutize, unwrapParseRes } from "../../utils/mod.ts";
-import type { WellKnownProvisionFat } from "../envs/types.ts";
+import { Provision } from "../envs/types.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
 import type { PortsCtx } from "./mod.ts";
@@ -64,7 +64,7 @@ async function reduceInstArts(
   installGraph: InstallGraph,
   installArts: Map<string, InstallArtifacts>,
 ) {
-  const out: WellKnownProvisionFat[] = [];
+  const out = [] as Provision[];
 
   // use this to track seen env vars to report conflicts
   const foundEnvVars: Record<string, [string, string]> = {};
@@ -93,13 +93,11 @@ async function reduceInstArts(
       }
       foundEnvVars[key] = [val, instId];
       out.push({
-        wellKnownProvision: {
-          ty: "posix.envVar",
-          key,
-          val,
-        },
-        installSetIdProvision: { ty: "posix.envVar", id: instId },
+        ty: "posix.envVar",
+        key,
+        val,
       });
+      out.push({ ty: "ghjk.ports.Install", instId });
     }
     const expandCurry = (path: string) =>
       expandGlobsAndAbsolutize(path, installPath);
@@ -115,29 +113,20 @@ async function reduceInstArts(
     out.push(
       ...binPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          wellKnownProvision: {
-            ty: "posix.exec" as const,
-            absolutePath,
-          },
-          installSetIdProvision: null,
+          ty: "posix.exec" as const,
+          absolutePath,
         }))
       ),
       ...libPathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          wellKnownProvision: {
-            ty: "posix.sharedLib" as const,
-            absolutePath,
-          },
-          installSetIdProvision: null,
+          ty: "posix.sharedLib" as const,
+          absolutePath,
         }))
       ),
       ...includePathsNorm.flatMap((paths) =>
         paths.map((absolutePath) => ({
-          wellKnownProvision: {
-            ty: "posix.headerFile" as const,
-            absolutePath,
-          },
-          installSetIdProvision: null,
+          ty: "posix.headerFile" as const,
+          absolutePath,
         }))
       ),
     );

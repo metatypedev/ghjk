@@ -1,5 +1,9 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
-import type { EnvRecipeX } from "./types.ts";
+import {
+  type EnvRecipeX,
+  WellKnownProvision,
+  wellKnownProvisionTypes,
+} from "./types.ts";
 import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
@@ -39,12 +43,15 @@ export async function cookPosixEnv(
   } as Record<string, string>;
   const onEnterHooks = [] as [string, string[]][];
   const onExitHooks = [] as [string, string[]][];
-  const installSetIds = [] as string[];
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
   await Promise.all(reducedRecipe.provides.map((item) => {
-    const wellKnownProv = item.wellKnownProvision;
+    if (!wellKnownProvisionTypes.includes(item.ty)) {
+      return Promise.resolve();
+    }
+
+    const wellKnownProv = item as WellKnownProvision;
     switch (wellKnownProv.ty) {
       case "posix.exec":
         binPaths.push(wellKnownProv.absolutePath);
@@ -64,7 +71,7 @@ export async function cookPosixEnv(
           );
         }
         vars[wellKnownProv.key] = wellKnownProv.val;
-        installSetIds.push(item.installSetIdProvision!.id);
+        // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
         break;
       case "hook.onEnter.posixExec":
         onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);

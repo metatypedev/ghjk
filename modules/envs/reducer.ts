@@ -5,12 +5,15 @@ import type {
   Provision,
   ProvisionReducer,
   WellKnownEnvRecipeX,
-  WellKnownProvisionFat,
+  WellKnownProvision,
 } from "./types.ts";
 import { wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
-export type ProvisionReducerStore = Map<string, ProvisionReducer<Provision>>;
+export type ProvisionReducerStore = Map<
+  string,
+  ProvisionReducer<Provision, Provision>
+>;
 
 /**
  * In order to provide a means for other modules to define their own
@@ -51,14 +54,11 @@ export async function reduceStrangeProvisions(
     }
     bin.push(item);
   }
-  const reducedSet = [] as WellKnownProvisionFat[];
+  const reducedSet = [] as WellKnownProvision[];
   for (const [ty, items] of Object.entries(bins)) {
     if (wellKnownProvisionTypes.includes(ty as any)) {
       reducedSet.push(
-        ...items.map((item) => ({
-          wellKnownProvision: validators.wellKnownProvision.parse(item),
-          installSetIdProvision: null,
-        })),
+        ...items.map((item) => validators.wellKnownProvision.parse(item)),
       );
       continue;
     }
@@ -70,14 +70,13 @@ export async function reduceStrangeProvisions(
     }
     const reduced = await reducer(items);
     reducedSet.push(
-      ...reduced.map((prov) => ({
-        wellKnownProvision: unwrapParseRes(
-          validators.wellKnownProvision.safeParse(prov.wellKnownProvision),
+      ...reduced.map((prov) =>
+        unwrapParseRes(
+          validators.wellKnownProvision.safeParse(prov),
           { prov },
           `error parsing reduced provision`,
-        ),
-        installSetIdProvision: prov.installSetIdProvision,
-      })),
+        )
+      ),
     );
   }
   const out: WellKnownEnvRecipeX = {

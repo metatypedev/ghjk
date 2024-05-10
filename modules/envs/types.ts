@@ -44,22 +44,13 @@ const wellKnownProvision = zod.discriminatedUnion(
   ],
 );
 
-const installSetIdProvision = provision.merge(zod.object({
-  id: zod.string(),
-}));
-
-const wellKnownProvisionFat = zod.object({
-  wellKnownProvision: wellKnownProvision,
-  installSetIdProvision: installSetIdProvision.nullable(),
-});
-
 const envRecipe = zod.object({
   desc: zod.string().nullish(),
   provides: zod.array(provision),
 });
 
 const wellKnownEnvRecipe = envRecipe.merge(zod.object({
-  provides: zod.array(wellKnownProvisionFat),
+  provides: zod.array(wellKnownProvision),
 }));
 
 const envsModuleConfig = zod.object({
@@ -72,8 +63,6 @@ const envsModuleConfig = zod.object({
 const validators = {
   provision,
   wellKnownProvision,
-  installSetIdProvision,
-  wellKnownProvisionFat,
   envRecipe,
   envsModuleConfig,
   wellKnownEnvRecipe,
@@ -86,13 +75,6 @@ export type EnvsModuleConfigX = zod.infer<typeof validators.envsModuleConfig>;
 export type Provision = zod.input<typeof validators.provision>;
 export type WellKnownProvision = zod.input<
   typeof validators.wellKnownProvision
->;
-export type InstallSetIdProvision = zod.input<
-  typeof validators.installSetIdProvision
->;
-
-export type WellKnownProvisionFat = zod.input<
-  typeof validators.wellKnownProvisionFat
 >;
 
 export type EnvRecipe = zod.input<typeof validators.envRecipe>;
@@ -108,6 +90,6 @@ export type WellKnownEnvRecipeX = zod.infer<
 /*
  * A function that batch convert strange provisions of a certain kind to well known ones.
  */
-export type ProvisionReducer<P extends Provision> = (
+export type ProvisionReducer<P extends Provision, O extends Provision> = (
   provisions: P[],
-) => Promise<WellKnownProvisionFat[]>;
+) => Promise<O[]>;
