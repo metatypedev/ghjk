@@ -79,6 +79,9 @@ export async function cookPosixEnv(
       case "hook.onExit.posixExec":
         onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
         break;
+      case "ghjk.ports.Install":
+        // do nothing
+        break;
       default:
         throw Error(
           `unsupported provision type: ${(wellKnownProv as any).provision}`,
