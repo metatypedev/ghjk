@@ -1,6 +1,6 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, zod } from "../../deps/cli.ts";
+import { cliffy_cmd, Table, zod } from "../../deps/cli.ts";
 import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
@@ -11,15 +11,12 @@ import validators, {
 import envsValidators from "../envs/types.ts";
 import type {
   AllowedPortDep,
+  InstallConfigResolved,
   InstallProvision,
   InstallSetX,
   PortsModuleConfigX,
 } from "./types.ts";
-import {
-  type GhjkCtx,
-  type ModuleManifest,
-  portsCtxBlackboardKey,
-} from "../types.ts";
+import { type GhjkCtx, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
   buildInstallGraph,
@@ -35,7 +32,7 @@ import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
 import { getInstallSetStore } from "./inter.ts";
-import { getEnvsCtx } from "../utils.ts";
+import { getActiveEnvInstallSetId, getEnvsCtx, getPortsCtx } from "../utils.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -68,11 +65,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     const hashedModConf = unwrapParseCurry(
       validators.portsModuleConfigHashed.safeParse(manifest.config),
     );
-    const pcx: PortsCtx = {
-      config: {
-        sets: {},
-      },
-    };
+
+    const pcx: PortsCtx = getPortsCtx(gcx);
 
     const setStore = getInstallSetStore(gcx);
     // pre-process the install sets found in the config
@@ -116,8 +110,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       installSetReducer(gcx) as ProvisionReducer<Provision, Provision>,
     );
 
-    gcx.blackboard.set(portsCtxBlackboardKey, pcx);
-    // console.log($.inspect(pcx.config.sets));
     return pcx;
   }
 
@@ -158,33 +150,47 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
               const envsCtx = getEnvsCtx(gcx);
               const envName = envsCtx.activeEnv;
 
-              let allowedDeps = {};
               const installSets = pcx.config.sets;
 
-              for (const [_id, instSet] of Object.entries(installSets)) {
-                const set = unwrapParseRes(
-                  validators.installSet.safeParse(instSet),
-                  {
-                    envName,
-                    instSet,
-                  },
-                  "error parsing install set for the current env",
-                );
-                allowedDeps = set.allowedDeps;
-              }
+              const currInstallSetId = getActiveEnvInstallSetId(envsCtx);
+              const currInstallSet = installSets[currInstallSetId];
+              const allowedDeps = currInstallSet.allowedDeps;
 
+              const rows = [];
               const {
-                installedPortsVersions: _installed,
-                latestPortsVersions: _latest,
-              } = await getCurrentLatestVersionComparison(
+                installedPortsVersions: installed,
+                latestPortsVersions: latest,
+                installConfigs,
+              } = await getOldNewVersionComparison(
                 gcx,
                 envName,
                 allowedDeps,
               );
+              for (const [setId, installedVersion] of installed.entries()) {
+                const latestVersion = latest.get(setId);
+                const config = installConfigs.get(setId);
+                const row = [
+                  $.inspect(config),
+                  installedVersion,
+                  latestVersion,
+                ];
+                rows.push(row);
+              }
 
-              // update selectively and the whole ports
+              const _versionTable = new Table()
+                .header(["Install Config", "Old Version", "New Version"])
+                .body(rows)
+                .border()
+                .padding(1)
+                .indent(2)
+                // .maxColWidth(40)
+                .render();
 
-              // display the versions in table
+              // TODO: --update-only flag, requires port refactor, needs install name, and subcommand with -p and -i to update specific install or all installs for a port
+
+              // TODO: --update-all, updates all the installs shown in the table
+
+              // TODO: --port-name, shows installs of specific port
             }),
         )
         .command(
@@ -232,7 +238,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
   }
 }
 
-async function getCurrentLatestVersionComparison(
+async function getOldNewVersionComparison(
   gcx: GhjkCtx,
   envName: string,
   allowedDeps: Record<string, AllowedPortDep>,
@@ -265,6 +271,8 @@ async function getCurrentLatestVersionComparison(
 
   const installedPortsVersions = new Map<string, string>();
   const latestPortsVersions = new Map<string, string>();
+  const installConfigs = new Map<string, InstallConfigResolved>();
+
   // get the current/installed version for the ports
   for (
     const installProv of installProvisions
@@ -327,11 +335,14 @@ async function getCurrentLatestVersionComparison(
     const latestStable = await port.latestStable(listAllArgs);
     latestPortsVersions.set(setId, latestStable);
 
+    installConfigs.set(setId, config);
+
     await $.removeIfExists(depShimsRootPath);
   }
 
   return {
     installedPortsVersions: installedPortsVersions,
     latestPortsVersions: latestPortsVersions,
+    installConfigs: installConfigs,
   };
 }

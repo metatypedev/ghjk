@@ -1,5 +1,9 @@
 import { EnvsCtx } from "./envs/mod.ts";
 import { PortsCtx } from "./ports/mod.ts";
+import {
+  InstallSetRefProvision,
+  installSetRefProvisionTy,
+} from "./ports/types.ts";
 import { TasksCtx } from "./tasks/mod.ts";
 import {
   envsCtxBlackboardKey,
@@ -11,19 +15,19 @@ import {
 export function getEnvsCtx(
   gcx: GhjkCtx,
 ): EnvsCtx {
-  const envsCtx = gcx.blackboard.get(envsCtxBlackboardKey) as
+  let envsCtx = gcx.blackboard.get(envsCtxBlackboardKey) as
     | EnvsCtx
     | undefined;
 
   if (!envsCtx) {
-    throw new Error(
-      "Could not resolve Env Context",
-      {
-        cause: {
-          gcx,
-        },
+    envsCtx = {
+      activeEnv: "",
+      config: {
+        defaultEnv: "",
+        envs: {},
       },
-    );
+    };
+    gcx.blackboard.set(envsCtxBlackboardKey, envsCtx);
   }
 
   return envsCtx;
@@ -32,19 +36,17 @@ export function getEnvsCtx(
 export function getPortsCtx(
   gcx: GhjkCtx,
 ): PortsCtx {
-  const portsCtx = gcx.blackboard.get(portsCtxBlackboardKey) as
+  let portsCtx = gcx.blackboard.get(portsCtxBlackboardKey) as
     | PortsCtx
     | undefined;
 
   if (!portsCtx) {
-    throw new Error(
-      "Could not resolve Ports Context",
-      {
-        cause: {
-          gcx,
-        },
+    portsCtx = {
+      config: {
+        sets: {},
       },
-    );
+    };
+    gcx.blackboard.set(portsCtxBlackboardKey, portsCtx);
   }
 
   return portsCtx;
@@ -53,20 +55,39 @@ export function getPortsCtx(
 export function getTasksCtx(
   gcx: GhjkCtx,
 ): TasksCtx {
-  const tasksCtx = gcx.blackboard.get(tasksCtxBlackboardKey) as
+  let tasksCtx = gcx.blackboard.get(tasksCtxBlackboardKey) as
     | TasksCtx
     | undefined;
 
   if (!tasksCtx) {
-    throw new Error(
-      "Could not resolve Tasks Context",
-      {
-        cause: {
-          gcx,
-        },
+    tasksCtx = {
+      config: {
+        envs: {},
+        tasks: {},
+        tasksNamed: [],
       },
-    );
+      taskGraph: {
+        indie: [],
+        revDepEdges: {},
+        depEdges: {},
+      },
+    };
+    gcx.blackboard.set(tasksCtxBlackboardKey, tasksCtx);
   }
 
   return tasksCtx;
+}
+
+export function getActiveEnvInstallSetId(envsCtx: EnvsCtx): string {
+  const activeEnvName = envsCtx.activeEnv;
+  const activeEnv = envsCtx.config.envs[activeEnvName];
+  if (!activeEnv) {
+    throw new Error(`No env found under given name "${activeEnvName}"`);
+  }
+
+  const instSetRef = activeEnv.provides.filter((prov) =>
+    prov.ty === installSetRefProvisionTy
+  )[0] as InstallSetRefProvision;
+
+  return instSetRef.setId;
 }

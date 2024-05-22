@@ -16,7 +16,7 @@ import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "./types.ts";
-import validators from "./types.ts";
+import validators, { installProvisionTy } from "./types.ts";
 
 export function installSetReducer(gcx: GhjkCtx) {
   return async (provisions: InstallSetProvision[]) => {
@@ -75,6 +75,7 @@ async function reduceInstArts(
       .get(
         instId,
       )!;
+    out.push({ ty: installProvisionTy, instId });
 
     for (const [key, val] of Object.entries(env)) {
       const conflict = foundEnvVars[key];
@@ -97,7 +98,6 @@ async function reduceInstArts(
         key,
         val,
       });
-      out.push({ ty: "ghjk.ports.Install", instId });
     }
     const expandCurry = (path: string) =>
       expandGlobsAndAbsolutize(path, installPath);

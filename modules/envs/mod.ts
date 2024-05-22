@@ -8,11 +8,7 @@ import type {
   EnvsModuleConfigX,
   WellKnownProvision,
 } from "./types.ts";
-import {
-  envsCtxBlackboardKey,
-  type GhjkCtx,
-  type ModuleManifest,
-} from "../types.ts";
+import { type GhjkCtx, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
@@ -22,6 +18,7 @@ import type {
   InstallSetRefProvision,
 } from "../ports/types.ts";
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
+import { getEnvsCtx } from "../utils.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -54,12 +51,9 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const setEnv = Deno.env.get("GHJK_ENV");
     const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
-    const envsCtx = {
-      activeEnv,
-      config,
-    };
-
-    _ctx.blackboard.set(envsCtxBlackboardKey, envsCtx);
+    const envsCtx = getEnvsCtx(_ctx);
+    envsCtx.activeEnv = activeEnv;
+    envsCtx.config = config;
 
     return Promise.resolve(envsCtx);
   }
@@ -241,7 +235,6 @@ async function reduceAndCookEnv(
     return;
   }
   */
-
   await cookPosixEnv({
     gcx,
     recipe,
