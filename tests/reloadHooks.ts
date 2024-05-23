@@ -3,6 +3,9 @@ import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../port.ts";
 
+// TODO: test for hook reload when ghjk.ts is touched
+// TODO: test for hook reload when nextfile is touched
+
 const posixInteractiveScript = `
 set -eux
 [ "$DUMMY_ENV" = "dummy" ] || exit 101
@@ -37,11 +40,10 @@ eval_PROMPT_COMMAND() {
 }
 `,
   ...posixInteractiveScript
-    .split("\n").map((line) =>
-      `eval_PROMPT_COMMAND
-${line}
-`
-    ),
+    .split("\n").flatMap((line) => [
+      `eval_PROMPT_COMMAND`,
+      line,
+    ]),
 ]
   .join("\n");
 
@@ -49,11 +51,8 @@ const zshInteractiveScript = [
   // simulate interactive mode by evaluating precmd
   // before each line
   ...posixInteractiveScript
-    .split("\n").map((line) =>
-      `precmd
-${line}
-`
-    ),
+    .split("\n")
+    .flatMap((line) => [`precmd`, line]),
 ]
   .join("\n");
 
@@ -158,7 +157,15 @@ const cases: CustomE2eTestCase[] = [
 harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: genTsGhjkFile(
-    { installConf: testCase.installConf ?? dummy(), taskDefs: [] },
+    {
+      installConf: testCase.installConf ?? dummy(),
+      taskDefs: [],
+      envDefs: [
+        {
+          name: "test",
+        },
+      ],
+    },
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `reloadHooks/${testCase.name}`,

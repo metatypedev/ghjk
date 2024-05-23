@@ -196,6 +196,20 @@ export const $ = dax.build$(
     requestBuilder: new dax.RequestBuilder()
       .showProgress(Deno.stderr.isTerminal()),
     extras: {
+      exponentialBackoff(initialDelayMs: number) {
+        let delay = initialDelayMs;
+        let attempt = 0;
+
+        return {
+          next() {
+            if (attempt > 0) {
+              delay *= 2;
+            }
+            attempt += 1;
+            return delay;
+          },
+        };
+      },
       inspect(val: unknown) {
         return Deno.inspect(val, {
           colors: isColorfulTty(),
@@ -236,7 +250,7 @@ export async function findEntryRecursive(path: string, name: string) {
   }
 }
 
-export function home_dir(): string | null {
+export function homeDir() {
   switch (Deno.build.os) {
     case "linux":
     case "darwin":
@@ -249,7 +263,7 @@ export function home_dir(): string | null {
 }
 
 export function dirs() {
-  const home = home_dir();
+  const home = homeDir();
   if (!home) {
     throw new Error("cannot find home dir");
   }
@@ -283,21 +297,6 @@ export async function importRaw(spec: string, timeout: dax.Delay = "1m") {
   throw new Error(
     `error importing raw from ${spec}: unrecognized protocol ${url.protocol}`,
   );
-}
-
-export function exponentialBackoff(initialDelayMs: number) {
-  let delay = initialDelayMs;
-  let attempt = 0;
-
-  return {
-    next() {
-      if (attempt > 0) {
-        delay *= 2;
-      }
-      attempt += 1;
-      return delay;
-    },
-  };
 }
 
 export async function shimScript(

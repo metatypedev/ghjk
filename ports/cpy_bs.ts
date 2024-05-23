@@ -10,7 +10,6 @@ import {
   depExecShimPath,
   downloadFile,
   dwnUrlOut,
-  exponentialBackoff,
   osXarch,
   PortBase,
   std_fs,
@@ -79,7 +78,7 @@ export class Port extends PortBase {
   async latestMeta(headers: Record<string, string>) {
     const meta = await $.withRetries({
       count: 10,
-      delay: exponentialBackoff(1000),
+      delay: $.exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/latest-release/latest-release.json`,
@@ -113,7 +112,7 @@ export class Port extends PortBase {
     // on every release
     const metadata = await $.withRetries({
       count: 10,
-      delay: exponentialBackoff(1000),
+      delay: $.exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/tags/${tag}`,

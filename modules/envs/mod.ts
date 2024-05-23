@@ -103,11 +103,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
                 );
               }
               const envName = envNameMaybe ?? ecx.config.defaultEnv;
-              // FIXME: the ghjk process will be around and consumer resources
-              // with approach. Ideally, we'd detach the child and exit but this is blocked by
-              // https://github.com/denoland/deno/issues/5501 is closed
-              await $`${shell}`
-                .env({ GHJK_ENV: envName });
+              activateEnv(gcx, envName);
             }),
         )
         .command(
@@ -162,7 +158,7 @@ Just simply cooks and activates an environment.
           const envName = envNameMaybe ?? ecx.activeEnv;
           await reduceAndCookEnv(gcx, ecx, envName);
           if (ecx.activeEnv != envName) {
-            await $`${shell}`.env({ GHJK_ENV: envName });
+            activateEnv(gcx, envName);
           }
         }),
     };
@@ -321,4 +317,12 @@ async function showableEnv(
     ...(recipe.desc ? { desc: recipe.desc } : {}),
     envName,
   };
+}
+
+async function activateEnv(gcx: GhjkCtx, envName: string) {
+  await $.path(gcx.ghjkDir).join("envs", "next").writeText(envName);
+  // FIXME: the ghjk process will be around and consumer resources
+  // with approach. Ideally, we'd detach the child and exit but this is blocked by
+  // https://github.com/denoland/deno/issues/5501 is closed
+  // await $`${shell}`.env({ GHJK_ENV: envName });
 }

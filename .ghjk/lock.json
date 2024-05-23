@@ -5,13 +5,18 @@
     "ports": {
       "version": "0",
       "configResolutions": {
+        "bciqkpfuyqchouu5o3whigod3f5coscq2jdlwde6fztypy3x6fg6xb5q": {
+          "version": "v27.0",
+          "buildDepConfigs": {},
+          "portRef": "protoc_ghrel@0.1.0"
+        },
         "bciqjlw6cxddajjmznoemlmnu7mgbbm7a3hfmnd2x5oivwajmiqui5ey": {
           "version": "v0.2.62",
           "buildDepConfigs": {},
           "portRef": "act_ghrel@0.1.0"
         },
         "bciqao2s3r3r33ruox4qknfrxqrmemuccxn64dze2ylojrzp2bwvt4ji": {
-          "version": "3.7.0",
+          "version": "3.7.1",
           "buildDepConfigs": {
             "cpy_bs_ghrel": {
               "version": "3.12.3",
@@ -58,11 +63,6 @@
           "version": "v1.5.5,",
           "buildDepConfigs": {},
           "portRef": "zstd_aa@0.1.0"
-        },
-        "bciqkpfuyqchouu5o3whigod3f5coscq2jdlwde6fztypy3x6fg6xb5q": {
-          "version": "v26.1",
-          "buildDepConfigs": {},
-          "portRef": "protoc_ghrel@0.1.0"
         }
       }
     },
