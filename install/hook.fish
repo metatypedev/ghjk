@@ -16,8 +16,6 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
     test -z $next_env; and set next_env "$GHJK_ENV"
     test -z $next_env; and set next_env "default"
 
-    echo here $next_env - $argv - $GHJK_ENV
-
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
         eval $GHJK_CLEANUP_FISH
@@ -60,7 +58,7 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
             . $next_env_dir/activate.fish
             # export variables to assist in change detection
             set --global --export GHJK_LAST_ENV_DIR $next_env_dir
-            set --global --export GHJK_LAST_ENV_DIR_mtime (__ghjk_get_mtime_ts $next_env_dir/activate.fish)
+            set --global --export GHJK_LAST_ENV_DIR_MTIME (__ghjk_get_mtime_ts $next_env_dir/activate.fish)
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
@@ -86,33 +84,25 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
     end
 end
 
-set --export --global GHJK_LAST_PROMPT_TS (date "+%s")
+set --local tmp_dir "$TMPDIR"
+test -z $tmp_dir; and set tmp_dir "/tmp"
+set --export --global GHJK_NEXTFILE "$tmp_dir/ghjk.nextfile.$fish_pid"
 
 # trigger reload when the env dir loader mtime changes
-function __ghjk_env_dir_watcher --on-event fish_postexec
-    set --local cur_ts (date "+%s")
+function __ghjk_postexec --on-event fish_postexec
 
     # trigger reload when either 
-    if set --query GHJK_LAST_GHJK_DIR; 
-        # - nextfile exists
-        and set --local nextfile "$GHJK_LAST_GHJK_DIR/envs/next";
-        and test -f $nextfile;
-        # - nextfile was touched after last command
-        and set --local nextfile_mtime (__ghjk_get_mtime_ts $nextfile);
-        and test $nextfile_mtime -ge $GHJK_LAST_PROMPT_TS;
-        #   and younger than 2 seconds 
-        and test (math $cur_ts - $nextfile_mtime) -lt 2;
+    # exists
+    if set --query GHJK_NEXTFILE; and test -f "$GHJK_NEXTFILE";
 
-        ghjk_reload "(cat $nextfile)"
-        rm $nextfile
+        ghjk_reload "$(cat $GHJK_NEXTFILE)"
+        rm "$GHJK_NEXTFILE"
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
-        and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_mtime;
+        and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_MTIME;
         ghjk_reload
     end
-
-    set GHJK_LAST_PROMPT_TS $cur_ts
 end
 
 status is-interactive; and ghjk_reload

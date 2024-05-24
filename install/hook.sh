@@ -64,9 +64,9 @@ ghjk_reload() {
             . "$next_env_dir/activate.sh"
             # export variables to assist in change detection
             GHJK_LAST_ENV_DIR="$next_env_dir"
-            GHJK_LAST_ENV_DIR_mtime="$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")"
+            GHJK_LAST_ENV_DIR_MTIME="$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")"
             export GHJK_LAST_ENV_DIR
-            export GHJK_LAST_ENV_DIR_mtime
+            export GHJK_LAST_ENV_DIR_MTIME
 
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             if [ "$(__ghjk_get_mtime_ts "$local_ghjk_dir/../ghjk.ts")" -gt "$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")" ]; then
@@ -89,11 +89,9 @@ ghjk_reload() {
 
 # memo to detect directory changes
 export GHJK_LAST_PWD="$PWD"
-GHJK_LAST_PROMPT_TS="$(date "+%s")"
-export GHJK_LAST_PROMPT_TS
+export GHJK_NEXTFILE="${TMPDIR:-/tmp}/ghjk.nextfile.$$"
 
 precmd() {
-    cur_ts=$(date "+%s")
     # trigger reload when either 
     #  - the PWD changes
     if [ "$GHJK_LAST_PWD" != "$PWD" ]; then
@@ -101,26 +99,18 @@ precmd() {
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
 
-    elif [ -n "${GHJK_LAST_GHJK_DIR+x}" ] && 
-        # -nextfile exists
-        nextfile="$GHJK_LAST_GHJK_DIR/envs/next" &&
-        [ -f "$nextfile" ] &&
-        # - nextfile was touched after last command
-        nextfile_mtime="$(__ghjk_get_mtime_ts "$nextfile")" &&
-        [ "$nextfile_mtime" -ge "$GHJK_LAST_PROMPT_TS" ] &&  
-        #   and younger than 2 seconds 
-        [ $(( "$cur_ts" - "$nextfile_mtime" )) -lt 2 ]; then 
+    # -nextfile exists
+    elif [ -f "$GHJK_NEXTFILE" ]; then 
 
-        ghjk_reload "$(cat "$nextfile")"
-        rm $nextfile
+        ghjk_reload "$(cat "$GHJK_NEXTFILE")"
+        rm "$GHJK_NEXTFILE"
 
     #  - the env dir loader mtime changes
-    elif [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_mtime" ]; then 
+    elif [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
 
         ghjk_reload
 
     fi
-    GHJK_LAST_PROMPT_TS="$cur_ts"
 }
 
 ghjk_reload

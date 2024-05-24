@@ -412,15 +412,17 @@ function validateRawConfig(
   raw: unknown,
   configPath: Path,
 ): SerializedConfig {
-  const res = validators.serializedConfig.safeParse(raw);
-  if (!res.success) {
+  try {
+    return validators.serializedConfig.parse(raw);
+  } catch (err) {
+    const validationError = zod_val_err.fromError(err);
     throw new Error(
-      `error parsing seralized config from ${configPath}: ${
-        zod_val_err.fromZodError(res.error).toString()
-      }`,
+      `error parsing seralized config from ${configPath}: ${validationError.toString()}`,
+      {
+        cause: validationError,
+      },
     );
   }
-  return res.data;
 }
 
 const lockObjValidator = zod.object({
@@ -440,19 +442,16 @@ async function readLockFile(lockFilePath: Path) {
   if (!rawStr) return;
   try {
     const rawJson = JSON.parse(rawStr);
-    const res = lockObjValidator.safeParse(rawJson);
-    if (!res.success) {
-      throw zod_val_err.fromZodError(res.error);
-    }
-    return res.data;
+    return lockObjValidator.parse(rawJson);
   } catch (err) {
+    const validationError = zod_val_err.fromError(err);
     logger().error(
-      `error parsing lockfile from ${lockFilePath}: ${err.toString()}`,
+      `error parsing lockfile from ${lockFilePath}: ${validationError.toString()}`,
     );
     if (Deno.stderr.isTerminal() && await $.confirm("Discard lockfile?")) {
       return;
     } else {
-      throw err;
+      throw validationError;
     }
   }
 }
@@ -477,14 +476,12 @@ async function readHashFile(hashFilePath: Path) {
   if (!rawStr) return;
   try {
     const rawJson = JSON.parse(rawStr);
-    const res = hashObjValidator.safeParse(rawJson);
-    if (!res.success) {
-      throw zod_val_err.fromZodError(res.error);
-    }
-    return res.data;
+    return hashObjValidator.parse(rawJson);
   } catch (err) {
     logger().error(
-      `error parsing hashfile from ${hashObjValidator}: ${err.toString()}`,
+      `error parsing hashfile from ${hashObjValidator}: ${
+        zod_val_err.fromError(err).toString()
+      }`,
     );
     logger().warn("discarding invalid hashfile");
     return;

@@ -261,7 +261,7 @@ async function writeActivators(
       ``,
       `# env vars`,
       ...Object.entries(env).flatMap(([key, val]) => [
-        `set --global --append GHJK_CLEANUP_FISH 'test $${key}'" = '${val}'; and set --global --export ${key} '$${key}';";`,
+        `set --global --append GHJK_CLEANUP_FISH 'test "$${key}"'" = '${val}'; and set --global --export ${key} '$${key}';";`,
         `set --global --export ${key} '${val}';`,
         ``,
       ]),

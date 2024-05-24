@@ -29,7 +29,7 @@ dummy
 
 [ "$GHJK_ENV" = "main" ] || exit 107
 ghjk e cook test
-echo "test" > .ghjk/envs/next
+echo "test" > $GHJK_NEXTFILE
 [ "$GHJK_ENV" = "test" ] || exit 108
 `;
 
@@ -164,7 +164,7 @@ const fishInteractiveScript = [
 ghjk e cook test
 test $GHJK_ENV = "main"; or exit 107
 
-echo "test" > .ghjk/envs/next
+echo "test" > $GHJK_NEXTFILE
 test "$GHJK_ENV" = "test"; or exit 108
 
 ghjk_reload main
