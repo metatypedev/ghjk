@@ -1,6 +1,6 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
 import type { EnvRecipeX } from "./types.ts";
-import { $, homeDir, Path } from "../../utils/mod.ts";
+import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
 import { ghjk_fish, ghjk_sh } from "../../install/utils.ts";
@@ -185,17 +185,20 @@ async function writeActivators(
   onEnterHooks: [string, string[]][],
   onExitHooks: [string, string[]][],
 ) {
-  const home = homeDir();
-  if (home) {
-    const safeHome = home.replace(/\/$/, "");
-    pathVars = {
-      ...Object.fromEntries(
-        Object.entries(pathVars).map((
-          [key, val],
-        ) => [key, val.replace(safeHome, "~")]),
-      ),
-    };
-  }
+  const ghjkDirVar = "_ghjk_dir";
+  const shareDirVar = "_ghjk_share_dir";
+  pathVars = {
+    ...Object.fromEntries(
+      Object.entries(pathVars).map((
+        [key, val],
+      ) => [
+        key,
+        val
+          .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
+          .replace(gcx.ghjkShareDir.toString(), "$" + shareDirVar),
+      ]),
+    ),
+  };
 
   const ghjkShimName = "__ghjk_shim";
   const onEnterHooksEscaped = onEnterHooks.map(([cmd, args]) =>
@@ -219,6 +222,10 @@ async function writeActivators(
       `fi`,
       `export GHJK_CLEANUP_POSIX="";`,
       ``,
+      `# the following variables are used to make the script more human readable`,
+      `${ghjkDirVar}="${gcx.ghjkDir.toString()}"`,
+      `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
+      ``,
       `# env vars`,
       ...Object.entries(env).flatMap(([key, val]) => [
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
@@ -234,7 +241,7 @@ async function writeActivators(
       ...Object.entries(pathVars).flatMap(([key, val]) => [
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "^${val}" | tr "\\n" ":");${key}="\${${key}%:}";';`,
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "'^${val}'" | tr "\\n" ":");${key}="\${${key}%:}";';`,
         `export ${key}="${val}:$${key}";`,
         ``,
       ]),
@@ -259,6 +266,10 @@ async function writeActivators(
       `    set --erase GHJK_CLEANUP_FISH`,
       `end`,
       ``,
+      `# the following variables are used to make the script more human readable`,
+      `set ${ghjkDirVar} "${gcx.ghjkDir.toString()}"`,
+      `set ${shareDirVar} "${gcx.ghjkShareDir.toString()}"`,
+      ``,
       `# env vars`,
       ...Object.entries(env).flatMap(([key, val]) => [
         `set --global --append GHJK_CLEANUP_FISH 'test "$${key}"'" = '${val}'; and set --global --export ${key} '$${key}';";`,
@@ -268,7 +279,7 @@ async function writeActivators(
       ``,
       `# path vars`,
       ...Object.entries(pathVars).flatMap(([key, val]) => [
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex "^${val}" $${key});';`,
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex '"^${val}"' $${key});';`,
         `set --global --export --prepend ${key} ${val};`,
         ``,
       ]),
