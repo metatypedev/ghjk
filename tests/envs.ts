@@ -40,7 +40,7 @@ const envVarTestEnvs: EnvDefArgs[] = [
   },
   {
     name: "yuki",
-    base: false,
+    inherit: false,
     vars: {
       HUMM: "Soul Lady",
     },
@@ -110,7 +110,7 @@ const installTestEnvs: EnvDefArgs[] = [
   },
   {
     name: "foo",
-    base: false,
+    inherit: false,
     installs: [
       dummy({ output: "foo" }),
     ],

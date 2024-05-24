@@ -1,5 +1,5 @@
 export { ghjk } from "./mod.ts";
-import { env, install, stdSecureConfig, task } from "./mod.ts";
+import { $, env, install, stdSecureConfig, task } from "./mod.ts";
 import * as ports from "./ports/mod.ts";
 
 // these are just for quick testing

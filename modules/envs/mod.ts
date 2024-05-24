@@ -91,23 +91,9 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
 
 - If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`)
             .arguments("[envName:string]")
-            .option(
-              "--shell <shell>",
-              "The shell to use. Tries to detect the current shell if not provided.",
-            )
-            .action(async function ({ shell: shellMaybe }, envNameMaybe) {
-              const shell = shellMaybe ?? await detectShellPath();
-              if (!shell) {
-                throw new Error(
-                  "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
-                );
-              }
+            .action(async function (_, envNameMaybe) {
               const envName = envNameMaybe ?? ecx.config.defaultEnv;
-              // FIXME: the ghjk process will be around and consumer resources
-              // with approach. Ideally, we'd detach the child and exit but this is blocked by
-              // https://github.com/denoland/deno/issues/5501 is closed
-              await $`${shell}`
-                .env({ GHJK_ENV: envName });
+              await activateEnv(gcx, envName);
             }),
         )
         .command(
@@ -148,22 +134,10 @@ Just simply cooks and activates an environment.
 - If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`)
         .arguments("[envName:string]")
-        .option(
-          "--shell <shell>",
-          "The shell to use. Tries to detect the current shell if not provided.",
-        )
-        .action(async function ({ shell: shellMaybe }, envNameMaybe) {
-          const shell = shellMaybe ?? await detectShellPath();
-          if (!shell) {
-            throw new Error(
-              "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
-            );
-          }
+        .action(async function (_, envNameMaybe) {
           const envName = envNameMaybe ?? ecx.activeEnv;
           await reduceAndCookEnv(gcx, ecx, envName);
-          if (ecx.activeEnv != envName) {
-            await $`${shell}`.env({ GHJK_ENV: envName });
-          }
+          await activateEnv(gcx, envName);
         }),
     };
   }
@@ -321,4 +295,22 @@ async function showableEnv(
     ...(recipe.desc ? { desc: recipe.desc } : {}),
     envName,
   };
+}
+
+async function activateEnv(gcx: GhjkCtx, envName: string) {
+  const nextfile = Deno.env.get("GHJK_NEXTFILE");
+  if (nextfile) {
+    await $.path(gcx.ghjkDir).join("envs", "next").writeText(envName);
+  } else {
+    const shell = await detectShellPath();
+    if (!shell) {
+      throw new Error(
+        "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+      );
+    }
+    // FIXME: the ghjk process will be around and consumer resources
+    // with approach. Ideally, we'd detach the child and exit but this is blocked by
+    // https://github.com/denoland/deno/issues/5501 is closed
+    await $`${shell}`.env({ GHJK_ENV: envName });
+  }
 }
