@@ -33,6 +33,7 @@ import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
 import { getInstallSetStore } from "./inter.ts";
 import { getActiveEnvInstallSetId, getEnvsCtx, getPortsCtx } from "../utils.ts";
+import { updateInstall } from "./utils.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -144,7 +145,10 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           "outdated",
           new cliffy_cmd.Command()
             .description("TODO")
-            .option("-u, --update-port <portname>", "Update specific port")
+            .option(
+              "-u, --update-install <installName>",
+              "Update specific port",
+            )
             .option("-n, --update-no-confirm", "Update all ports")
             .action(async (_opts) => {
               const envsCtx = getEnvsCtx(gcx);
@@ -166,15 +170,35 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 envName,
                 allowedDeps,
               );
-              for (const [setId, installedVersion] of installed.entries()) {
-                const latestVersion = latest.get(setId);
-                const config = installConfigs.get(setId);
+              for (const [installId, installedVersion] of installed.entries()) {
+                const latestVersion = latest.get(installId);
+                const config = installConfigs.get(installId);
+                const presentableConfig = { ...config };
+                ["buildDepConfigs", "version"].map((key) => {
+                  delete presentableConfig[key];
+                });
                 const row = [
-                  $.inspect(config),
+                  $.inspect(presentableConfig),
                   installedVersion,
                   latestVersion,
                 ];
                 rows.push(row);
+              }
+
+              if (_opts.updateInstall) {
+                const _installName = _opts.updateInstall;
+                // TODO: convert from install name to install id, after port module refactor
+                let installId!: string;
+                const newVersion = latest.get(installId)!;
+                await updateInstall(gcx, installId, newVersion, allowedDeps);
+                return;
+              }
+
+              if (_opts.updateNoConfirm) {
+                for (const [installId, newVersion] of latest.entries()) {
+                  await updateInstall(gcx, installId, newVersion, allowedDeps);
+                }
+                return;
               }
 
               const _versionTable = new Table()
@@ -183,14 +207,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 .border()
                 .padding(1)
                 .indent(2)
-                // .maxColWidth(40)
+                .maxColWidth(30)
                 .render();
-
-              // TODO: --update-only flag, requires port refactor, needs install name, and subcommand with -p and -i to update specific install or all installs for a port
-
-              // TODO: --update-all, updates all the installs shown in the table
-
-              // TODO: --port-name, shows installs of specific port
             }),
         )
         .command(
@@ -277,19 +295,19 @@ async function getOldNewVersionComparison(
   for (
     const installProv of installProvisions
   ) {
-    const setId = installProv.instId;
-    const installSet = await db.get(setId);
+    const installId = installProv.instId;
+    const install = await db.get(installId);
 
-    if (!installSet) {
-      throw new Error("InstallSetId not found in InstallsDb", {
+    if (!install) {
+      throw new Error("InstallId not found in InstallsDb", {
         cause: {
-          setId,
+          installId,
         },
       });
     }
 
-    const manifest = installSet.manifest;
-    const config = installSet.conf;
+    const manifest = install.manifest;
+    const config = install.conf;
 
     const resolvedResolutionDeps = [] as [string, string][];
     for (const dep of manifest.resolutionDeps ?? []) {
@@ -329,13 +347,13 @@ async function getOldNewVersionComparison(
 
     // get the current Version
     const currentVersion = config.version;
-    installedPortsVersions.set(setId, currentVersion);
+    installedPortsVersions.set(installId, currentVersion);
 
     // get the latest version of the port
     const latestStable = await port.latestStable(listAllArgs);
-    latestPortsVersions.set(setId, latestStable);
+    latestPortsVersions.set(installId, latestStable);
 
-    installConfigs.set(setId, config);
+    installConfigs.set(installId, config);
 
     await $.removeIfExists(depShimsRootPath);
   }

@@ -559,6 +559,7 @@ function resolveConfig(
     return validators.installConfigResolved.parse({
       ...config,
       version,
+      specifiedVersion: !!config.version,
       buildDepConfigs,
     });
   }
@@ -836,7 +837,7 @@ type DownloadStageArgs = {
   depArts: DepArts;
 };
 
-async function doDownloadStage(
+export async function doDownloadStage(
   {
     installId,
     installPath,
@@ -885,7 +886,7 @@ async function doDownloadStage(
 
 type InstallStageArgs = DownloadStageArgs;
 
-async function doInstallStage(
+export async function doInstallStage(
   {
     installId,
     installPath,
