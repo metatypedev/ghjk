@@ -179,6 +179,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
 export type TaskDef =
   & Omit<DenoTaskDefArgs, "fn">
   & Required<Pick<DenoTaskDefArgs, "fn">>;
+
 export function genTsGhjkFile(
   { installConf, secureConf, taskDefs, envDefs }: {
     installConf?: InstallConfigFat | InstallConfigFat[];
@@ -200,12 +201,14 @@ export function genTsGhjkFile(
         ? val.replaceAll(/\\/g, "\\\\")
         : val,
   );
+
   const serializedSecConf = JSON.stringify(
     // undefined is not recognized by JSON.parse
     // so we stub it with null
     secureConf ?? null,
     (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
   );
+
   const tasks = (taskDefs ?? []).map(
     (def) => {
       const stringifiedSection = JSON.stringify(
@@ -220,6 +223,7 @@ export function genTsGhjkFile(
       })`;
     },
   ).join("\n");
+
   const envs = (envDefs ?? []).map(
     (def) => {
       const stringifiedSection = JSON.stringify(
@@ -233,6 +237,7 @@ export function genTsGhjkFile(
       })`;
     },
   ).join("\n");
+
   return `
 export { ghjk } from "$ghjk/mod.ts";
 import * as ghjk from "$ghjk/mod.ts";

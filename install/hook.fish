@@ -9,7 +9,15 @@ function __ghjk_get_mtime_ts
     end
 end
 
-function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-variable GHJK_ENV
+function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
+    # precedence is gven to argv over GHJK_ENV
+    set --local next_env $argv[1]
+    test "$argv" = "VARIABLE SET PWD"; and set next_env ""
+    test -z $next_env; and set next_env "$GHJK_ENV"
+    test -z $next_env; and set next_env "default"
+
+    echo here $next_env - $argv - $GHJK_ENV
+
     if set --query GHJK_CLEANUP_FISH
         # restore previous env
         eval $GHJK_CLEANUP_FISH
@@ -43,38 +51,35 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change # --on-var
 
     if test -n "$local_ghjk_dir"
         set --global --export GHJK_LAST_GHJK_DIR $local_ghjk_dir
-        # locate the active env
-        # precedence is gven to argv over GHJK_ENV
-        set --local active_env "$argv[1]"
-        test -z $active_env; and set --local active_env "$GHJK_ENV"
-        test -z $active_env; and set --local active_env default
 
-        set --local active_env_dir $local_ghjk_dir/envs/$active_env
-        if test -d $active_env_dir
+        # locate the next env
+        set --local next_env_dir $local_ghjk_dir/envs/$next_env
+
+        if test -d $next_env_dir
             # load the shim
-            . $active_env_dir/activate.fish
+            . $next_env_dir/activate.fish
             # export variables to assist in change detection
-            set --global --export GHJK_LAST_ENV_DIR $active_env_dir
-            set --global --export GHJK_LAST_ENV_DIR_mtime (__ghjk_get_mtime_ts $active_env_dir/activate.fish)
+            set --global --export GHJK_LAST_ENV_DIR $next_env_dir
+            set --global --export GHJK_LAST_ENV_DIR_mtime (__ghjk_get_mtime_ts $next_env_dir/activate.fish)
 
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
-            if test $active_env_dir/activate.fish -ot $local_ghjk_dir/../ghjk.ts
+            if test $next_env_dir/activate.fish -ot $local_ghjk_dir/../ghjk.ts
                 set_color FF4500
-                if test $active_env = "default"
+                if test $next_env = "default"
                     echo "[ghjk] Possible drift from default environment, please sync..."
                 else
-                    echo "[ghjk] Possible drift from active environment ($active_env), please sync..."
+                    echo "[ghjk] Possible drift from active environment ($next_env), please sync..."
                 end
                 set_color normal
             end
         else
             set_color FF4500
-            if test $active_env = "default"
+            if test $next_env = "default"
                 echo "[ghjk] Default environment not found, please sync..."
             else
-                echo "[ghjk] Active environment ($active_env) not found, please sync..."
+                echo "[ghjk] Active environment ($next_env) not found, please sync..."
             end
             set_color normal
         end
@@ -89,14 +94,17 @@ function __ghjk_env_dir_watcher --on-event fish_postexec
 
     # trigger reload when either 
     if set --query GHJK_LAST_GHJK_DIR; 
+        # - nextfile exists
         and set --local nextfile "$GHJK_LAST_GHJK_DIR/envs/next";
-        and set --local nextfile_mtime (__ghjk_get_mtime_ts $nextfile);
+        and test -f $nextfile;
         # - nextfile was touched after last command
-        and test $nextfile_mtime -gt $GHJK_LAST_PROMPT_TS;
+        and set --local nextfile_mtime (__ghjk_get_mtime_ts $nextfile);
+        and test $nextfile_mtime -ge $GHJK_LAST_PROMPT_TS;
         #   and younger than 2 seconds 
         and test (math $cur_ts - $nextfile_mtime) -lt 2;
 
-        GHJK_ENV=(cat $nextfile) ghjk_reload
+        ghjk_reload "(cat $nextfile)"
+        rm $nextfile
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
@@ -107,4 +115,4 @@ function __ghjk_env_dir_watcher --on-event fish_postexec
     set GHJK_LAST_PROMPT_TS $cur_ts
 end
 
-ghjk_reload
+status is-interactive; and ghjk_reload

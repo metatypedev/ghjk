@@ -16,6 +16,11 @@ __ghjk_get_mtime_ts () {
 }
 
 ghjk_reload() {
+
+    # precedence is given to argv over GHJK_ENV
+    # which's usually the current active env
+    next_env="${1:-${GHJK_ENV:-default}}";
+
     if [ -n "${GHJK_CLEANUP_POSIX+x}" ]; then
         # restore previous env
         eval "$GHJK_CLEANUP_POSIX"
@@ -49,35 +54,34 @@ ghjk_reload() {
     if [ -n "$local_ghjk_dir" ]; then
         GHJK_LAST_GHJK_DIR="$local_ghjk_dir"
         export GHJK_LAST_GHJK_DIR
-        # locate the active env
-        # precedence is given to argv over GHJK_ENV
-        active_env="${1:-${GHJK_ENV:-default}}";
-        active_env_dir="$local_ghjk_dir/envs/$active_env"
 
-        if [ -d "$active_env_dir" ]; then
+        # locate the next env
+        next_env_dir="$local_ghjk_dir/envs/$next_env"
+
+        if [ -d "$next_env_dir" ]; then
             # load the shim
             # shellcheck source=/dev/null
-            . "$active_env_dir/activate.sh"
+            . "$next_env_dir/activate.sh"
             # export variables to assist in change detection
-            GHJK_LAST_ENV_DIR="$active_env_dir"
-            GHJK_LAST_ENV_DIR_mtime="$(__ghjk_get_mtime_ts "$active_env_dir/activate.sh")"
+            GHJK_LAST_ENV_DIR="$next_env_dir"
+            GHJK_LAST_ENV_DIR_mtime="$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")"
             export GHJK_LAST_ENV_DIR
             export GHJK_LAST_ENV_DIR_mtime
 
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
-            if [ "$(__ghjk_get_mtime_ts "$local_ghjk_dir/../ghjk.ts")" -gt "$(__ghjk_get_mtime_ts "$active_env_dir/activate.sh")" ]; then
-                if [ "$active_env" = "default" ]; then
+            if [ "$(__ghjk_get_mtime_ts "$local_ghjk_dir/../ghjk.ts")" -gt "$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")" ]; then
+                if [ "$next_env" = "default" ]; then
                     printf "\033[0;33m[ghjk] Possible drift from default environment, please sync...\033[0m\n"
                 else
-                    printf "\033[0;33m[ghjk] Possible drift from active environment (%s), please sync...\033[0m\n" "$active_env"
+                    printf "\033[0;33m[ghjk] Possible drift from active environment (%s), please sync...\033[0m\n" "$next_env"
                 fi
 
             fi
         else
-            if [ "$active_env" = "default" ]; then
+            if [ "$next_env" = "default" ]; then
                 printf "\033[0;31m[ghjk] Default environment not set up, please sync...\033[0m\n"
             else
-                printf "\033[0;31m[ghjk] Active environment (%s) not set up, please sync...\033[0m\n" "$active_env"
+                printf "\033[0;31m[ghjk] Active environment (%s) not set up, please sync...\033[0m\n" "$next_env"
             fi
         fi
     fi
@@ -91,23 +95,29 @@ export GHJK_LAST_PROMPT_TS
 precmd() {
     cur_ts=$(date "+%s")
     # trigger reload when either 
-    if [ -n "${GHJK_LAST_GHJK_DIR+x}" ] && 
-        nextfile="$GHJK_LAST_GHJK_DIR/envs/next" &&
-        nextfile_mtime="$(__ghjk_get_mtime_ts "$nextfile")" &&
-        # - nextfile was touched after last command
-        [ "$nextfile_mtime" -gt "$GHJK_LAST_PROMPT_TS" ] &&  
-        #   and younger than 2 seconds 
-        [ $(( "$cur_ts" - "$nextfile_mtime" )) -lt 2 ]; then 
-
-        ghjk_reload $(cat "$nextfile")
-
     #  - the PWD changes
-    elif [ "$GHJK_LAST_PWD" != "$PWD" ] || 
-        #  - the env dir loader mtime changes
-        [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_mtime" ]; then 
+    if [ "$GHJK_LAST_PWD" != "$PWD" ]; then
 
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
+
+    elif [ -n "${GHJK_LAST_GHJK_DIR+x}" ] && 
+        # -nextfile exists
+        nextfile="$GHJK_LAST_GHJK_DIR/envs/next" &&
+        [ -f "$nextfile" ] &&
+        # - nextfile was touched after last command
+        nextfile_mtime="$(__ghjk_get_mtime_ts "$nextfile")" &&
+        [ "$nextfile_mtime" -ge "$GHJK_LAST_PROMPT_TS" ] &&  
+        #   and younger than 2 seconds 
+        [ $(( "$cur_ts" - "$nextfile_mtime" )) -lt 2 ]; then 
+
+        ghjk_reload "$(cat "$nextfile")"
+        rm $nextfile
+
+    #  - the env dir loader mtime changes
+    elif [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_mtime" ]; then 
+
+        ghjk_reload
 
     fi
     GHJK_LAST_PROMPT_TS="$cur_ts"

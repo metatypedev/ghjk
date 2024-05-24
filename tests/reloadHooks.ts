@@ -26,6 +26,11 @@ popd
 # now it should be avail
 dummy
 [ "$DUMMY_ENV" = "dummy" ] || exit 106
+
+[ "$GHJK_ENV" = "main" ] || exit 107
+ghjk e cook test
+echo "test" > .ghjk/envs/next
+[ "$GHJK_ENV" = "test" ] || exit 108
 `;
 
 const bashInteractiveScript = [
@@ -88,6 +93,17 @@ ghjk_reload
 # now it should be avail
 dummy
 [ "$DUMMY_ENV" = "dummy" ] || exit 106
+
+[ "$GHJK_ENV" = "main" ] || exit 107
+ghjk e cook test
+
+ghjk_reload test
+[ "$GHJK_ENV" = "test" ] || exit 110
+ghjk_reload
+[ "$GHJK_ENV" = "test" ] || exit 111
+
+GHJK_ENV=test ghjk_reload
+[ "$GHJK_ENV" = "test" ] || exit 112
 `;
 
 const fishScript = `
@@ -111,8 +127,61 @@ dummy; or exit 123
 test $DUMMY_ENV = "dummy"; or exit 105
 `;
 
+const fishNoninteractiveScript = `
+# no env loaded at his point
+not set -q GHJK_ENV; or exit 010
+# test that ghjk_reload is avail because BASH_ENV exposed by the suite
+ghjk_reload
+
+${fishScript}
+
+# must cook test first
+ghjk envs cook test
+
+test $GHJK_ENV = "main"; or exit 107
+
+# manually switch to test
+ghjk_reload test
+test "$GHJK_ENV" = "test"; or exit 108
+
+# re-invoking reload won't go back to main
+ghjk_reload
+test "$GHJK_ENV" = "test"; or exit 109
+
+# go back to main
+ghjk_reload main
+test "$GHJK_ENV" = "main"; or exit 111
+
+# changing GHJK_ENV manually gets respected
+GHJK_ENV=test ghjk_reload
+test "$GHJK_ENV" = "test"; or exit 112`;
+
+const fishInteractiveScript = [
+  fishScript,
+  // simulate interactive mode by emitting postexec after each line
+  // after each line
+  ...`
+ghjk e cook test
+test $GHJK_ENV = "main"; or exit 107
+
+echo "test" > .ghjk/envs/next
+test "$GHJK_ENV" = "test"; or exit 108
+
+ghjk_reload main
+test "$GHJK_ENV" = "main"; or exit 111
+
+GHJK_ENV=test ghjk_reload
+test "$GHJK_ENV" = "test"; or exit 112
+`
+    .split("\n").flatMap((line) => [
+      line,
+      `emit fish_postexec`,
+    ]),
+]
+  .join("\n");
+
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
-  installConf?: InstallConfigFat | InstallConfigFat[];
+  installConf?: InstallConfigFat[];
   ePoint: string;
   stdin: string;
 };
@@ -141,8 +210,8 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "fish_interactive",
-    ePoint: `fish -l`,
-    stdin: fishScript,
+    ePoint: `fish -il`,
+    stdin: fishInteractiveScript,
   },
   {
     name: "fish_scripting",
@@ -150,7 +219,7 @@ const cases: CustomE2eTestCase[] = [
     // the fish implementation triggers changes
     // on any pwd changes so it's identical to
     // interactive usage
-    stdin: fishScript,
+    stdin: fishNoninteractiveScript,
   },
 ];
 
@@ -158,9 +227,11 @@ harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: genTsGhjkFile(
     {
-      installConf: testCase.installConf ?? dummy(),
-      taskDefs: [],
       envDefs: [
+        {
+          name: "main",
+          installs: testCase.installConf ? testCase.installConf : [dummy()],
+        },
         {
           name: "test",
         },

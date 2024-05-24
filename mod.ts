@@ -25,7 +25,7 @@ const DEFAULT_BASE_ENV_NAME = "main";
 const file = new Ghjkfile();
 const mainEnv = file.addEnv({
   name: DEFAULT_BASE_ENV_NAME,
-  base: false,
+  inherit: false,
   allowedPortDeps: stdDeps(),
   desc: "the default default environment.",
 });

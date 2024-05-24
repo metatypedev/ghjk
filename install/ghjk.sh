@@ -14,9 +14,12 @@ GHJK_MAIN_URL="${GHJK_MAIN_URL:-__MAIN_TS_URL__}"
 # if ghjkfile var is set, set the GHJK_DIR overriding
 # any set by the user
 if [ -n "${GHJKFILE+x}" ]; then
+
   GHJK_DIR="$(dirname "$GHJKFILE")/.ghjk"
+
 # if both GHJKFILE and GHJK_DIR are unset
 elif [ -z "${GHJK_DIR+x}" ]; then
+
   # look for ghjk dirs in parents
   cur_dir=$PWD
   while true; do
@@ -31,14 +34,19 @@ elif [ -z "${GHJK_DIR+x}" ]; then
       fi
       cur_dir="$next_cur_dir"
   done
+
 fi
 
 if [ -n "${GHJK_DIR+x}" ]; then
+
   export GHJK_DIR
   mkdir -p "$GHJK_DIR"
   lock_flag="--lock $GHJK_DIR/deno.lock"
+
 else
+
   lock_flag="--no-lock"
+
 fi
 
 # we don't want to quote $lock_flag as it's not exactly a single
