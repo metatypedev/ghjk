@@ -89,7 +89,7 @@ test -z $tmp_dir; and set tmp_dir "/tmp"
 set --export --global GHJK_NEXTFILE "$tmp_dir/ghjk.nextfile.$fish_pid"
 
 # trigger reload when the env dir loader mtime changes
-function __ghjk_postexec --on-event fish_postexec
+function __ghjk_preexec --on-event fish_preexec
 
     # trigger reload when either 
     # exists
@@ -105,4 +105,4 @@ function __ghjk_postexec --on-event fish_postexec
     end
 end
 
-status is-interactive; and ghjk_reload
+ghjk_reload

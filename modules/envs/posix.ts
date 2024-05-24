@@ -250,13 +250,23 @@ async function writeActivators(
       `# on this shim instead improving latency`,
       ghjk_sh(gcx, denoDir, ghjkShimName),
       ``,
-      `# on enter hooks`,
-      ...onEnterHooksEscaped,
+      `case "$-" in`,
+      `    *i*)`,
       ``,
-      `# on exit hooks`,
-      ...onExitHooksEscaped.map((cmd) =>
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${cmd};';`
+      `        # on enter hooks`,
+      ...onEnterHooksEscaped.map((line) => `        ${line}`),
+      ``,
+      `        # on exit hooks`,
+      ...onExitHooksEscaped.map(
+        (cmd) => `        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${cmd};';`,
       ),
+      `        :`,
+      `    ;;`,
+      `    *)`,
+      `        :`,
+      `    ;;`,
+      `esac`,
+      ``,
     ],
     //
     // fish version
@@ -288,13 +298,16 @@ async function writeActivators(
       `# on this shim instead improving latency`,
       ghjk_fish(gcx, denoDir, ghjkShimName),
       ``,
-      `# on enter hooks`,
-      ...onEnterHooksEscaped,
+      `if status is-interactive;`,
+      `    # on enter hooks`,
+      ...onEnterHooksEscaped.map((line) => `    ${line}`),
+      ,
       ``,
-      `# on exit hooks`,
+      `    # on exit hooks`,
       ...onExitHooksEscaped.map((cmd) =>
-        `set --global --append GHJK_CLEANUP_FISH '${cmd};';`
+        `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`
       ),
+      `end`,
     ],
   };
 

@@ -17,8 +17,10 @@ sh -c "dummy"
 
 pushd ../
 # it shouldn't be avail here
-[ $(set +e; dummy) ] && exit 102
+set +ex
+[ $(dummy) ] && exit 102
 [ "$DUMMY_ENV" = "dummy" ] && exit 103
+set -ex
 
 # cd back in
 popd
@@ -32,34 +34,6 @@ ghjk e cook test
 echo "test" > $GHJK_NEXTFILE
 [ "$GHJK_ENV" = "test" ] || exit 108
 `;
-
-const bashInteractiveScript = [
-  // simulate interactive mode by evaluating the prompt
-  // before each line
-  `
-eval_PROMPT_COMMAND() {
-  local prompt_command
-  for prompt_command in "\${PROMPT_COMMAND[@]}"; do
-    eval "$prompt_command"
-  done
-}
-`,
-  ...posixInteractiveScript
-    .split("\n").flatMap((line) => [
-      `eval_PROMPT_COMMAND`,
-      line,
-    ]),
-]
-  .join("\n");
-
-const zshInteractiveScript = [
-  // simulate interactive mode by evaluating precmd
-  // before each line
-  ...posixInteractiveScript
-    .split("\n")
-    .flatMap((line) => [`precmd`, line]),
-]
-  .join("\n");
 
 const posixNonInteractiveScript = `
 set -eux
@@ -128,8 +102,7 @@ test $DUMMY_ENV = "dummy"; or exit 105
 `;
 
 const fishNoninteractiveScript = `
-# no env loaded at his point
-not set -q GHJK_ENV; or exit 010
+set fish_trace 1
 # test that ghjk_reload is avail because config.fish exposed by the suite
 ghjk_reload
 
@@ -175,7 +148,7 @@ test "$GHJK_ENV" = "test"; or exit 112
 `
     .split("\n").flatMap((line) => [
       line,
-      `emit fish_postexec`,
+      `emit fish_preexec`,
     ]),
 ]
   .join("\n");
@@ -189,9 +162,10 @@ const cases: CustomE2eTestCase[] = [
   {
     name: "bash_interactive",
     // -s: read from stdin
-    // -l: login/interactive mode
-    ePoint: `bash -sl`,
-    stdin: bashInteractiveScript,
+    // -l: login mode
+    // -i: interactive mode
+    ePoint: `bash -sli`,
+    stdin: posixInteractiveScript,
   },
   {
     name: "bash_scripting",
@@ -200,8 +174,9 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "zsh_interactive",
-    ePoint: `zsh -sl`,
-    stdin: zshInteractiveScript,
+    ePoint: `zsh -sli`,
+    stdin: posixInteractiveScript
+      .split("\n").filter((line) => !/^#/.test(line)).join("\n"),
   },
   {
     name: "zsh_scripting",
