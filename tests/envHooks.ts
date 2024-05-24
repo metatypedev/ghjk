@@ -99,6 +99,23 @@ popd
 test (cat $GHJK_WD/marker) = 'remark'; or exit 103
 `;
 
+const fishInteractiveScript = [
+  // simulate interactive mode by emitting postexec after each line
+  // after each line
+  ...fishScript
+    .split("\n").flatMap((line) => [
+      line,
+      `emit fish_postexec`,
+    ]),
+]
+  .join("\n");
+
+const fishNonInteractiveScript = `
+# test that ghjk_reload is avail because config.fish exposed by the suite
+ghjk_reload
+
+${fishScript}`;
+
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   stdin: string;
@@ -128,8 +145,8 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "fish_interactive",
-    ePoint: `fish -l`,
-    stdin: fishScript,
+    ePoint: `fish -il`,
+    stdin: fishInteractiveScript,
   },
   {
     name: "fish_scripting",
@@ -137,7 +154,7 @@ const cases: CustomE2eTestCase[] = [
     // the fish implementation triggers changes
     // on any pwd changes so it's identical to
     // interactive usage
-    stdin: fishScript,
+    stdin: fishNonInteractiveScript,
   },
 ];
 

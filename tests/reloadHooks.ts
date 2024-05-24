@@ -130,7 +130,7 @@ test $DUMMY_ENV = "dummy"; or exit 105
 const fishNoninteractiveScript = `
 # no env loaded at his point
 not set -q GHJK_ENV; or exit 010
-# test that ghjk_reload is avail because BASH_ENV exposed by the suite
+# test that ghjk_reload is avail because config.fish exposed by the suite
 ghjk_reload
 
 ${fishScript}
