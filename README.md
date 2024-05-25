@@ -154,7 +154,9 @@ for tasks that are meant to be common dependencies of other tasks.
 
 ### Secure configs
 
-Certain options are configured through the `secureConfig` object.
+To improve ergonmoics, the typescript ghjkfile implementation exports simple functions and objects that mutate some global variable.
+This also means that any script you import, if it knows the URL of the exact ghjk implementation you're using, can import this authoring module and mess with your ghjkfile.
+Certain options for your file are thus only read from an export called `secureConfig` that'll host some of the more sensetive configurations. These include:
 
 ```ts
 import { env, stdSecureConfig } from "https://.../ghjk/mod.ts";

@@ -61,7 +61,7 @@ async function importAndExec(
   args: ExecTaskArgs,
 ) {
   const mod = await import(uri);
-  await mod.ghjk.execTask(args);
+  await mod.sophon.execTask(args);
   return true;
 }
 

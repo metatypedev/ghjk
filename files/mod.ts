@@ -46,7 +46,7 @@ import type {
 export type EnvDefArgs = {
   name: string;
   installs?: InstallConfigFat[];
-  allowedPortDeps?: AllowedPortDep[];
+  allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   /**
    * If true or not set, will base the task's env on top
    * of the default env (usually `main`). If false, will build on
@@ -55,7 +55,7 @@ export type EnvDefArgs = {
    */
   inherit?: string | boolean;
   desc?: string;
-  vars?: Record<string, string>;
+  vars?: Record<string, string | number>;
   /**
    * Task to execute when environment is activated.
    */
@@ -84,10 +84,10 @@ export type TaskFn = (
 export type TaskDefArgs = {
   name?: string;
   desc?: string;
-  dependsOn?: string[];
+  dependsOn?: string | string[];
   workingDir?: string | Path;
-  envVars?: Record<string, string>;
-  allowedPortDeps?: AllowedPortDep[];
+  vars?: Record<string, string | number>;
+  allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   installs?: InstallConfigFat[];
   inherit?: string | boolean;
 };
@@ -160,10 +160,13 @@ export class Ghjkfile {
     logger(import.meta).debug("install added", config);
   }
 
-  setAllowedPortDeps(setId: string, deps: AllowedPortDep[]) {
+  setAllowedPortDeps(
+    setId: string,
+    deps: (InstallConfigFat | AllowedPortDep)[],
+  ) {
     const set = this.#getSet(setId);
     set.allowedDeps = Object.fromEntries(
-      deps.map((
+      reduceAllowedDeps(deps).map((
         dep,
       ) => [dep.manifest.name, dep]),
     );
@@ -224,8 +227,8 @@ export class Ghjkfile {
     if (args.installs) {
       env.install(...args.installs);
     }
-    if (args.allowedPortDeps) {
-      env.allowedPortDeps(args.allowedPortDeps);
+    if (args.allowedBuildDeps) {
+      env.allowedBuildDeps(args.allowedBuildDeps);
     }
     if (args.desc) {
       env.desc(args.desc);
@@ -259,22 +262,22 @@ export class Ghjkfile {
   }
 
   toConfig(
-    { defaultEnv, defaultBaseEnv, masterPortDepAllowList }: {
+    { defaultEnv, defaultBaseEnv }: {
       defaultEnv: string;
       defaultBaseEnv: string;
       ghjkfileUrl: string;
-      masterPortDepAllowList: AllowedPortDep[];
     },
   ) {
+    // make sure referenced envs exist
+    this.addEnv({ name: defaultEnv });
+    this.addEnv({ name: defaultBaseEnv });
     try {
       const envsConfig = this.#processEnvs(defaultEnv, defaultBaseEnv);
       const tasksConfig = this.#processTasks(
         envsConfig,
         defaultBaseEnv,
       );
-      const portsConfig = this.#processInstalls(
-        masterPortDepAllowList ?? stdDeps(),
-      );
+      const portsConfig = this.#processInstalls();
 
       const config: SerializedConfig = {
         blackboard: Object.fromEntries(this.#bb.entries()),
@@ -333,7 +336,7 @@ export class Ghjkfile {
       const final = finalizer();
       const envBaseResolved = typeof final.inherit === "string"
         ? final.inherit
-        : final.inherit && defaultBaseEnv != final.name
+        : (final.inherit !== false) && defaultBaseEnv != final.name
         ? defaultBaseEnv
         : null;
       all[final.name] = { ...final, envBaseResolved };
@@ -408,10 +411,10 @@ export class Ghjkfile {
       };
       const hooks = [
         ...final.onEnterHookTasks.map(
-          (key) => [key, "hook.onEnter.posixExec"] as const,
+          (key) => [key, "hook.onEnter.ghjkTask"] as const,
         ),
         ...final.onExitHookTasks.map(
-          (key) => [key, "hook.onExit.posixExec"] as const,
+          (key) => [key, "hook.onExit.ghjkTask"] as const,
         ),
       ].map(([taskKey, ty]) => {
         const task = this.#tasks.get(taskKey);
@@ -425,8 +428,7 @@ export class Ghjkfile {
         }
         if (task.ty == "denoFile@v1") {
           const prov: InlineTaskHookProvision = {
-            ty: "inline.hook.ghjkTask",
-            finalTy: ty,
+            ty,
             taskKey,
           };
           return prov;
@@ -494,9 +496,9 @@ export class Ghjkfile {
     );
     for (const [key, args] of this.#tasks) {
       if (args.dependsOn && args.dependsOn.length > 0) {
-        const depKeys = args.dependsOn.map((nameOrKey) =>
-          nameToKey[nameOrKey] ?? nameOrKey
-        );
+        const depKeys =
+          (Array.isArray(args.dependsOn) ? args.dependsOn : [args.dependsOn])
+            .map((nameOrKey) => nameToKey[nameOrKey] ?? nameOrKey);
         deps.set(key, depKeys);
         for (const depKey of depKeys) {
           const depRevDeps = revDeps.get(depKey);
@@ -522,9 +524,21 @@ export class Ghjkfile {
       const args = this.#tasks.get(key)!;
       const { workingDir, desc, dependsOn, inherit } = args;
 
+      const taskEnvRecipe: EnvRecipe = {
+        provides: [],
+      };
+      const taskInstallSet: InstallSet = {
+        installs: args.installs ?? [],
+        allowedDeps: Object.fromEntries(
+          reduceAllowedDeps(args.allowedBuildDeps ?? []).map((
+            dep,
+          ) => [dep.manifest.name, dep]),
+        ),
+      };
+
       const envBaseResolved = typeof inherit === "string"
         ? inherit
-        : inherit
+        : (inherit !== false)
         ? defaultBaseEnv
         : null;
 
@@ -532,27 +546,23 @@ export class Ghjkfile {
         ? envsConfig.envs[envBaseResolved]
         : null;
 
-      const taskEnvRecipe: EnvRecipe = {
-        provides: [],
-      };
-
-      const taskInstallSet: InstallSet = {
-        installs: args.installs ?? [],
-        allowedDeps: Object.fromEntries(
-          (args.allowedPortDeps ?? []).map((dep) => [dep.manifest.name, dep]),
-        ),
-      };
-
-      const mergedEnvVars = args.envVars ?? {};
+      const mergedEnvVars = args.vars ?? {};
       if (envBaseRecipe) {
         for (
           const prov of envBaseRecipe
             .provides as (
               | WellKnownProvision
               | InstallSetRefProvision
+              | InlineTaskHookProvision
             )[]
         ) {
-          if (prov.ty == "posix.envVar") {
+          // task envs don't need hooks
+          if (
+            prov.ty == "hook.onEnter.ghjkTask" ||
+            prov.ty == "hook.onExit.ghjkTask"
+          ) {
+            continue;
+          } else if (prov.ty == "posix.envVar") {
             if (!mergedEnvVars[prov.key]) {
               mergedEnvVars[prov.key] = prov.val;
             }
@@ -591,7 +601,11 @@ export class Ghjkfile {
         ...Object.entries(mergedEnvVars).map((
           [key, val],
         ) => {
-          const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
+          const prov: WellKnownProvision = {
+            ty: "posix.envVar",
+            key,
+            val: val.toString(),
+          };
           return prov;
         }),
       );
@@ -606,9 +620,14 @@ export class Ghjkfile {
           ? workingDir.toString()
           : workingDir,
         desc,
-        dependsOn: dependsOn?.map((keyOrHash) =>
-          localToFinalKey[nameToKey[keyOrHash] ?? keyOrHash]
-        ),
+        ...dependsOn
+          ? {
+            dependsOn: (Array.isArray(dependsOn) ? dependsOn : [dependsOn])
+              ?.map((keyOrHash) =>
+                localToFinalKey[nameToKey[keyOrHash] ?? keyOrHash]
+              ),
+          }
+          : {},
         envHash,
       };
       const taskHash = objectHash(def);
@@ -670,12 +689,16 @@ export class Ghjkfile {
       env.provides = env.provides.map(
         (prov) => {
           if (
-            prov.ty == "inline.hook.ghjkTask"
+            prov.ty == "hook.onEnter.ghjkTask" ||
+            prov.ty == "hook.onExit.ghjkTask"
           ) {
+            logger().warn("caught");
             const inlineProv = prov as InlineTaskHookProvision;
             const taskKey = localToFinalKey[inlineProv.taskKey];
             const out: WellKnownProvision = {
-              ty: inlineProv.finalTy,
+              ty: /onEnter/.test(prov.ty)
+                ? "hook.onEnter.posixExec"
+                : "hook.onExit.posixExec",
               program: "ghjk",
               arguments: ["x", taskKey],
             };
@@ -689,28 +712,13 @@ export class Ghjkfile {
     return moduleConfig;
   }
 
-  #processInstalls(masterAllowList: AllowedPortDep[]) {
+  #processInstalls() {
     const out: PortsModuleConfigHashed = {
       sets: {},
     };
-    const masterPortDepAllowList = Object.fromEntries(
-      masterAllowList.map((dep) => [dep.manifest.name, dep] as const),
-    );
     for (
       const [setId, set] of this.#installSets.entries()
     ) {
-      for (const [portName, _] of Object.entries(set.allowedDeps)) {
-        if (!masterPortDepAllowList[portName]) {
-          throw new Error(
-            `"${portName}" is in allowedPortDeps list of install set "${setId}" but not in the masterPortDepAllowList`,
-          );
-        }
-      }
-      for (const [name, hash] of Object.entries(masterPortDepAllowList)) {
-        if (!set.allowedDeps[name]) {
-          set.allowedDeps[name] = hash;
-        }
-      }
       out.sets[setId] = {
         installs: set.installs.map((inst) => this.#addToBlackboard(inst)),
         allowedDeps: this.#addToBlackboard(Object.fromEntries(
@@ -741,7 +749,7 @@ export class EnvBuilder {
   #installSetId: string;
   #file: Ghjkfile;
   #inherit: string | boolean = true;
-  #vars: Record<string, string> = {};
+  #vars: Record<string, string | number> = {};
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -757,7 +765,9 @@ export class EnvBuilder {
       name: this.name,
       installSetId: this.#installSetId,
       inherit: this.#inherit,
-      vars: this.#vars,
+      vars: Object.fromEntries(
+        Object.entries(this.#vars).map(([key, val]) => [key, val.toString()]),
+      ),
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -780,9 +790,10 @@ export class EnvBuilder {
   }
 
   /**
+   * Configure the build time deps allowed to be used by ports.
    * This is treated as a single set and will replace previously any configured set.
    */
-  allowedPortDeps(deps: AllowedPortDep[]) {
+  allowedBuildDeps(deps: (AllowedPortDep | InstallConfigFat)[]) {
     this.#file.setAllowedPortDeps(this.#installSetId, deps);
     return this;
   }
@@ -798,7 +809,7 @@ export class EnvBuilder {
   /**
    * Add multiple environment variable.
    */
-  vars(envVars: Record<string, string>) {
+  vars(envVars: Record<string, string | number>) {
     Object.assign(this.#vars, envVars);
     return this;
   }
@@ -870,9 +881,22 @@ function task$(
 }
 
 type InlineTaskHookProvision = Provision & {
-  ty: "inline.hook.ghjkTask";
-  finalTy:
-    | "hook.onEnter.posixExec"
-    | "hook.onExit.posixExec";
+  ty: "hook.onExit.ghjkTask" | "hook.onEnter.ghjkTask";
   taskKey: string;
 };
+
+export function reduceAllowedDeps(
+  deps: (AllowedPortDep | InstallConfigFat)[],
+): AllowedPortDep[] {
+  return deps.map(
+    (dep: any) => {
+      const res = portsValidators.allowedPortDep.safeParse(dep);
+      if (res.success) return res.data;
+      const out: AllowedPortDep = {
+        manifest: dep.port,
+        defaultInst: thinInstallConfig(dep),
+      };
+      return portsValidators.allowedPortDep.parse(out);
+    },
+  );
+}

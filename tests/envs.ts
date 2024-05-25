@@ -5,9 +5,8 @@ import {
   genTsGhjkFile,
   harness,
 } from "./utils.ts";
-import { stdSecureConfig } from "../mod.ts";
 import dummy from "../ports/dummy.ts";
-import type { DenoFileSecureConfig } from "../mod.ts";
+import type { FileArgs } from "../mod.ts";
 
 type CustomE2eTestCase =
   & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
@@ -18,7 +17,7 @@ type CustomE2eTestCase =
   & (
     | {
       envs: EnvDefArgs[];
-      secureConfig?: DenoFileSecureConfig;
+      secureConfig?: FileArgs;
     }
     | {
       ghjkTs: string;
@@ -184,7 +183,7 @@ const cases: CustomE2eTestCase[] = [
     name: "default_env_loader",
     ePoint: "fish",
     envs: envVarTestEnvs,
-    secureConfig: stdSecureConfig({ defaultEnv: "yuki" }),
+    secureConfig: { defaultEnv: "yuki" },
     stdin: `
 set fish_trace 1
 # env base is false for "yuki" and thus no vars from "main"
@@ -198,7 +197,12 @@ test "$HUMM" = "Soul Lady"; or exit 108
 harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
-    { envDefs: testCase.envs, secureConf: testCase.secureConfig },
+    {
+      secureConf: {
+        ...testCase.secureConfig,
+        envs: testCase.envs,
+      },
+    },
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envs/${testCase.name}`,

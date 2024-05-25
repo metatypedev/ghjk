@@ -202,15 +202,17 @@ harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: genTsGhjkFile(
     {
-      envDefs: [
-        {
-          name: "main",
-          installs: testCase.installConf ? testCase.installConf : [dummy()],
-        },
-        {
-          name: "test",
-        },
-      ],
+      secureConf: {
+        envs: [
+          {
+            name: "main",
+            installs: testCase.installConf ? testCase.installConf : [dummy()],
+          },
+          {
+            name: "test",
+          },
+        ],
+      },
     },
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],

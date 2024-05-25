@@ -1,5 +1,5 @@
-export { ghjk } from "../../mod.ts";
-import { logger, task } from "../../mod.ts";
+export { sophon } from "../../hack.ts";
+import { logger, task } from "../../hack.ts";
 import * as ports from "../../ports/mod.ts";
 
 task("greet", async ($, { argv: [name] }) => {
@@ -9,7 +9,7 @@ task("greet", async ($, { argv: [name] }) => {
 const ha = task({
   name: "ha",
   installs: [ports.protoc()],
-  envVars: { STUFF: "stuffier" },
+  vars: { STUFF: "stuffier" },
   async fn($) {
     await $`echo $STUFF;
       protoc --version;

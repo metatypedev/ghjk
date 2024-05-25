@@ -78,8 +78,8 @@ const cases: CustomE2eTestCase[] = [
 harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: `
-export { ghjk } from "$ghjk/mod.ts";
-import { task, env } from "$ghjk/mod.ts";
+export { sophon } from "$ghjk/hack.ts";
+import { task, env } from "$ghjk/hack.ts";
 
 env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))
