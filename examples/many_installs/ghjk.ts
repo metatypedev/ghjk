@@ -27,6 +27,7 @@ const allowedPortDeps = [
 
 export const secureConfig = stdSecureConfig({
   additionalAllowedPorts: allowedPortDeps,
+  enableRuntimes: true,
 });
 
 install(
