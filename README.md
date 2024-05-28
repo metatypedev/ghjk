@@ -90,7 +90,7 @@ ghjk.env("main", {
 ghjk.env("dev", {
   // by default, all envs are additively based on `main`
   // pass false here to make env indiependent.
-  base: false,
+  inherit: false,
   // envs can specify standard env vars
   vars: { CARGO_TARGET_DIR: "my_target" },
   installs: [
@@ -106,7 +106,7 @@ ghjk.env({
   name: "docker",
   desc: "for Dockerfile usage",
   // NOTE: env references are order-independent
-  base: "ci",
+  inherit: "ci",
   installs: [
     ports.cargobi({ crateName: "cargo-chef" }),
     ports.zstd(),
@@ -123,7 +123,7 @@ ghjk.env("ci")
 // each task describes it's own env as well
 ghjk.task({
   name: "run",
-  base: "dev",
+  inherit: "dev",
   fn: () => console.log("online"),
 });
 ```

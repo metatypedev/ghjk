@@ -200,85 +200,135 @@ async function writeActivators(
   onEnterHooks: [string, string[]][],
   onExitHooks: [string, string[]][],
 ) {
+  const ghjkDirVar = "_ghjk_dir";
+  const shareDirVar = "_ghjk_share_dir";
+  pathVars = {
+    ...Object.fromEntries(
+      Object.entries(pathVars).map((
+        [key, val],
+      ) => [
+        key,
+        val
+          .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
+          .replace(gcx.ghjkShareDir.toString(), "$" + shareDirVar),
+      ]),
+    ),
+  };
+
+  const ghjkShimName = "__ghjk_shim";
+  const onEnterHooksEscaped = onEnterHooks.map(([cmd, args]) =>
+    [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
+      .join(" ").replaceAll("'", "'\\''")
+  );
+  const onExitHooksEscaped = onExitHooks.map(([cmd, args]) =>
+    [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
+      .join(" ").replaceAll("'", "'\\''")
+  );
+
   // ghjk.sh sets the DENO_DIR so we can usually
   // assume it's set
   const denoDir = Deno.env.get("DENO_DIR") ?? "";
-  const ghjkShimName = "__ghjk_shim";
-  const onEnterHooksEscaped = onEnterHooks.map(
-    ([cmd, args]) =>
-      [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
-        .join(" ").replaceAll("'", "'\\''"),
-  );
-  const onExitHooksEscaped = onExitHooks.map(
-    ([cmd, args]) =>
-      [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
-        .join(" ").replaceAll("'", "'\\''"),
-  );
-  const activate = {
+  const scripts = {
     //
     // posix shell version
     posix: [
-      `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then
-    eval "$GHJK_CLEANUP_POSIX"
-fi`,
+      `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then`,
+      `    eval "$GHJK_CLEANUP_POSIX"`,
+      `fi`,
       `export GHJK_CLEANUP_POSIX="";`,
-      "\n# env vars",
-      ...Object.entries(env).map(([key, val]) =>
+      ``,
+      `# the following variables are used to make the script more human readable`,
+      `${ghjkDirVar}="${gcx.ghjkDir.toString()}"`,
+      `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
+      ``,
+      `# env vars`,
+      ...Object.entries(env).flatMap(([key, val]) => [
         // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${key}='$${key}';";
-export ${key}='${val}';`
-      ),
-      "\n# path vars",
-      ...Object.entries(pathVars).map(([key, val]) =>
+        // NOTE: single quoting embedded in double quotes still expands allowing us to
+        // capture the value of $KEY before activator
+        // NOTE: we only restore the old $KEY value at cleanup if $KEY is the one set by the activator
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"$${key}\"'" = '${val}' ] && export ${key}='$${key}';";`,
+        `export ${key}='${val}';`,
+        ``,
+      ]),
+      ``,
+      `# path vars`,
+      ...Object.entries(pathVars).flatMap(([key, val]) => [
         // NOTE: double quote the path vars for expansion
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "^${val}" | tr "\\n" ":");${key}="\${${key}%:}";';
-export ${key}="${val}:$${key}";
-`
-      ),
-      "\n# hooks that want to invoke ghjk are made to rely",
-      "# on this shim instead improving latency",
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "'^${val}'" | tr "\\n" ":");${key}="\${${key}%:}";';`,
+        `export ${key}="${val}:$${key}";`,
+        ``,
+      ]),
+      ``,
+      `# hooks that want to invoke ghjk are made to rely`,
+      `# on this shim instead improving latency`,
       ghjk_sh(gcx, denoDir, ghjkShimName),
-      "\n# on enter hooks",
-      ...onEnterHooksEscaped,
-      "\n# on exit hooks",
+      ``,
+      `case "$-" in`,
+      `    *i*)`,
+      ``,
+      `        # on enter hooks`,
+      ...onEnterHooksEscaped.map((line) => `        ${line}`),
+      ``,
+      `        # on exit hooks`,
       ...onExitHooksEscaped.map(
-        (command) => `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${command};';`,
+        (cmd) => `        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${cmd};';`,
       ),
-    ].join("\n"),
+      `        :`,
+      `    ;;`,
+      `    *)`,
+      `        :`,
+      `    ;;`,
+      `esac`,
+      ``,
+    ],
     //
     // fish version
     fish: [
-      `if set --query GHJK_CLEANUP_FISH
-    eval $GHJK_CLEANUP_FISH
-    set --erase GHJK_CLEANUP_FISH
-end`,
-      "\n# env vars",
-      ...Object.entries(env).map(([key, val]) =>
-        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${key} '$${key}';";
-set --global --export ${key} '${val}';`
-      ),
-      "\n# path vars",
-      ...Object.entries(pathVars).map(([key, val]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex "^${val}" $${key});';
-set --global --export --prepend ${key} ${val};
-`
-      ),
-      "\n# hooks that want to invoke ghjk are made to rely",
-      "# on this shim instead improving latency",
+      `if set --query GHJK_CLEANUP_FISH`,
+      `    eval $GHJK_CLEANUP_FISH`,
+      `    set --erase GHJK_CLEANUP_FISH`,
+      `end`,
+      ``,
+      `# the following variables are used to make the script more human readable`,
+      `set ${ghjkDirVar} "${gcx.ghjkDir.toString()}"`,
+      `set ${shareDirVar} "${gcx.ghjkShareDir.toString()}"`,
+      ``,
+      `# env vars`,
+      ...Object.entries(env).flatMap(([key, val]) => [
+        `set --global --append GHJK_CLEANUP_FISH 'test "$${key}"'" = '${val}'; and set --global --export ${key} '$${key}';";`,
+        `set --global --export ${key} '${val}';`,
+        ``,
+      ]),
+      ``,
+      `# path vars`,
+      ...Object.entries(pathVars).flatMap(([key, val]) => [
+        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex '"^${val}"' $${key});';`,
+        `set --global --export --prepend ${key} ${val};`,
+        ``,
+      ]),
+      ``,
+      `# hooks that want to invoke ghjk are made to rely`,
+      `# on this shim instead improving latency`,
       ghjk_fish(gcx, denoDir, ghjkShimName),
-      "\n# on enter hooks",
-      ...onEnterHooksEscaped,
-      "\n# on exit hooks",
-      ...onExitHooksEscaped.map(
-        (command) => `set --global --append GHJK_CLEANUP_FISH '${command};';`,
+      ``,
+      `if status is-interactive;`,
+      `    # on enter hooks`,
+      ...onEnterHooksEscaped.map((line) => `    ${line}`),
+      ,
+      ``,
+      `    # on exit hooks`,
+      ...onExitHooksEscaped.map((cmd) =>
+        `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`
       ),
-    ].join("\n"),
+      `end`,
+    ],
   };
 
   const envPathR = await $.path(envDir).ensureDir();
   await Promise.all([
-    envPathR.join(`activate.fish`).writeText(activate.fish),
-    envPathR.join(`activate.sh`).writeText(activate.posix),
+    envPathR.join(`activate.fish`).writeText(scripts.fish.join("\n")),
+    envPathR.join(`activate.sh`).writeText(scripts.posix.join("\n")),
   ]);
 }

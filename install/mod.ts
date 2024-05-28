@@ -168,13 +168,12 @@ export async function install(
   const ghjkShareDir = $.path(Deno.cwd())
     .resolve(args.ghjkShareDir);
 
-  logger.debug("unpacking vfs", { ghjkShareDir });
+  logger.info("unpacking vfs", { ghjkShareDir });
   await unpackVFS(
     await getHooksVfs(),
     ghjkShareDir,
     [[/__GHJK_SHARE_DIR__/g, ghjkShareDir.toString()]],
   );
-
   for (const shell of args.shellsToHook) {
     const { homeDir } = args;
 
@@ -183,7 +182,7 @@ export async function install(
     }
 
     const rcPath = $.path(homeDir).join(shellConfig[shell]);
-    logger.debug("installing hook", {
+    logger.info("installing hook", {
       ghjkShareDir,
       shell,
       marker: args.shellHookMarker,
@@ -205,7 +204,7 @@ export async function install(
       case "darwin": {
         const installDir = await $.path(args.ghjkExecInstallDir).ensureDir();
         const exePath = installDir.resolve(`ghjk`);
-        logger.debug("installing executable", { exePath });
+        logger.info("installing executable", { exePath });
 
         // use an isolated cache by default
         const denoCacheDir = args.ghjkDenoCacheDir
