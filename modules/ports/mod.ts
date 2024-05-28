@@ -147,9 +147,9 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
             .description("TODO")
             .option(
               "-u, --update-install <installName>",
-              "Update specific port",
+              "Update specific install",
             )
-            .option("-n, --update-no-confirm", "Update all ports")
+            .option("-n, --update-all", "Update all installs")
             .action(async (_opts) => {
               const envsCtx = getEnvsCtx(gcx);
               const envName = envsCtx.activeEnv;
@@ -186,15 +186,21 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
               }
 
               if (_opts.updateInstall) {
-                const _installName = _opts.updateInstall;
+                const installName = _opts.updateInstall;
                 // TODO: convert from install name to install id, after port module refactor
                 let installId!: string;
-                const newVersion = latest.get(installId)!;
+                const newVersion = latest.get(installId);
+                if (!newVersion) {
+                  logger().info(
+                    `Error while fetching the latest version for: ${installName}`,
+                  );
+                  return;
+                }
                 await updateInstall(gcx, installId, newVersion, allowedDeps);
                 return;
               }
 
-              if (_opts.updateNoConfirm) {
+              if (_opts.updateAll) {
                 for (const [installId, newVersion] of latest.entries()) {
                   await updateInstall(gcx, installId, newVersion, allowedDeps);
                 }
@@ -261,10 +267,6 @@ async function getOldNewVersionComparison(
   envName: string,
   allowedDeps: Record<string, AllowedPortDep>,
 ) {
-  // TODO: get InstallSetX, where: from pcx,
-  // TODO: get PortMainfestX, where: ??
-  // TODO: get InstallConfigLiteX, where: ??
-
   await using scx = await syncCtxFromGhjk(gcx);
 
   const envDir = $.path(gcx.ghjkDir).join("envs", envName);
