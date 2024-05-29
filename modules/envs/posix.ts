@@ -168,7 +168,7 @@ async function shimLinkPaths(
 
     if (shims[fileName]) {
       throw new Error(
-        `duplicate shim found when adding shim for file "${fileName}"`,
+        `duplicate shim found when adding shim for file: "${fileName}"`,
       );
     }
     try {

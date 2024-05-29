@@ -79,9 +79,12 @@ export class Port extends GithubReleasePort {
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-    await std_fs.copy(
-      args.tmpDirPath,
-      std_path.resolve(args.installPath, "bin"),
-    );
+
+    const neededFileNames = ["cargo-binstall", "detect-targets", "detect-wasi"];
+    const destination = std_path.resolve(args.installPath, "bin");
+    for (const fileName of neededFileNames) {
+      const sourceFile = std_path.resolve(args.tmpDirPath, fileName);
+      await std_fs.copy(sourceFile, destination);
+    }
   }
 }

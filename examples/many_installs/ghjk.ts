@@ -1,6 +1,5 @@
 export { ghjk } from "../../mod.ts";
 import { install, stdDeps, stdSecureConfig } from "../../mod.ts";
-import { thinInstallConfig } from "../../port.ts";
 import * as ports from "../../ports/mod.ts";
 
 // specify versions
@@ -19,10 +18,7 @@ const installs = {
 
 const allowedPortDeps = [
   ...stdDeps(),
-  ...[installs.python_latest, installs.node].map((fat) => ({
-    manifest: fat.port,
-    defaultInst: thinInstallConfig(fat),
-  })),
+  ...[installs.python_latest, installs.node],
 ];
 
 export const secureConfig = stdSecureConfig({

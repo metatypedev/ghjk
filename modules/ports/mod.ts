@@ -144,7 +144,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         .command(
           "outdated",
           new cliffy_cmd.Command()
-            .description("TODO")
+            .description("Show a version table for installs")
             .option(
               "-u, --update-install <installName>",
               "Update specific install",
@@ -170,13 +170,39 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 envName,
                 allowedDeps,
               );
-              for (const [installId, installedVersion] of installed.entries()) {
-                const latestVersion = latest.get(installId);
+              for (let [installId, installedVersion] of installed.entries()) {
+                let latestVersion = latest.get(installId);
+                if (!latestVersion) {
+                  throw new Error(
+                    `Couldn't find the latest version for install id: ${installId}`,
+                  );
+                }
+
+                if (latestVersion[0] === "v") {
+                  latestVersion = latestVersion.slice(1);
+                }
+                if (installedVersion[0] === "v") {
+                  installedVersion = installedVersion.slice(1);
+                }
+
                 const config = installConfigs.get(installId);
+
+                if (!config) {
+                  throw new Error(
+                    `Config not found for install id: ${installId}`,
+                  );
+                }
+
+                if (config["specifiedVersion"]) {
+                  latestVersion = "=" + latestVersion;
+                }
+
                 const presentableConfig = { ...config };
-                ["buildDepConfigs", "version"].map((key) => {
-                  delete presentableConfig[key];
-                });
+                ["buildDepConfigs", "version", "specifiedVersion"].map(
+                  (key) => {
+                    delete presentableConfig[key];
+                  },
+                );
                 const row = [
                   $.inspect(presentableConfig),
                   installedVersion,
