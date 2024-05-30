@@ -8,11 +8,11 @@ task("greet", async ($, { argv: [name] }) => {
 
 const ha = task({
   name: "ha",
-  installs: [ports.protoc()],
+  installs: [ports.jq_ghrel()],
   vars: { STUFF: "stuffier" },
   async fn($) {
     await $`echo $STUFF;
-      protoc --version;
+      jq --version;
       `;
   },
 });
