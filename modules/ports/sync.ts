@@ -386,7 +386,7 @@ export async function buildInstallGraph(
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
       for (const depId of manifest.buildDeps) {
-        const { manifest: depPort } = set.allowedDeps[depId.name];
+        const { manifest: depPort } = set.allowedBuildDeps[depId.name];
         if (!depPort) {
           throw new Error(
             `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
@@ -576,13 +576,19 @@ export function getDepConfig(
   depId: PortDep,
   resolutionDep = false,
 ) {
+<<<<<<< HEAD
   const { manifest: depPort, defaultInst: defaultDepInstall } =
     allowedDeps[depId.name];
   if (!depPort) {
+=======
+  const dep = set.allowedBuildDeps[depId.name];
+  if (!dep) {
+>>>>>>> ade257f (docs: improve README)
     throw new Error(
       `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
     );
   }
+  const { manifest: depPort, defaultInst: defaultDepInstall } = dep;
   // install configuration of an allowed dep port
   // can be overriden by dependent ports
   const res = validators.installConfigLite.safeParse(

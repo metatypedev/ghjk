@@ -59,7 +59,9 @@ const cases: CustomE2eTestCase[] = [
     // -s: read from stdin
     // -l: login mode
     // -i: make it interactive
-    ePoint: `bash -sil`,
+    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") == "local"
+      ? `bash --rcfile $BASH_ENV -si` // we don't want to use the system rcfile
+      : `bash -sil`,
     stdin: posixInteractiveScript,
   },
   {

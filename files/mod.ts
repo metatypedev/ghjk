@@ -165,7 +165,7 @@ export class Ghjkfile {
     deps: (InstallConfigFat | AllowedPortDep)[],
   ) {
     const set = this.#getSet(setId);
-    set.allowedDeps = Object.fromEntries(
+    set.allowedBuildDeps = Object.fromEntries(
       reduceAllowedDeps(deps).map((
         dep,
       ) => [dep.manifest.name, dep]),
@@ -301,7 +301,7 @@ export class Ghjkfile {
   #getSet(setId: string) {
     let set = this.#installSets.get(setId);
     if (!set) {
-      set = { installs: [], allowedDeps: {} };
+      set = { installs: [], allowedBuildDeps: {} };
       this.#installSets.set(setId, set);
     }
     return set;
@@ -387,12 +387,12 @@ export class Ghjkfile {
             ]);
             installSet.installs = [...mergedInstallsSet.values()];
             for (
-              const [key, val] of Object.entries(baseSet.allowedDeps)
+              const [key, val] of Object.entries(baseSet.allowedBuildDeps)
             ) {
               // prefer the port dep config of the child over any
               // similar deps in the parent
-              if (!installSet.allowedDeps[key]) {
-                installSet.allowedDeps[key] = val;
+              if (!installSet.allowedBuildDeps[key]) {
+                installSet.allowedBuildDeps[key] = val;
               }
             }
           }
@@ -529,7 +529,7 @@ export class Ghjkfile {
       };
       const taskInstallSet: InstallSet = {
         installs: args.installs ?? [],
-        allowedDeps: Object.fromEntries(
+        allowedBuildDeps: Object.fromEntries(
           reduceAllowedDeps(args.allowedBuildDeps ?? []).map((
             dep,
           ) => [dep.manifest.name, dep]),
@@ -574,12 +574,12 @@ export class Ghjkfile {
             ]);
             taskInstallSet.installs = [...mergedInstallsSet.values()];
             for (
-              const [key, val] of Object.entries(baseSet.allowedDeps)
+              const [key, val] of Object.entries(baseSet.allowedBuildDeps)
             ) {
               // prefer the port dep config of the child over any
               // similar deps in the base
-              if (!taskInstallSet.allowedDeps[key]) {
-                taskInstallSet.allowedDeps[key] = val;
+              if (!taskInstallSet.allowedBuildDeps[key]) {
+                taskInstallSet.allowedBuildDeps[key] = val;
               }
             }
           } else {
@@ -692,7 +692,6 @@ export class Ghjkfile {
             prov.ty == "hook.onEnter.ghjkTask" ||
             prov.ty == "hook.onExit.ghjkTask"
           ) {
-            logger().warn("caught");
             const inlineProv = prov as InlineTaskHookProvision;
             const taskKey = localToFinalKey[inlineProv.taskKey];
             const out: WellKnownProvision = {
@@ -722,7 +721,7 @@ export class Ghjkfile {
       out.sets[setId] = {
         installs: set.installs.map((inst) => this.#addToBlackboard(inst)),
         allowedDeps: this.#addToBlackboard(Object.fromEntries(
-          Object.entries(set.allowedDeps).map(
+          Object.entries(set.allowedBuildDeps).map(
             ([key, dep]) => [key, this.#addToBlackboard(dep)],
           ),
         )),
@@ -845,16 +844,10 @@ export function stdDeps(args = { enableRuntimes: false }) {
   ];
   if (args.enableRuntimes) {
     out.push(
-      ...[
+      ...reduceAllowedDeps([
         node.default(),
         cpy.default(),
-      ].map((fatInst) => {
-        const out: AllowedPortDep = {
-          manifest: fatInst.port,
-          defaultInst: thinInstallConfig(fatInst),
-        };
-        return portsValidators.allowedPortDep.parse(out);
-      }),
+      ]),
     );
   }
   return out;

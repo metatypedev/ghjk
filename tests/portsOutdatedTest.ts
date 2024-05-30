@@ -1,13 +1,13 @@
-import "../../../setup_logger.ts";
-import { DenoFileSecureConfig, stdSecureConfig } from "../../../mod.ts";
-import { E2eTestCase, genTsGhjkFile, harness } from "../../utils.ts";
-import * as ports from "../../../ports/mod.ts";
-import type { InstallConfigFat } from "../../../modules/ports/types.ts";
+import "../setup_logger.ts";
+import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
+import * as ports from "../ports/mod.ts";
+import type { InstallConfigFat } from "../modules/ports/types.ts";
+import { FileArgs } from "../mod.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
-  secureConf?: DenoFileSecureConfig;
+  secureConf?: FileArgs;
 };
 
 const cases: CustomE2eTestCase[] = [
@@ -23,9 +23,9 @@ const cases: CustomE2eTestCase[] = [
       ...ports.pipi({ packageName: "poetry" }),
     ],
     ePoint: `ghjk p outdated`,
-    secureConf: stdSecureConfig({
+    secureConf: {
       enableRuntimes: true,
-    }),
+    },
   },
   {
     name: "check ports outdated",
@@ -38,9 +38,9 @@ const cases: CustomE2eTestCase[] = [
       ...ports.pipi({ packageName: "poetry" }),
     ],
     ePoint: `ghjk p outdated --update-all`,
-    secureConf: stdSecureConfig({
+    secureConf: {
       enableRuntimes: true,
-    }),
+    },
   },
 ];
 
@@ -48,9 +48,12 @@ harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: genTsGhjkFile(
     {
-      installConf: testCase.installConf,
-      secureConf: testCase.secureConf,
-      taskDefs: [],
+      secureConf: {
+        ...testCase.secureConf,
+        installs: Array.isArray(testCase.installConf)
+          ? testCase.installConf
+          : [testCase.installConf],
+      },
     },
   ),
   ePoints: [
@@ -71,5 +74,5 @@ harness(cases.map((testCase) => ({
   // but we don't want some bug spinlocking the ci for
   // an hour
   timeout_ms: 5 * 60 * 1000,
-  name: `ports/${testCase.name}`,
+  name: `portsOutdated/${testCase.name}`,
 })));

@@ -49,8 +49,15 @@ env("main")
 
 // these top level installs go to the main env as well
 install(
-  ports.rust({ version: "stable" }),
-  ports.protoc(),
+  // ports can declare their own config params
+  ports.rust({
+    version: "stable",
+    profile: "minimal",
+    components: ["rustfmt"],
+  }),
+  // some ports use other programs as backends
+  ports.pipi({ packageName: "pre-commit" })[0],
+  ports.cargobi({ crateName: "mise" }),
 );
 
 const ci = env("ci", {

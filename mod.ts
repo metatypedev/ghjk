@@ -63,6 +63,8 @@ export type FileArgs = {
   defaultBaseEnv?: string;
   /**
    * Additional ports that can be used as build time dependencies.
+   *
+   * This applies to the "main" env.
    */
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   /**
@@ -70,10 +72,14 @@ export type FileArgs = {
    * If set, {@link enableRuntimes} is ignored but {@link allowedBuildDeps}
    * is still respected.
    * True by default.
+   *
+   * This applies to the "main" env.
    */
   stdDeps?: boolean;
   /**
    * (unstable) Allow runtimes from std deps to be used as build time dependencies.
+   *
+   * This applies to the "main" env.
    */
   enableRuntimes?: boolean;
   /**
@@ -95,16 +101,40 @@ type SecureConfigArgs = Omit<
   "envs" | "tasks" | "installs"
 >;
 
-export function file(
-  args: FileArgs = {},
-): {
+type DenoFileKnobs = {
   sophon: Readonly<object>;
+  /**
+   * {@inheritdoc AddInstall}
+   */
   install: AddInstall;
+  /**
+   * {@inheritdoc AddTask}
+   */
   task: AddTask;
+  /**
+   * {@inheritDoc AddEnv}
+   */
   env: AddEnv;
+  /**
+   * Configure global and miscallenous ghjk settings.
+   */
   config(args: SecureConfigArgs): void;
-} {
+};
+
+export const file = Object.freeze(function file(
+  args: FileArgs = {},
+): DenoFileKnobs {
   const defaultBuildDepsSet: AllowedPortDep[] = [];
+
+  const DEFAULT_BASE_ENV_NAME = "main";
+
+  const file = new Ghjkfile();
+  const mainEnv = file.addEnv({
+    name: DEFAULT_BASE_ENV_NAME,
+    inherit: false,
+    installs: args.installs,
+    desc: "the default default environment.",
+  });
 
   // this replaces the allowedBuildDeps contents according to the
   // args. Written to be called multilple times to allow
@@ -121,37 +151,21 @@ export function file(
     // if the user explicitly passes a port config, we let
     // it override any ports of the same kind from the std library
     for (
-      const dep
-        of (args.stdDeps || args.stdDeps === undefined || args.stdDeps === null)
-          ? stdDeps({ enableRuntimes: args.enableRuntimes ?? false })
-          : []
+      const dep of args.stdDeps !== false // note: this is true if it's undefined
+        ? stdDeps({ enableRuntimes: args.enableRuntimes ?? false })
+        : []
     ) {
       if (seenPorts.has(dep.manifest.name)) {
         continue;
       }
       defaultBuildDepsSet.push(dep);
     }
+    mainEnv.allowedBuildDeps(defaultBuildDepsSet);
   };
 
   // populate the bulid deps by the default args first
   replaceDefaultBuildDeps(args);
 
-  const DEFAULT_BASE_ENV_NAME = "main";
-
-  const file = new Ghjkfile();
-  const mainEnv = file.addEnv({
-    name: DEFAULT_BASE_ENV_NAME,
-    inherit: false,
-    installs: args.installs,
-    // the default build deps will be used
-    // as the allow set for the main env as well
-    // NOTE: this approach allows the main env to
-    // disassociate itself from the default set
-    // if the user invokes `allowedBuildDeps`
-    // on its EnvBuilder
-    allowedBuildDeps: defaultBuildDepsSet,
-    desc: "the default default environment.",
-  });
   for (const env of args.envs ?? []) {
     file.addEnv(env);
   }
@@ -231,13 +245,19 @@ export function file(
     },
 
     config(
-      a: SecureConfigArgs,
+      { defaultBaseEnv, defaultEnv, ...rest }: SecureConfigArgs,
     ) {
-      replaceDefaultBuildDeps(a);
+      if (
+        rest.enableRuntimes !== undefined ||
+        rest.allowedBuildDeps !== undefined ||
+        rest.stdDeps !== undefined
+      ) {
+        replaceDefaultBuildDeps(rest);
+      }
       args = {
         ...args,
-        ...a,
+        ...{ defaultEnv, defaultBaseEnv },
       };
     },
   };
-}
+});

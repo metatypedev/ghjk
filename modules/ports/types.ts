@@ -156,7 +156,7 @@ const installSetHashed = zod.object({
 
 const installSet = zod.object({
   installs: zod.array(installConfigFat),
-  allowedDeps: allowDepSet,
+  allowedBuildDeps: allowDepSet,
 });
 
 const portsModuleConfigHashed = zod.object({

@@ -1,5 +1,5 @@
 export { sophon } from "./hack.ts";
-import { config, install } from "./hack.ts";
+import { config, env, install, stdDeps } from "./hack.ts";
 import * as ports from "./ports/mod.ts";
 
 config({
