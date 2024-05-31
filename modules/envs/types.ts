@@ -1,4 +1,5 @@
 import { std_path, zod } from "../../deps/common.ts";
+import { installProvisionTy } from "../ports/types.ts";
 
 const absolutePath = zod.string().refine((path) => std_path.isAbsolute(path));
 
@@ -15,12 +16,17 @@ export const hookProvisionTypes = [
   "hook.onExit.posixExec",
 ] as const;
 
+export const installProvisionTypes = [
+  installProvisionTy,
+] as const;
+
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
+  ...installProvisionTypes,
 ] as const;
 
 const wellKnownProvision = zod.discriminatedUnion(
@@ -40,6 +46,15 @@ const wellKnownProvision = zod.discriminatedUnion(
     ),
     ...posixFileProvisionTypes.map((ty) =>
       zod.object({ ty: zod.literal(ty), absolutePath })
+    ),
+    ...installProvisionTypes.map(
+      (ty) =>
+        zod.object(
+          {
+            ty: zod.literal(ty),
+            instId: zod.string(),
+          },
+        ),
     ),
   ],
 );
@@ -90,6 +105,6 @@ export type WellKnownEnvRecipeX = zod.infer<
 /*
  * A function that batch convert strange provisions of a certain kind to well known ones.
  */
-export type ProvisionReducer<P extends Provision> = (
+export type ProvisionReducer<P extends Provision, O extends Provision> = (
   provisions: P[],
-) => Promise<WellKnownProvision[]>;
+) => Promise<O[]>;

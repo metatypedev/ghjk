@@ -10,7 +10,10 @@ import type {
 import { wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
-export type ProvisionReducerStore = Map<string, ProvisionReducer<Provision>>;
+export type ProvisionReducerStore = Map<
+  string,
+  ProvisionReducer<Provision, Provision>
+>;
 
 /**
  * In order to provide a means for other modules to define their own

@@ -1,7 +1,7 @@
 //! Integration between Ports and Envs module
 
 import { expandGlobsAndAbsolutize, unwrapParseRes } from "../../utils/mod.ts";
-import type { WellKnownProvision } from "../envs/types.ts";
+import { Provision } from "../envs/types.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
 import type { PortsCtx } from "./mod.ts";
@@ -16,7 +16,7 @@ import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "./types.ts";
-import validators from "./types.ts";
+import validators, { installProvisionTy } from "./types.ts";
 
 export function installSetReducer(gcx: GhjkCtx) {
   return async (provisions: InstallSetProvision[]) => {
@@ -64,7 +64,7 @@ async function reduceInstArts(
   installGraph: InstallGraph,
   installArts: Map<string, InstallArtifacts>,
 ) {
-  const out: WellKnownProvision[] = [];
+  const out = [] as Provision[];
 
   // use this to track seen env vars to report conflicts
   const foundEnvVars: Record<string, [string, string]> = {};
@@ -75,6 +75,7 @@ async function reduceInstArts(
       .get(
         instId,
       )!;
+    out.push({ ty: installProvisionTy, instId });
 
     for (const [key, val] of Object.entries(env)) {
       const conflict = foundEnvVars[key];

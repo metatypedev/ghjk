@@ -5,11 +5,12 @@ import { Json, unwrapParseRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
-import type { GhjkCtx, ModuleManifest } from "../types.ts";
+import { type GhjkCtx, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
 import { Blackboard } from "../../host/types.ts";
+import { getTasksCtx } from "../utils.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;
@@ -40,10 +41,12 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     );
 
     const taskGraph = buildTaskGraph(gcx, config);
-    return {
-      config,
-      taskGraph,
-    };
+
+    const tasksCtx = getTasksCtx(gcx);
+    tasksCtx.config = config;
+    tasksCtx.taskGraph = taskGraph;
+
+    return tasksCtx;
   }
 
   commands(

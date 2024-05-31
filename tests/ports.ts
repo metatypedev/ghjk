@@ -159,9 +159,6 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
-    secureConf: stdSecureConfig({
-      enableRuntimes: true,
-    }),
   },
   // rustup +  600 megs
   {

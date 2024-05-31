@@ -1,5 +1,9 @@
 import { std_fs, std_path } from "../../deps/cli.ts";
-import type { EnvRecipeX } from "./types.ts";
+import {
+  type EnvRecipeX,
+  WellKnownProvision,
+  wellKnownProvisionTypes,
+} from "./types.ts";
 import { $, Path } from "../../utils/mod.ts";
 import type { GhjkCtx } from "../types.ts";
 import { reduceStrangeProvisions } from "./reducer.ts";
@@ -43,34 +47,45 @@ export async function cookPosixEnv(
   // FIXME: better support for multi installs
 
   await Promise.all(reducedRecipe.provides.map((item) => {
-    switch (item.ty) {
+    if (!wellKnownProvisionTypes.includes(item.ty)) {
+      return Promise.resolve();
+    }
+
+    const wellKnownProv = item as WellKnownProvision;
+    switch (wellKnownProv.ty) {
       case "posix.exec":
-        binPaths.push(item.absolutePath);
+        binPaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.sharedLib":
-        libPaths.push(item.absolutePath);
+        libPaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.headerFile":
-        includePaths.push(item.absolutePath);
+        includePaths.push(wellKnownProv.absolutePath);
         break;
       case "posix.envVar":
-        if (vars[item.key]) {
+        if (vars[wellKnownProv.key]) {
           throw new Error(
-            `env var conflict cooking unix env: key "${item.key}" has entries "${
-              vars[item.key]
-            }" and "${item.val}"`,
+            `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
+              vars[wellKnownProv.key]
+            }" and "${wellKnownProv.val}"`,
           );
         }
-        vars[item.key] = item.val;
+        vars[wellKnownProv.key] = wellKnownProv.val;
+        // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
         break;
       case "hook.onEnter.posixExec":
-        onEnterHooks.push([item.program, item.arguments]);
+        onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
         break;
       case "hook.onExit.posixExec":
-        onExitHooks.push([item.program, item.arguments]);
+        onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
+        break;
+      case "ghjk.ports.Install":
+        // do nothing
         break;
       default:
-        throw Error(`unsupported provision type: ${(item as any).provision}`);
+        throw Error(
+          `unsupported provision type: ${(wellKnownProv as any).provision}`,
+        );
     }
   }));
   void await Promise.all([
@@ -153,7 +168,7 @@ async function shimLinkPaths(
 
     if (shims[fileName]) {
       throw new Error(
-        `duplicate shim found when adding shim for file "${fileName}"`,
+        `duplicate shim found when adding shim for file: "${fileName}"`,
       );
     }
     try {
