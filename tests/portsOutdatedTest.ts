@@ -11,9 +11,8 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 };
 
 const cases: CustomE2eTestCase[] = [
-  // 0 megs
   {
-    name: "check ports outdated",
+    name: "ports_outdated",
     installConf: [
       ports.jq_ghrel(),
       ports.protoc(),
@@ -28,7 +27,7 @@ const cases: CustomE2eTestCase[] = [
     },
   },
   {
-    name: "check ports outdated",
+    name: "ports_outdated_update_all",
     installConf: [
       ports.jq_ghrel(),
       ports.protoc(),
