@@ -1,14 +1,15 @@
 {
   "version": "0",
-  "platform": "aarch64-darwin",
+  "platform": "x86_64-linux",
   "moduleEntries": {
     "ports": {
       "version": "0",
       "configResolutions": {
         "bciqjlw6cxddajjmznoemlmnu7mgbbm7a3hfmnd2x5oivwajmiqui5ey": {
-          "version": "v0.2.62",
+          "version": "v0.2.63",
           "buildDepConfigs": {},
-          "portRef": "act_ghrel@0.1.0"
+          "portRef": "act_ghrel@0.1.0",
+          "specifiedVersion": false
         },
         "bciqao2s3r3r33ruox4qknfrxqrmemuccxn64dze2ylojrzp2bwvt4ji": {
           "version": "3.7.1",
@@ -17,47 +18,56 @@
               "version": "3.12.3",
               "buildDepConfigs": {
                 "tar_aa": {
-                  "version": "3.5",
+                  "version": "1.35",
                   "buildDepConfigs": {},
-                  "portRef": "tar_aa@0.1.0"
+                  "portRef": "tar_aa@0.1.0",
+                  "specifiedVersion": false
                 },
                 "zstd_aa": {
                   "version": "v1.5.5,",
                   "buildDepConfigs": {},
-                  "portRef": "zstd_aa@0.1.0"
+                  "portRef": "zstd_aa@0.1.0",
+                  "specifiedVersion": false
                 }
               },
-              "portRef": "cpy_bs_ghrel@0.1.0"
+              "portRef": "cpy_bs_ghrel@0.1.0",
+              "specifiedVersion": false
             }
           },
           "portRef": "pipi_pypi@0.1.0",
-          "packageName": "pre-commit"
+          "packageName": "pre-commit",
+          "specifiedVersion": false
         },
         "bciqij3g6mmbjn4a6ps4eipcy2fmw2zumgv5a3gbxycthroffihwquoi": {
           "version": "3.12.3",
           "buildDepConfigs": {
             "tar_aa": {
-              "version": "3.5",
+              "version": "1.35",
               "buildDepConfigs": {},
-              "portRef": "tar_aa@0.1.0"
+              "portRef": "tar_aa@0.1.0",
+              "specifiedVersion": false
             },
             "zstd_aa": {
               "version": "v1.5.5,",
               "buildDepConfigs": {},
-              "portRef": "zstd_aa@0.1.0"
+              "portRef": "zstd_aa@0.1.0",
+              "specifiedVersion": false
             }
           },
-          "portRef": "cpy_bs_ghrel@0.1.0"
+          "portRef": "cpy_bs_ghrel@0.1.0",
+          "specifiedVersion": false
         },
         "bciqj4p5hoqweghbuvz52rupja7sqze34z63dd62nz632c5zxikv6ezy": {
-          "version": "3.5",
+          "version": "1.35",
           "buildDepConfigs": {},
-          "portRef": "tar_aa@0.1.0"
+          "portRef": "tar_aa@0.1.0",
+          "specifiedVersion": false
         },
         "bciqe6fwheayositrdk7rkr2ngdr4wizldakex23tgivss7w6z7g3q3y": {
           "version": "v1.5.5,",
           "buildDepConfigs": {},
-          "portRef": "zstd_aa@0.1.0"
+          "portRef": "zstd_aa@0.1.0",
+          "specifiedVersion": false
         }
       }
     },

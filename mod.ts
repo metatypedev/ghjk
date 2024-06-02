@@ -128,8 +128,8 @@ export const file = Object.freeze(function file(
 
   const DEFAULT_BASE_ENV_NAME = "main";
 
-  const file = new Ghjkfile();
-  const mainEnv = file.addEnv({
+  const builder = new Ghjkfile();
+  const mainEnv = builder.addEnv({
     name: DEFAULT_BASE_ENV_NAME,
     inherit: false,
     installs: args.installs,
@@ -167,10 +167,10 @@ export const file = Object.freeze(function file(
   replaceDefaultBuildDeps(args);
 
   for (const env of args.envs ?? []) {
-    file.addEnv(env);
+    builder.addEnv(env);
   }
   for (const task of args.tasks ?? []) {
-    file.addTask({ ...task, ty: "denoFile@v1" });
+    builder.addTask({ ...task, ty: "denoFile@v1" });
   }
 
   // FIXME: ses.lockdown to freeze primoridials
@@ -180,7 +180,7 @@ export const file = Object.freeze(function file(
       (
         ghjkfileUrl: string,
       ) => {
-        return file.toConfig({
+        return builder.toConfig({
           ghjkfileUrl,
           defaultEnv: args.defaultEnv ?? DEFAULT_BASE_ENV_NAME,
           defaultBaseEnv: args.defaultBaseEnv ??
@@ -191,7 +191,7 @@ export const file = Object.freeze(function file(
     execTask: Object.freeze(
       // TODO: do we need to source the default base env from
       // the secure config here?
-      (args: ExecTaskArgs) => file.execTask(args),
+      (args: ExecTaskArgs) => builder.execTask(args),
     ),
   });
 
@@ -231,7 +231,7 @@ export const file = Object.freeze(function file(
           name: nameOrArgsOrFn,
         };
       }
-      return file.addTask({ ...args, ty: "denoFile@v1" });
+      return builder.addTask({ ...args, ty: "denoFile@v1" });
     },
 
     env(
@@ -241,7 +241,7 @@ export const file = Object.freeze(function file(
       const args = typeof nameOrArgs == "object"
         ? nameOrArgs
         : { ...argsMaybe, name: nameOrArgs };
-      return file.addEnv(args);
+      return builder.addEnv(args);
     },
 
     config(
@@ -254,8 +254,9 @@ export const file = Object.freeze(function file(
       ) {
         replaceDefaultBuildDeps(rest);
       }
+      // NOTE:we're deep mutating the first args from above
       args = {
-        ...args,
+        ...rest,
         ...{ defaultEnv, defaultBaseEnv },
       };
     },

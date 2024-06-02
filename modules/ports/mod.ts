@@ -158,7 +158,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
               const currInstallSetId = getActiveEnvInstallSetId(envsCtx);
               const currInstallSet = installSets[currInstallSetId];
-              const allowedDeps = currInstallSet.allowedDeps;
+              const allowedDeps = currInstallSet.allowedBuildDeps;
 
               const rows = [];
               const {

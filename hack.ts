@@ -41,7 +41,7 @@ function firstCallerCheck<F extends (...args: any[]) => any>(fn: F): F {
       exitFn(1);
     } else if (firstCaller === undefined) {
       firstCaller = caller;
-    } else if (caller != firstCaller) {
+    } else if (caller !== firstCaller) {
       logger(import.meta).error(
         `new \`hack.ts\` caller detected: ${caller} != ${firstCaller}`,
       );

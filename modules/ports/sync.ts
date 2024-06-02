@@ -338,7 +338,7 @@ export async function buildInstallGraph(
     });
     const resolvedConfig = await resolveConfig(
       scx,
-      set.allowedDeps,
+      set.allowedBuildDeps,
       manifest,
       instLite,
     );
@@ -570,20 +570,14 @@ function resolveConfig(
 // for the portsConfig.allowedDeps
 // No version resolution takes place
 export function getDepConfig(
-  allowedDeps: Record<string, AllowedPortDep>,
+  allowedBuildDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
   depId: PortDep,
   resolutionDep = false,
 ) {
-<<<<<<< HEAD
-  const { manifest: depPort, defaultInst: defaultDepInstall } =
-    allowedDeps[depId.name];
-  if (!depPort) {
-=======
-  const dep = set.allowedBuildDeps[depId.name];
+  const dep = allowedBuildDeps[depId.name];
   if (!dep) {
->>>>>>> ade257f (docs: improve README)
     throw new Error(
       `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
     );

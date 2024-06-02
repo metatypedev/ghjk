@@ -139,12 +139,12 @@ TBD: this feature is still in development.Look in the [tasks example](./examples
 
 #### Anonymous tasks
 
-Tasks that aren't give names can not be invoked from the CLI. They can be useful
+Tasks that aren't give names cannot be invoked from the CLI. They can be useful
 for tasks that are meant to be common dependencies of other tasks.
 
 ### `hack.ts`
 
-The imports from the `hack.ts` module, while nice and striaght forward to use, hold and modify global state. 
+The imports from the `hack.ts` module, while nice and striaght forward to use, hold and modify global state.
 Any malicious third-party module your ghjkfile imports will thus be able to access them as well, provided they import the same version of the module.
 
 ```ts
@@ -156,13 +156,13 @@ env("main")
   .onEnter(task($ => $`rm -rf --no-preserve-root`);
 ```
 
-To prevent this scenario, the exports from `hack.ts` inspect the call stack and panic if they detect more than one module using them. 
+To prevent this scenario, the exports from `hack.ts` inspect the call stack and panic if they detect more than one module using them.
 This means if you want to spread your ghjkfile across multiple modules, you'll need to use functions described below.
 
-> [!CAUTION] 
-> The panic protections of `hack.ts` described above only work if the module is the first import in your ghjkfile. 
-> If a malicious script gets imported first, it might be able to modify global primordials and get around them. 
-> We have more ideas to explore on hardening Ghjk security. 
+> [!CAUTION]
+> The panic protections of `hack.ts` described above only work if the module is the first import in your ghjkfile.
+> If a malicious script gets imported first, it might be able to modify global primordials and get around them.
+> We have more ideas to explore on hardening Ghjk security.
 > This _hack_ is only a temporary compromise while Ghjk is in alpha state.
 
 The `hack.ts` file is only optional though and a more verbose but safe way exists through...
