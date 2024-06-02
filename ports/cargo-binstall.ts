@@ -7,7 +7,6 @@ import {
   InstallArgs,
   InstallConfigSimple,
   osXarch,
-  std_fs,
   std_path,
   unarchive,
 } from "../port.ts";
@@ -75,16 +74,18 @@ export class Port extends GithubReleasePort {
 
     await unarchive(fileDwnPath, args.tmpDirPath);
 
+    const tmpDir = $.path(args.tmpDirPath);
+    await tmpDir.join("bin").ensureDir();
+    for (
+      const fileName of ["cargo-binstall", "detect-targets", "detect-wasi"]
+    ) {
+      await tmpDir.join(fileName).renameToDir(tmpDir.join("bin"));
+    }
+
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-
-    const neededFileNames = ["cargo-binstall", "detect-targets", "detect-wasi"];
-    const destination = std_path.resolve(args.installPath, "bin");
-    for (const fileName of neededFileNames) {
-      const sourceFile = std_path.resolve(args.tmpDirPath, fileName);
-      await std_fs.copy(sourceFile, destination);
-    }
+    await tmpDir.rename(installPath);
   }
 }

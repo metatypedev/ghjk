@@ -190,6 +190,7 @@ export function genTsGhjkFile(
     // we need to escape a json string embedded in a js string
     // 2x
     (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+    2,
   );
 
   const tasks = (secureConf?.tasks ?? []).map(
@@ -198,6 +199,7 @@ export function genTsGhjkFile(
         def,
         (_, val) =>
           typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+        2,
       );
       return $.dedent`
       ghjk.task({
