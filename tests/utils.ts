@@ -2,13 +2,8 @@ import { defaultInstallArgs, install } from "../install/mod.ts";
 import { std_url } from "../deps/dev.ts";
 import { std_async } from "../deps/dev.ts";
 import { $, dbg, importRaw } from "../utils/mod.ts";
-import type { InstallConfigFat } from "../modules/ports/types.ts";
 import logger from "../utils/logger.ts";
-import type {
-  DenoFileSecureConfig,
-  DenoTaskDefArgs,
-  EnvDefArgs,
-} from "../mod.ts";
+import type { DenoTaskDefArgs, FileArgs } from "../mod.ts";
 export type { EnvDefArgs } from "../mod.ts";
 import { ALL_OS } from "../port.ts";
 import { ALL_ARCH } from "../port.ts";
@@ -181,79 +176,52 @@ export type TaskDef =
   & Required<Pick<DenoTaskDefArgs, "fn">>;
 
 export function genTsGhjkFile(
-  { installConf, secureConf, taskDefs, envDefs }: {
-    installConf?: InstallConfigFat | InstallConfigFat[];
-    secureConf?: DenoFileSecureConfig;
-    taskDefs?: TaskDef[];
-    envDefs?: EnvDefArgs[];
+  { secureConf }: {
+    secureConf?: FileArgs;
   },
 ) {
-  const installConfArray = installConf
-    ? Array.isArray(installConf) ? installConf : [installConf]
-    : [];
-
-  const serializedPortsInsts = JSON.stringify(
-    installConfArray,
-    (_, val) =>
-      typeof val == "string"
-        // we need to escape a json string embedded in a js string
-        // 2x
-        ? val.replaceAll(/\\/g, "\\\\")
-        : val,
-  );
-
   const serializedSecConf = JSON.stringify(
     // undefined is not recognized by JSON.parse
     // so we stub it with null
-    secureConf ?? null,
+    {
+      ...secureConf,
+      tasks: [],
+    },
+    // we need to escape a json string embedded in a js string
+    // 2x
     (_, val) => typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+    2,
   );
 
-  const tasks = (taskDefs ?? []).map(
+  const tasks = (secureConf?.tasks ?? []).map(
     (def) => {
       const stringifiedSection = JSON.stringify(
         def,
         (_, val) =>
           typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
+        2,
       );
       return $.dedent`
       ghjk.task({
         ...JSON.parse(\`${stringifiedSection}\`),
-        fn: ${def.fn.toString()}
-      })`;
-    },
-  ).join("\n");
-
-  const envs = (envDefs ?? []).map(
-    (def) => {
-      const stringifiedSection = JSON.stringify(
-        def,
-        (_, val) =>
-          typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
-      );
-      return $.dedent`
-      ghjk.env({
-        ...JSON.parse(\`${stringifiedSection}\`),
+        fn: ${def.fn?.toString()}
       })`;
     },
   ).join("\n");
 
   return `
-export { ghjk } from "$ghjk/mod.ts";
-import * as ghjk from "$ghjk/mod.ts";
-const confStr = \`
-${serializedPortsInsts}
-\`;
-const confObj = JSON.parse(confStr);
-ghjk.install(...confObj)
+import { file } from "$ghjk/mod.ts";
 
-const secConfStr = \`
+const confStr = \`
 ${serializedSecConf}
 \`;
-export const secureConfig = JSON.parse(secConfStr);
+const confObj = JSON.parse(confStr);
+const ghjk = file(confObj);
+
+export const sophon = ghjk.sophon;
 
 ${tasks}
-${envs}
+
 `;
 }
 

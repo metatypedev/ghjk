@@ -1,5 +1,5 @@
 import "../setup_logger.ts";
-import { DenoFileSecureConfig, stdSecureConfig } from "../mod.ts";
+import { FileArgs } from "../mod.ts";
 import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
 import dummy from "../ports/dummy.ts";
@@ -9,7 +9,7 @@ import { testTargetPlatform } from "./utils.ts";
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
-  secureConf?: DenoFileSecureConfig;
+  secureConf?: FileArgs;
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
@@ -97,18 +97,18 @@ const cases: CustomE2eTestCase[] = [
     name: "npmi-node-gyp",
     installConf: ports.npmi({ packageName: "node-gyp" }),
     ePoint: `node-gyp --version`,
-    secureConf: stdSecureConfig({
+    secureConf: {
       enableRuntimes: true,
-    }),
+    },
   },
   // node + more megs
   {
     name: "npmi-jco",
     installConf: ports.npmi({ packageName: "@bytecodealliance/jco" }),
     ePoint: `jco --version`,
-    secureConf: stdSecureConfig({
+    secureConf: {
       enableRuntimes: true,
-    }),
+    },
   },
   // 42 megs
   {
@@ -159,6 +159,9 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // rustup +  600 megs
   {
@@ -199,9 +202,12 @@ harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: genTsGhjkFile(
     {
-      installConf: testCase.installConf,
-      secureConf: testCase.secureConf,
-      taskDefs: [],
+      secureConf: {
+        ...testCase.secureConf,
+        installs: Array.isArray(testCase.installConf)
+          ? testCase.installConf
+          : [testCase.installConf],
+      },
     },
   ),
   ePoints: [
@@ -209,14 +215,14 @@ harness(cases.map((testCase) => ({
       cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
     })),
     /* // FIXME: better tests for the `InstallDb`
-                // installs db means this shouldn't take too long
-                // as it's the second sync
-                {
-                  cmd: [
-                    ..."env".split(" "),
-                    "bash -c 'timeout 1 ghjk envs cook'",
-                  ],
-                }, */
+      // installs db means this shouldn't take too long
+      // as it's the second sync
+      {
+        cmd: [
+          ..."env".split(" "),
+          "bash -c 'timeout 1 ghjk envs cook'",
+        ],
+      }, */
   ],
   name: `ports/${testCase.name}`,
 })));

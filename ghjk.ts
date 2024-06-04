@@ -1,6 +1,11 @@
-export { ghjk } from "./mod.ts";
-import { $, env, install, stdSecureConfig, task } from "./mod.ts";
+export { sophon } from "./hack.ts";
+import { config, env, install, stdDeps } from "./hack.ts";
 import * as ports from "./ports/mod.ts";
+
+config({
+  defaultBaseEnv: "test",
+  enableRuntimes: true,
+});
 
 // these are just for quick testing
 install();
@@ -11,16 +16,3 @@ install(
   ports.pipi({ packageName: "pre-commit" })[0],
   ports.cpy_bs(),
 );
-
-env("main")
-  .onEnter(task(($) => $`echo enter`))
-  .onExit(task(($) => $`echo exit`));
-
-env("test", {
-  installs: [ports.protoc()],
-});
-
-export const secureConfig = stdSecureConfig({
-  enableRuntimes: true,
-  defaultBaseEnv: "test",
-});

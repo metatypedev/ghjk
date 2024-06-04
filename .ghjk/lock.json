@@ -1,14 +1,15 @@
 {
   "version": "0",
-  "platform": "aarch64-darwin",
+  "platform": "x86_64-linux",
   "moduleEntries": {
     "ports": {
       "version": "0",
       "configResolutions": {
         "bciqjlw6cxddajjmznoemlmnu7mgbbm7a3hfmnd2x5oivwajmiqui5ey": {
-          "version": "v0.2.62",
+          "version": "v0.2.63",
           "buildDepConfigs": {},
-          "portRef": "act_ghrel@0.1.0"
+          "portRef": "act_ghrel@0.1.0",
+          "specifiedVersion": false
         },
         "bciqao2s3r3r33ruox4qknfrxqrmemuccxn64dze2ylojrzp2bwvt4ji": {
           "version": "3.7.1",
@@ -17,52 +18,56 @@
               "version": "3.12.3",
               "buildDepConfigs": {
                 "tar_aa": {
-                  "version": "3.5",
+                  "version": "1.35",
                   "buildDepConfigs": {},
-                  "portRef": "tar_aa@0.1.0"
+                  "portRef": "tar_aa@0.1.0",
+                  "specifiedVersion": false
                 },
                 "zstd_aa": {
                   "version": "v1.5.5,",
                   "buildDepConfigs": {},
-                  "portRef": "zstd_aa@0.1.0"
+                  "portRef": "zstd_aa@0.1.0",
+                  "specifiedVersion": false
                 }
               },
-              "portRef": "cpy_bs_ghrel@0.1.0"
+              "portRef": "cpy_bs_ghrel@0.1.0",
+              "specifiedVersion": false
             }
           },
           "portRef": "pipi_pypi@0.1.0",
-          "packageName": "pre-commit"
+          "packageName": "pre-commit",
+          "specifiedVersion": false
         },
         "bciqij3g6mmbjn4a6ps4eipcy2fmw2zumgv5a3gbxycthroffihwquoi": {
           "version": "3.12.3",
           "buildDepConfigs": {
             "tar_aa": {
-              "version": "3.5",
+              "version": "1.35",
               "buildDepConfigs": {},
-              "portRef": "tar_aa@0.1.0"
+              "portRef": "tar_aa@0.1.0",
+              "specifiedVersion": false
             },
             "zstd_aa": {
               "version": "v1.5.5,",
               "buildDepConfigs": {},
-              "portRef": "zstd_aa@0.1.0"
+              "portRef": "zstd_aa@0.1.0",
+              "specifiedVersion": false
             }
           },
-          "portRef": "cpy_bs_ghrel@0.1.0"
+          "portRef": "cpy_bs_ghrel@0.1.0",
+          "specifiedVersion": false
         },
         "bciqj4p5hoqweghbuvz52rupja7sqze34z63dd62nz632c5zxikv6ezy": {
-          "version": "3.5",
+          "version": "1.35",
           "buildDepConfigs": {},
-          "portRef": "tar_aa@0.1.0"
+          "portRef": "tar_aa@0.1.0",
+          "specifiedVersion": false
         },
         "bciqe6fwheayositrdk7rkr2ngdr4wizldakex23tgivss7w6z7g3q3y": {
           "version": "v1.5.5,",
           "buildDepConfigs": {},
-          "portRef": "zstd_aa@0.1.0"
-        },
-        "bciqkpfuyqchouu5o3whigod3f5coscq2jdlwde6fztypy3x6fg6xb5q": {
-          "version": "v27.0",
-          "buildDepConfigs": {},
-          "portRef": "protoc_ghrel@0.1.0"
+          "portRef": "zstd_aa@0.1.0",
+          "specifiedVersion": false
         }
       }
     },
@@ -86,12 +91,6 @@
                 "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
               ],
               "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
-            },
-            "ghjkEnvProvInstSet___test": {
-              "installs": [
-                "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa"
-              ],
-              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             }
           }
         }
@@ -99,23 +98,8 @@
       {
         "id": "tasks",
         "config": {
-          "envs": {
-            "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja": {
-              "provides": []
-            }
-          },
-          "tasks": {
-            "bciqe2qc66fi4voc5zoaujvysa3yffxgokfpsuxpebchmflgjaceeqry": {
-              "ty": "denoFile@v1",
-              "key": "UEiB15QTt_KnJPsbHJIOCnssrKFfjKyZxq8UqIFTCsXb3SA==",
-              "envHash": "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja"
-            },
-            "bciqezzz3obs4torm2uxhgwloj6meas2wvmpnxobmwib4ey6x226qpza": {
-              "ty": "denoFile@v1",
-              "key": "UEiAGQuHMWAC4VRQJE9YCMI99mgodAeTV86EAv8ROiTRRHA==",
-              "envHash": "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja"
-            }
-          },
+          "envs": {},
+          "tasks": {},
           "tasksNamed": []
         }
       },
@@ -124,32 +108,11 @@
         "config": {
           "envs": {
             "test": {
-              "provides": [
-                {
-                  "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet___test"
-                }
-              ]
+              "provides": []
             },
             "main": {
               "desc": "the default default environment.",
               "provides": [
-                {
-                  "ty": "hook.onEnter.posixExec",
-                  "program": "ghjk",
-                  "arguments": [
-                    "x",
-                    "bciqezzz3obs4torm2uxhgwloj6meas2wvmpnxobmwib4ey6x226qpza"
-                  ]
-                },
-                {
-                  "ty": "hook.onExit.posixExec",
-                  "program": "ghjk",
-                  "arguments": [
-                    "x",
-                    "bciqe2qc66fi4voc5zoaujvysa3yffxgokfpsuxpebchmflgjaceeqry"
-                  ]
-                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
@@ -562,20 +525,6 @@
         "asdf_plugin_git": "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli",
         "node_org": "bciqboouqnp54fnumgxvl7uay2k6ho4vhlbibvgoyyt5yt3rkwqaohzi",
         "cpy_bs_ghrel": "bciqctvtiscapp6cmlaxuaxnyac664hs3y3xsa5kqh4ctmhbsiehusly"
-      },
-      "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa": {
-        "port": {
-          "ty": "denoWorker@v1",
-          "name": "protoc_ghrel",
-          "platforms": [
-            "aarch64-linux",
-            "x86_64-linux",
-            "aarch64-darwin",
-            "x86_64-darwin"
-          ],
-          "version": "0.1.0",
-          "moduleSpecifier": "file:///ports/protoc.ts"
-        }
       }
     }
   }

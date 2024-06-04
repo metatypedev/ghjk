@@ -59,7 +59,9 @@ const cases: CustomE2eTestCase[] = [
     // -s: read from stdin
     // -l: login mode
     // -i: make it interactive
-    ePoint: `bash -sil`,
+    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") == "local"
+      ? `bash --rcfile $BASH_ENV -si` // we don't want to use the system rcfile
+      : `bash -sil`,
     stdin: posixInteractiveScript,
   },
   {
@@ -78,8 +80,8 @@ const cases: CustomE2eTestCase[] = [
 harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: `
-export { ghjk } from "$ghjk/mod.ts";
-import { task, env } from "$ghjk/mod.ts";
+export { sophon } from "$ghjk/hack.ts";
+import { task, env } from "$ghjk/hack.ts";
 
 env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))

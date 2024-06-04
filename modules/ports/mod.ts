@@ -83,7 +83,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
           bb[hashedSet.allowedDeps],
         ),
       );
-      const allowedDeps = Object.fromEntries(
+      const allowedBuildDeps = Object.fromEntries(
         Object.entries(allowedDepSetHashed).map((
           [key, hash],
         ) => [
@@ -93,7 +93,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       );
       const set: InstallSetX = {
         installs,
-        allowedDeps,
+        allowedBuildDeps,
       };
       pcx.config.sets[id] = set;
       setStore.set(id, set);
@@ -158,7 +158,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
               const currInstallSetId = getActiveEnvInstallSetId(envsCtx);
               const currInstallSet = installSets[currInstallSetId];
-              const allowedDeps = currInstallSet.allowedDeps;
+              const allowedDeps = currInstallSet.allowedBuildDeps;
 
               const rows = [];
               const {

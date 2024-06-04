@@ -1,165 +1,264 @@
-//! This module is intended to be re-exported by `ghjk.ts` config scripts. Please
-//! avoid importing elsewhere at it has side-effects.
+//! This module is intended to be re-exported by `ghjk.ts` config scripts.
 
 // TODO: harden most of the items in here
 
 import "./setup_logger.ts";
 
-import { zod } from "./deps/common.ts";
 // ports specific imports
-import portsValidators from "./modules/ports/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigFat,
 } from "./modules/ports/types.ts";
 import logger from "./utils/logger.ts";
-import { $, thinInstallConfig } from "./utils/mod.ts";
-import { EnvBuilder, Ghjkfile, stdDeps } from "./files/mod.ts";
+import { $ } from "./utils/mod.ts";
+import {
+  EnvBuilder,
+  Ghjkfile,
+  reduceAllowedDeps,
+  stdDeps,
+} from "./files/mod.ts";
 import type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./files/mod.ts";
 // WARN: this module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "./modules/tasks/deno.ts";
 
-const DEFAULT_BASE_ENV_NAME = "main";
-
-const file = new Ghjkfile();
-const mainEnv = file.addEnv({
-  name: DEFAULT_BASE_ENV_NAME,
-  inherit: false,
-  allowedPortDeps: stdDeps(),
-  desc: "the default default environment.",
-});
-
 export type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./files/mod.ts";
-export { $, logger, stdDeps, stdSecureConfig };
+export { $, logger, stdDeps };
 
-// FIXME: ses.lockdown to freeze primoridials
-// freeze the object to prevent malicious tampering of the secureConfig
-export const ghjk = Object.freeze({
-  getConfig: Object.freeze(
-    (
-      ghjkfileUrl: string,
-      secureConfig: DenoFileSecureConfig | undefined,
-    ) => {
-      const defaultEnv = secureConfig?.defaultEnv ?? DEFAULT_BASE_ENV_NAME;
-      const defaultBaseEnv = secureConfig?.defaultBaseEnv ??
-        DEFAULT_BASE_ENV_NAME;
-      return file.toConfig({
-        defaultEnv,
-        defaultBaseEnv,
-        ghjkfileUrl,
-        masterPortDepAllowList: secureConfig?.masterPortDepAllowList ??
-          stdDeps(),
-      });
-    },
-  ),
-  execTask: Object.freeze(
-    // TODO: do we need to source the default base env from
-    // the secure config here?
-    (args: ExecTaskArgs) => file.execTask(args),
-  ),
-});
+export type AddEnv = {
+  (args: EnvDefArgs): EnvBuilder;
+  (name: string, args?: Omit<EnvDefArgs, "name">): EnvBuilder;
+};
 
-/*
- * Provision a port install in the `main` environment.
+/**
+ * Provision a port install in the `main` env.
  */
-export function install(...configs: InstallConfigFat[]) {
-  mainEnv.install(...configs);
-}
+export type AddInstall = {
+  (...configs: InstallConfigFat[]): void;
+};
 
 /**
  * Define and register a task.
  */
-export function task(args: DenoTaskDefArgs): string;
-export function task(name: string, args: Omit<DenoTaskDefArgs, "name">): string;
-export function task(
-  name: string,
-  fn: TaskFn,
-  args?: Omit<DenoTaskDefArgs, "fn" | "name">,
-): string;
-export function task(fn: TaskFn, args?: Omit<DenoTaskDefArgs, "fn">): string;
-export function task(
-  nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
-  argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
-  argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
-): string {
-  let args: DenoTaskDefArgs;
-  if (typeof nameOrArgsOrFn == "object") {
-    args = nameOrArgsOrFn;
-  } else if (typeof nameOrArgsOrFn == "function") {
-    args = {
-      ...(argsOrFn ?? {}),
-      fn: nameOrArgsOrFn,
-    };
-  } else if (typeof argsOrFn == "object") {
-    args = { ...argsOrFn, name: nameOrArgsOrFn };
-  } else if (argsOrFn) {
-    args = {
-      ...(argsMaybe ?? {}),
-      name: nameOrArgsOrFn,
-      fn: argsOrFn,
-    };
-  } else {
-    args = {
-      name: nameOrArgsOrFn,
-    };
-  }
-  return file.addTask({ ...args, ty: "denoFile@v1" });
-}
+export type AddTask = {
+  (args: DenoTaskDefArgs): string;
+  (name: string, args: Omit<DenoTaskDefArgs, "name">): string;
+  (fn: TaskFn, args?: Omit<DenoTaskDefArgs, "fn">): string;
+  (
+    name: string,
+    fn: TaskFn,
+    args?: Omit<DenoTaskDefArgs, "fn" | "name">,
+  ): string;
+};
 
-export function env(args: EnvDefArgs): EnvBuilder;
-export function env(name: string, args?: Omit<EnvDefArgs, "name">): EnvBuilder;
-export function env(
-  nameOrArgs: string | EnvDefArgs,
-  argsMaybe?: Omit<EnvDefArgs, "name">,
-): EnvBuilder {
-  const args = typeof nameOrArgs == "object"
-    ? nameOrArgs
-    : { ...argsMaybe, name: nameOrArgs };
-  return file.addEnv(args);
-}
+export type FileArgs = {
+  /**
+   * The env to activate by default. When entering the working
+   * directory for example.
+   */
+  defaultEnv?: string;
+  /**
+   * The default env all envs inherit from.
+   */
+  defaultBaseEnv?: string;
+  /**
+   * Additional ports that can be used as build time dependencies.
+   *
+   * This applies to the "main" env.
+   */
+  allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
+  /**
+   * Wether or not use the default set of allowed build dependencies.
+   * If set, {@link enableRuntimes} is ignored but {@link allowedBuildDeps}
+   * is still respected.
+   * True by default.
+   *
+   * This applies to the "main" env.
+   */
+  stdDeps?: boolean;
+  /**
+   * (unstable) Allow runtimes from std deps to be used as build time dependencies.
+   *
+   * This applies to the "main" env.
+   */
+  enableRuntimes?: boolean;
+  /**
+   * Installs to add to the main env.
+   */
+  installs?: InstallConfigFat[];
+  /**
+   * Tasks to expose to the CLI.
+   */
+  tasks?: DenoTaskDefArgs[];
+  /**
+   * Different envs availaible to the CLI.
+   */
+  envs?: EnvDefArgs[];
+};
 
-const denoFileSecureConfig = zod.object({
-  masterPortDepAllowList: zod.array(portsValidators.allowedPortDep).nullish(),
-  // TODO: move into envs/types
-  defaultEnv: zod.string().nullish(),
-  defaultBaseEnv: zod.string().nullish(),
-});
-/*
- * This is a secure sections of the config intended to be direct exports
- * from the config script instead of the global variable approach the
- * main [`GhjkConfig`] can take.
- */
-export type DenoFileSecureConfig = zod.input<
-  typeof denoFileSecureConfig
->;
-export type DenoFileSecureConfigX = zod.input<
-  typeof denoFileSecureConfig
+type SecureConfigArgs = Omit<
+  FileArgs,
+  "envs" | "tasks" | "installs"
 >;
 
-function stdSecureConfig(
-  args: {
-    additionalAllowedPorts?: (InstallConfigFat | AllowedPortDep)[];
-    enableRuntimes?: boolean;
-  } & Pick<DenoFileSecureConfig, "defaultEnv" | "defaultBaseEnv">,
-) {
-  const { additionalAllowedPorts, enableRuntimes = false } = args;
-  const out: DenoFileSecureConfig = {
-    ...args,
-    masterPortDepAllowList: [
-      ...stdDeps({ enableRuntimes }),
-      ...additionalAllowedPorts?.map(
-        (dep: any) => {
-          const res = portsValidators.allowedPortDep.safeParse(dep);
-          if (res.success) return res.data;
-          const out: AllowedPortDep = {
-            manifest: dep.port,
-            defaultInst: thinInstallConfig(dep),
-          };
-          return portsValidators.allowedPortDep.parse(out);
-        },
-      ) ?? [],
-    ],
+type DenoFileKnobs = {
+  sophon: Readonly<object>;
+  /**
+   * {@inheritdoc AddInstall}
+   */
+  install: AddInstall;
+  /**
+   * {@inheritdoc AddTask}
+   */
+  task: AddTask;
+  /**
+   * {@inheritDoc AddEnv}
+   */
+  env: AddEnv;
+  /**
+   * Configure global and miscallenous ghjk settings.
+   */
+  config(args: SecureConfigArgs): void;
+};
+
+export const file = Object.freeze(function file(
+  args: FileArgs = {},
+): DenoFileKnobs {
+  const defaultBuildDepsSet: AllowedPortDep[] = [];
+
+  const DEFAULT_BASE_ENV_NAME = "main";
+
+  const builder = new Ghjkfile();
+  const mainEnv = builder.addEnv({
+    name: DEFAULT_BASE_ENV_NAME,
+    inherit: false,
+    installs: args.installs,
+    desc: "the default default environment.",
+  });
+
+  // this replaces the allowedBuildDeps contents according to the
+  // args. Written to be called multilple times to allow
+  // replacement.
+  const replaceDefaultBuildDeps = (args: SecureConfigArgs) => {
+    // empty out the array first
+    defaultBuildDepsSet.length = 0;
+    defaultBuildDepsSet.push(
+      ...reduceAllowedDeps(args.allowedBuildDeps ?? []),
+    );
+    const seenPorts = new Set(
+      defaultBuildDepsSet.map((dep) => dep.manifest.name),
+    );
+    // if the user explicitly passes a port config, we let
+    // it override any ports of the same kind from the std library
+    for (
+      const dep of args.stdDeps !== false // note: this is true if it's undefined
+        ? stdDeps({ enableRuntimes: args.enableRuntimes ?? false })
+        : []
+    ) {
+      if (seenPorts.has(dep.manifest.name)) {
+        continue;
+      }
+      defaultBuildDepsSet.push(dep);
+    }
+    mainEnv.allowedBuildDeps(defaultBuildDepsSet);
   };
-  return out;
-}
+
+  // populate the bulid deps by the default args first
+  replaceDefaultBuildDeps(args);
+
+  for (const env of args.envs ?? []) {
+    builder.addEnv(env);
+  }
+  for (const task of args.tasks ?? []) {
+    builder.addTask({ ...task, ty: "denoFile@v1" });
+  }
+
+  // FIXME: ses.lockdown to freeze primoridials
+  // freeze the object to prevent malicious tampering of the secureConfig
+  const sophon = Object.freeze({
+    getConfig: Object.freeze(
+      (
+        ghjkfileUrl: string,
+      ) => {
+        return builder.toConfig({
+          ghjkfileUrl,
+          defaultEnv: args.defaultEnv ?? DEFAULT_BASE_ENV_NAME,
+          defaultBaseEnv: args.defaultBaseEnv ??
+            DEFAULT_BASE_ENV_NAME,
+        });
+      },
+    ),
+    execTask: Object.freeze(
+      // TODO: do we need to source the default base env from
+      // the secure config here?
+      (args: ExecTaskArgs) => builder.execTask(args),
+    ),
+  });
+
+  // we return a bunch of functions here
+  // to ease configuring the main environment
+  // including overloads
+  return {
+    sophon,
+
+    install(...configs: InstallConfigFat[]) {
+      mainEnv.install(...configs);
+    },
+
+    task(
+      nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
+      argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
+      argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
+    ) {
+      let args: DenoTaskDefArgs;
+      if (typeof nameOrArgsOrFn == "object") {
+        args = nameOrArgsOrFn;
+      } else if (typeof nameOrArgsOrFn == "function") {
+        args = {
+          ...(argsOrFn ?? {}),
+          fn: nameOrArgsOrFn,
+        };
+      } else if (typeof argsOrFn == "object") {
+        args = { ...argsOrFn, name: nameOrArgsOrFn };
+      } else if (argsOrFn) {
+        args = {
+          ...(argsMaybe ?? {}),
+          name: nameOrArgsOrFn,
+          fn: argsOrFn,
+        };
+      } else {
+        args = {
+          name: nameOrArgsOrFn,
+        };
+      }
+      return builder.addTask({ ...args, ty: "denoFile@v1" });
+    },
+
+    env(
+      nameOrArgs: string | EnvDefArgs,
+      argsMaybe?: Omit<EnvDefArgs, "name">,
+    ) {
+      const args = typeof nameOrArgs == "object"
+        ? nameOrArgs
+        : { ...argsMaybe, name: nameOrArgs };
+      return builder.addEnv(args);
+    },
+
+    config(
+      { defaultBaseEnv, defaultEnv, ...rest }: SecureConfigArgs,
+    ) {
+      if (
+        rest.enableRuntimes !== undefined ||
+        rest.allowedBuildDeps !== undefined ||
+        rest.stdDeps !== undefined
+      ) {
+        replaceDefaultBuildDeps(rest);
+      }
+      // NOTE:we're deep mutating the first args from above
+      args = {
+        ...rest,
+        ...{ defaultEnv, defaultBaseEnv },
+      };
+    },
+  };
+});

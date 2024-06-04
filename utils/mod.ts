@@ -196,6 +196,19 @@ export const $ = dax.build$(
     requestBuilder: new dax.RequestBuilder()
       .showProgress(Deno.stderr.isTerminal()),
     extras: {
+      mapObject<
+        O,
+        V2,
+      >(
+        obj: O,
+        map: (key: keyof O, val: O[keyof O]) => [string, V2],
+      ): Record<string, V2> {
+        return Object.fromEntries(
+          Object.entries(obj as object).map(([key, val]) =>
+            map(key as keyof O, val as O[keyof O])
+          ),
+        );
+      },
       exponentialBackoff(initialDelayMs: number) {
         let delay = initialDelayMs;
         let attempt = 0;

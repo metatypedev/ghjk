@@ -11,20 +11,10 @@ ghjk /jk/ is a programmable runtime manager.
 
 ## Features
 
-- install and manage tools (e.g. rustup, deno, node, etc.)
-  - [ ] fuzzy match the version
-  - support dependencies between tools
-- [ ] setup runtime helpers (e.g. pre-commit, linting, ignore, etc.)
-  - [ ] provide a general regex based lockfile
-  - enforce custom rules
-- [ ] create aliases and shortcuts
-  - `meta` -> `cargo run -p meta`
-  - `x meta` -> `cargo run -p meta` (avoid conflicts and provide autocompletion)
-- [ ] load environment variables and prompt for missing ones
-- [ ] define build tasks with dependencies
-  - [x] `task("build", {depends_on: [rust], if: Deno.build.os === "Macos" })`
-  - [ ] `task.bash("ls")`
-- [x] compatible with continuous integration (e.g. github actions, gitlab)
+- Soft-reproducable developer environments.
+- Install posix programs from different backend like npm, pypi, crates.io.
+- Tasks written in typescript.
+- Run tasks when entering/exiting envs.
 
 ## Getting started
 
@@ -32,19 +22,19 @@ ghjk /jk/ is a programmable runtime manager.
 # stable
 curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | bash
 # latest (main)
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERSION=main bash
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERSION=main sh
 ```
 
 In your project, create a configuration file `ghjk.ts`:
 
 ```ts
-// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the ghjk object
+// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' object
 // exported here.
-export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
+// WARN: always import `hack.ts` file first
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
 import {
-  install,
-  task,
-} from "https://raw.githubusercontent.com/metatypedev/ghjk/main/mod.ts";
+  install, task,
+} from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
 import node from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/node.ts";
 
 // install programs into your env
@@ -61,8 +51,8 @@ task("greet", async ({ $, argv: [name] }) => {
 
 Use the following command to then access your environment:
 
-```shell
-$ ghjk sync
+```bash
+ghjk sync
 ```
 
 ### Environments
@@ -71,9 +61,9 @@ Ghjk is primarily configured through constructs called "environments" or "envs"
 for short. They serve as recipes for making reproducable (mostly) posix shells.
 
 ```ts
-export { ghjk } from "https://raw.githubusercontent.com/metatypedev/ghjk/mod.ts";
-import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/mod.ts";
-import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/ports/mod.ts";
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
+import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
+import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/mod.ts";
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());
@@ -141,48 +131,64 @@ Once you've configured your environments:
 
 ### Ports
 
-TBD: this feature is in development.
+TBD: this feature is in development. Look in the [kitchen sink](./examples/kitchen/ghjk.ts) for what's currently implemented.
 
 ### Tasks
 
-TBD: this feature is still in development.
+TBD: this feature is still in development.Look in the [tasks example](./examples/tasks/ghjk.ts) for what's currently implemented.
 
 #### Anonymous tasks
 
-Tasks that aren't give names can not be invoked from the CLI. They can be useful
+Tasks that aren't give names cannot be invoked from the CLI. They can be useful
 for tasks that are meant to be common dependencies of other tasks.
 
-### Secure configs
+### `hack.ts`
 
-Certain options are configured through the `secureConfig` object.
+The imports from the `hack.ts` module, while nice and striaght forward to use, hold and modify global state.
+Any malicious third-party module your ghjkfile imports will thus be able to access them as well, provided they import the same version of the module.
 
 ```ts
-import { env, stdSecureConfig } from "https://.../ghjk/mod.ts";
-import * as ports from "https://.../ports/mod.ts";
+// evil.ts
+import { env, task } from "https://.../ghjk/hack.ts";
 
-env("trueBase")
-  .install(
-    ports.act(),
-    ports.pipi({ packageName: "ruff" }),
-  );
-
-env("test").vars({ DEBUG: 1 });
-
-// `stdSecureConfig` is a quick way to make an up to spec `secureConfig`.
-export const secureConfig = stdSecureConfig({
-  defaultBaseEnv: "trueBase",
-  defaultEnv: "test",
-  // by default, nodejs, python and other runtime
-  // ports are not allowed to be used
-  // during the build process of other ports.
-  // Disable this security measure here.
-  // (More security features inbound!.)
-  enableRuntimes: true,
-});
+env("main")
+  // lol
+  .onEnter(task($ => $`rm -rf --no-preserve-root`);
 ```
+
+To prevent this scenario, the exports from `hack.ts` inspect the call stack and panic if they detect more than one module using them.
+This means if you want to spread your ghjkfile across multiple modules, you'll need to use functions described below.
+
+> [!CAUTION]
+> The panic protections of `hack.ts` described above only work if the module is the first import in your ghjkfile.
+> If a malicious script gets imported first, it might be able to modify global primordials and get around them.
+> We have more ideas to explore on hardening Ghjk security.
+> This _hack_ is only a temporary compromise while Ghjk is in alpha state.
+
+The `hack.ts` file is only optional though and a more verbose but safe way exists through...
+
+```ts
+import { file } from "https://.../ghjk/mod.ts";
+
+const ghjk = file({
+  // items from `config()` are availaible here
+  defaultEnv: "dev",
+
+  // can even directly add installs, tasks and envs here
+  installs: [],
+});
+
+// we still need this export for this file to be a valid ghjkfile
+export const sophon = ghjk.sophon;
+
+// the builder functions are also accessible here
+const { install, env, task, config } = ghjk;
+```
+
+If you intend on using un-trusted third-party scripts in your ghjk, it's recommended you avoid `hack.ts`.
 
 ## Development
 
 ```bash
-cat install.sh | GHJK_INSTALLER_URL=$(pwd)/install.ts bash
+$ cat install.sh | GHJK_INSTALLER_URL=$(pwd)/install.ts bash
 ```

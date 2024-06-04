@@ -2,7 +2,6 @@ import "../setup_logger.ts";
 import { E2eTestCase, genTsGhjkFile, harness, type TaskDef } from "./utils.ts";
 import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
-import { stdSecureConfig } from "../mod.ts";
 
 type CustomE2eTestCase =
   & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
@@ -36,7 +35,7 @@ test (ghjk x greet world) = "Hello world from $PWD!"`,
     name: "env_vars",
     tasks: [{
       name: "greet",
-      envVars: {
+      vars: {
         LUNA: "moon",
         SOL: "sun",
       },
@@ -67,7 +66,7 @@ ghjk x protoc`,
       name: "test",
       // pipi depends on cpy_bs
       installs: [...ports.pipi({ packageName: "pre-commit" })],
-      allowedPortDeps: ghjk.stdDeps({ enableRuntimes: true }),
+      allowedBuildDeps: ghjk.stdDeps({ enableRuntimes: true }),
       fn: async ($) => {
         await $`pre-commit --version`;
       },
@@ -123,8 +122,8 @@ test (cat eddy) = 'ed edd eddy'
   {
     name: "anon",
     ghjkTs: `
-export { ghjk } from "$ghjk/mod.ts";
-import { task } from "$ghjk/mod.ts";
+export { sophon } from "$ghjk/hack.ts";
+import { task } from "$ghjk/hack.ts";
 
 task({
   dependsOn: [
@@ -151,10 +150,10 @@ harness(cases.map((testCase) => ({
   ...testCase,
   tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
     {
-      taskDefs: testCase.tasks,
-      secureConf: stdSecureConfig({
+      secureConf: {
+        tasks: testCase.tasks,
         enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
-      }),
+      },
     },
   ),
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
