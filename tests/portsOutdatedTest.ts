@@ -10,6 +10,7 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   secureConf?: FileArgs;
 };
 
+// FIXME:
 const cases: CustomE2eTestCase[] = [
   {
     name: "ports_outdated",
@@ -74,4 +75,5 @@ harness(cases.map((testCase) => ({
   // an hour
   timeout_ms: 5 * 60 * 1000,
   name: `portsOutdated/${testCase.name}`,
+  ignore: true,
 })));

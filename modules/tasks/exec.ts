@@ -147,13 +147,16 @@ export async function execTask(
           "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
         );
       }
+      const workingDir = gcx.ghjkfilePath.parentOrThrow();
       await execTaskDeno(
-        $.path(gcx.ghjkfilePath).toFileUrl().toString(),
+        gcx.ghjkfilePath.toFileUrl().toString(),
         {
           key: taskDef.key,
           argv: args,
           envVars,
-          workingDir: gcx.ghjkfilePath.parentOrThrow().toString(),
+          workingDir: taskDef.workingDir
+            ? workingDir.resolve(taskDef.workingDir).toString()
+            : workingDir.toString(),
         },
       );
     } else {

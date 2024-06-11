@@ -4,7 +4,7 @@
 // here to make the resulting config reasonably stable
 // across serializaiton. No random identifiers.
 
-import { multibase32, multibase64 } from "../deps/common.ts";
+import { deep_eql, multibase32, multibase64 } from "../deps/common.ts";
 
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
@@ -15,7 +15,8 @@ import type {
   InstallSetRefProvision,
   PortsModuleConfigHashed,
 } from "../modules/ports/types.ts";
-import logger from "../utils/logger.ts";
+import getLogger from "../utils/logger.ts";
+const logger = getLogger(import.meta);
 import {
   $,
   defaultCommandBuilder,
@@ -43,6 +44,8 @@ import type {
   WellKnownProvision,
 } from "../modules/envs/types.ts";
 
+export type EnvParent = string | string[] | boolean;
+
 export type EnvDefArgs = {
   name: string;
   installs?: InstallConfigFat[];
@@ -53,7 +56,7 @@ export type EnvDefArgs = {
    * top of a new env. If given a string, will use the identified env as a base
    * for the task env.
    */
-  inherit?: string | boolean;
+  inherit?: EnvParent;
   desc?: string;
   vars?: Record<string, string | number>;
   /**
@@ -89,7 +92,7 @@ export type TaskDefArgs = {
   vars?: Record<string, string | number>;
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   installs?: InstallConfigFat[];
-  inherit?: string | boolean;
+  inherit?: EnvParent;
 };
 
 export type DenoTaskDefArgs = TaskDefArgs & {
@@ -123,6 +126,14 @@ export class Ghjkfile {
   #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
+  finalizedEnvs: Record<
+    string,
+    {
+      finalized: ReturnType<EnvFinalizer>;
+      installSetId?: string;
+      vars: Record<string, string>;
+    }
+  > = {};
 
   /* dump() {
     return {
@@ -157,7 +168,7 @@ export class Ghjkfile {
 
     const set = this.#getSet(setId);
     set.installs.push(config);
-    logger(import.meta).debug("install added", config);
+    logger.debug("install added", config);
   }
 
   setAllowedPortDeps(
@@ -180,6 +191,11 @@ export class Ghjkfile {
     // brittle.
     if (typeof args.inherit == "string") {
       this.addEnv({ name: args.inherit });
+    }
+    if (Array.isArray(args.inherit)) {
+      for (const name of args.inherit) {
+        this.addEnv({ name });
+      }
     }
     let key = args.name;
     if (!key) {
@@ -228,7 +244,7 @@ export class Ghjkfile {
       env.install(...args.installs);
     }
     if (args.allowedBuildDeps) {
-      env.allowedBuildDeps(args.allowedBuildDeps);
+      env.allowedBuildDeps(...args.allowedBuildDeps);
     }
     if (args.desc) {
       env.desc(args.desc);
@@ -317,6 +333,86 @@ export class Ghjkfile {
     return hash;
   }
 
+  #mergeEnvs(keys: string[], childName: string) {
+    const mergedVars = {} as Record<string, [string, string] | undefined>;
+    const mergedInstalls = [] as InstallConfigFat[];
+    const mergedOnEnterHooks = [];
+    const mergedOnExitHooks = [];
+    const mergedAllowedBuildDeps = {} as Record<
+      string,
+      [AllowedPortDep, string] | undefined
+    >;
+    for (const parentName of keys) {
+      const { vars, installSetId, finalized } = this.finalizedEnvs[parentName];
+      mergedOnEnterHooks.push(...finalized.onEnterHookTasks);
+      mergedOnExitHooks.push(...finalized.onExitHookTasks);
+      for (const [key, val] of Object.entries(vars)) {
+        const conflict = mergedVars[key];
+        // if parents share a parent themselves, they will have
+        // the same item so it's not exactly a conflict
+        if (conflict && val !== conflict[0]) {
+          logger.warn(
+            "environment variable conflict on multiple env inheritance, parent2 was chosen",
+            {
+              child: childName,
+              parent1: conflict[1],
+              parent2: parentName,
+              variable: key,
+            },
+          );
+        }
+        mergedVars[key] = [val, parentName];
+      }
+      if (!installSetId) {
+        continue;
+      }
+      const set = this.#installSets.get(installSetId)!;
+      mergedInstalls.push(...set.installs);
+      for (
+        const [key, val] of Object.entries(set.allowedBuildDeps)
+      ) {
+        const conflict = mergedAllowedBuildDeps[key];
+        if (conflict && !deep_eql(val, conflict[0])) {
+          logger.warn(
+            "allowedBuildDeps conflict on multiple env inheritance, parent2 was chosen",
+            {
+              child: childName,
+              parent1: conflict[1],
+              parent2: parentName,
+              depPort: key,
+            },
+          );
+        }
+        mergedAllowedBuildDeps[key] = [val, parentName];
+      }
+    }
+    const outInstallSet: InstallSet = {
+      installs: mergedInstalls,
+      allowedBuildDeps: Object.fromEntries(
+        Object.entries(mergedAllowedBuildDeps).map((
+          [key, val],
+        ) => [key, val![0]]),
+      ),
+    };
+    const outVars = Object.fromEntries(
+      Object.entries(mergedVars).map(([key, val]) => [key, val![0]]),
+    );
+    return {
+      installSet: outInstallSet,
+      onEnterHookTasks: mergedOnEnterHooks,
+      onExitHookTasks: mergedOnExitHooks,
+      vars: outVars,
+    };
+  }
+
+  #resolveEnvBases(parent: EnvParent, defaultBaseEnv: string, child?: string) {
+    return typeof parent === "string"
+      ? [parent]
+      : (parent !== false) && defaultBaseEnv != child
+      ? [defaultBaseEnv]
+      : null;
+  }
+
   /** this processes the defined envs, normalizing dependency (i.e. "envBase")
    * relationships to produce the standard EnvsModuleConfig
    */
@@ -326,7 +422,7 @@ export class Ghjkfile {
   ) {
     const all = {} as Record<
       string,
-      ReturnType<EnvFinalizer> & { envBaseResolved: null | string }
+      ReturnType<EnvFinalizer> & { envBaseResolved: null | string[] }
     >;
     const indie = [] as string[];
     const revDeps = new Map<string, string[]>();
@@ -334,84 +430,82 @@ export class Ghjkfile {
       const [_name, [_builder, finalizer]] of Object.entries(this.#seenEnvs)
     ) {
       const final = finalizer();
-      const envBaseResolved = typeof final.inherit === "string"
-        ? final.inherit
-        : (final.inherit !== false) && defaultBaseEnv != final.name
-        ? defaultBaseEnv
-        : null;
+      const envBaseResolved = this.#resolveEnvBases(
+        final.inherit,
+        defaultBaseEnv,
+        final.name,
+      );
       all[final.name] = { ...final, envBaseResolved };
       if (envBaseResolved) {
-        const parentRevDeps = revDeps.get(envBaseResolved);
-        if (parentRevDeps) {
-          parentRevDeps.push(final.name);
-        } else {
-          revDeps.set(envBaseResolved, [final.name]);
+        for (const base of envBaseResolved) {
+          const parentRevDeps = revDeps.get(base);
+          if (parentRevDeps) {
+            parentRevDeps.push(final.name);
+          } else {
+            revDeps.set(base, [final.name]);
+          }
         }
       } else {
         indie.push(final.name);
       }
     }
 
-    const processed = {} as Record<
-      string,
-      { installSetId?: string; vars: Record<string, string> }
-    >;
     const moduleConfig: EnvsModuleConfig = { envs: {}, defaultEnv };
     const workingSet = indie;
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
 
-      const base = final.envBaseResolved
-        ? processed[final.envBaseResolved]
-        : null;
+      const base = this.#mergeEnvs(final.envBaseResolved ?? [], final.name);
 
-      const processedVars = {
-        ...(base?.vars ?? {}),
+      const finalVars = {
+        ...base.vars,
         ...final.vars,
       };
 
-      let processedInstallSetId: string | undefined;
+      let finalInstallSetId: string | undefined;
       {
         const installSet = this.#installSets.get(final.installSetId);
         if (installSet) {
-          // if base also has an install set
-          if (base?.installSetId) {
-            // merge the parent's installs into this one
-            const baseSet = this.#installSets.get(
-              base.installSetId,
-            )!;
-            const mergedInstallsSet = new Set([
-              ...installSet.installs,
-              ...baseSet.installs,
-            ]);
-            installSet.installs = [...mergedInstallsSet.values()];
-            for (
-              const [key, val] of Object.entries(baseSet.allowedBuildDeps)
-            ) {
-              // prefer the port dep config of the child over any
-              // similar deps in the parent
-              if (!installSet.allowedBuildDeps[key]) {
-                installSet.allowedBuildDeps[key] = val;
-              }
+          installSet.installs.push(...base.installSet.installs);
+          for (
+            const [key, val] of Object.entries(base.installSet.allowedBuildDeps)
+          ) {
+            // prefer the port dep config of the child over any
+            // similar deps in the base
+            if (!installSet.allowedBuildDeps[key]) {
+              installSet.allowedBuildDeps[key] = val;
             }
           }
-          processedInstallSetId = final.installSetId;
+          finalInstallSetId = final.installSetId;
         } // if there's no install set found under the id
         else {
           // implies that the env has not ports explicitly configured
-          if (base) {
-            processedInstallSetId = base.installSetId;
+          if (final.envBaseResolved) {
+            // has a singluar parent
+            if (final.envBaseResolved.length == 1) {
+              finalInstallSetId =
+                this.finalizedEnvs[final.envBaseResolved[0]].installSetId;
+            } else {
+              this.#installSets.set(final.installSetId, base.installSet);
+            }
           }
         }
       }
-      processed[final.name] = {
-        installSetId: processedInstallSetId,
-        vars: processedVars,
+      this.finalizedEnvs[final.name] = {
+        installSetId: finalInstallSetId,
+        vars: finalVars,
+        finalized: final,
       };
       const hooks = [
+        ...base.onEnterHookTasks.map(
+          (key) => [key, "hook.onEnter.ghjkTask"] as const,
+        ),
         ...final.onEnterHookTasks.map(
           (key) => [key, "hook.onEnter.ghjkTask"] as const,
+        ),
+        ...base.onExitHookTasks.map(
+          (key) => [key, "hook.onExit.ghjkTask"] as const,
         ),
         ...final.onExitHookTasks.map(
           (key) => [key, "hook.onExit.ghjkTask"] as const,
@@ -443,10 +537,11 @@ export class Ghjkfile {
           },
         );
       });
+      // the actual final final recipe
       moduleConfig.envs[final.name] = {
         desc: final.desc,
         provides: [
-          ...Object.entries(processedVars).map((
+          ...Object.entries(finalVars).map((
             [key, val],
           ) => {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
@@ -456,10 +551,10 @@ export class Ghjkfile {
           ...hooks,
         ],
       };
-      if (processedInstallSetId) {
+      if (finalInstallSetId) {
         const prov: InstallSetRefProvision = {
           ty: "ghjk.ports.InstallSetRef",
-          setId: processedInstallSetId,
+          setId: finalInstallSetId,
         };
         moduleConfig.envs[final.name].provides.push(prov);
       }
@@ -524,91 +619,78 @@ export class Ghjkfile {
       const args = this.#tasks.get(key)!;
       const { workingDir, desc, dependsOn, inherit } = args;
 
-      const taskEnvRecipe: EnvRecipe = {
-        provides: [],
-      };
-      const taskInstallSet: InstallSet = {
-        installs: args.installs ?? [],
-        allowedBuildDeps: Object.fromEntries(
-          reduceAllowedDeps(args.allowedBuildDeps ?? []).map((
-            dep,
-          ) => [dep.manifest.name, dep]),
-        ),
-      };
+      const envBaseResolved = this.#resolveEnvBases(
+        inherit ?? [],
+        defaultBaseEnv,
+      );
 
-      const envBaseResolved = typeof inherit === "string"
-        ? inherit
-        : (inherit !== false)
-        ? defaultBaseEnv
+      const base = envBaseResolved
+        ? this.#mergeEnvs(envBaseResolved, `task_${args.name ?? key}`)
         : null;
 
-      const envBaseRecipe = envBaseResolved
-        ? envsConfig.envs[envBaseResolved]
-        : null;
-
-      const mergedEnvVars = args.vars ?? {};
-      if (envBaseRecipe) {
-        for (
-          const prov of envBaseRecipe
-            .provides as (
-              | WellKnownProvision
-              | InstallSetRefProvision
-              | InlineTaskHookProvision
-            )[]
-        ) {
-          // task envs don't need hooks
-          if (
-            prov.ty == "hook.onEnter.ghjkTask" ||
-            prov.ty == "hook.onExit.ghjkTask"
+      let installSetId: string | undefined;
+      if (
+        // if task has installs itself
+        args.installs?.length ||
+        // task inherits from more than one parent
+        (envBaseResolved && envBaseResolved.length > 1)
+      ) {
+        // we need to create a new install set
+        const taskInstallSet: InstallSet = {
+          installs: [...args.installs ?? []],
+          allowedBuildDeps: Object.fromEntries(
+            reduceAllowedDeps(args.allowedBuildDeps ?? []).map((
+              dep,
+            ) => [dep.manifest.name, dep]),
+          ),
+        };
+        if (base) {
+          taskInstallSet.installs.push(...base.installSet.installs);
+          for (
+            const [key, val] of Object.entries(
+              base.installSet.allowedBuildDeps,
+            )
           ) {
-            continue;
-          } else if (prov.ty == "posix.envVar") {
-            if (!mergedEnvVars[prov.key]) {
-              mergedEnvVars[prov.key] = prov.val;
+            // prefer the port dep config of the child over any
+            // similar deps in the base
+            if (!taskInstallSet.allowedBuildDeps[key]) {
+              taskInstallSet.allowedBuildDeps[key] = val;
             }
-          } else if (prov.ty == "ghjk.ports.InstallSetRef") {
-            const baseSet = this.#installSets.get(prov.setId)!;
-            const mergedInstallsSet = new Set([
-              ...taskInstallSet.installs,
-              ...baseSet.installs,
-            ]);
-            taskInstallSet.installs = [...mergedInstallsSet.values()];
-            for (
-              const [key, val] of Object.entries(baseSet.allowedBuildDeps)
-            ) {
-              // prefer the port dep config of the child over any
-              // similar deps in the base
-              if (!taskInstallSet.allowedBuildDeps[key]) {
-                taskInstallSet.allowedBuildDeps[key] = val;
-              }
-            }
-          } else {
-            taskEnvRecipe.provides.push(prov);
           }
         }
+        installSetId = `ghjkTaskInstSet___${
+          objectHash(JSON.parse(JSON.stringify(taskInstallSet)))
+        }`;
+        this.#installSets.set(installSetId, taskInstallSet);
+      } else if (envBaseResolved?.length == 1) {
+        installSetId = this.finalizedEnvs[envBaseResolved[0]].installSetId;
       }
-      if (taskInstallSet.installs.length > 0) {
-        const setId = `ghjkTaskInstSet___${key}`;
-        this.#installSets.set(setId, taskInstallSet);
+
+      const mergedEnvVars = {
+        ...base?.vars,
+        ...args.vars,
+      };
+      const taskEnvRecipe: EnvRecipe = {
+        provides: [
+          ...Object.entries(mergedEnvVars).map((
+            [key, val],
+          ) => {
+            const prov: WellKnownProvision = {
+              ty: "posix.envVar",
+              key,
+              val: val.toString(),
+            };
+            return prov;
+          }),
+        ],
+      };
+      if (installSetId) {
         const prov: InstallSetRefProvision = {
           ty: "ghjk.ports.InstallSetRef",
-          setId,
+          setId: installSetId,
         };
         taskEnvRecipe.provides.push(prov);
       }
-
-      taskEnvRecipe.provides.push(
-        ...Object.entries(mergedEnvVars).map((
-          [key, val],
-        ) => {
-          const prov: WellKnownProvision = {
-            ty: "posix.envVar",
-            key,
-            val: val.toString(),
-          };
-          return prov;
-        }),
-      );
 
       const envHash = objectHash(JSON.parse(JSON.stringify(taskEnvRecipe)));
       moduleConfig.envs[envHash] = taskEnvRecipe;
@@ -734,7 +816,7 @@ export class Ghjkfile {
 type EnvFinalizer = () => {
   name: string;
   installSetId: string;
-  inherit: string | boolean;
+  inherit: string | string[] | boolean;
   vars: Record<string, string>;
   desc?: string;
   onEnterHookTasks: string[];
@@ -747,7 +829,7 @@ type EnvFinalizer = () => {
 export class EnvBuilder {
   #installSetId: string;
   #file: Ghjkfile;
-  #inherit: string | boolean = true;
+  #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
   #desc?: string;
   #onEnterHookTasks: string[] = [];
@@ -773,7 +855,7 @@ export class EnvBuilder {
     }));
   }
 
-  inherit(inherit: string | boolean) {
+  inherit(inherit: string | string[] | boolean) {
     this.#inherit = inherit;
     return this;
   }
@@ -792,7 +874,7 @@ export class EnvBuilder {
    * Configure the build time deps allowed to be used by ports.
    * This is treated as a single set and will replace previously any configured set.
    */
-  allowedBuildDeps(deps: (AllowedPortDep | InstallConfigFat)[]) {
+  allowedBuildDeps(...deps: (AllowedPortDep | InstallConfigFat)[]) {
     this.#file.setAllowedPortDeps(this.#installSetId, deps);
     return this;
   }
@@ -881,13 +963,21 @@ type InlineTaskHookProvision = Provision & {
 export function reduceAllowedDeps(
   deps: (AllowedPortDep | InstallConfigFat)[],
 ): AllowedPortDep[] {
+  console.log(deps);
   return deps.map(
     (dep: any) => {
-      const res = portsValidators.allowedPortDep.safeParse(dep);
-      if (res.success) return res.data;
+      {
+        const res = portsValidators.allowedPortDep.safeParse(dep);
+        if (res.success) return res.data;
+      }
+      const inst = unwrapParseRes(
+        portsValidators.installConfigFat.safeParse(dep),
+        dep,
+        "invalid allowed dep object, provide either InstallConfigFat or AllowedPortDep objects",
+      );
       const out: AllowedPortDep = {
-        manifest: dep.port,
-        defaultInst: thinInstallConfig(dep),
+        manifest: inst.port,
+        defaultInst: thinInstallConfig(inst),
       };
       return portsValidators.allowedPortDep.parse(out);
     },

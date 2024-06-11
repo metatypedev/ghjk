@@ -160,7 +160,7 @@ export const file = Object.freeze(function file(
       }
       defaultBuildDepsSet.push(dep);
     }
-    mainEnv.allowedBuildDeps(defaultBuildDepsSet);
+    mainEnv.allowedBuildDeps(...defaultBuildDepsSet);
   };
 
   // populate the bulid deps by the default args first
