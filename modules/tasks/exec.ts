@@ -8,13 +8,13 @@ import { execTaskDeno } from "./deno.ts";
 const logger = getLogger(import.meta);
 
 import { cookPosixEnv } from "../envs/posix.ts";
+import { getEnvsCtx } from "../envs/inter.ts";
 
 export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
   tasksConfig: TasksModuleConfigX,
-  // env: Blackboard,
 ) {
   const graph = {
     indie: [] as string[],
@@ -24,11 +24,13 @@ export function buildTaskGraph(
     depEdges: {} as Record<string, string[] | undefined>,
   };
   for (const [hash, task] of Object.entries(tasksConfig.tasks)) {
-    if (!tasksConfig.envs[task.envHash]) {
+    /*
+     * FIXME: find a way to pre-check if task envs are availaible
+     if (task.envKey && !envsCx.has(task.envKey)) {
       throw new Error(
-        `unable to find env referenced by task "${hash}" under hash "${task.envHash}"`,
+        `unable to find env referenced by task "${hash}" under key "${task.envKey}"`,
       );
-    }
+    } */
     if (!task.dependsOn || task.dependsOn.length == 0) {
       graph.indie.push(hash);
     } else {
@@ -114,11 +116,15 @@ export async function execTask(
     const taskEnvDir = await Deno.makeTempDir({
       prefix: `ghjkTaskEnv_${taskKey}_`,
     });
+    const envsCx = getEnvsCtx(gcx);
+    const recipe = taskDef.envKey
+      ? envsCx.config.envs[taskDef.envKey]
+      : undefined;
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
-        recipe: tasksConfig.envs[taskDef.envHash],
-        envName: `taskEnv_${taskKey}`,
+        recipe: recipe ?? { provides: [] },
+        envName: taskDef.envKey ?? `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
     );

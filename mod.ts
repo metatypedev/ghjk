@@ -121,6 +121,43 @@ type DenoFileKnobs = {
   config(args: SecureConfigArgs): void;
 };
 
+// export type EnvDefArgsPartial =
+//   | EnvDefArgs
+//   | Omit<EnvDefArgs, "name">;
+//
+// /**
+//  * A version of {@link EnvDefArgs} that has all container
+//  * fields guratneed initialized to non null but possible empty values.
+//  */
+// export type EnvDefArgsReqiured =
+//   & Required<Omit<EnvDefArgs, "name" | "desc">>
+//   & Partial<Pick<EnvDefArgs, "name" | "desc">>;
+//
+// export function envDef(
+//   args: EnvDefArgsPartial,
+// ): EnvDefArgsReqiured;
+// export function envDef(
+//   name: string,
+//   args?: Omit<EnvDefArgs, "name">,
+// ): EnvDefArgsReqiured;
+// export function envDef(
+//   nameOrArgs: string | EnvDefArgsPartial,
+//   argsMaybe?: Omit<EnvDefArgs, "name">,
+// ): EnvDefArgsReqiured {
+//   const args = typeof nameOrArgs == "object"
+//     ? nameOrArgs
+//     : { ...argsMaybe, name: nameOrArgs };
+//   return {
+//     ...args,
+//     installs: [],
+//     inherit: args.inherit ?? [],
+//     vars: args.vars ?? {},
+//     onExit: args.onExit ?? [],
+//     onEnter: args.onEnter ?? [],
+//     allowedBuildDeps: args.allowedBuildDeps ?? [],
+//   };
+// }
+
 export const file = Object.freeze(function file(
   args: FileArgs = {},
 ): DenoFileKnobs {

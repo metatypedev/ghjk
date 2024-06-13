@@ -13,6 +13,7 @@ import type {
   AllowedPortDep,
   InstallConfigResolved,
   InstallProvision,
+  InstallSetRefProvision,
   InstallSetX,
   PortsModuleConfigX,
 } from "./types.ts";
@@ -31,9 +32,9 @@ import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
-import { getInstallSetStore } from "./inter.ts";
-import { getActiveEnvInstallSetId, getEnvsCtx, getPortsCtx } from "../utils.ts";
+import { getPortsCtx } from "./inter.ts";
 import { updateInstall } from "./utils.ts";
+import { getEnvsCtx } from "../envs/inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -69,7 +70,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
     const pcx: PortsCtx = getPortsCtx(gcx);
 
-    const setStore = getInstallSetStore(gcx);
     // pre-process the install sets found in the config
     for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
       // install sets in the config use hash references to dedupe InstallConfigs,
@@ -96,7 +96,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         allowedBuildDeps,
       };
       pcx.config.sets[id] = set;
-      setStore.set(id, set);
     }
 
     // register envrionment reducers for any
@@ -156,7 +155,22 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
               const installSets = pcx.config.sets;
 
-              const currInstallSetId = getActiveEnvInstallSetId(envsCtx);
+              let currInstallSetId;
+              {
+                const activeEnvName = envsCtx.activeEnv;
+                const activeEnv = envsCtx.config.envs[activeEnvName];
+                if (!activeEnv) {
+                  throw new Error(
+                    `No env found under given name "${activeEnvName}"`,
+                  );
+                }
+
+                const instSetRef = activeEnv.provides.filter((prov) =>
+                  prov.ty === installSetRefProvisionTy
+                )[0] as InstallSetRefProvision;
+
+                currInstallSetId = instSetRef.setId;
+              }
               const currInstallSet = installSets[currInstallSetId];
               const allowedDeps = currInstallSet.allowedBuildDeps;
 

@@ -7,19 +7,19 @@ import type { InstallConfigFat } from "../port.ts";
 // TODO: test for hook reload when nextfile is touched
 
 const posixInteractiveScript = `
-set -eux
-[ "$DUMMY_ENV" = "dummy" ] || exit 101
+set -ex
+[ "\${DUMMY_ENV:-}" = "dummy" ] || exit 101
 dummy
 
 # it should be avail in subshells
-sh -c '[ "$DUMMY_ENV" = "dummy" ]' || exit 105
+sh -c '[ "\${DUMMY_ENV:-}" = "dummy" ]' || exit 105
 sh -c "dummy"
 
 pushd ../
 # it shouldn't be avail here
 set +ex
 [ $(dummy) ] && exit 102
-[ "$DUMMY_ENV" = "dummy" ] && exit 103
+[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 103
 set -ex
 
 # cd back in
@@ -27,12 +27,12 @@ popd
 
 # now it should be avail
 dummy
-[ "$DUMMY_ENV" = "dummy" ] || exit 106
+[ "\${DUMMY_ENV:-}" = "dummy" ] || exit 106
 
-[ "$GHJK_ENV" = "main" ] || exit 107
+[ "\${GHJK_ENV:-}" = "main" ] || exit 107
 ghjk e cook test
 echo "test" > $GHJK_NEXTFILE
-[ "$GHJK_ENV" = "test" ] || exit 108
+[ "\${GHJK_ENV:-}" = "test" ] || exit 108
 `;
 
 const posixNonInteractiveScript = `
@@ -40,11 +40,11 @@ set -eux
 
 # test that ghjk_reload is avail because BASH_ENV exposed by the suite
 ghjk_reload
-[ "$DUMMY_ENV" = "dummy" ] || exit 101
+[ "\${DUMMY_ENV:-}" = "dummy" ] || exit 101
 dummy
 
 # it should be avail in subshells
-sh -c '[ "$DUMMY_ENV" = "dummy" ]' || exit 105
+sh -c '[ "\${DUMMY_ENV:-}" = "dummy" ]' || exit 105
 sh -c "dummy"
 
 pushd ../
@@ -54,35 +54,35 @@ ghjk_reload
 
 # it shouldn't be avail now
 [ $(set +e; dummy) ] && exit 102
-[ "$DUMMY_ENV" = "dummy" ] && exit 103
+[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 103
 
 # cd back in
 popd
 
 # not avail yet
 [ $(set +e; dummy) ] && exit 104
-[ "$DUMMY_ENV" = "dummy" ] && exit 105
+[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 105
 
 ghjk_reload
 # now it should be avail
 dummy
-[ "$DUMMY_ENV" = "dummy" ] || exit 106
+[ "\${DUMMY_ENV:-}" = "dummy" ] || exit 106
 
-[ "$GHJK_ENV" = "main" ] || exit 107
+[ "\${GHJK_ENV}" = "main" ] || exit 107
 ghjk e cook test
 
 ghjk_reload test
-[ "$GHJK_ENV" = "test" ] || exit 110
+[ "\${GHJK_ENV:-}" = "test" ] || exit 110
 ghjk_reload
-[ "$GHJK_ENV" = "test" ] || exit 111
+[ "\${GHJK_ENV:-}" = "test" ] || exit 111
 
 GHJK_ENV=test ghjk_reload
-[ "$GHJK_ENV" = "test" ] || exit 112
+[ "\${GHJK_ENV:-}" = "test" ] || exit 112
 `;
 
 const fishScript = `
 set fish_trace 1
-dummy; or exit 101
+which dummy; or exit 101
 test $DUMMY_ENV = "dummy"; or exit 102
 
 # it should be avail in subshells

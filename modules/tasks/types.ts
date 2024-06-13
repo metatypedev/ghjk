@@ -13,11 +13,11 @@ const taskDefBase = zod.object({
 });
 
 const taskDefFullBase = taskDefBase.merge(zod.object({
-  env: envsValidators.envRecipe,
+  env: envsValidators.envRecipe.optional(),
 }));
 
 const taskDefHashedBase = taskDefBase.merge(zod.object({
-  envHash: zod.string(),
+  envKey: zod.string().optional(),
 }));
 
 const denoWorkerTaskDefBase = zod.object({
@@ -50,7 +50,6 @@ const taskDefHashed =
 // ]);
 
 const tasksModuleConfig = zod.object({
-  envs: zod.record(zod.string(), envsValidators.envRecipe),
   /**
    * Tasks can be keyed with any old string. The keys
    * that also appear in {@field tasksNamed} will shown

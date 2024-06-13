@@ -10,7 +10,7 @@ import { ModuleBase } from "../mod.ts";
 
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
 import { Blackboard } from "../../host/types.ts";
-import { getTasksCtx } from "../utils.ts";
+import { getTasksCtx } from "./inter.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;

@@ -12,8 +12,10 @@ end
 function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
     # precedence is gven to argv over GHJK_ENV
     set --local next_env $argv[1]
-    test "$argv" = "VARIABLE SET PWD"; and set next_env ""
     test -z $next_env; and set next_env "$GHJK_ENV"
+    # we ignore previously loaded GHJK_ENV when switching 
+    # directories
+    test "$argv" = "VARIABLE SET PWD"; and set next_env ""
     test -z $next_env; and set next_env "default"
 
     if set --query GHJK_CLEANUP_FISH
@@ -63,7 +65,7 @@ function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
             # FIXME: older versions of fish don't recognize -ot
             # those in debian for example
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
-            if test $next_env_dir/activate.fish -ot $local_ghjk_dir/../ghjk.ts
+            if test (__ghjk_get_mtime_ts $next_env_dir/activate.fish) -lt (__ghjk_get_mtime_ts $local_ghjk_dir/../ghjk.ts)
                 set_color FF4500
                 if test $next_env = "default"
                     echo "[ghjk] Possible drift from default environment, please sync..."
@@ -95,7 +97,7 @@ function __ghjk_preexec --on-event fish_preexec
     # exists
     if set --query GHJK_NEXTFILE; and test -f "$GHJK_NEXTFILE";
 
-        ghjk_reload "$(cat $GHJK_NEXTFILE)"
+        ghjk_reload (cat $GHJK_NEXTFILE)
         rm "$GHJK_NEXTFILE"
 
     # activate script has reloaded

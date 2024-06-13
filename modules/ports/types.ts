@@ -1,6 +1,7 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
+import moduleValidators from "../types.ts";
 import { relativeFileUrl } from "../../utils/url.ts";
 import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
 
@@ -191,7 +192,7 @@ const downloadArtifacts = zod.object({
 });
 
 const installArtifacts = zod.object({
-  env: zod.record(zod.string(), zod.string()),
+  env: zod.record(moduleValidators.envVarName, zod.string()),
   installVersion: zod.string(),
   binPaths: zod.string().array(),
   libPaths: zod.string().array(),

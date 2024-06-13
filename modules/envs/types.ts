@@ -1,5 +1,6 @@
 import { std_path, zod } from "../../deps/common.ts";
 import { installProvisionTy } from "../ports/types.ts";
+import moduleValidators from "../types.ts";
 
 const absolutePath = zod.string().refine((path) => std_path.isAbsolute(path));
 
@@ -34,7 +35,7 @@ const wellKnownProvision = zod.discriminatedUnion(
   [
     zod.object({
       ty: zod.literal(wellKnownProvisionTypes[0]),
-      key: zod.string(),
+      key: moduleValidators.envVarName,
       val: zod.string(),
     }),
     ...hookProvisionTypes.map((ty) =>
@@ -71,6 +72,7 @@ const wellKnownEnvRecipe = envRecipe.merge(zod.object({
 const envsModuleConfig = zod.object({
   defaultEnv: zod.string(),
   envs: zod.record(zod.string(), envRecipe),
+  envsNamed: zod.string().array(),
 }).refine((conf) => conf.envs[conf.defaultEnv], {
   message: `no env found under the provided "defaultEnv"`,
 });

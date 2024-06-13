@@ -4,9 +4,7 @@ import type { Path } from "../utils/mod.ts";
 // TODO: better module ident/versioning
 const moduleId = zod.string().regex(/[^ @]*/);
 
-export const envsCtxBlackboardKey = "ctx.envs";
-export const portsCtxBlackboardKey = "ctx.ports";
-export const tasksCtxBlackboardKey = "ctx.tasks";
+const envVarName = zod.string().regex(/[a-zA-Z-_]*/);
 
 const moduleManifest = zod.object({
   id: moduleId,
@@ -25,4 +23,5 @@ export type GhjkCtx = {
 export default {
   moduleManifest,
   moduleId,
+  envVarName,
 };

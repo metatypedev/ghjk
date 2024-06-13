@@ -12,13 +12,13 @@ import { type GhjkCtx, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
-import { getInstallSetStore, installGraphToSetMeta } from "../ports/inter.ts";
+import { getPortsCtx, installGraphToSetMeta } from "../ports/inter.ts";
 import type {
   InstallSetProvision,
   InstallSetRefProvision,
 } from "../ports/types.ts";
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
-import { getEnvsCtx } from "../utils.ts";
+import { getEnvsCtx } from "./inter.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -33,7 +33,7 @@ type EnvsLockEnt = zod.infer<typeof lockValidator>;
 
 export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
   processManifest(
-    _ctx: GhjkCtx,
+    gcx: GhjkCtx,
     manifest: ModuleManifest,
     bb: Blackboard,
     _lockEnt: EnvsLockEnt | undefined,
@@ -51,7 +51,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const setEnv = Deno.env.get("GHJK_ENV");
     const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
-    const envsCtx = getEnvsCtx(_ctx);
+    const envsCtx = getEnvsCtx(gcx);
     envsCtx.activeEnv = activeEnv;
     envsCtx.config = config;
 
@@ -78,10 +78,11 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             .action(() => {
               // deno-lint-ignore no-console
               console.log(
-                Object.entries(ecx.config.envs)
-                  .map(([name, { desc }]) =>
-                    `${name}${desc ? ": " + desc : ""}`
-                  )
+                ecx.config.envsNamed
+                  .map((name) => {
+                    const { desc } = ecx.config.envs[name];
+                    return `${name}${desc ? ": " + desc : ""}`;
+                  })
                   .join("\n"),
               );
             }),
@@ -95,7 +96,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             .arguments("[envName:string]")
             .action(async function (_, envNameMaybe) {
               const envName = envNameMaybe ?? ecx.config.defaultEnv;
-              await activateEnv(gcx, envName);
+              await activateEnv(envName);
             }),
         )
         .command(
@@ -132,14 +133,14 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
       sync: new cliffy_cmd.Command()
         .description(`Synchronize your shell to what's in your config.
 
-Just simply cooks and activates an environment.
+Cooks and activates an environment.
 - If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`)
         .arguments("[envName:string]")
         .action(async function (_, envNameMaybe) {
           const envName = envNameMaybe ?? ecx.activeEnv;
           await reduceAndCookEnv(gcx, ecx, envName);
-          await activateEnv(gcx, envName);
+          await activateEnv(envName);
         }),
     };
   }
@@ -273,8 +274,8 @@ async function showableEnv(
         break;
       }
       case "ghjk.ports.InstallSetRef": {
-        const setStore = getInstallSetStore(gcx);
-        const set = setStore.get(prov.setId);
+        const portsCx = getPortsCtx(gcx);
+        const set = portsCx.config.sets[prov.setId];
         if (!set) {
           throw new Error(
             `unable to find install set ref provisioned under id ${prov.setId}`,
@@ -298,10 +299,10 @@ async function showableEnv(
   };
 }
 
-async function activateEnv(gcx: GhjkCtx, envName: string) {
+async function activateEnv(envName: string) {
   const nextfile = Deno.env.get("GHJK_NEXTFILE");
   if (nextfile) {
-    await $.path(gcx.ghjkDir).join("envs", "next").writeText(envName);
+    await $.path(nextfile).writeText(envName);
   } else {
     const shell = await detectShellPath();
     if (!shell) {

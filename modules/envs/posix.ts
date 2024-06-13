@@ -195,7 +195,7 @@ async function shimLinkPaths(
 async function writeActivators(
   gcx: GhjkCtx,
   envDir: string,
-  env: Record<string, string>,
+  envVars: Record<string, string>,
   pathVars: Record<string, string>,
   onEnterHooks: [string, string[]][],
   onExitHooks: [string, string[]][],
@@ -218,7 +218,8 @@ async function writeActivators(
   const ghjkShimName = "__ghjk_shim";
   const onEnterHooksEscaped = onEnterHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
-      .join(" ").replaceAll("'", "'\\''")
+      .join(" ")
+      .replaceAll("'", "'\\''")
   );
   const onExitHooksEscaped = onExitHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
@@ -232,6 +233,10 @@ async function writeActivators(
     //
     // posix shell version
     posix: [
+      `# shellcheck shell=sh`,
+      `# shellcheck disable=SC2016`,
+      `# SC2016: disabled because single quoted expressions are used for the cleanup scripts`,
+      ``,
       `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then`,
       `    eval "$GHJK_CLEANUP_POSIX"`,
       `fi`,
@@ -242,31 +247,62 @@ async function writeActivators(
       `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
       ``,
       `# env vars`,
-      ...Object.entries(env).flatMap(([key, val]) => [
-        // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        // NOTE: single quoting embedded in double quotes still expands allowing us to
-        // capture the value of $KEY before activator
-        // NOTE: we only restore the old $KEY value at cleanup if $KEY is the one set by the activator
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"$${key}\"'" = '${val}' ] && export ${key}='$${key}';";`,
-        `export ${key}='${val}';`,
-        ``,
-      ]),
+      ...Object.entries(envVars).flatMap(([key, val]) => {
+        const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "'\\''");
+        // avoid triggering unbound variable if -e is set
+        // by defaulting to a value that's guranteed to
+        // be differeint than `key`
+        // TODO: avoid invalid key values elsewhere
+        const safeComparisionKey = `$\{${key}:-_${
+          val.replace(/['"]/g, "").slice(0, 2)
+        }}`;
+        return [
+          // we only restore the old $KEY value at cleanup if value of $KEY
+          // is the one set by the activate script
+          // we also single quote the supplied values to avoid
+          // any embedded expansion/execution
+          // we also single quote the entire test section to avoid
+          // expansion when creating the cleanup
+          // string (that's why we "escaped single quote" the value)
+          // NOTE: the addition sign at the end
+          `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"${safeComparisionKey}\" = '\\''${safeVal}'\\'' ] && '` +
+          // we want to capture the old $key value here so we wrap those
+          // with double quotes but the rest is in single quotes
+          // within the value of $key
+          // i.e. export KEY='OLD $VALUE OF KEY'
+          // but $VALUE won't be expanded when the cleanup actually runs
+          // we also unset the key if it wasn't previously set
+          `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
+          `export ${key}='${safeVal}';`,
+          ``,
+        ];
+      }),
       ``,
       `# path vars`,
-      ...Object.entries(pathVars).flatMap(([key, val]) => [
-        // NOTE: double quote the path vars for expansion
-        // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE "'^${val}'" | tr "\\n" ":");${key}="\${${key}%:}";';`,
-        `export ${key}="${val}:$${key}";`,
-        ``,
-      ]),
+      ...Object.entries(pathVars).flatMap(([key, val]) => {
+        const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "'\\''");
+        return [
+          // double quote the path vars for expansion
+          // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
+          `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${key}=$(echo "$${key}" | tr ":" "\\n" | grep -vE '\\'"^${safeVal}"\\'' | tr "\\n" ":");${key}="\${${key}%:}";';`,
+          //  FIXME: we're allowing expansion in the value to allow
+          //  readable $ghjkDirVar usage
+          // (for now safe since all paths are created within ghjk)
+          `export ${key}="${safeVal}:$${key}";`,
+          ``,
+        ];
+      }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim instead improving latency`,
+      `# on this shim to improving latency`,
+      // the ghjk executable is itself a shell script
+      // which execs deno, we remove the middleman here
+      // also, the ghjk executable is optional
       ghjk_sh(gcx, denoDir, ghjkShimName),
       ``,
+      `# only run the hooks in interactive mode`,
       `case "$-" in`,
-      `    *i*)`,
+      `    *i*) # if the shell variables contain "i"`,
       ``,
       `        # on enter hooks`,
       ...onEnterHooksEscaped.map((line) => `        ${line}`),
@@ -296,23 +332,35 @@ async function writeActivators(
       `set ${shareDirVar} "${gcx.ghjkShareDir.toString()}"`,
       ``,
       `# env vars`,
-      ...Object.entries(env).flatMap(([key, val]) => [
-        `set --global --append GHJK_CLEANUP_FISH 'test "$${key}"'" = '${val}'; and set --global --export ${key} '$${key}';";`,
-        `set --global --export ${key} '${val}';`,
-        ``,
-      ]),
+      ...Object.entries(envVars).flatMap(([key, val]) => {
+        const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+        // read the comments from the posix version of this section
+        // the fish version is notably simpler since
+        // - we can escape single quates within single quotes
+        // - we don't have to deal with 'set -o nounset'
+        return [
+          `set --global --append GHJK_CLEANUP_FISH 'test "$${key}" = \\'${safeVal}\\'; and '` +
+          `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
+          `set --global --export ${key} '${val}';`,
+          ``,
+        ];
+      }),
       ``,
       `# path vars`,
-      ...Object.entries(pathVars).flatMap(([key, val]) => [
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex '"^${val}"' $${key});';`,
-        `set --global --export --prepend ${key} ${val};`,
-        ``,
-      ]),
+      ...Object.entries(pathVars).flatMap(([key, val]) => {
+        const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+        return [
+          `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${key} (string match --invert --regex \\''"^${safeVal}"'\\' $${key});';`,
+          `set --global --export --prepend ${key} "${safeVal}";`,
+          ``,
+        ];
+      }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim instead improving latency`,
+      `# on this shim to improving latency`,
       ghjk_fish(gcx, denoDir, ghjkShimName),
       ``,
+      `# only run the hooks in interactive mode`,
       `if status is-interactive;`,
       `    # on enter hooks`,
       ...onEnterHooksEscaped.map((line) => `    ${line}`),
