@@ -15,7 +15,7 @@ export function getEnvsCtx(
       config: {
         defaultEnv: "",
         envs: {},
-        envsNamed: [],
+        envsNamed: {},
       },
     };
     gcx.blackboard.set(key, ctx);

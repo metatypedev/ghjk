@@ -91,6 +91,10 @@
                 "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
               ],
               "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
+            },
+            "ghjkEnvProvInstSet___test": {
+              "installs": [],
+              "allowedDeps": "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq"
             }
           }
         }
@@ -106,10 +110,10 @@
         "id": "envs",
         "config": {
           "envs": {
-            "test": {
+            "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja": {
               "provides": []
             },
-            "main": {
+            "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya": {
               "desc": "the default default environment.",
               "provides": [
                 {
@@ -120,10 +124,10 @@
             }
           },
           "defaultEnv": "main",
-          "envsNamed": [
-            "test",
-            "main"
-          ]
+          "envsNamed": {
+            "test": "bciqmhz5op4n2p2xhzgtqdjjho6dafxi5xsx4qx5kxkbhqss3mza3mja",
+            "main": "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya"
+          }
         }
       }
     ],
@@ -528,7 +532,8 @@
         "asdf_plugin_git": "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli",
         "node_org": "bciqboouqnp54fnumgxvl7uay2k6ho4vhlbibvgoyyt5yt3rkwqaohzi",
         "cpy_bs_ghrel": "bciqctvtiscapp6cmlaxuaxnyac664hs3y3xsa5kqh4ctmhbsiehusly"
-      }
+      },
+      "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq": {}
     }
   }
 }

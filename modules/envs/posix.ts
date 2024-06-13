@@ -13,15 +13,15 @@ import getLogger from "../../utils/logger.ts";
 const logger = getLogger(import.meta);
 
 export async function cookPosixEnv(
-  { gcx, recipe, envName, envDir, createShellLoaders = false }: {
+  { gcx, recipe, envKey, envDir, createShellLoaders = false }: {
     gcx: GhjkCtx;
     recipe: EnvRecipeX;
-    envName: string;
+    envKey: string;
     envDir: string;
     createShellLoaders?: boolean;
   },
 ) {
-  logger.debug("cooking env", envName, { envDir });
+  logger.debug("cooking env", envKey, { envDir });
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
@@ -39,7 +39,7 @@ export async function cookPosixEnv(
   const libPaths = [] as string[];
   const includePaths = [] as string[];
   const vars = {
-    GHJK_ENV: envName,
+    GHJK_ENV: envKey,
   } as Record<string, string>;
   const onEnterHooks = [] as [string, string[]][];
   const onExitHooks = [] as [string, string[]][];

@@ -121,43 +121,6 @@ type DenoFileKnobs = {
   config(args: SecureConfigArgs): void;
 };
 
-// export type EnvDefArgsPartial =
-//   | EnvDefArgs
-//   | Omit<EnvDefArgs, "name">;
-//
-// /**
-//  * A version of {@link EnvDefArgs} that has all container
-//  * fields guratneed initialized to non null but possible empty values.
-//  */
-// export type EnvDefArgsReqiured =
-//   & Required<Omit<EnvDefArgs, "name" | "desc">>
-//   & Partial<Pick<EnvDefArgs, "name" | "desc">>;
-//
-// export function envDef(
-//   args: EnvDefArgsPartial,
-// ): EnvDefArgsReqiured;
-// export function envDef(
-//   name: string,
-//   args?: Omit<EnvDefArgs, "name">,
-// ): EnvDefArgsReqiured;
-// export function envDef(
-//   nameOrArgs: string | EnvDefArgsPartial,
-//   argsMaybe?: Omit<EnvDefArgs, "name">,
-// ): EnvDefArgsReqiured {
-//   const args = typeof nameOrArgs == "object"
-//     ? nameOrArgs
-//     : { ...argsMaybe, name: nameOrArgs };
-//   return {
-//     ...args,
-//     installs: [],
-//     inherit: args.inherit ?? [],
-//     vars: args.vars ?? {},
-//     onExit: args.onExit ?? [],
-//     onEnter: args.onEnter ?? [],
-//     allowedBuildDeps: args.allowedBuildDeps ?? [],
-//   };
-// }
-
 export const file = Object.freeze(function file(
   args: FileArgs = {},
 ): DenoFileKnobs {
@@ -166,7 +129,7 @@ export const file = Object.freeze(function file(
   const DEFAULT_BASE_ENV_NAME = "main";
 
   const builder = new Ghjkfile();
-  const mainEnv = builder.addEnv({
+  const mainEnv = builder.addEnv(DEFAULT_BASE_ENV_NAME, {
     name: DEFAULT_BASE_ENV_NAME,
     inherit: false,
     installs: args.installs,
@@ -204,7 +167,7 @@ export const file = Object.freeze(function file(
   replaceDefaultBuildDeps(args);
 
   for (const env of args.envs ?? []) {
-    builder.addEnv(env);
+    builder.addEnv(env.name, env);
   }
   for (const task of args.tasks ?? []) {
     builder.addTask({ ...task, ty: "denoFile@v1" });
@@ -278,7 +241,7 @@ export const file = Object.freeze(function file(
       const args = typeof nameOrArgs == "object"
         ? nameOrArgs
         : { ...argsMaybe, name: nameOrArgs };
-      return builder.addEnv(args);
+      return builder.addEnv(args.name, args);
     },
 
     config(

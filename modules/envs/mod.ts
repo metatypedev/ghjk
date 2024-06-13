@@ -19,6 +19,7 @@ import type {
 } from "../ports/types.ts";
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 import { getEnvsCtx } from "./inter.ts";
+import { getTasksCtx } from "../tasks/inter.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -78,9 +79,12 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             .action(() => {
               // deno-lint-ignore no-console
               console.log(
-                ecx.config.envsNamed
-                  .map((name) => {
-                    const { desc } = ecx.config.envs[name];
+                Object.entries(ecx.config.envsNamed)
+                  // envs that have names which start with underscors
+                  // don't show up in the cli list
+                  .filter(([key]) => !key.startsWith("_"))
+                  .map(([name, hash]) => {
+                    const { desc } = ecx.config.envs[hash];
                     return `${name}${desc ? ": " + desc : ""}`;
                   })
                   .join("\n"),
@@ -94,9 +98,29 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
 
 - If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`)
             .arguments("[envName:string]")
-            .action(async function (_, envNameMaybe) {
-              const envName = envNameMaybe ?? ecx.config.defaultEnv;
-              await activateEnv(envName);
+            .option(
+              "-t, --task-env <taskName>",
+              "Synchronize to the environment used by the named task",
+              { standalone: true },
+            )
+            .action(async function ({ taskEnv: taskKey }, envKeyMaybe) {
+              if (taskKey && envKeyMaybe) {
+                throw new Error(
+                  "--task-env option can not be combined with [envName] argument",
+                );
+              }
+              let envKey: string;
+              if (taskKey) {
+                const tasksCx = getTasksCtx(gcx);
+                const taskDef = tasksCx.config.tasks[taskKey];
+                if (!taskDef) {
+                  throw new Error(`no task found under key "${taskKey}"`);
+                }
+                envKey = taskDef.envKey;
+              } else {
+                envKey = envKeyMaybe ?? ecx.activeEnv;
+              }
+              await activateEnv(envKey);
             }),
         )
         .command(
@@ -122,9 +146,10 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
             .arguments("[envName:string]")
             .action(async function (_void, envNameMaybe) {
               const envName = envNameMaybe ?? ecx.activeEnv;
-              const env = ecx.config.envs[envName];
+              const env =
+                ecx.config.envs[ecx.config.envsNamed[envName] ?? envName];
               if (!env) {
-                throw new Error(`No env found under given name "${envName}"`);
+                throw new Error(`no env found under given key "${envName}"`);
               }
               // deno-lint-ignore no-console
               console.log($.inspect(await showableEnv(gcx, env, envName)));
@@ -137,10 +162,30 @@ Cooks and activates an environment.
 - If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`)
         .arguments("[envName:string]")
-        .action(async function (_, envNameMaybe) {
-          const envName = envNameMaybe ?? ecx.activeEnv;
-          await reduceAndCookEnv(gcx, ecx, envName);
-          await activateEnv(envName);
+        .option(
+          "-t, --task-env <taskName>",
+          "Synchronize to the environment used by the named task",
+          { standalone: true },
+        )
+        .action(async function ({ taskEnv: taskKey }, envKeyMaybe) {
+          if (taskKey && envKeyMaybe) {
+            throw new Error(
+              "--task-env option can not be combined with [envName] argument",
+            );
+          }
+          let envKey: string;
+          if (taskKey) {
+            const tasksCx = getTasksCtx(gcx);
+            const taskDef = tasksCx.config.tasks[taskKey];
+            if (!taskDef) {
+              throw new Error(`no task found under key "${taskKey}"`);
+            }
+            envKey = taskDef.envKey;
+          } else {
+            envKey = envKeyMaybe ?? ecx.activeEnv;
+          }
+          await reduceAndCookEnv(gcx, ecx, envKey);
+          await activateEnv(envKey);
         }),
     };
   }
@@ -170,15 +215,15 @@ Cooks and activates an environment.
 async function reduceAndCookEnv(
   gcx: GhjkCtx,
   ecx: EnvsCtx,
-  envName: string,
+  envKey: string,
 ) {
-  const recipe = ecx.config.envs[envName];
+  const recipe = ecx.config.envs[ecx.config.envsNamed[envKey] ?? envKey];
   if (!recipe) {
-    throw new Error(`No env found under given name "${envName}"`);
+    throw new Error(`No env found under given name "${envKey}"`);
   }
 
   // TODO: diff env and ask confirmation from user
-  const envDir = $.path(gcx.ghjkDir).join("envs", envName);
+  const envDir = $.path(gcx.ghjkDir).join("envs", envKey);
   /*
   const recipeShowable = await showableEnv(gcx, recipe, envName);
   const oldRecipeShowable = {};
@@ -213,11 +258,11 @@ async function reduceAndCookEnv(
   await cookPosixEnv({
     gcx,
     recipe,
-    envName,
+    envKey,
     envDir: envDir.toString(),
     createShellLoaders: true,
   });
-  if (envName == ecx.config.defaultEnv) {
+  if (envKey == ecx.config.defaultEnv) {
     const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
     await $.removeIfExists(defaultEnvDir);
     await defaultEnvDir.symlinkTo(envDir, { kind: "relative" });

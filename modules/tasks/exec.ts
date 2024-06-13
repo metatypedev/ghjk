@@ -117,14 +117,12 @@ export async function execTask(
       prefix: `ghjkTaskEnv_${taskKey}_`,
     });
     const envsCx = getEnvsCtx(gcx);
-    const recipe = taskDef.envKey
-      ? envsCx.config.envs[taskDef.envKey]
-      : undefined;
+    const recipe = envsCx.config.envs[taskDef.envKey];
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
         recipe: recipe ?? { provides: [] },
-        envName: taskDef.envKey ?? `taskEnv_${taskKey}`,
+        envKey: taskDef.envKey ?? `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
     );

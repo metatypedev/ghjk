@@ -17,7 +17,7 @@ const taskDefFullBase = taskDefBase.merge(zod.object({
 }));
 
 const taskDefHashedBase = taskDefBase.merge(zod.object({
-  envKey: zod.string().optional(),
+  envKey: zod.string(),
 }));
 
 const denoWorkerTaskDefBase = zod.object({

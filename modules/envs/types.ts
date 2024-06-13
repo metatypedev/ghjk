@@ -72,8 +72,9 @@ const wellKnownEnvRecipe = envRecipe.merge(zod.object({
 const envsModuleConfig = zod.object({
   defaultEnv: zod.string(),
   envs: zod.record(zod.string(), envRecipe),
-  envsNamed: zod.string().array(),
-}).refine((conf) => conf.envs[conf.defaultEnv], {
+  // TODO: regex for env and task names
+  envsNamed: zod.record(zod.string(), zod.string()),
+}).refine((conf) => conf.envsNamed[conf.defaultEnv], {
   message: `no env found under the provided "defaultEnv"`,
 });
 

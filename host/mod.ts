@@ -66,8 +66,9 @@ export async function cli(args: CliArgs) {
     const commands = await commandsFromConfig(gcx);
     if (commands) {
       serializedConfig = commands.config;
-      // lock entries are generated across program usage
-      // so we defer writing it out until the end
+      await commands.writeLockFile();
+      // lock entries are also generated across program usage
+      // so we defer another write out until the end
       defer.push(commands.writeLockFile);
 
       for (
@@ -281,6 +282,12 @@ async function commandsFromConfig(gcx: GhjkCtx) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
 
+  // `writeLockFile` can be invoked multiple times
+  // so we keep track of the last lockfile wrote
+  // out to disk
+  // TODO(#90): file system lock file while ghjk is running
+  // to avoid multiple instances from clobbering each other
+  let lastLockObj = { ...foundLockObj };
   return {
     subCommands,
     config: configExt.config,
@@ -306,7 +313,8 @@ async function commandsFromConfig(gcx: GhjkCtx) {
         ),
       );
       // avoid writing lockfile if nothing's changed
-      if (!foundLockObj || !deep_eql(newLockObj, foundLockObj)) {
+      if (!lastLockObj || !deep_eql(newLockObj, lastLockObj)) {
+        lastLockObj = { ...newLockObj };
         await lockFilePath.writeJsonPretty(newLockObj);
       }
     },

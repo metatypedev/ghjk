@@ -192,6 +192,73 @@ test "$SONG" = "ditto"; and exit 107
 test "$HUMM" = "Soul Lady"; or exit 108
 `,
   },
+  {
+    name: "env_inherit_from_envs",
+    ePoint: "fish",
+    envs: [],
+    secureConfig: {
+      defaultEnv: "e1",
+      envs: [
+        { name: "e1", inherit: "e2" },
+        {
+          name: "e2",
+          vars: { HEY: "hello" },
+        },
+      ],
+    },
+    stdin: `
+set fish_trace 1
+test "$GHJK_ENV" = "e1"; or exit 101
+test "$HEY" = "hello"; or exit 102
+`,
+  },
+  {
+    name: "task_inherit_from_envs",
+    ePoint: "fish",
+    envs: [],
+    secureConfig: {
+      envs: [{ name: "e1", vars: { HEY: "hello" } }],
+      tasks: [{ name: "t1", inherit: "e1", fn: ($) => $`echo $HEY` }],
+    },
+    stdin: `
+set fish_trace 1
+test (ghjk x t1) = "hello"; or exit 102
+`,
+  },
+  {
+    name: "env_inherit_from_tasks",
+    ePoint: "fish",
+    envs: [],
+    secureConfig: {
+      defaultEnv: "e1",
+      envs: [{ name: "e1", inherit: "t1" }],
+      tasks: [{ name: "t1", vars: { HEY: "hello" } }],
+    },
+    stdin: `
+set fish_trace 1
+test "$GHJK_ENV" = "e1"; or exit 101
+test "$HEY" = "hello"; or exit 102
+`,
+  },
+  {
+    name: "task_inherit_from_task",
+    ePoint: "fish",
+    envs: [],
+    secureConfig: {
+      tasks: [
+        { name: "t1", vars: { HEY: "hello" }, fn: ($) => $`echo fake` },
+        {
+          name: "t2",
+          inherit: "t1",
+          fn: ($) => $`echo $HEY`,
+        },
+      ],
+    },
+    stdin: `
+set fish_trace 1
+test (ghjk x t2) = "hello"; or exit 102
+`,
+  },
 ];
 
 harness(cases.map((testCase) => ({
@@ -200,7 +267,7 @@ harness(cases.map((testCase) => ({
     {
       secureConf: {
         ...testCase.secureConfig,
-        envs: testCase.envs,
+        envs: [...testCase.envs, ...(testCase.secureConfig?.envs ?? [])],
       },
     },
   ),
