@@ -12,6 +12,7 @@ export function getEnvsCtx(
   if (!ctx) {
     ctx = {
       activeEnv: "",
+      keyToName: {},
       config: {
         defaultEnv: "",
         envs: {},

@@ -24,7 +24,6 @@ import type {
   PortManifest,
 } from "../modules/ports/types.ts";
 
-export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
 export type DeArrayify<T> = T extends Array<infer Inner> ? Inner : T;
 const literalSchema = zod.union([
   zod.string(),
@@ -182,13 +181,22 @@ export function defaultCommandBuilder() {
     // clean up the already colorized print command logs
     // TODO: remove when https://github.com/dsherret/dax/pull/203
     // is merged
-    return logger().debug(
+    return logger().info(
       "spawning",
       cmd,
     );
   });
   return builder;
 }
+
+type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
+  : DeArrayify<T>;
+//
+// type Ser<T extends readonly Promise<any>[]> = T extends
+//   readonly [...Promise<any>[], infer R] ? { (...promises: T): R }
+//   : {
+//     (...promises: T): DeArrayify<T>;
+//   };
 
 export const $ = dax.build$(
   {
@@ -230,6 +238,27 @@ export const $ = dax.build$(
           depth: 10,
         });
       },
+      co<T extends readonly unknown[] | []>(
+        values: T,
+      ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
+        return Promise.all(values);
+      },
+      // coIter<T, O>(
+      //   items: Iterable<T>,
+      //   fn: (item:T) => PromiseLike<O>,
+      //   opts: {
+      //     limit: "cpu" | number;
+      //   } = {
+      //     limit: "cpu"
+      //   },
+      // ): Promise<Awaited<O>[]> {
+      //   const limit = opts.limit == "cpu" ? AVAIL_CONCURRENCY : opts.limit;
+      //   const promises = [] as PromiseLike<O>[];
+      //   let freeSlots = limit;
+      //   do {
+      //   } while(true);
+      //   return Promise.all(promises);
+      // }
       pathToString(path: Path) {
         return path.toString();
       },
@@ -238,6 +267,7 @@ export const $ = dax.build$(
         if (await pathRef.exists()) {
           await pathRef.remove({ recursive: true });
         }
+        return pathRef;
       },
     },
   },

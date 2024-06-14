@@ -138,7 +138,7 @@ export class Ghjkfile {
   #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
-  finalizedEnvs: Record<
+  #finalizedEnvs: Record<
     string,
     {
       finalized: ReturnType<EnvFinalizer>;
@@ -181,7 +181,6 @@ export class Ghjkfile {
 
     const set = this.#getSet(setId);
     set.installs.push(config);
-    logger.debug("install added", config);
   }
 
   setAllowedPortDeps(
@@ -283,8 +282,18 @@ export class Ghjkfile {
       throw new Error(`task under "${key}" has unexpected type ${task.ty}`);
     }
     if (task.fn) {
-      const custom$ = task$(argv, envVars, workingDir);
-      await task.fn(custom$, { argv, env: envVars, $: custom$, workingDir });
+      const custom$ = task$(
+        argv,
+        envVars,
+        workingDir,
+        `<task:${task.name ?? key}>`,
+      );
+      await task.fn(custom$, {
+        argv,
+        env: Object.freeze(envVars),
+        $: custom$,
+        workingDir,
+      });
     }
   }
 
@@ -375,7 +384,7 @@ export class Ghjkfile {
       [AllowedPortDep, string] | undefined
     >;
     for (const parentName of keys) {
-      const { vars, installSetId, finalized } = this.finalizedEnvs[parentName];
+      const { vars, installSetId, finalized } = this.#finalizedEnvs[parentName];
       mergedOnEnterHooks.push(...finalized.onEnterHookTasks);
       mergedOnExitHooks.push(...finalized.onExitHookTasks);
       for (const [key, val] of Object.entries(vars)) {
@@ -441,10 +450,13 @@ export class Ghjkfile {
     parent: EnvParent,
     taskToEnvMap: Record<string, string>,
     defaultBaseEnv: string,
-    child: string,
+    childKey: string,
   ) {
-    if (typeof parent == "boolean") {
-      return parent && child != defaultBaseEnv ? [defaultBaseEnv] : [];
+    if (parent === false) {
+      return [];
+    }
+    if (parent === true || parent === undefined || parent === null) {
+      return childKey != defaultBaseEnv ? [defaultBaseEnv] : [];
     }
     const inheritSet = typeof parent == "string"
       ? [parent]
@@ -468,7 +480,7 @@ export class Ghjkfile {
         swapJobs.push([ii, taskToEnvMap[parentKey]] as const);
       } else {
         throw new Error(
-          `env "${child}" inherits from "${parentKey} but no env or task found under key"`,
+          `env "${childKey}" inherits from "${parentKey} but no env or task found under key"`,
         );
       }
     }
@@ -491,6 +503,7 @@ export class Ghjkfile {
       ReturnType<EnvFinalizer> & { envBaseResolved: null | string[] }
     >;
     const indie = [] as string[];
+    const deps = new Map<string, string[]>();
     const revDeps = new Map<string, string[]>();
     for (
       const [_key, [_builder, finalizer]] of Object.entries(this.#seenEnvs)
@@ -505,6 +518,7 @@ export class Ghjkfile {
       );
       all[final.key] = { ...final, envBaseResolved };
       if (envBaseResolved.length > 0) {
+        deps.set(final.key, [...envBaseResolved]);
         for (const base of envBaseResolved) {
           const parentRevDeps = revDeps.get(base);
           if (parentRevDeps) {
@@ -524,11 +538,16 @@ export class Ghjkfile {
       envsNamed: {},
     };
     const workingSet = indie;
+    // console.log({
+    //   indie,
+    //   deps,
+    // });
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
 
       const base = this.#mergeEnvs(final.envBaseResolved ?? [], final.key);
+      // console.log({ parents: final.envBaseResolved, child: final.key, base });
 
       const finalVars = {
         ...base.vars,
@@ -557,9 +576,10 @@ export class Ghjkfile {
             // has a singluar parent
             if (final.envBaseResolved.length == 1) {
               finalInstallSetId =
-                this.finalizedEnvs[final.envBaseResolved[0]].installSetId;
+                this.#finalizedEnvs[final.envBaseResolved[0]].installSetId;
             } else {
               this.#installSets.set(final.installSetId, base.installSet);
+              finalInstallSetId = final.installSetId;
             }
           }
         }
@@ -630,7 +650,7 @@ export class Ghjkfile {
 
       // hashing takes care of deduplication
       const envHash = objectHash(JSON.parse(JSON.stringify(recipe)));
-      this.finalizedEnvs[final.key] = {
+      this.#finalizedEnvs[final.key] = {
         installSetId: finalInstallSetId,
         vars: finalVars,
         finalized: final,
@@ -643,18 +663,28 @@ export class Ghjkfile {
         moduleConfig.envsNamed[final.name] = envHash;
       }
 
-      const curRevDeps = revDeps.get(final.key);
-      if (curRevDeps) {
-        workingSet.push(...curRevDeps);
-        revDeps.delete(final.key);
+      for (const revDepKey of revDeps.get(final.key) ?? []) {
+        const revDepDeps = deps.get(revDepKey)!;
+        // swap remove
+        const idx = revDepDeps.indexOf(final.key);
+        const last = revDepDeps.pop()!;
+        if (revDepDeps.length > idx) {
+          revDepDeps[idx] = last;
+        }
+
+        if (revDepDeps.length == 0) {
+          deps.delete(revDepKey);
+          workingSet.push(revDepKey);
+        }
       }
     }
     // sanity checks
-    if (revDeps.size > 0) {
+    if (deps.size > 0) {
       throw new Error(`working set empty but pending items found`, {
         cause: {
-          revDeps,
+          deps,
           workingSet,
+          revDeps,
         },
       });
     }
@@ -703,7 +733,7 @@ export class Ghjkfile {
       const { workingDir, desc, dependsOn } = args;
 
       const envKey = taskToEnvMap[key];
-      const { envHash } = this.finalizedEnvs[envKey];
+      const { envHash } = this.#finalizedEnvs[envKey];
 
       const def: TaskDefHashed = {
         ty: args.ty,
@@ -993,6 +1023,7 @@ function task$(
   argv: string[],
   env: Record<string, string | undefined>,
   workingDir: string,
+  loggerName: string,
 ) {
   const custom$ = Object.assign(
     // NOTE: order is important on who assigns to who
@@ -1002,8 +1033,9 @@ function task$(
     }),
     {
       argv,
-      env,
-      workingDir,
+      env: Object.freeze(env),
+      workingDir: $.path(workingDir),
+      logger: getLogger(loggerName),
     },
   );
   return custom$;

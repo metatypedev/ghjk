@@ -18,6 +18,7 @@ export type GhjkCtx = {
   ghjkDir: Path;
   ghjkShareDir: Path;
   blackboard: Map<string, unknown>;
+  reFlagSet: boolean;
 };
 
 export default {

@@ -64,7 +64,7 @@ export type FileArgs = {
   /**
    * Additional ports that can be used as build time dependencies.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   /**
@@ -73,13 +73,13 @@ export type FileArgs = {
    * is still respected.
    * True by default.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   stdDeps?: boolean;
   /**
    * (unstable) Allow runtimes from std deps to be used as build time dependencies.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   enableRuntimes?: boolean;
   /**
@@ -151,7 +151,7 @@ export const file = Object.freeze(function file(
     // if the user explicitly passes a port config, we let
     // it override any ports of the same kind from the std library
     for (
-      const dep of args.stdDeps !== false // note: this is true if it's undefined
+      const dep of args.stdDeps !== false // i.e.e true if undefined
         ? stdDeps({ enableRuntimes: args.enableRuntimes ?? false })
         : []
     ) {
@@ -160,7 +160,15 @@ export const file = Object.freeze(function file(
       }
       defaultBuildDepsSet.push(dep);
     }
-    mainEnv.allowedBuildDeps(...defaultBuildDepsSet);
+    // we override the allowedBuildDeps of the
+    // defaultEnvBase each time `file` or `env` are used
+    if (args.defaultBaseEnv) {
+      builder.addEnv(args.defaultBaseEnv, {
+        allowedBuildDeps: defaultBuildDepsSet,
+      });
+    } else {
+      mainEnv.allowedBuildDeps(...defaultBuildDepsSet);
+    }
   };
 
   // populate the bulid deps by the default args first
@@ -245,19 +253,19 @@ export const file = Object.freeze(function file(
     },
 
     config(
-      { defaultBaseEnv, defaultEnv, ...rest }: SecureConfigArgs,
+      newArgs: SecureConfigArgs,
     ) {
       if (
-        rest.enableRuntimes !== undefined ||
-        rest.allowedBuildDeps !== undefined ||
-        rest.stdDeps !== undefined
+        newArgs.defaultBaseEnv !== undefined ||
+        newArgs.enableRuntimes !== undefined ||
+        newArgs.allowedBuildDeps !== undefined ||
+        newArgs.stdDeps !== undefined
       ) {
-        replaceDefaultBuildDeps(rest);
+        replaceDefaultBuildDeps(newArgs);
       }
       // NOTE:we're deep mutating the first args from above
       args = {
-        ...rest,
-        ...{ defaultEnv, defaultBaseEnv },
+        ...newArgs,
       };
     },
   };

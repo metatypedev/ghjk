@@ -15,7 +15,8 @@
       "jsr:@std/streams@0.221.0": "jsr:@std/streams@0.221.0",
       "npm:@noble/hashes@1.4.0": "npm:@noble/hashes@1.4.0",
       "npm:multiformats@13.1.0": "npm:multiformats@13.1.0",
-      "npm:zod-validation-error@3.3.0": "npm:zod-validation-error@3.3.0_zod@3.23.8"
+      "npm:zod-validation-error@3.3.0": "npm:zod-validation-error@3.3.0_zod@3.23.8",
+      "npm:zod@3.23.8": "npm:zod@3.23.8"
     },
     "jsr": {
       "@david/dax@0.41.0": {

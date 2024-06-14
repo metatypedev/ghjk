@@ -1,4 +1,4 @@
-import { $, DePromisify } from "../../utils/mod.ts";
+import { $ } from "../../utils/mod.ts";
 
 import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
@@ -10,7 +10,7 @@ const logger = getLogger(import.meta);
 import { cookPosixEnv } from "../envs/posix.ts";
 import { getEnvsCtx } from "../envs/inter.ts";
 
-export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
+export type TaskGraph = Awaited<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
