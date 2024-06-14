@@ -382,13 +382,13 @@ export async function buildInstallGraph(
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
       for (const depId of manifest.buildDeps) {
-        const { manifest: depPort } = set.allowedBuildDeps[depId.name];
-        if (!depPort) {
+        const dep = set.allowedBuildDeps[depId.name];
+        if (!dep) {
           throw new Error(
             `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
           );
         }
-        const portRef = addPort(depPort);
+        const portRef = addPort(dep.manifest);
 
         // get the install config of dependency
         // the conf is of the resolved kind which means
@@ -408,7 +408,7 @@ export async function buildInstallGraph(
           });
         }
 
-        deps.push([depInstallId, depPort.name]);
+        deps.push([depInstallId, dep.manifest.name]);
 
         // make sure the dependency knows this install depends on it
         const reverseDeps = graph.revDepEdges[depInstallId] ?? [];

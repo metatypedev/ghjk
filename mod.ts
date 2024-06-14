@@ -131,7 +131,9 @@ export const file = Object.freeze(function file(
   const builder = new Ghjkfile();
   const mainEnv = builder.addEnv(DEFAULT_BASE_ENV_NAME, {
     name: DEFAULT_BASE_ENV_NAME,
-    inherit: false,
+    inherit: args.defaultBaseEnv && args.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
+      ? args.defaultBaseEnv
+      : false,
     installs: args.installs,
     desc: "the default default environment.",
   });
@@ -262,6 +264,12 @@ export const file = Object.freeze(function file(
         newArgs.stdDeps !== undefined
       ) {
         replaceDefaultBuildDeps(newArgs);
+      }
+      if (
+        newArgs.defaultBaseEnv &&
+        newArgs.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
+      ) {
+        mainEnv.inherit(newArgs.defaultBaseEnv);
       }
       // NOTE:we're deep mutating the first args from above
       args = {

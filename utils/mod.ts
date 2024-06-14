@@ -179,12 +179,7 @@ export function defaultCommandBuilder() {
     .printCommand(true);
   builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
-    // TODO: remove when https://github.com/dsherret/dax/pull/203
-    // is merged
-    return logger().info(
-      "spawning",
-      cmd,
-    );
+    return logger().debug("spawning", cmd);
   });
   return builder;
 }

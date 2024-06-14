@@ -15,4 +15,5 @@ install(
   ports.act(),
   ports.pipi({ packageName: "pre-commit" })[0],
   ports.cpy_bs(),
+  ports.deno_ghrel(),
 );

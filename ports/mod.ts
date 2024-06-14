@@ -4,6 +4,7 @@ export { default as cargo_binstall } from "./cargo-binstall.ts";
 export { default as cargobi } from "./cargobi.ts";
 export { default as cpy_bs } from "./cpy_bs.ts";
 export { default as curl } from "./curl.ts";
+export { default as deno_ghrel } from "./deno_ghrel.ts";
 export { default as earthly } from "./earthly.ts";
 export { default as git } from "./git.ts";
 export { default as infisical } from "./infisical.ts";
