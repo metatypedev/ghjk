@@ -243,7 +243,7 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   }
 
   let configExt: SerializedConfigExt | null = null;
-  let wasReSeraialized = false;
+  let wasReSerialized = false;
   if (
     !hcx.reFlagSet &&
     foundLockObj &&
@@ -264,7 +264,7 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   } else if (gcx.ghjkfilePath) {
     logger().info("serializing ghjkfile", gcx.ghjkfilePath);
     configExt = await readGhjkfile(hcx, gcx.ghjkfilePath);
-    wasReSeraialized = true;
+    wasReSerialized = true;
   } else {
     // nothing to get the commands from
     return;
@@ -308,7 +308,7 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   }
 
   if (
-    !hcx.lockedFlagSet && wasReSeraialized && (
+    !hcx.lockedFlagSet && wasReSerialized && (
       !foundHashObj || !deep_eql(newHashObj, foundHashObj)
     )
   ) {

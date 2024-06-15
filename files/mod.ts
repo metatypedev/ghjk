@@ -252,7 +252,14 @@ export class Ghjkfile {
     let env = this.#seenEnvs[key]?.[0];
     if (!env) {
       let finalizer: EnvFinalizer;
-      env = new EnvBuilder(this, (fin) => finalizer = fin, key, args.name);
+      env = new EnvBuilder(
+        this,
+        (fin) => {
+          finalizer = fin;
+        },
+        key,
+        args.name,
+      );
       this.#seenEnvs[key] = [env, finalizer!];
     }
     if ("inherit" in args) {
@@ -921,9 +928,11 @@ export type EnvDefArgsPartial =
 //   };
 // }
 
-// this class will be exposed to users and thus features
-// a contrived implementation of the `build`/`finalize` method
-// all to avoid exposing the function in the public api
+/**
+ this class will be exposed to users and thus features
+ a contrived implementation of the `build`/`finalize` method
+ all to avoid exposing the function in the public api
+ */
 export class EnvBuilder {
   #installSetId: string;
   #file: Ghjkfile;

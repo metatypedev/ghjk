@@ -57,7 +57,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     envsCtx.activeEnv = activeEnv;
     envsCtx.config = config;
     for (const [name, key] of Object.entries(config.envsNamed)) {
-      envsCtx.keyToName[key] = [name, ...envsCtx.keyToName[key] ?? []];
+      envsCtx.keyToName[key] = [name, ...(envsCtx.keyToName[key] ?? [])];
     }
 
     return Promise.resolve(envsCtx);
