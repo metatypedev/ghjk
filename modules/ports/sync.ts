@@ -519,7 +519,7 @@ function resolveConfig(
       );
       if (!match) {
         throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest },
+          cause: { config, manifest, allVersions },
         });
       }
       version = match;

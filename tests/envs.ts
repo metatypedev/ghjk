@@ -263,30 +263,58 @@ test (ghjk x t2) = "hello"; or exit 102
     name: "hereditary",
     ePoint: "fish",
     envs: [
+      { name: "e1", vars: { E1: "1" }, installs: [dummy({ output: "e1" })] },
       {
-        name: "t1",
-        vars: { T1: "1" },
-        installs: [dummy({ output: "t1" })],
+        name: "e2",
+        inherit: "e1",
+        vars: { E2: "2" },
       },
       {
-        name: "t2",
-        inherit: "t1",
-        vars: { T2: "2" },
-      },
-      {
-        name: "t3",
-        inherit: "t2",
-        vars: { T3: "3" },
+        name: "e3",
+        inherit: "e2",
+        vars: { E3: "3" },
       },
     ],
     stdin: `
 set fish_trace 1
-ghjk envs cook t3
-. .ghjk/envs/t3/activate.fish
-test "$T1" = "1"; or exit 101
-test "$T2" = "2"; or exit 102
-test "$T3" = "3"; or exit 103
-test (dummy) = "t1"; or exit 104
+ghjk envs cook e3
+. .ghjk/envs/e3/activate.fish
+test "$E1" = "1"; or exit 101
+test "$E2" = "2"; or exit 102
+test "$E3" = "3"; or exit 103
+test (dummy) = "e1"; or exit 104
+`, // TODO: test inheritance of more props
+  },
+  {
+    name: "inheritance_diamond",
+    ePoint: "fish",
+    envs: [
+      { name: "e1", vars: { E1: "1" }, installs: [dummy({ output: "e1" })] },
+      {
+        name: "e2",
+        inherit: "e1",
+        vars: { E2: "2" },
+      },
+      {
+        name: "e3",
+        inherit: "e1",
+        vars: { E3: "3" },
+      },
+      {
+        name: "e4",
+        inherit: ["e2", "e3"],
+        vars: { E4: "4" },
+      },
+    ],
+    stdin: `
+set fish_trace 1
+ghjk envs cook e3
+. .ghjk/envs/e3/activate.fish
+test "$E1" = "1"; or exit 101
+test "$E2" = "2"; or exit 102
+test "$E3" = "3"; or exit 103
+test "$E4" = "4"; or exit 103
+test (dummy) = "e1"; or exit 104
 `, // TODO: test inheritance of more props
   },
 ];

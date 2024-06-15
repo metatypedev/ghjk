@@ -149,7 +149,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
               "Update specific install",
             )
             .option("-n, --update-all", "Update all installs")
-            .action(async (_opts) => {
+            .action(async (opts) => {
               const envsCtx = getEnvsCtx(gcx);
               const envName = envsCtx.activeEnv;
 
@@ -158,7 +158,10 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
               let currInstallSetId;
               {
                 const activeEnvName = envsCtx.activeEnv;
-                const activeEnv = envsCtx.config.envs[activeEnvName];
+                const activeEnv = envsCtx.config
+                  .envs[
+                    envsCtx.config.envsNamed[activeEnvName] ?? activeEnvName
+                  ];
                 if (!activeEnv) {
                   throw new Error(
                     `No env found under given name "${activeEnvName}"`,
@@ -225,8 +228,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 rows.push(row);
               }
 
-              if (_opts.updateInstall) {
-                const installName = _opts.updateInstall;
+              if (opts.updateInstall) {
+                const installName = opts.updateInstall;
                 // TODO: convert from install name to install id, after port module refactor
                 let installId!: string;
                 const newVersion = latest.get(installId);
@@ -240,7 +243,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 return;
               }
 
-              if (_opts.updateAll) {
+              if (opts.updateAll) {
                 for (const [installId, newVersion] of latest.entries()) {
                   await updateInstall(gcx, installId, newVersion, allowedDeps);
                 }
