@@ -17,7 +17,7 @@ const ghjk = file({
   enableRuntimes: true,
   // tasks aren't attached to envs
   // but have their own env
-  tasks: [],
+  tasks: {},
 });
 
 // we need this export for this file to be a valid ghjkfile

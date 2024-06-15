@@ -230,4 +230,5 @@ harness(cases.map((testCase) => ({
       }, */
   ],
   name: `ports/${testCase.name}`,
+  testCase: 10 * 60 * 1000,
 })));

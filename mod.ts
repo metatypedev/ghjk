@@ -89,7 +89,7 @@ export type FileArgs = {
   /**
    * Tasks to expose to the CLI.
    */
-  tasks?: DenoTaskDefArgs[];
+  tasks?: Record<string, DenoTaskDefArgs>;
   /**
    * Different envs availaible to the CLI.
    */
@@ -179,8 +179,8 @@ export const file = Object.freeze(function file(
   for (const env of args.envs ?? []) {
     builder.addEnv(env.name, env);
   }
-  for (const task of args.tasks ?? []) {
-    builder.addTask({ ...task, ty: "denoFile@v1" });
+  for (const [name, def] of Object.entries(args.tasks ?? {})) {
+    builder.addTask({ name, ...def, ty: "denoFile@v1" });
   }
 
   // FIXME: ses.lockdown to freeze primoridials

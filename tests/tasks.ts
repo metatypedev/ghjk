@@ -151,7 +151,9 @@ harness(cases.map((testCase) => ({
   tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
     {
       secureConf: {
-        tasks: testCase.tasks,
+        tasks: Object.fromEntries(
+          testCase.tasks.map((def) => [def.name!, def]),
+        ),
         enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
       },
     },

@@ -60,7 +60,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       return unwrapParseRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
-        bb,
       }, "error parsing module config");
     }
 

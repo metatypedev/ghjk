@@ -8,6 +8,7 @@ import { std_url } from "../../deps/common.ts";
 
 import { inWorker } from "../../utils/mod.ts";
 import logger, { setup as setupLogger } from "../../utils/logger.ts";
+import { shimDenoNamespace } from "../../utils/worker.ts";
 
 if (inWorker()) {
   initWorker();
@@ -60,6 +61,7 @@ async function importAndExec(
   uri: string,
   args: ExecTaskArgs,
 ) {
+  const _shimHandle = shimDenoNamespace(args.envVars);
   const mod = await import(uri);
   await mod.sophon.execTask(args);
   return true;

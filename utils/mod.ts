@@ -9,6 +9,7 @@ import {
   std_path,
   syncSha256,
   zod,
+  zod_val_err,
 } from "../deps/common.ts";
 // class re-exports are tricky. We want al importers
 // of path to get it from here so we rename in common.ts
@@ -572,9 +573,13 @@ export function unwrapParseRes<In, Out>(
   errMessage = "error parsing object",
 ) {
   if (!res.success) {
-    throw new Error(errMessage, {
+    const zodErr = zod_val_err.fromZodError(res.error, {
+      includePath: true,
+      maxIssuesInMessage: 3,
+    });
+    throw new Error(`${errMessage}: ${zodErr}`, {
       cause: {
-        zodErr: res.error,
+        issues: res.error.issues,
         ...cause,
       },
     });

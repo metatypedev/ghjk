@@ -218,7 +218,7 @@ test "$HEY" = "hello"; or exit 102
     envs: [],
     secureConfig: {
       envs: [{ name: "e1", vars: { HEY: "hello" } }],
-      tasks: [{ name: "t1", inherit: "e1", fn: ($) => $`echo $HEY` }],
+      tasks: { t1: { inherit: "e1", fn: ($) => $`echo $HEY` } },
     },
     stdin: `
 set fish_trace 1
@@ -232,7 +232,7 @@ test (ghjk x t1) = "hello"; or exit 102
     secureConfig: {
       defaultEnv: "e1",
       envs: [{ name: "e1", inherit: "t1" }],
-      tasks: [{ name: "t1", vars: { HEY: "hello" } }],
+      tasks: { t1: { vars: { HEY: "hello" } } },
     },
     stdin: `
 set fish_trace 1
@@ -245,14 +245,13 @@ test "$HEY" = "hello"; or exit 102
     ePoint: "fish",
     envs: [],
     secureConfig: {
-      tasks: [
-        { name: "t1", vars: { HEY: "hello" }, fn: ($) => $`echo fake` },
-        {
-          name: "t2",
+      tasks: {
+        t1: { vars: { HEY: "hello" }, fn: ($) => $`echo fake` },
+        t2: {
           inherit: "t1",
           fn: ($) => $`echo $HEY`,
         },
-      ],
+      },
     },
     stdin: `
 set fish_trace 1
