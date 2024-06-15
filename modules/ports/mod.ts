@@ -80,7 +80,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       );
       const allowedDepSetHashed = unwrapParseCurry(
         validators.allowDepSetHashed.safeParse(
-          bb[hashedSet.allowedDeps],
+          bb[hashedSet.allowedBuildDeps],
         ),
       );
       const allowedBuildDeps = Object.fromEntries(

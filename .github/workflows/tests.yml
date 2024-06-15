@@ -44,7 +44,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux/x86_64
             e2eType: "docker"
-          - os: custom-macos
+          - os: custom-arm
             platform: linux/aarch64
             e2eType: "docker"
           - os: macos-latest

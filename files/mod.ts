@@ -11,7 +11,6 @@ import portsValidators from "../modules/ports/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigFat,
-  InstallSet,
   InstallSetRefProvision,
   PortsModuleConfigHashed,
 } from "../modules/ports/types.ts";
@@ -134,7 +133,12 @@ export type DenoTaskDefArgs = TaskDefArgs & {
 type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 
 export class Ghjkfile {
-  #installSets = new Map<string, InstallSet>();
+  #installSets = new Map<
+    string,
+    { installs: Set<string>; allowedBuildDeps: Record<string, string> }
+  >();
+  #seenInstallConfs = new Map<string, InstallConfigFat>();
+  #seenAllowedDepPorts = new Map<string, AllowedPortDep>();
   #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
@@ -179,8 +183,10 @@ export class Ghjkfile {
       `error parsing InstallConfig`,
     );
 
+    const hash = objectHashSafe(config);
+    this.#seenInstallConfs.set(hash, config);
     const set = this.#getSet(setId);
-    set.installs.push(config);
+    set.installs.add(hash);
   }
 
   setAllowedPortDeps(
@@ -191,7 +197,11 @@ export class Ghjkfile {
     set.allowedBuildDeps = Object.fromEntries(
       reduceAllowedDeps(deps).map((
         dep,
-      ) => [dep.manifest.name, dep]),
+      ) => {
+        const hash = objectHashSafe(dep);
+        this.#seenAllowedDepPorts.set(hash, dep);
+        return [dep.manifest.name, hash];
+      }),
     );
   }
 
@@ -210,7 +220,7 @@ export class Ghjkfile {
       switch (args.ty) {
         case "denoFile@v1": {
           const { fn, workingDir, ...argsRest } = args;
-          key = objectHash(JSON.parse(JSON.stringify({
+          key = objectHashSafe({
             ...argsRest,
             workingDir: workingDir instanceof Path
               ? workingDir.toString()
@@ -222,7 +232,7 @@ export class Ghjkfile {
                 fn: fn.toString(),
               }
               : {}),
-          })));
+          });
           key = multibase64.base64urlpad.encode(
             multibase32.base32.decode(key),
           );
@@ -358,7 +368,7 @@ export class Ghjkfile {
   #getSet(setId: string) {
     let set = this.#installSets.get(setId);
     if (!set) {
-      set = { installs: [], allowedBuildDeps: {} };
+      set = { installs: new Set(), allowedBuildDeps: {} };
       this.#installSets.set(setId, set);
     }
     return set;
@@ -366,7 +376,7 @@ export class Ghjkfile {
 
   #addToBlackboard(inp: unknown) {
     // jsonHash.digest is async
-    const hash = objectHash(JSON.parse(JSON.stringify(inp)));
+    const hash = objectHashSafe(inp);
 
     if (!this.#bb.has(hash)) {
       this.#bb.set(hash, inp);
@@ -376,12 +386,12 @@ export class Ghjkfile {
 
   #mergeEnvs(keys: string[], childName: string) {
     const mergedVars = {} as Record<string, [string, string] | undefined>;
-    const mergedInstalls = [] as InstallConfigFat[];
+    let mergedInstalls = new Set<string>();
     const mergedOnEnterHooks = [];
     const mergedOnExitHooks = [];
     const mergedAllowedBuildDeps = {} as Record<
       string,
-      [AllowedPortDep, string] | undefined
+      [string, string] | undefined
     >;
     for (const parentName of keys) {
       const { vars, installSetId, finalized } = this.#finalizedEnvs[parentName];
@@ -408,7 +418,7 @@ export class Ghjkfile {
         continue;
       }
       const set = this.#installSets.get(installSetId)!;
-      mergedInstalls.push(...set.installs);
+      mergedInstalls = mergedInstalls.union(set.installs);
       for (
         const [key, val] of Object.entries(set.allowedBuildDeps)
       ) {
@@ -427,7 +437,7 @@ export class Ghjkfile {
         mergedAllowedBuildDeps[key] = [val, parentName];
       }
     }
-    const outInstallSet: InstallSet = {
+    const outInstallSet = {
       installs: mergedInstalls,
       allowedBuildDeps: Object.fromEntries(
         Object.entries(mergedAllowedBuildDeps).map((
@@ -558,7 +568,8 @@ export class Ghjkfile {
       {
         const installSet = this.#installSets.get(final.installSetId);
         if (installSet) {
-          installSet.installs.push(...base.installSet.installs);
+          installSet.installs = installSet.installs
+            .union(base.installSet.installs);
           for (
             const [key, val] of Object.entries(base.installSet.allowedBuildDeps)
           ) {
@@ -649,7 +660,7 @@ export class Ghjkfile {
       }
 
       // hashing takes care of deduplication
-      const envHash = objectHash(JSON.parse(JSON.stringify(recipe)));
+      const envHash = objectHashSafe(recipe);
       this.#finalizedEnvs[final.key] = {
         installSetId: finalInstallSetId,
         vars: finalVars,
@@ -842,10 +853,18 @@ export class Ghjkfile {
       const [setId, set] of this.#installSets.entries()
     ) {
       out.sets[setId] = {
-        installs: set.installs.map((inst) => this.#addToBlackboard(inst)),
-        allowedDeps: this.#addToBlackboard(Object.fromEntries(
+        installs: [...set.installs.values()]
+          .map((instHash) =>
+            this.#addToBlackboard(this.#seenInstallConfs.get(instHash))
+          ),
+        allowedBuildDeps: this.#addToBlackboard(Object.fromEntries(
           Object.entries(set.allowedBuildDeps).map(
-            ([key, dep]) => [key, this.#addToBlackboard(dep)],
+            (
+              [key, depHash],
+            ) => [
+              key,
+              this.#addToBlackboard(this.#seenAllowedDepPorts.get(depHash)),
+            ],
           ),
         )),
       };
@@ -1067,4 +1086,8 @@ export function reduceAllowedDeps(
       return portsValidators.allowedPortDep.parse(out);
     },
   );
+}
+
+function objectHashSafe(obj: unknown) {
+  return objectHash(JSON.parse(JSON.stringify(obj)));
 }

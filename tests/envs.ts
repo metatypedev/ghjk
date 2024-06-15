@@ -308,13 +308,13 @@ test (dummy) = "e1"; or exit 104
     ],
     stdin: `
 set fish_trace 1
-ghjk envs cook e3
-. .ghjk/envs/e3/activate.fish
+ghjk envs cook e4
+. .ghjk/envs/e4/activate.fish
 test "$E1" = "1"; or exit 101
 test "$E2" = "2"; or exit 102
 test "$E3" = "3"; or exit 103
-test "$E4" = "4"; or exit 103
-test (dummy) = "e1"; or exit 104
+test "$E4" = "4"; or exit 104
+test (dummy) = "e1"; or exit 105
 `, // TODO: test inheritance of more props
   },
 ];

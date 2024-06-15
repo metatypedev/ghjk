@@ -97,11 +97,11 @@
                 "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q",
                 "bciqofzbd6p4olmojaxrgqp7iho5jrji4njeiqdou36ym6jfnrigm5mi"
               ],
-              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
+              "allowedBuildDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             },
             "ghjkEnvProvInstSet___test": {
               "installs": [],
-              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
+              "allowedBuildDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             }
           }
         }

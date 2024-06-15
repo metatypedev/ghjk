@@ -152,7 +152,7 @@ const allowDepSetHashed = zod.record(zod.string(), zod.string());
 
 const installSetHashed = zod.object({
   installs: zod.array(zod.string()),
-  allowedDeps: zod.string(),
+  allowedBuildDeps: zod.string(),
 });
 
 const installSet = zod.object({
