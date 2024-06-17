@@ -138,12 +138,18 @@ export async function execTask(
         Object.entries(installEnvs).map(
           (
             [key, val],
-          ) => [
-            key,
-            key.match(/PATH/i)
-              ? `${val}${Deno.env.get(key) ? ":" + Deno.env.get(key) : ""}`
-              : val,
-          ],
+          ) => {
+            if (key.match(/PATH/) && Deno.env.get(key)) {
+              val = [...new Set([val, Deno.env.get(key)!.split(":")]).keys()]
+                .join(":");
+            }
+            return [
+              key,
+              key.match(/PATH/i)
+                ? `${val}${Deno.env.get(key) ? ":" + Deno.env.get(key) : ""}`
+                : val,
+            ];
+          },
         ),
       ),
     };
