@@ -74,6 +74,12 @@
           "buildDepConfigs": {},
           "portRef": "deno_ghrel@0.1.0",
           "specifiedVersion": false
+        },
+        "bciqfvlwwndlfuqibybkgee3fgt7cst5ltpztmm3by6hib5veial5spy": {
+          "version": "v1.44.2",
+          "buildDepConfigs": {},
+          "portRef": "deno_ghrel@0.1.0",
+          "specifiedVersion": true
         }
       }
     },
@@ -95,7 +101,7 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q",
-                "bciqofzbd6p4olmojaxrgqp7iho5jrji4njeiqdou36ym6jfnrigm5mi"
+                "bciqmgggy7hd5as3zz7pzbx54va7lq657bdxvthntxphhlbsl2434dgq"
               ],
               "allowedBuildDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             },
@@ -217,7 +223,8 @@
           "moduleSpecifier": "file:///ports/cpy_bs.ts"
         }
       },
-      "bciqofzbd6p4olmojaxrgqp7iho5jrji4njeiqdou36ym6jfnrigm5mi": {
+      "bciqmgggy7hd5as3zz7pzbx54va7lq657bdxvthntxphhlbsl2434dgq": {
+        "version": "1.44.2",
         "port": {
           "ty": "denoWorker@v1",
           "name": "deno_ghrel",

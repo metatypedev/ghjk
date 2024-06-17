@@ -1,4 +1,4 @@
-ARG DENO_VERSION=1.43.1
+ARG DENO_VERSION=1.44.2
 
 FROM denoland/deno:bin-$DENO_VERSION AS deno
 
@@ -46,9 +46,6 @@ ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh
 # share the module cache of the image
 ENV GHJK_INSTALL_DENO_DIR=$DENO_DIR
 RUN deno run -A /ghjk/install.ts
-
-ARG GITHUB_TOKEN
-ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
 # avoid variable expansion in the contents of the
 # here-document by quoting the tag

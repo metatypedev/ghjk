@@ -48,6 +48,9 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
   const env = {
     ...testEnvs,
   };
+  if (Deno.env.get("GITHUB_TOKEN")) {
+    env.GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN")!;
+  }
   const devGhjkPath = import.meta.resolve("../");
 
   const configFile = tsGhjkfileStr

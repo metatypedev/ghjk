@@ -280,7 +280,11 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     }
     const memoStore = getResolutionMemo(gcx);
     for (const [hash, config] of Object.entries(entry.configResolutions)) {
-      logger().debug("restoring resolution from lockfile", config);
+      logger().debug(
+        "restoring resolution from lockfile",
+        config.portRef,
+        config.version,
+      );
       memoStore.set(hash, Promise.resolve(config));
     }
 
