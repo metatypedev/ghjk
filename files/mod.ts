@@ -22,7 +22,7 @@ import {
   objectHash,
   Path,
   thinInstallConfig,
-  unwrapParseRes,
+  unwrapZodRes,
 } from "../utils/mod.ts";
 import * as std_ports from "../modules/ports/std.ts";
 import * as cpy from "../ports/cpy_bs.ts";
@@ -175,7 +175,7 @@ export class Ghjkfile {
   } */
 
   addInstall(setId: string, configUnclean: InstallConfigFat) {
-    const config = unwrapParseRes(
+    const config = unwrapZodRes(
       portsValidators.installConfigFat.safeParse(configUnclean),
       {
         config: configUnclean,
@@ -211,7 +211,7 @@ export class Ghjkfile {
     // we currrently process task envs at once in the end
     // to do env deduplication
     if (args.vars) {
-      args.vars = unwrapParseRes(validators.envVars.safeParse(args.vars), {
+      args.vars = unwrapZodRes(validators.envVars.safeParse(args.vars), {
         vars: args.vars,
       });
     }
@@ -1002,7 +1002,7 @@ export class EnvBuilder {
   vars(envVars: Record<string, string | number>) {
     Object.assign(
       this.#vars,
-      unwrapParseRes(validators.envVars.safeParse(envVars), { envVars }),
+      unwrapZodRes(validators.envVars.safeParse(envVars), { envVars }),
     );
     return this;
   }
@@ -1083,7 +1083,7 @@ export function reduceAllowedDeps(
         const res = portsValidators.allowedPortDep.safeParse(dep);
         if (res.success) return res.data;
       }
-      const inst = unwrapParseRes(
+      const inst = unwrapZodRes(
         portsValidators.installConfigFat.safeParse(dep),
         dep,
         "invalid allowed dep object, provide either InstallConfigFat or AllowedPortDep objects",

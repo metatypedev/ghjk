@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, Table, zod } from "../../deps/cli.ts";
-import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
+import { $, Json, unwrapZodRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
   installProvisionTy,
@@ -57,7 +57,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     _lockEnt: PortsLockEnt | undefined,
   ) {
     function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
-      return unwrapParseRes<I, O>(res, {
+      return unwrapZodRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
       }, "error parsing module config");
@@ -320,7 +320,7 @@ async function getOldNewVersionComparison(
 
   // read from `recipe.json` and get installSetIds
   const recipeJson = JSON.parse(await Deno.readTextFile(recipePath));
-  const reducedRecipe = unwrapParseRes(
+  const reducedRecipe = unwrapZodRes(
     envsValidators.envRecipe.safeParse(recipeJson),
     {
       envName,

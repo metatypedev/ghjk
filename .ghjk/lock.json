@@ -115,8 +115,16 @@
       {
         "id": "tasks",
         "config": {
-          "tasks": {},
-          "tasksNamed": []
+          "tasks": {
+            "lock-sed": {
+              "ty": "denoFile@v1",
+              "key": "lock-sed",
+              "envKey": "bciqekhy7ndyc6hmkzspdsguxjgvyz5yedr5weigsqsa72kyloity4jy"
+            }
+          },
+          "tasksNamed": [
+            "lock-sed"
+          ]
         }
       },
       {

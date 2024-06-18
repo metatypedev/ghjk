@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { $, detectShellPath, Json, unwrapParseRes } from "../../utils/mod.ts";
+import { $, detectShellPath, Json, unwrapZodRes } from "../../utils/mod.ts";
 import validators from "./types.ts";
 import type {
   EnvRecipeX,
@@ -41,7 +41,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     _lockEnt: EnvsLockEnt | undefined,
   ) {
     function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
-      return unwrapParseRes<I, O>(res, {
+      return unwrapZodRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
         bb,

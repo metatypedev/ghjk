@@ -185,8 +185,8 @@ export function defaultCommandBuilder() {
   return builder;
 }
 
-type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
-  : DeArrayify<T>;
+// type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
+//   : DeArrayify<T>;
 //
 // type Ser<T extends readonly Promise<any>[]> = T extends
 //   readonly [...Promise<any>[], infer R] ? { (...promises: T): R }
@@ -552,12 +552,16 @@ switchMap(
   // () =>5
 );
 
-export async function expandGlobsAndAbsolutize(path: string, wd: string) {
+export async function expandGlobsAndAbsolutize(
+  path: string,
+  wd: string,
+  opts?: Omit<std_fs.ExpandGlobOptions, "root">,
+) {
   if (std_path.isGlob(path)) {
     const glob = std_path.isAbsolute(path)
       ? path
       : std_path.joinGlobs([wd, path], { extended: true });
-    return (await Array.fromAsync(std_fs.expandGlob(glob)))
+    return (await Array.fromAsync(std_fs.expandGlob(glob, opts)))
       .map((entry) => std_path.resolve(wd, entry.path));
   }
   return [std_path.resolve(wd, path)];
@@ -567,7 +571,7 @@ export async function expandGlobsAndAbsolutize(path: string, wd: string) {
  * Unwrap the result object returned by the `safeParse` method
  * on zod schemas.
  */
-export function unwrapParseRes<In, Out>(
+export function unwrapZodRes<In, Out>(
   res: zod.SafeParseReturnType<In, Out>,
   cause: object = {},
   errMessage = "error parsing object",

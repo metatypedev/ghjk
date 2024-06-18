@@ -29,8 +29,8 @@ type HostCtx = {
   reFlagSet: boolean;
   lockedFlagSet: boolean;
 };
-// FIXME: better way to resolve version
-const GHJK_VERSION = "0.2.0";
+
+const GHJK_VERSION = "0.2.1";
 
 export async function cli(args: CliArgs) {
   logger().debug(`ghjk CLI`, GHJK_VERSION);

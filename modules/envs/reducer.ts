@@ -1,4 +1,4 @@
-import { unwrapParseRes } from "../../port.ts";
+import { unwrapZodRes } from "../../port.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
@@ -71,7 +71,7 @@ export async function reduceStrangeProvisions(
     const reduced = await reducer(items);
     reducedSet.push(
       ...reduced.map((prov) =>
-        unwrapParseRes(
+        unwrapZodRes(
           validators.wellKnownProvision.safeParse(prov),
           { prov },
           `error parsing reduced provision`,

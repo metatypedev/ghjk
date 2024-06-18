@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { Json, unwrapParseRes } from "../../utils/mod.ts";
+import { Json, unwrapZodRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
@@ -29,7 +29,7 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
     _lockEnt: TasksLockEnt | undefined,
   ) {
     function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
-      return unwrapParseRes<I, O>(res, {
+      return unwrapZodRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
         bb,
