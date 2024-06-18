@@ -145,9 +145,7 @@ export async function execTask(
             }
             return [
               key,
-              key.match(/PATH/i)
-                ? `${val}${Deno.env.get(key) ? ":" + Deno.env.get(key) : ""}`
-                : val,
+              val,
             ];
           },
         ),
