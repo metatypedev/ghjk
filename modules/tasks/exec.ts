@@ -140,7 +140,8 @@ export async function execTask(
             [key, val],
           ) => {
             if (key.match(/PATH/) && Deno.env.get(key)) {
-              val = [...new Set([val, Deno.env.get(key)!.split(":")]).keys()]
+              val = [...new Set([val, ...Deno.env.get(key)!.split(":")]).keys()]
+                .filter((str) => str.length > 0)
                 .join(":");
             }
             return [
