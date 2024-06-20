@@ -48,6 +48,9 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
   const env = {
     ...testEnvs,
   };
+  if (Deno.env.get("GITHUB_TOKEN")) {
+    env.GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN")!;
+  }
   const devGhjkPath = import.meta.resolve("../");
 
   const configFile = tsGhjkfileStr
@@ -193,10 +196,10 @@ export function genTsGhjkFile(
     2,
   );
 
-  const tasks = (secureConf?.tasks ?? []).map(
-    (def) => {
+  const tasks = Object.entries(secureConf?.tasks ?? {}).map(
+    ([name, def]) => {
       const stringifiedSection = JSON.stringify(
-        def,
+        { ...def, name },
         (_, val) =>
           typeof val == "string" ? val.replaceAll(/\\/g, "\\\\") : val,
         2,

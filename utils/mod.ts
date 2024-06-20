@@ -9,6 +9,7 @@ import {
   std_path,
   syncSha256,
   zod,
+  zod_val_err,
 } from "../deps/common.ts";
 // class re-exports are tricky. We want al importers
 // of path to get it from here so we rename in common.ts
@@ -24,7 +25,6 @@ import type {
   PortManifest,
 } from "../modules/ports/types.ts";
 
-export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
 export type DeArrayify<T> = T extends Array<infer Inner> ? Inner : T;
 const literalSchema = zod.union([
   zod.string(),
@@ -180,15 +180,19 @@ export function defaultCommandBuilder() {
     .printCommand(true);
   builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
-    // TODO: remove when https://github.com/dsherret/dax/pull/203
-    // is merged
-    return logger().debug(
-      "spawning",
-      cmd,
-    );
+    return logger().debug("spawning", cmd);
   });
   return builder;
 }
+
+// type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
+//   : DeArrayify<T>;
+//
+// type Ser<T extends readonly Promise<any>[]> = T extends
+//   readonly [...Promise<any>[], infer R] ? { (...promises: T): R }
+//   : {
+//     (...promises: T): DeArrayify<T>;
+//   };
 
 export const $ = dax.build$(
   {
@@ -230,6 +234,27 @@ export const $ = dax.build$(
           depth: 10,
         });
       },
+      co<T extends readonly unknown[] | []>(
+        values: T,
+      ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
+        return Promise.all(values);
+      },
+      // coIter<T, O>(
+      //   items: Iterable<T>,
+      //   fn: (item:T) => PromiseLike<O>,
+      //   opts: {
+      //     limit: "cpu" | number;
+      //   } = {
+      //     limit: "cpu"
+      //   },
+      // ): Promise<Awaited<O>[]> {
+      //   const limit = opts.limit == "cpu" ? AVAIL_CONCURRENCY : opts.limit;
+      //   const promises = [] as PromiseLike<O>[];
+      //   let freeSlots = limit;
+      //   do {
+      //   } while(true);
+      //   return Promise.all(promises);
+      // }
       pathToString(path: Path) {
         return path.toString();
       },
@@ -238,6 +263,7 @@ export const $ = dax.build$(
         if (await pathRef.exists()) {
           await pathRef.remove({ recursive: true });
         }
+        return pathRef;
       },
     },
   },
@@ -526,12 +552,16 @@ switchMap(
   // () =>5
 );
 
-export async function expandGlobsAndAbsolutize(path: string, wd: string) {
+export async function expandGlobsAndAbsolutize(
+  path: string,
+  wd: string,
+  opts?: Omit<std_fs.ExpandGlobOptions, "root">,
+) {
   if (std_path.isGlob(path)) {
     const glob = std_path.isAbsolute(path)
       ? path
       : std_path.joinGlobs([wd, path], { extended: true });
-    return (await Array.fromAsync(std_fs.expandGlob(glob)))
+    return (await Array.fromAsync(std_fs.expandGlob(glob, opts)))
       .map((entry) => std_path.resolve(wd, entry.path));
   }
   return [std_path.resolve(wd, path)];
@@ -541,15 +571,19 @@ export async function expandGlobsAndAbsolutize(path: string, wd: string) {
  * Unwrap the result object returned by the `safeParse` method
  * on zod schemas.
  */
-export function unwrapParseRes<In, Out>(
+export function unwrapZodRes<In, Out>(
   res: zod.SafeParseReturnType<In, Out>,
   cause: object = {},
   errMessage = "error parsing object",
 ) {
   if (!res.success) {
-    throw new Error(errMessage, {
+    const zodErr = zod_val_err.fromZodError(res.error, {
+      includePath: true,
+      maxIssuesInMessage: 3,
+    });
+    throw new Error(`${errMessage}: ${zodErr}`, {
       cause: {
-        zodErr: res.error,
+        issues: res.error.issues,
         ...cause,
       },
     });

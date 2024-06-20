@@ -14,20 +14,29 @@ import * as denoFile from "../files/deno/mod.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
 import { serializePlatform } from "../modules/ports/types/platform.ts";
-import { DePromisify } from "../port.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
   ghjkfilePath?: string;
   ghjkDirPath?: string;
+  reFlagSet: boolean;
+  lockedFlagSet: boolean;
 }
 
 type HostCtx = {
   fileHashMemoStore: Map<string, Promise<string>>;
   curEnvVars: Record<string, string>;
+  reFlagSet: boolean;
+  lockedFlagSet: boolean;
 };
 
+const GHJK_VERSION = "0.2.1";
+
 export async function cli(args: CliArgs) {
+  logger().debug(`ghjk CLI`, GHJK_VERSION);
+  if (args.reFlagSet && args.lockedFlagSet) {
+    throw new Error("GHJK_LOCKED && GHJK_RE both set");
+  }
   // items to run at end of function
   const defer = [] as (() => Promise<any>)[];
 
@@ -53,7 +62,16 @@ export async function cli(args: CliArgs) {
         : undefined,
       blackboard: new Map(),
     };
-    logger().debug({ ghjkfilePath: gcx.ghjkfilePath, ghjkDir: gcx?.ghjkDir });
+    const hcx: HostCtx = {
+      fileHashMemoStore: new Map(),
+      curEnvVars: Deno.env.toObject(),
+      reFlagSet: args.reFlagSet,
+      lockedFlagSet: args.lockedFlagSet,
+    };
+    logger().debug("context established", {
+      ghjkDir: gcx?.ghjkDir.toString(),
+      ghjkfilePath: gcx.ghjkfilePath?.toString(),
+    });
 
     if (!await gcx.ghjkDir.join(".gitignore").exists()) {
       gcx.ghjkDir.join(".gitignore").writeText($.dedent`
@@ -63,11 +81,11 @@ export async function cli(args: CliArgs) {
 
     // this returns nothing if no valid lockifle or ghjkfile
     // is found
-    const commands = await commandsFromConfig(gcx);
+    const commands = await commandsFromConfig(hcx, gcx);
     if (commands) {
       serializedConfig = commands.config;
-      // lock entries are generated across program usage
-      // so we defer writing it out until the end
+      // lock entries are also generated across program usage
+      // so we defer another write out until the end
       defer.push(commands.writeLockFile);
 
       for (
@@ -86,7 +104,7 @@ export async function cli(args: CliArgs) {
 
   const root = new cliffy_cmd.Command()
     .name("ghjk")
-    .version("0.1.1") // FIXME: better way to resolve version
+    .version(GHJK_VERSION)
     .description("Programmable runtime manager.")
     .action(function () {
       this.showHelp();
@@ -179,17 +197,21 @@ export async function cli(args: CliArgs) {
   await Promise.all(defer.map((fn) => fn()));
 }
 
-async function commandsFromConfig(gcx: GhjkCtx) {
-  const hcx: HostCtx = {
-    fileHashMemoStore: new Map(),
-    curEnvVars: Deno.env.toObject(),
-  };
-
+async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   const lockFilePath = gcx.ghjkDir.join("lock.json");
   const hashFilePath = gcx.ghjkDir.join("hash.json");
 
   const foundLockObj = await readLockFile(lockFilePath);
   const foundHashObj = await readHashFile(hashFilePath);
+
+  if (hcx.lockedFlagSet) {
+    if (!foundLockObj) {
+      throw new Error("GHJK_LOCKED set but no lockfile found");
+    }
+    if (!foundHashObj) {
+      throw new Error("GHJK_LOCKED set but no hashfile found");
+    }
+  }
 
   const lockEntries = {} as Record<string, unknown>;
 
@@ -197,23 +219,7 @@ async function commandsFromConfig(gcx: GhjkCtx) {
     ? await fileDigestHex(hcx, gcx.ghjkfilePath!)
     : undefined;
 
-  let configExt: SerializedConfigExt | null = null;
-  // TODO: figure out cross platform lockfiles :O
-  if (
-    foundLockObj && // lockfile found
-    foundHashObj &&
-    foundLockObj.version == "0" &&
-    // avoid reserializing the config if
-    // the ghjkfile and environment is _satisfcatorily_
-    // similar. "cache validation"
-    await isHashFileValid(hcx, foundLockObj, foundHashObj, ghjkfileHash)
-  ) {
-    configExt = {
-      config: foundLockObj.config,
-      envVarHashes: foundHashObj.envVarHashes,
-      readFileHashes: foundHashObj.readFileHashes,
-      listedFiles: foundHashObj.listedFiles,
-    };
+  if (!hcx.reFlagSet && foundLockObj) {
     logger().debug("loading lockfile", lockFilePath);
     for (const man of foundLockObj.config.modules) {
       const mod = std_modules.map[man.id];
@@ -234,13 +240,36 @@ async function commandsFromConfig(gcx: GhjkCtx) {
         entry as Json,
       );
     }
+  }
+
+  let configExt: SerializedConfigExt | null = null;
+  let wasReSerialized = false;
+  if (
+    !hcx.reFlagSet &&
+    foundLockObj &&
+    foundHashObj &&
+    (hcx.lockedFlagSet ||
+      // avoid reserializing the config if
+      // the ghjkfile and environment is _satisfcatorily_
+      // similar. "cache validation"
+      foundLockObj.version == "0" &&
+        await isHashFileValid(hcx, foundLockObj, foundHashObj, ghjkfileHash))
+  ) {
+    configExt = {
+      config: foundLockObj.config,
+      envVarHashes: foundHashObj.envVarHashes,
+      readFileHashes: foundHashObj.readFileHashes,
+      listedFiles: foundHashObj.listedFiles,
+    };
   } else if (gcx.ghjkfilePath) {
     logger().info("serializing ghjkfile", gcx.ghjkfilePath);
     configExt = await readGhjkfile(hcx, gcx.ghjkfilePath);
+    wasReSerialized = true;
   } else {
     // nothing to get the commands from
     return;
   }
+
   const newHashObj: zod.infer<typeof hashObjValidator> = {
     version: "0",
     ghjkfileHash,
@@ -277,14 +306,27 @@ async function commandsFromConfig(gcx: GhjkCtx) {
       subCommands[cmdName] = [cmd, man.id];
     }
   }
-  if (!foundHashObj || !deep_eql(newHashObj, foundHashObj)) {
+
+  if (
+    !hcx.lockedFlagSet && wasReSerialized && (
+      !foundHashObj || !deep_eql(newHashObj, foundHashObj)
+    )
+  ) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
 
+  // `writeLockFile` can be invoked multiple times
+  // so we keep track of the last lockfile wrote
+  // out to disk
+  // TODO(#90): file system lock file while ghjk is running
+  // to avoid multiple instances from clobbering each other
+  let lastLockObj = { ...foundLockObj };
   return {
     subCommands,
     config: configExt.config,
     async writeLockFile() {
+      if (hcx.lockedFlagSet) return;
+
       const newLockObj: zod.infer<typeof lockObjValidator> = {
         version: "0",
         platform: serializePlatform(Deno.build),
@@ -306,7 +348,8 @@ async function commandsFromConfig(gcx: GhjkCtx) {
         ),
       );
       // avoid writing lockfile if nothing's changed
-      if (!foundLockObj || !deep_eql(newLockObj, foundLockObj)) {
+      if (!lastLockObj || !deep_eql(newLockObj, lastLockObj)) {
+        lastLockObj = { ...newLockObj };
         await lockFilePath.writeJsonPretty(newLockObj);
       }
     },
@@ -319,6 +362,7 @@ async function isHashFileValid(
   foundHashFile: zod.infer<typeof hashObjValidator>,
   ghjkfileHash?: string,
 ) {
+  // TODO: figure out cross platform lockfiles :O
   const platformMatch = () =>
     serializePlatform(Deno.build) == foundLockFile.platform;
 
@@ -360,7 +404,7 @@ async function isHashFileValid(
 
 type DigestsMap = Record<string, string | null | undefined>;
 
-type SerializedConfigExt = DePromisify<
+type SerializedConfigExt = Awaited<
   ReturnType<typeof readGhjkfile>
 >;
 

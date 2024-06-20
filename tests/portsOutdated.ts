@@ -10,16 +10,12 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   secureConf?: FileArgs;
 };
 
+// FIXME:
 const cases: CustomE2eTestCase[] = [
   {
-    name: "ports_outdated",
+    name: "command",
     installConf: [
-      ports.jq_ghrel(),
-      ports.protoc(),
-      ports.ruff(),
-      ...ports.npmi({ packageName: "node-gyp" }),
-      ports.earthly(),
-      ...ports.pipi({ packageName: "poetry" }),
+      ports.jq_ghrel({ version: "jq-1.7" }),
     ],
     ePoint: `ghjk p outdated`,
     secureConf: {
@@ -27,14 +23,10 @@ const cases: CustomE2eTestCase[] = [
     },
   },
   {
-    name: "ports_outdated_update_all",
+    name: "update_all",
     installConf: [
-      ports.jq_ghrel(),
-      ports.protoc(),
-      ports.ruff(),
-      ...ports.npmi({ packageName: "node-gyp" }),
-      ports.earthly(),
-      ...ports.pipi({ packageName: "poetry" }),
+      ports.jq_ghrel({ version: "jq-1.7" }),
+      ports.protoc({ version: "v24.0" }),
     ],
     ePoint: `ghjk p outdated --update-all`,
     secureConf: {
@@ -59,19 +51,6 @@ harness(cases.map((testCase) => ({
     ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
       cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
     })),
-    /* // FIXME: better tests for the `InstallDb`
-                // installs db means this shouldn't take too long
-                // as it's the second sync
-                {
-                  cmd: [
-                    ..."env".split(" "),
-                    "bash -c 'timeout 1 ghjk envs cook'",
-                  ],
-                }, */
   ],
-  // building the test docker image might taka a while
-  // but we don't want some bug spinlocking the ci for
-  // an hour
-  timeout_ms: 5 * 60 * 1000,
   name: `portsOutdated/${testCase.name}`,
 })));

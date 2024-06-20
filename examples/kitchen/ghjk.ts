@@ -17,7 +17,7 @@ const ghjk = file({
   enableRuntimes: true,
   // tasks aren't attached to envs
   // but have their own env
-  tasks: [],
+  tasks: {},
 });
 
 // we need this export for this file to be a valid ghjkfile
@@ -33,19 +33,18 @@ env("main")
   .var("RUST_LOG", "info,actix=warn")
   // provision programs to be avail in the env
   .install(ports.jq_ghrel())
-  .allowedBuildDeps([
+  .allowedBuildDeps(
     // ports can use the following installs at build time
     // very WIP mechanism but this is meant to prevent ports from
     // pulling whatever dependency they want at build time unless
     // explicityl allowed to do so
-    ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
     ports.node({}),
     ports.rust({ version: "stable" }),
     // add the std deps including the runtime ports.
     // These includes node and python but still, precedence is given
     // to our configuration of those ports above
     ...stdDeps({ enableRuntimes: true }),
-  ]);
+  );
 
 // these top level installs go to the main env as well
 install(
@@ -97,9 +96,24 @@ task("build-app", {
   },
 });
 
+env("python")
+  // all envs will inherit from `defaultBaseEnv`
+  // unles set to false which ensures true isolation
+  .inherit(false)
+  .install(
+    ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
+  )
+  .allowedBuildDeps(
+    ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
+  );
+
 env("dev")
-  .inherit("main")
+  // we can inherit from many envs
+  // if conflict on variables or build deps, the one declared
+  // later overrides
+  .inherit(["main", "python"])
   // we can set tasks to run on activation/decativation
+  // which are inheritable
   .onEnter(task(($) => $`echo enter`))
   .onEnter(task({
     workingDir: "..",

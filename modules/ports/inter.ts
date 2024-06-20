@@ -1,25 +1,19 @@
 import type { GhjkCtx } from "../types.ts";
-import type { InstallSetX } from "./types.ts";
+import type { PortsCtx } from "./mod.ts";
 import type { InstallGraph } from "./sync.ts"; // TODO: rename to install.ts
 
-export type InstallSetStore = Map<string, InstallSetX>;
-
-/**
- * {@link InstallSetStore} provides a way for other modules to get
- * install sets from the {@link import("./types.ts").PortsModuleConfig}
- */
-export function getInstallSetStore(
+export function getPortsCtx(
   gcx: GhjkCtx,
 ) {
-  const id = "installSetStore";
-  let memoStore = gcx.blackboard.get(id) as
-    | InstallSetStore
+  const id = "ctx.ports";
+  let ctx = gcx.blackboard.get(id) as
+    | PortsCtx
     | undefined;
-  if (!memoStore) {
-    memoStore = new Map();
-    gcx.blackboard.set(id, memoStore);
+  if (!ctx) {
+    ctx = { config: { sets: {} } };
+    gcx.blackboard.set(id, ctx);
   }
-  return memoStore;
+  return ctx;
 }
 
 /**

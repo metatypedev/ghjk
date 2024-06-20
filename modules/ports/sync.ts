@@ -20,7 +20,6 @@ import { AmbientAccessPort } from "./ambient.ts";
 import {
   $,
   AVAIL_CONCURRENCY,
-  DePromisify,
   getInstallHash,
   getPortRef,
   objectHash,
@@ -49,7 +48,7 @@ export function getResolutionMemo(
   return memoStore;
 }
 
-export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
+export type SyncCtx = Awaited<ReturnType<typeof syncCtxFromGhjk>>;
 
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
@@ -273,7 +272,7 @@ export async function installFromGraph(
   return installCtx.artifacts;
 }
 
-export type InstallGraph = DePromisify<ReturnType<typeof buildInstallGraph>>;
+export type InstallGraph = Awaited<ReturnType<typeof buildInstallGraph>>;
 
 // this returns a data structure containing all the info
 // required for installation including the dependency graph
@@ -287,9 +286,6 @@ export async function buildInstallGraph(
     config: InstallConfigResolvedX;
   };
   // this is all referring to port dependencies
-  // TODO: runtime dependencies
-  // NOTE: keep this easy to deserialize around as it's put directly
-  // into the lockfile
   const graph = {
     // maps from instHashId
     all: {} as Record<string, GraphInstConf | undefined>,
@@ -386,13 +382,13 @@ export async function buildInstallGraph(
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
       for (const depId of manifest.buildDeps) {
-        const { manifest: depPort } = set.allowedBuildDeps[depId.name];
-        if (!depPort) {
+        const dep = set.allowedBuildDeps[depId.name];
+        if (!dep) {
           throw new Error(
             `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
           );
         }
-        const portRef = addPort(depPort);
+        const portRef = addPort(dep.manifest);
 
         // get the install config of dependency
         // the conf is of the resolved kind which means
@@ -412,7 +408,7 @@ export async function buildInstallGraph(
           });
         }
 
-        deps.push([depInstallId, depPort.name]);
+        deps.push([depInstallId, dep.manifest.name]);
 
         // make sure the dependency knows this install depends on it
         const reverseDeps = graph.revDepEdges[depInstallId] ?? [];
@@ -523,7 +519,7 @@ function resolveConfig(
       );
       if (!match) {
         throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest },
+          cause: { config, manifest, allVersions },
         });
       }
       version = match;

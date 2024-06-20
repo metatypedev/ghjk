@@ -23,6 +23,12 @@ if (import.meta.main) {
     ghjkdir = std_path.resolve(std_path.dirname(ghjkfile), ".ghjk");
   }
   await cli({
+    // FIXME: better
+    reFlagSet: !!Deno.env.get("GHJK_RE") &&
+      !(["false", "", ""].includes(Deno.env.get("GHJK_RE")!)),
+    lockedFlagSet: !!Deno.env.get("GHJK_LOCKED") &&
+      !(["false", "", ""].includes(Deno.env.get("GHJK_LOCKED")!)),
+
     ghjkShareDir: Deno.env.get("GHJK_SHARE_DIR") ??
       dirs().shareDir.resolve("ghjk").toString(),
     ghjkfilePath: ghjkfile ? std_path.resolve(Deno.cwd(), ghjkfile) : undefined,

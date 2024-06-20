@@ -18,13 +18,13 @@
               "version": "3.12.3",
               "buildDepConfigs": {
                 "tar_aa": {
-                  "version": "1.35",
+                  "version": "1.34",
                   "buildDepConfigs": {},
                   "portRef": "tar_aa@0.1.0",
                   "specifiedVersion": false
                 },
                 "zstd_aa": {
-                  "version": "v1.5.5,",
+                  "version": "v1.4.8,",
                   "buildDepConfigs": {},
                   "portRef": "zstd_aa@0.1.0",
                   "specifiedVersion": false
@@ -42,13 +42,13 @@
           "version": "3.12.3",
           "buildDepConfigs": {
             "tar_aa": {
-              "version": "1.35",
+              "version": "1.34",
               "buildDepConfigs": {},
               "portRef": "tar_aa@0.1.0",
               "specifiedVersion": false
             },
             "zstd_aa": {
-              "version": "v1.5.5,",
+              "version": "v1.4.8,",
               "buildDepConfigs": {},
               "portRef": "zstd_aa@0.1.0",
               "specifiedVersion": false
@@ -58,16 +58,28 @@
           "specifiedVersion": false
         },
         "bciqj4p5hoqweghbuvz52rupja7sqze34z63dd62nz632c5zxikv6ezy": {
-          "version": "1.35",
+          "version": "1.34",
           "buildDepConfigs": {},
           "portRef": "tar_aa@0.1.0",
           "specifiedVersion": false
         },
         "bciqe6fwheayositrdk7rkr2ngdr4wizldakex23tgivss7w6z7g3q3y": {
-          "version": "v1.5.5,",
+          "version": "v1.4.8,",
           "buildDepConfigs": {},
           "portRef": "zstd_aa@0.1.0",
           "specifiedVersion": false
+        },
+        "bciqkhpxlimubssnvndchh3qoipg6faxas7443pbsguwmd5xcqnbjpyy": {
+          "version": "v1.44.2",
+          "buildDepConfigs": {},
+          "portRef": "deno_ghrel@0.1.0",
+          "specifiedVersion": false
+        },
+        "bciqfvlwwndlfuqibybkgee3fgt7cst5ltpztmm3by6hib5veial5spy": {
+          "version": "v1.44.2",
+          "buildDepConfigs": {},
+          "portRef": "deno_ghrel@0.1.0",
+          "specifiedVersion": true
         }
       }
     },
@@ -88,9 +100,14 @@
               "installs": [
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
-                "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q"
+                "bciqjyl5um6634zwpw6cewv22chzlrsvhedbjahyghhy2zraqqgyiv2q",
+                "bciqmgggy7hd5as3zz7pzbx54va7lq657bdxvthntxphhlbsl2434dgq"
               ],
-              "allowedDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
+              "allowedBuildDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
+            },
+            "ghjkEnvProvInstSet___test": {
+              "installs": [],
+              "allowedBuildDeps": "bciqjx7llw7t6pfczypzmhbwv7sxaicruj5pdbuac47m4c5qyildiowi"
             }
           }
         }
@@ -98,19 +115,31 @@
       {
         "id": "tasks",
         "config": {
-          "envs": {},
-          "tasks": {},
-          "tasksNamed": []
+          "tasks": {
+            "lock-sed": {
+              "ty": "denoFile@v1",
+              "key": "lock-sed",
+              "envKey": "bciqekhy7ndyc6hmkzspdsguxjgvyz5yedr5weigsqsa72kyloity4jy"
+            }
+          },
+          "tasksNamed": [
+            "lock-sed"
+          ]
         }
       },
       {
         "id": "envs",
         "config": {
           "envs": {
-            "test": {
-              "provides": []
+            "bciqekhy7ndyc6hmkzspdsguxjgvyz5yedr5weigsqsa72kyloity4jy": {
+              "provides": [
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet___test"
+                }
+              ]
             },
-            "main": {
+            "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya": {
               "desc": "the default default environment.",
               "provides": [
                 {
@@ -120,7 +149,10 @@
               ]
             }
           },
-          "defaultEnv": "main"
+          "defaultEnv": "main",
+          "envsNamed": {
+            "main": "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya"
+          }
         }
       }
     ],
@@ -197,6 +229,23 @@
             }
           ],
           "moduleSpecifier": "file:///ports/cpy_bs.ts"
+        }
+      },
+      "bciqmgggy7hd5as3zz7pzbx54va7lq657bdxvthntxphhlbsl2434dgq": {
+        "version": "1.44.2",
+        "port": {
+          "ty": "denoWorker@v1",
+          "name": "deno_ghrel",
+          "platforms": [
+            "aarch64-linux",
+            "x86_64-linux",
+            "aarch64-darwin",
+            "x86_64-darwin",
+            "aarch64-windows",
+            "x86_64-windows"
+          ],
+          "version": "0.1.0",
+          "moduleSpecifier": "file:///ports/deno_ghrel.ts"
         }
       },
       "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia": {

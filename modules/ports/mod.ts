@@ -1,7 +1,7 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, Table, zod } from "../../deps/cli.ts";
-import { $, Json, unwrapParseRes } from "../../utils/mod.ts";
+import { $, Json, unwrapZodRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
   installProvisionTy,
@@ -13,6 +13,7 @@ import type {
   AllowedPortDep,
   InstallConfigResolved,
   InstallProvision,
+  InstallSetRefProvision,
   InstallSetX,
   PortsModuleConfigX,
 } from "./types.ts";
@@ -31,9 +32,9 @@ import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
-import { getInstallSetStore } from "./inter.ts";
-import { getActiveEnvInstallSetId, getEnvsCtx, getPortsCtx } from "../utils.ts";
+import { getPortsCtx } from "./inter.ts";
 import { updateInstall } from "./utils.ts";
+import { getEnvsCtx } from "../envs/inter.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -56,10 +57,9 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     _lockEnt: PortsLockEnt | undefined,
   ) {
     function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
-      return unwrapParseRes<I, O>(res, {
+      return unwrapZodRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
-        bb,
       }, "error parsing module config");
     }
 
@@ -69,7 +69,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
 
     const pcx: PortsCtx = getPortsCtx(gcx);
 
-    const setStore = getInstallSetStore(gcx);
     // pre-process the install sets found in the config
     for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
       // install sets in the config use hash references to dedupe InstallConfigs,
@@ -80,7 +79,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       );
       const allowedDepSetHashed = unwrapParseCurry(
         validators.allowDepSetHashed.safeParse(
-          bb[hashedSet.allowedDeps],
+          bb[hashedSet.allowedBuildDeps],
         ),
       );
       const allowedBuildDeps = Object.fromEntries(
@@ -96,7 +95,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         allowedBuildDeps,
       };
       pcx.config.sets[id] = set;
-      setStore.set(id, set);
     }
 
     // register envrionment reducers for any
@@ -150,13 +148,31 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
               "Update specific install",
             )
             .option("-n, --update-all", "Update all installs")
-            .action(async (_opts) => {
+            .action(async (opts) => {
               const envsCtx = getEnvsCtx(gcx);
               const envName = envsCtx.activeEnv;
 
               const installSets = pcx.config.sets;
 
-              const currInstallSetId = getActiveEnvInstallSetId(envsCtx);
+              let currInstallSetId;
+              {
+                const activeEnvName = envsCtx.activeEnv;
+                const activeEnv = envsCtx.config
+                  .envs[
+                    envsCtx.config.envsNamed[activeEnvName] ?? activeEnvName
+                  ];
+                if (!activeEnv) {
+                  throw new Error(
+                    `No env found under given name "${activeEnvName}"`,
+                  );
+                }
+
+                const instSetRef = activeEnv.provides.filter((prov) =>
+                  prov.ty === installSetRefProvisionTy
+                )[0] as InstallSetRefProvision;
+
+                currInstallSetId = instSetRef.setId;
+              }
               const currInstallSet = installSets[currInstallSetId];
               const allowedDeps = currInstallSet.allowedBuildDeps;
 
@@ -211,8 +227,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 rows.push(row);
               }
 
-              if (_opts.updateInstall) {
-                const installName = _opts.updateInstall;
+              if (opts.updateInstall) {
+                const installName = opts.updateInstall;
                 // TODO: convert from install name to install id, after port module refactor
                 let installId!: string;
                 const newVersion = latest.get(installId);
@@ -226,7 +242,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
                 return;
               }
 
-              if (_opts.updateAll) {
+              if (opts.updateAll) {
                 for (const [installId, newVersion] of latest.entries()) {
                   await updateInstall(gcx, installId, newVersion, allowedDeps);
                 }
@@ -264,7 +280,11 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     }
     const memoStore = getResolutionMemo(gcx);
     for (const [hash, config] of Object.entries(entry.configResolutions)) {
-      logger().debug("restoring resolution from lockfile", config);
+      logger().debug(
+        "restoring resolution from lockfile",
+        config.portRef,
+        config.version,
+      );
       memoStore.set(hash, Promise.resolve(config));
     }
 
@@ -300,7 +320,7 @@ async function getOldNewVersionComparison(
 
   // read from `recipe.json` and get installSetIds
   const recipeJson = JSON.parse(await Deno.readTextFile(recipePath));
-  const reducedRecipe = unwrapParseRes(
+  const reducedRecipe = unwrapZodRes(
     envsValidators.envRecipe.safeParse(recipeJson),
     {
       envName,

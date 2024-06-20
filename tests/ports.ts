@@ -110,6 +110,11 @@ const cases: CustomE2eTestCase[] = [
       enableRuntimes: true,
     },
   },
+  {
+    name: "deno",
+    installConf: ports.deno_ghrel(),
+    ePoint: `deno --version`,
+  },
   // 42 megs
   {
     name: "earthly",
@@ -225,4 +230,5 @@ harness(cases.map((testCase) => ({
       }, */
   ],
   name: `ports/${testCase.name}`,
+  testCase: 10 * 60 * 1000,
 })));

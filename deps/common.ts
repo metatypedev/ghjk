@@ -2,7 +2,7 @@
 //! FIXME: move files in this module to files called deps.ts
 //! and located close to their users
 
-export { z as zod } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+export { z as zod } from "npm:zod@3.23.8";
 export * as semver from "https://deno.land/std@0.213.0/semver/mod.ts";
 export * as std_log from "https://deno.land/std@0.213.0/log/mod.ts";
 export * as std_log_levels from "https://deno.land/std@0.213.0/log/levels.ts";
@@ -10,6 +10,7 @@ export * as std_fmt_colors from "https://deno.land/std@0.213.0/fmt/colors.ts";
 export * as std_url from "https://deno.land/std@0.213.0/url/mod.ts";
 export * as std_path from "https://deno.land/std@0.213.0/path/mod.ts";
 export * as std_fs from "https://deno.land/std@0.213.0/fs/mod.ts";
+export * as zod_val_err from "npm:zod-validation-error@3.3.0";
 
 // avoid using the following directly and go through the
 // wrappers in ./utils/mod.ts

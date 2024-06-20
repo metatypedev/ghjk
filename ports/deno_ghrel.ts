@@ -13,14 +13,16 @@ import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
-  name: "temporal_cli_ghrel",
+  name: "deno_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
 export default function conf(
-  config: InstallConfigSimple & GithubReleasesInstConf = {},
+  config:
+    & InstallConfigSimple
+    & GithubReleasesInstConf = {},
 ) {
   return {
     ...readGhVars(),
@@ -30,27 +32,30 @@ export default function conf(
 }
 
 export class Port extends GithubReleasePort {
-  repoOwner = "temporalio";
-  repoName = "cli";
+  repoOwner = "denoland";
+  repoName = "deno";
 
   downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
-    let arch;
-    switch (platform.arch) {
-      case "x86_64":
-        arch = "amd64";
+    const arch = platform.arch;
+    let os;
+    switch (platform.os) {
+      case "linux":
+        os = "unknown-linux-gnu";
         break;
-      case "aarch64":
-        arch = "arm64";
+      case "windows":
+        os = "windows-msvc";
+        break;
+      case "darwin":
+        os = "apple-darwin";
         break;
       default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported: ${platform}`);
     }
-    const os = platform.os;
     return [
       this.releaseArtifactUrl(
         installVersion,
-        `temporal_cli_${installVersion.replace(/^v/, "")}_${os}_${arch}.tar.gz`,
+        `deno-${arch}-${os}.zip`,
       ),
     ].map(dwnUrlOut);
   }
@@ -61,20 +66,11 @@ export class Port extends GithubReleasePort {
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await unarchive(fileDwnPath, args.tmpDirPath);
 
-    const tmpDir = $.path(args.tmpDirPath);
-    const binDir = await tmpDir.join("bin").ensureDir();
-    for (
-      const fileName of ["temporal"]
-    ) {
-      await tmpDir.join(
-        args.platform.os == "windows" ? fileName + ".exe" : fileName,
-      ).renameToDir(binDir);
-    }
-
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-    await tmpDir.rename(installPath);
+    await $.path(args.tmpDirPath)
+      .rename(await installPath.join("bin").ensureDir());
   }
 }

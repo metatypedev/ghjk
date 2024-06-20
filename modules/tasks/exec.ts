@@ -1,4 +1,4 @@
-import { $, DePromisify } from "../../utils/mod.ts";
+import { $ } from "../../utils/mod.ts";
 
 import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
@@ -8,13 +8,13 @@ import { execTaskDeno } from "./deno.ts";
 const logger = getLogger(import.meta);
 
 import { cookPosixEnv } from "../envs/posix.ts";
+import { getEnvsCtx } from "../envs/inter.ts";
 
-export type TaskGraph = DePromisify<ReturnType<typeof buildTaskGraph>>;
+export type TaskGraph = Awaited<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
   tasksConfig: TasksModuleConfigX,
-  // env: Blackboard,
 ) {
   const graph = {
     indie: [] as string[],
@@ -24,11 +24,13 @@ export function buildTaskGraph(
     depEdges: {} as Record<string, string[] | undefined>,
   };
   for (const [hash, task] of Object.entries(tasksConfig.tasks)) {
-    if (!tasksConfig.envs[task.envHash]) {
+    /*
+     * FIXME: find a way to pre-check if task envs are availaible
+     if (task.envKey && !envsCx.has(task.envKey)) {
       throw new Error(
-        `unable to find env referenced by task "${hash}" under hash "${task.envHash}"`,
+        `unable to find env referenced by task "${hash}" under key "${task.envKey}"`,
       );
-    }
+    } */
     if (!task.dependsOn || task.dependsOn.length == 0) {
       graph.indie.push(hash);
     } else {
@@ -114,11 +116,13 @@ export async function execTask(
     const taskEnvDir = await Deno.makeTempDir({
       prefix: `ghjkTaskEnv_${taskKey}_`,
     });
+    const envsCx = getEnvsCtx(gcx);
+    const recipe = envsCx.config.envs[taskDef.envKey];
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
-        recipe: tasksConfig.envs[taskDef.envHash],
-        envName: `taskEnv_${taskKey}`,
+        recipe: recipe ?? { provides: [] },
+        envKey: taskDef.envKey ?? `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
     );
@@ -134,10 +138,17 @@ export async function execTask(
         Object.entries(installEnvs).map(
           (
             [key, val],
-          ) => [
-            key,
-            key.match(/PATH/i) ? `${val}:${Deno.env.get(key) ?? ""}` : val,
-          ],
+          ) => {
+            if (key.match(/PATH/) && Deno.env.get(key)) {
+              val = [...new Set([val, ...Deno.env.get(key)!.split(":")]).keys()]
+                .filter((str) => str.length > 0)
+                .join(":");
+            }
+            return [
+              key,
+              val,
+            ];
+          },
         ),
       ),
     };
@@ -147,13 +158,16 @@ export async function execTask(
           "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
         );
       }
+      const workingDir = gcx.ghjkfilePath.parentOrThrow();
       await execTaskDeno(
-        $.path(gcx.ghjkfilePath).toFileUrl().toString(),
+        gcx.ghjkfilePath.toFileUrl().toString(),
         {
           key: taskDef.key,
           argv: args,
           envVars,
-          workingDir: gcx.ghjkfilePath.parentOrThrow().toString(),
+          workingDir: taskDef.workingDir
+            ? workingDir.resolve(taskDef.workingDir).toString()
+            : workingDir.toString(),
         },
       );
     } else {

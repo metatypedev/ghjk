@@ -9,7 +9,7 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.43.1"
+  DENO_VERSION: "1.44.2"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
@@ -44,7 +44,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux/x86_64
             e2eType: "docker"
-          - os: custom-macos
+          - os: custom-arm
             platform: linux/aarch64
             e2eType: "docker"
           - os: macos-latest

@@ -1,6 +1,6 @@
 //! Integration between Ports and Envs module
 
-import { expandGlobsAndAbsolutize, unwrapParseRes } from "../../utils/mod.ts";
+import { expandGlobsAndAbsolutize, unwrapZodRes } from "../../utils/mod.ts";
 import { Provision } from "../envs/types.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
@@ -25,7 +25,7 @@ export function installSetReducer(gcx: GhjkCtx) {
         'only one "ghjkPorts" provision per environment is supported',
       );
     }
-    const { set } = unwrapParseRes(
+    const { set } = unwrapZodRes(
       validators.installSetProvision.safeParse(provisions[0]),
       {},
       "error parsing env provision",
@@ -44,7 +44,7 @@ export function installSetRefReducer(gcx: GhjkCtx, pcx: PortsCtx) {
   return (provisions: InstallSetRefProvision[]) =>
     directReducer(provisions.map(
       (prov) => {
-        const { setId } = unwrapParseRes(
+        const { setId } = unwrapZodRes(
           validators.installSetRefProvision.safeParse(prov),
           {},
           "error parsing env provision",

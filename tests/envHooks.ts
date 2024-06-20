@@ -53,6 +53,7 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   stdin: string;
 };
+
 const cases: CustomE2eTestCase[] = [
   {
     name: "bash_interactive",

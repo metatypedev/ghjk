@@ -64,7 +64,7 @@ export type FileArgs = {
   /**
    * Additional ports that can be used as build time dependencies.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   /**
@@ -73,13 +73,13 @@ export type FileArgs = {
    * is still respected.
    * True by default.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   stdDeps?: boolean;
   /**
    * (unstable) Allow runtimes from std deps to be used as build time dependencies.
    *
-   * This applies to the "main" env.
+   * This applies to the `defaultBaseEnv` env.
    */
   enableRuntimes?: boolean;
   /**
@@ -89,7 +89,7 @@ export type FileArgs = {
   /**
    * Tasks to expose to the CLI.
    */
-  tasks?: DenoTaskDefArgs[];
+  tasks?: Record<string, DenoTaskDefArgs>;
   /**
    * Different envs availaible to the CLI.
    */
@@ -129,9 +129,11 @@ export const file = Object.freeze(function file(
   const DEFAULT_BASE_ENV_NAME = "main";
 
   const builder = new Ghjkfile();
-  const mainEnv = builder.addEnv({
+  const mainEnv = builder.addEnv(DEFAULT_BASE_ENV_NAME, {
     name: DEFAULT_BASE_ENV_NAME,
-    inherit: false,
+    inherit: args.defaultBaseEnv && args.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
+      ? args.defaultBaseEnv
+      : false,
     installs: args.installs,
     desc: "the default default environment.",
   });
@@ -151,7 +153,7 @@ export const file = Object.freeze(function file(
     // if the user explicitly passes a port config, we let
     // it override any ports of the same kind from the std library
     for (
-      const dep of args.stdDeps !== false // note: this is true if it's undefined
+      const dep of args.stdDeps !== false // i.e.e true if undefined
         ? stdDeps({ enableRuntimes: args.enableRuntimes ?? false })
         : []
     ) {
@@ -160,17 +162,25 @@ export const file = Object.freeze(function file(
       }
       defaultBuildDepsSet.push(dep);
     }
-    mainEnv.allowedBuildDeps(defaultBuildDepsSet);
+    // we override the allowedBuildDeps of the
+    // defaultEnvBase each time `file` or `env` are used
+    if (args.defaultBaseEnv) {
+      builder.addEnv(args.defaultBaseEnv, {
+        allowedBuildDeps: defaultBuildDepsSet,
+      });
+    } else {
+      mainEnv.allowedBuildDeps(...defaultBuildDepsSet);
+    }
   };
 
   // populate the bulid deps by the default args first
   replaceDefaultBuildDeps(args);
 
   for (const env of args.envs ?? []) {
-    builder.addEnv(env);
+    builder.addEnv(env.name, env);
   }
-  for (const task of args.tasks ?? []) {
-    builder.addTask({ ...task, ty: "denoFile@v1" });
+  for (const [name, def] of Object.entries(args.tasks ?? {})) {
+    builder.addTask({ name, ...def, ty: "denoFile@v1" });
   }
 
   // FIXME: ses.lockdown to freeze primoridials
@@ -241,23 +251,29 @@ export const file = Object.freeze(function file(
       const args = typeof nameOrArgs == "object"
         ? nameOrArgs
         : { ...argsMaybe, name: nameOrArgs };
-      return builder.addEnv(args);
+      return builder.addEnv(args.name, args);
     },
 
     config(
-      { defaultBaseEnv, defaultEnv, ...rest }: SecureConfigArgs,
+      newArgs: SecureConfigArgs,
     ) {
       if (
-        rest.enableRuntimes !== undefined ||
-        rest.allowedBuildDeps !== undefined ||
-        rest.stdDeps !== undefined
+        newArgs.defaultBaseEnv !== undefined ||
+        newArgs.enableRuntimes !== undefined ||
+        newArgs.allowedBuildDeps !== undefined ||
+        newArgs.stdDeps !== undefined
       ) {
-        replaceDefaultBuildDeps(rest);
+        replaceDefaultBuildDeps(newArgs);
+      }
+      if (
+        newArgs.defaultBaseEnv &&
+        newArgs.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
+      ) {
+        mainEnv.inherit(newArgs.defaultBaseEnv);
       }
       // NOTE:we're deep mutating the first args from above
       args = {
-        ...rest,
-        ...{ defaultEnv, defaultBaseEnv },
+        ...newArgs,
       };
     },
   };

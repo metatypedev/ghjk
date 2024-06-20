@@ -75,11 +75,11 @@ export class Port extends GithubReleasePort {
     await unarchive(fileDwnPath, args.tmpDirPath);
 
     const tmpDir = $.path(args.tmpDirPath);
-    await tmpDir.join("bin").ensureDir();
+    const binDir = await tmpDir.join("bin").ensureDir();
     for (
       const fileName of ["cargo-binstall", "detect-targets", "detect-wasi"]
     ) {
-      await tmpDir.join(fileName).renameToDir(tmpDir.join("bin"));
+      await tmpDir.join(fileName).renameToDir(binDir);
     }
 
     const installPath = $.path(args.installPath);

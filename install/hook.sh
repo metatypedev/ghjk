@@ -96,6 +96,9 @@ precmd() {
     #  - the PWD changes
     if [ "$GHJK_LAST_PWD" != "$PWD" ]; then
 
+        # we ignore previously loaded GHJK_ENV when switching 
+        # directories
+        unset GHJK_ENV
         ghjk_reload
         export GHJK_LAST_PWD="$PWD"
 

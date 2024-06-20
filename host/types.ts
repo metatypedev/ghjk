@@ -1,6 +1,5 @@
 import { zod } from "../deps/common.ts";
 import moduleValidators from "../modules/types.ts";
-// import portsValidator from "../modules/ports/types.ts";
 
 /* const blackboard = zod.object({
   // installs: zod.record(zod.string(), portsValidator.installConfigFat),
