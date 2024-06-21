@@ -17,7 +17,7 @@ export function readGhVars() {
   const out: GithubReleasesInstConf = {
     ghToken,
   };
-  return out;
+  return ghToken ? out : {};
 }
 
 export function ghHeaders(conf: Record<string | number | symbol, unknown>) {

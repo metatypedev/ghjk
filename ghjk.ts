@@ -32,7 +32,7 @@ task(
           "./.github/workflows/*.yml": [
             [/(DENO_VERSION: ").*(")/, DENO_VERSION],
           ],
-          "**": [
+          "./host/mod.ts": [
             [/(GHJK_VERSION = ").*(")/, GHJK_VERSION],
           ],
           "./install.sh": [
