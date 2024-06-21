@@ -16,7 +16,6 @@ const ghjk = file({
   stdDeps: true,
   enableRuntimes: true,
   // tasks aren't attached to envs
-  // but have their own env
   tasks: {},
 });
 
@@ -37,12 +36,12 @@ env("main")
     // ports can use the following installs at build time
     // very WIP mechanism but this is meant to prevent ports from
     // pulling whatever dependency they want at build time unless
-    // explicityl allowed to do so
-    ports.node({}),
+    // explicitly allowed to do so
+    ports.node({ version: "1.2.3" }),
     ports.rust({ version: "stable" }),
     // add the std deps including the runtime ports.
-    // These includes node and python but still, precedence is given
-    // to our configuration of those ports above
+    // These includes node and python and this will override
+    // the node from above since it comes after ordinally
     ...stdDeps({ enableRuntimes: true }),
   );
 
@@ -50,7 +49,7 @@ env("main")
 install(
   // ports can declare their own config params
   ports.rust({
-    version: "stable",
+    version: "1.78.0",
     profile: "minimal",
     components: ["rustfmt"],
   }),
@@ -60,12 +59,12 @@ install(
 );
 
 const ci = env("ci", {
-  // this inherits from main so it gets protoc and curl
+  // this inherits from main so it gets jq
   inherit: "main",
   // extra installs
-  installs: [ports.jq_ghrel()],
+  installs: [ports.protoc(), ports.curl()],
   // it has extra allowed deps
-  allowedBuildDeps: [ports.node()],
+  allowedBuildDeps: [ports.pnpm()],
   // more env vars
   vars: {
     CI: 1,
@@ -91,20 +90,22 @@ task("build-app", {
   desc: "build the app",
   fn: async ($) => {
     await $`cargo build -p app`;
-    // we can access tar here from the ci env
-    await $`tar xcv ./target/debug/app -o app.tar.gz`;
+    // we can access zstd here from the ci env
+    await $`zstd ./target/debug/app -o app.tar.gz`;
   },
 });
 
 env("python")
   // all envs will inherit from `defaultBaseEnv`
-  // unles set to false which ensures true isolation
+  // unless set to false which ensures true isolation
   .inherit(false)
   .install(
     ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
   )
   .allowedBuildDeps(
     ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
+    ports.tar(),
+    ports.zstd(),
   );
 
 env("dev")

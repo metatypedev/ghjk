@@ -35,6 +35,11 @@ repos:
           - commit-msg
   - repo: local
     hooks:
+      - id: lock-sed
+        name: Sed lock
+        language: system
+        entry: bash -c 'deno run --unstable -A main.ts x lock-sed'
+        pass_filenames: false
       - id: ghjk-resolve
         name: Ghjk resolve
         language: system

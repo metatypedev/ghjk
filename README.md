@@ -20,31 +20,31 @@ ghjk /jk/ is a programmable runtime manager.
 
 ```bash
 # stable
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/install.sh | bash
 # latest (main)
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/main/install.sh | GHJK_VERSION=main sh
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/install.sh | GHJK_VERSION=main bash/fish/zsh
 ```
 
-In your project, create a configuration file `ghjk.ts`:
+In your project, create a configuration file called `ghjk.ts` that look something like:
 
 ```ts
-// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' object
-// exported here.
+// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' proxy 
+// object exported here.
 // WARN: always import `hack.ts` file first
-export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
 import {
   install, task,
-} from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
-import node from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/node.ts";
+} from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
+import node from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/ports/node.ts";
 
-// install programs into your env
+// install programs (ports) into your env
 install(
   node({ version: "14.17.0" }),
 );
 
-// write simple scripts and execute them through
+// write simple scripts and execute them using
 // `$ ghjk x greet`
-task("greet", async ({ $, argv: [name] }) => {
+task("greet", async ($, { argv: [name] }) => {
   await $`echo Hello ${name}!`;
 });
 ```
@@ -57,13 +57,13 @@ ghjk sync
 
 ### Environments
 
-Ghjk is primarily configured through constructs called "environments" or "envs"
-for short. They serve as recipes for making reproducable (mostly) posix shells.
+Ghjk is primarily configured through constructs called "environments" or "envs" for short. 
+They serve as recipes for making (mostly) reproducable posix shells.
 
 ```ts
-export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
-import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/main/hack.ts";
-import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/main/ports/mod.ts";
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
+import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
+import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/ports/mod.ts";
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());
@@ -79,9 +79,10 @@ ghjk.env("main", {
 
 ghjk.env("dev", {
   // by default, all envs are additively based on `main`
-  // pass false here to make env indiependent.
+  // pass false here to make env independent.
+  // or pass name(s) of another env to base on top of
   inherit: false,
-  // envs can specify standard env vars
+  // envs can specify posix env vars
   vars: { CARGO_TARGET_DIR: "my_target" },
   installs: [
     ports.cargobi({ crateName: "cargo-insta" }),
@@ -131,16 +132,18 @@ Once you've configured your environments:
 
 ### Ports
 
-TBD: this feature is in development. Look in the [kitchen sink](./examples/kitchen/ghjk.ts) for what's currently implemented.
+TBD: this feature is in development. 
+Look in the [kitchen sink](./examples/kitchen/ghjk.ts) for what's currently implemented.
 
 ### Tasks
 
-TBD: this feature is still in development.Look in the [tasks example](./examples/tasks/ghjk.ts) for what's currently implemented.
+TBD: this feature is still in development.
+Look in the [tasks example](./examples/tasks/ghjk.ts) for what's currently implemented.
 
 #### Anonymous tasks
 
-Tasks that aren't give names cannot be invoked from the CLI. They can be useful
-for tasks that are meant to be common dependencies of other tasks.
+Tasks that aren't give names cannot be invoked from the CLI. 
+They can be useful for tasks that are meant to be common dependencies of other tasks.
 
 ### `hack.ts`
 
@@ -190,5 +193,5 @@ If you intend on using un-trusted third-party scripts in your ghjk, it's recomme
 ## Development
 
 ```bash
-$ cat install.sh | GHJK_INSTALLER_URL=$(pwd)/install.ts bash
+$ cat install.sh | GHJK_INSTALLER_URL=$(pwd)/install.ts bash/fish/zsh
 ```

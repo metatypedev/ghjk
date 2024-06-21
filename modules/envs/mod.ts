@@ -37,14 +37,13 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
   processManifest(
     gcx: GhjkCtx,
     manifest: ModuleManifest,
-    bb: Blackboard,
+    _bb: Blackboard,
     _lockEnt: EnvsLockEnt | undefined,
   ) {
     function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
       return unwrapZodRes<I, O>(res, {
         id: manifest.id,
         config: manifest.config,
-        bb,
       }, "error parsing module config");
     }
     const config = unwrapParseCurry(

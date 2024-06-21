@@ -134,9 +134,20 @@ export const file = Object.freeze(function file(
     inherit: args.defaultBaseEnv && args.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
       ? args.defaultBaseEnv
       : false,
-    installs: args.installs,
     desc: "the default default environment.",
   });
+
+  if (args.defaultBaseEnv) {
+    builder.addEnv(args.defaultBaseEnv, {
+      name: args.defaultBaseEnv,
+      inherit: false,
+      installs: args.installs,
+    });
+  } else {
+    if (args.installs) {
+      mainEnv.install(...args.installs);
+    }
+  }
 
   // this replaces the allowedBuildDeps contents according to the
   // args. Written to be called multilple times to allow

@@ -105,7 +105,7 @@ async function filterAddContent(
 interface InstallArgs {
   homeDir: string;
   ghjkShareDir: string;
-  shellsToHook: string[];
+  shellsToHook?: string[];
   /** The mark used when adding the hook to the user's shell rcs.
    * Override to allow multiple hooks in your rc.
    */
@@ -174,7 +174,7 @@ export async function install(
     ghjkShareDir,
     [[/__GHJK_SHARE_DIR__/g, ghjkShareDir.toString()]],
   );
-  for (const shell of args.shellsToHook) {
+  for (const shell of args.shellsToHook ?? Object.keys(shellConfig)) {
     const { homeDir } = args;
 
     if (!(shell in shellConfig)) {
@@ -182,6 +182,11 @@ export async function install(
     }
 
     const rcPath = $.path(homeDir).join(shellConfig[shell]);
+    // if the shell rc file isn't detected and we're hooking
+    // the default shell set, just skip it
+    if (!await rcPath.exists() && !args.shellsToHook) {
+      continue;
+    }
     logger.info("installing hook", {
       ghjkShareDir,
       shell,
