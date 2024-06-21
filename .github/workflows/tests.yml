@@ -13,6 +13,7 @@ env:
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   # removing the images after every test is unncessary
   DOCKER_NO_RMI: 1
 
