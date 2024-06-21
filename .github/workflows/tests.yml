@@ -10,7 +10,6 @@ on:
 
 env:
   DENO_VERSION: "1.44.2"
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
@@ -32,6 +31,11 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
+      # run ghjk once to avoid trigger file changes when
+      # pre commit runs ghjk. We'll always see changes
+      # to lock.json since GITHUB_TOKEN is different
+      # in the CI
+      - run: deno run --unstable -A main.ts print config
       - uses: pre-commit/action@v3.0.1
         env:
           SKIP: ghjk-resolve
