@@ -1,17 +1,24 @@
-import { AsdfInstallConf, manifest as asdfManifest } from "./asdf.ts";
-import { manifest as pipiManifest, PipiInstallConf } from "./pipi.ts";
+import { InstallConfigFat, InstallConfigSimple } from "../port.ts";
+import { AsdfInstallConf } from "./asdf.ts";
+import { PipiInstallConf } from "./pipi.ts";
+import * as ports from "./mod.ts";
 
 export default function conf(
-  config: PipiInstallConf & AsdfInstallConf,
-) {
+  config: InstallConfigSimple,
+): InstallConfigFat[] {
+  const version = config.version;
   if (Deno.build.os === "darwin") {
-    return {
-      port: asdfManifest,
-      ...config,
+    const pipiConfig: PipiInstallConf = {
+      packageName: "cmake",
+      version: version,
     };
+    return ports.pipi(pipiConfig);
   }
-  return {
-    port: pipiManifest,
-    ...config,
+  const asdfConfig: AsdfInstallConf = {
+    pluginRepo: "https://github.com/asdf-community/asdf-cmake",
+    installType: "version",
+    version: version,
   };
+
+  return [ports.asdf(asdfConfig)];
 }

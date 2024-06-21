@@ -30,3 +30,9 @@ install(
     version: CMAKE_VERSION,
   })[0],
 );
+
+install(
+  ports.cmake({
+    version: CMAKE_VERSION,
+  })[0],
+);
