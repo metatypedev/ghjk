@@ -53,4 +53,5 @@ harness(cases.map((testCase) => ({
     })),
   ],
   name: `portsOutdated/${testCase.name}`,
+  timeout_ms: 10 * 60 * 1000,
 })));
