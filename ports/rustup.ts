@@ -26,7 +26,7 @@ export const manifest = {
   name: "rustup_rustlang",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [git_aa_id],
+  buildDeps: [git_aa_id],
   resolutionDeps: [git_aa_id],
   platforms: [
     ...osXarch(["darwin", "linux"], [...ALL_ARCH]),

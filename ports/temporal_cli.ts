@@ -6,7 +6,6 @@ import {
   InstallArgs,
   InstallConfigSimple,
   osXarch,
-  std_fs,
   std_path,
   unarchive,
 } from "../port.ts";
@@ -17,7 +16,6 @@ const manifest = {
   name: "temporal_cli_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
@@ -63,13 +61,20 @@ export class Port extends GithubReleasePort {
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
     await unarchive(fileDwnPath, args.tmpDirPath);
 
+    const tmpDir = $.path(args.tmpDirPath);
+    const binDir = await tmpDir.join("bin").ensureDir();
+    for (
+      const fileName of ["temporal"]
+    ) {
+      await tmpDir.join(
+        args.platform.os == "windows" ? fileName + ".exe" : fileName,
+      ).renameToDir(binDir);
+    }
+
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-    await std_fs.copy(
-      args.tmpDirPath,
-      installPath.join("bin").toString(),
-    );
+    await tmpDir.rename(installPath);
   }
 }

@@ -23,7 +23,7 @@ const manifest = {
   name: "npmi_npm",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
+  buildDeps: [
     std_ports.node_org,
   ],
   // NOTE: enable all platforms. Restrictions will apply based
@@ -141,7 +141,7 @@ export class Port extends PortBase {
     await tmpDirPath.join("bin").ensureDir();
     for (const [name] of bins) {
       await tmpDirPath.join("bin", name)
-        .createSymlinkTo(
+        .symlinkTo(
           installPath
             .join("node_modules", ".bin", name)
             .toString(),

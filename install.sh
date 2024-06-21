@@ -2,10 +2,10 @@
 
 set -e -u
 
-GHJK_VERSION="${GHJK_VERSION:-v0.1.0-alpha}"
+GHJK_VERSION="${GHJK_VERSION:-v0.2.0}"
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.ts}"
 GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-$HOME/.local/share/ghjk}"
-DENO_VERSION="${DENO_VERSION:-v1.42.1}"
+DENO_VERSION="${DENO_VERSION:-v1.44.2}"
 
 # make sure the version is prepended with v
 if [ "${DENO_VERSION#"v"}" = "$DENO_VERSION" ]; then

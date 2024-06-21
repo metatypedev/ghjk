@@ -58,14 +58,15 @@ function formatter(lr: std_log.LogRecord) {
   return msg;
 }
 
-export class ConsoleErrHandler extends std_log.handlers.BaseHandler {
+export class ConsoleErrHandler extends std_log.BaseHandler {
   constructor(
     levelName: std_log.LevelName,
-    options: std_log.HandlerOptions = { formatter },
+    options: std_log.BaseHandlerOptions = { formatter },
   ) {
     super(levelName, options);
   }
   override log(msg: string): void {
+    // deno-lint-ignore no-console
     console.error(msg);
   }
   override format(logRecord: std_log.LogRecord): string {
@@ -99,7 +100,7 @@ export class TestConsoleErrHandler extends ConsoleErrHandler {
   constructor(
     public throwLevel: number,
     levelName: std_log.LevelName,
-    options: std_log.HandlerOptions = { formatter },
+    options: std_log.BaseHandlerOptions = { formatter },
   ) {
     super(levelName, options);
   }
@@ -163,7 +164,7 @@ Deno.permissions.query({
     }
   });
 
-export function isColorfulTty(outFile = Deno.stdout) {
+export function isColorfulTty(outFile = Deno.stderr) {
   if (colorEnvFlagSet) {
     return true;
   }

@@ -9,11 +9,13 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "1.42.1"
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DENO_VERSION: "1.44.2"
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # removing the images after every test is unncessary
+  DOCKER_NO_RMI: 1
 
 jobs:
   changes:
@@ -30,7 +32,14 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
+      # run ghjk once to avoid trigger file changes when
+      # pre commit runs ghjk. We'll always see changes
+      # to lock.json since GITHUB_TOKEN is different
+      # in the CI
+      - run: deno run --unstable -A main.ts print config
       - uses: pre-commit/action@v3.0.1
+        env:
+          SKIP: ghjk-resolve
 
   test-e2e:
     runs-on: "${{ matrix.os }}"
@@ -40,7 +49,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux/x86_64
             e2eType: "docker"
-          - os: custom-macos
+          - os: custom-arm
             platform: linux/aarch64
             e2eType: "docker"
           - os: macos-latest
@@ -77,12 +86,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@2e8bbf084060a18828338a7cdd43fde6feb2a3cc
+      - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
         with:
           installer-url: ./install.ts
         env: 
           GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
-          cd examples/protoc
+          cd examples/tasks
           . $(ghjk print share-dir-path)/env.sh
-          protoc --version
+          ghjk x hey

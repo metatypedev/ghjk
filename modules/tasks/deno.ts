@@ -8,6 +8,7 @@ import { std_url } from "../../deps/common.ts";
 
 import { inWorker } from "../../utils/mod.ts";
 import logger, { setup as setupLogger } from "../../utils/logger.ts";
+import { shimDenoNamespace } from "../../utils/worker.ts";
 
 if (inWorker()) {
   initWorker();
@@ -21,15 +22,20 @@ function initWorker() {
 
 export type DriverRequests = {
   ty: "exec";
-  name: string;
   uri: string;
-  args: string[];
-  envVars: Record<string, string>;
+  args: ExecTaskArgs;
 };
 
 export type DriverResponse = {
   ty: "exec";
   payload: boolean;
+};
+
+export type ExecTaskArgs = {
+  key: string;
+  argv: string[];
+  workingDir: string;
+  envVars: Record<string, string>;
 };
 
 async function onMsg(msg: MessageEvent<DriverRequests>) {
@@ -42,7 +48,7 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   if (req.ty == "exec") {
     res = {
       ty: req.ty,
-      payload: await importAndExec(req.uri, req.name, req.args, req.envVars),
+      payload: await importAndExec(req.uri, req.args),
     };
   } else {
     logger().error(`invalid DriverRequest type`, req);
@@ -53,12 +59,11 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
 
 async function importAndExec(
   uri: string,
-  name: string,
-  args: string[],
-  envVars: Record<string, string>,
+  args: ExecTaskArgs,
 ) {
+  const _shimHandle = shimDenoNamespace(args.envVars);
   const mod = await import(uri);
-  await mod.ghjk.execTask(name, args, envVars);
+  await mod.sophon.execTask(args);
   return true;
 }
 
@@ -103,17 +108,13 @@ async function rpc(moduleUri: string, req: DriverRequests) {
 }
 
 export async function execTaskDeno(
-  configUri: string,
-  name: string,
-  args: string[],
-  envVars: Record<string, string>,
+  moduleUri: string,
+  args: ExecTaskArgs,
 ) {
-  const resp = await rpc(configUri, {
+  const resp = await rpc(moduleUri, {
     ty: "exec",
-    uri: configUri,
-    name,
+    uri: moduleUri,
     args,
-    envVars,
   });
   if (resp.ty != "exec") {
     throw new Error(`invalid response type: ${resp.ty}`);

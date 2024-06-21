@@ -7,6 +7,7 @@ import * as tar from "../ports/tar.ts";
 import * as git from "../ports/git.ts";
 import * as curl from "../ports/curl.ts";
 import * as unzip from "../ports/unzip.ts";
+import logger from "../utils/logger.ts";
 
 const manifests = [
   tar.manifest,
@@ -19,7 +20,7 @@ for (const manUnclean of manifests) {
   Deno.test(`ambient access ${manifest.name}`, async () => {
     const plug = new AmbientAccessPort(manifest);
     const versions = await plug.listAll();
-    console.log(versions);
+    logger(import.meta).info(versions);
     std_assert.assertEquals(versions.length, 1);
   });
 }

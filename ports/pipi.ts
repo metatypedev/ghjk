@@ -23,7 +23,7 @@ const manifest = {
   name: "pipi_pypi",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_ports.cpy_bs_ghrel],
+  buildDeps: [std_ports.cpy_bs_ghrel],
   // NOTE: enable all platforms. Restrictions will apply based
   // cpy_bs support this way
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
@@ -146,7 +146,7 @@ export class Port extends PortBase {
     // the cpy_bs port smuggles out the real path of it's python executable
     const realPyExecPath =
       args.depArts[std_ports.cpy_bs_ghrel.name].env.REAL_PYTHON_EXEC_PATH;
-    (await venvPath.join("bin", "python3").remove()).createSymlinkTo(
+    (await venvPath.join("bin", "python3").remove()).symlinkTo(
       realPyExecPath,
     );
 

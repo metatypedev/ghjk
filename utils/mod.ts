@@ -1,11 +1,19 @@
 import {
+  _DaxPath as Path,
   dax,
-  jsonHash,
+  json_canonicalize,
+  multibase32,
+  multihasher,
+  multisha2,
   std_fs,
   std_path,
-  std_url,
+  syncSha256,
   zod,
+  zod_val_err,
 } from "../deps/common.ts";
+// class re-exports are tricky. We want al importers
+// of path to get it from here so we rename in common.ts
+export { _DaxPath as Path } from "../deps/common.ts";
 import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./modules"
 import type {
@@ -17,7 +25,7 @@ import type {
   PortManifest,
 } from "../modules/ports/types.ts";
 
-export type DePromisify<T> = T extends Promise<infer Inner> ? Inner : T;
+export type DeArrayify<T> = T extends Array<infer Inner> ? Inner : T;
 const literalSchema = zod.union([
   zod.string(),
   zod.number(),
@@ -46,13 +54,13 @@ export function pathsWithDepArts(
   const includesSet = new Set();
   for (const [_, { execs, libs, includes }] of Object.entries(depArts)) {
     for (const [_, binPath] of Object.entries(execs)) {
-      pathSet.add(std_path.dirname(binPath));
+      pathSet.add($.path(binPath).parentOrThrow());
     }
     for (const [_, libPath] of Object.entries(libs)) {
-      libSet.add(std_path.dirname(libPath));
+      libSet.add($.path(libPath).parentOrThrow());
     }
     for (const [_, incPath] of Object.entries(includes)) {
-      includesSet.add(std_path.dirname(incPath));
+      includesSet.add($.path(incPath).parentOrThrow());
     }
   }
 
@@ -122,85 +130,140 @@ export function tryDepExecShimPath(
   return path;
 }
 
-// Lifted from https://deno.land/x/hextools@v1.0.0
-// MIT License
-// Copyright (c) 2020 Santiago Aguilar Hernández
-export function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.prototype.map.call(
-    new Uint8Array(buffer),
-    (b) => b.toString(16).padStart(2, "0"),
-  ).join("");
+const syncSha256Hasher = multihasher.from({
+  code: multisha2.sha256.code,
+  name: multisha2.sha256.name,
+  encode: (input) => syncSha256(input),
+});
+
+export async function bufferHashAsync(
+  buf: Uint8Array,
+) {
+  const hashBuf = await multisha2.sha256.digest(buf);
+  const hashStr = multibase32.base32.encode(hashBuf.bytes);
+  return hashStr;
 }
 
-export async function bufferHashHex(
-  buf: ArrayBuffer,
-  algo: AlgorithmIdentifier = "SHA-256",
+export function bufferHash(
+  buf: Uint8Array,
 ) {
-  const hashBuf = await crypto.subtle.digest(algo, buf);
-  return bufferToHex(hashBuf);
+  const hashBuf = syncSha256Hasher.digest(buf);
+  if (hashBuf instanceof Promise) throw new Error("impossible");
+  const hashStr = multibase32.base32.encode(hashBuf.bytes);
+  return hashStr;
 }
-export async function stringHashHex(
+
+export function stringHash(
   val: string,
-  algo: AlgorithmIdentifier = "SHA-256",
 ) {
   const arr = new TextEncoder().encode(val);
-  return await bufferHashHex(arr, algo);
+  return bufferHash(arr);
 }
 
-export async function objectHashHex(
-  object: jsonHash.Tree,
-  algo: jsonHash.DigestAlgorithmType = "SHA-256",
+export function objectHash(
+  object: Json,
 ) {
-  const hashBuf = await jsonHash.digest(algo, object);
-  const hashHex = bufferToHex(hashBuf);
-  return hashHex;
+  return stringHash(json_canonicalize(object));
 }
 
 export function getPortRef(manifest: PortManifest) {
   return `${manifest.name}@${manifest.version}`;
 }
 
-export async function getInstallHash(install: InstallConfigResolvedX) {
-  const fullHashHex = await objectHashHex(install as jsonHash.Tree);
-  const hashHex = fullHashHex.slice(0, 8);
-  return `${install.portRef}+${hashHex}`;
+export function getInstallHash(install: InstallConfigResolvedX) {
+  const fullHashHex = objectHash(JSON.parse(JSON.stringify(install)));
+  return `${install.portRef}!${fullHashHex}`;
 }
-
-export type PathRef = dax.PathRef;
 
 export function defaultCommandBuilder() {
   const builder = new dax.CommandBuilder()
     .printCommand(true);
-  builder.setPrintCommandLogger((_, cmd) => {
+  builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
-    // TODO: remove when https://github.com/dsherret/dax/pull/203
-    // is merged
-    return logger().debug(
-      "spawning",
-      $.stripAnsi(cmd).split(/\s/),
-    );
+    return logger().debug("spawning", cmd);
   });
   return builder;
 }
 
+// type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
+//   : DeArrayify<T>;
+//
+// type Ser<T extends readonly Promise<any>[]> = T extends
+//   readonly [...Promise<any>[], infer R] ? { (...promises: T): R }
+//   : {
+//     (...promises: T): DeArrayify<T>;
+//   };
+
 export const $ = dax.build$(
   {
     commandBuilder: defaultCommandBuilder(),
+    requestBuilder: new dax.RequestBuilder()
+      .showProgress(Deno.stderr.isTerminal()),
     extras: {
+      mapObject<
+        O,
+        V2,
+      >(
+        obj: O,
+        map: (key: keyof O, val: O[keyof O]) => [string, V2],
+      ): Record<string, V2> {
+        return Object.fromEntries(
+          Object.entries(obj as object).map(([key, val]) =>
+            map(key as keyof O, val as O[keyof O])
+          ),
+        );
+      },
+      exponentialBackoff(initialDelayMs: number) {
+        let delay = initialDelayMs;
+        let attempt = 0;
+
+        return {
+          next() {
+            if (attempt > 0) {
+              delay *= 2;
+            }
+            attempt += 1;
+            return delay;
+          },
+        };
+      },
       inspect(val: unknown) {
         return Deno.inspect(val, {
           colors: isColorfulTty(),
           iterableLimit: 500,
+          depth: 10,
         });
       },
-      pathToString(path: dax.PathRef) {
+      co<T extends readonly unknown[] | []>(
+        values: T,
+      ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
+        return Promise.all(values);
+      },
+      // coIter<T, O>(
+      //   items: Iterable<T>,
+      //   fn: (item:T) => PromiseLike<O>,
+      //   opts: {
+      //     limit: "cpu" | number;
+      //   } = {
+      //     limit: "cpu"
+      //   },
+      // ): Promise<Awaited<O>[]> {
+      //   const limit = opts.limit == "cpu" ? AVAIL_CONCURRENCY : opts.limit;
+      //   const promises = [] as PromiseLike<O>[];
+      //   let freeSlots = limit;
+      //   do {
+      //   } while(true);
+      //   return Promise.all(promises);
+      // }
+      pathToString(path: Path) {
         return path.toString();
       },
-      async removeIfExists(path: dax.PathRef | string) {
+      async removeIfExists(path: Path | string) {
         const pathRef = $.path(path);
         if (await pathRef.exists()) {
           await pathRef.remove({ recursive: true });
         }
+        return pathRef;
       },
     },
   },
@@ -211,23 +274,22 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-export async function findConfig(path: string) {
-  let current = path;
+export async function findEntryRecursive(path: string, name: string) {
+  let current = $.path(path);
   while (true) {
-    const location = `${current}/ghjk.ts`;
-    if (await std_fs.exists(location)) {
+    const location = `${current}/${name}`;
+    if (await $.path(location).exists()) {
       return location;
     }
-    const nextCurrent = std_path.dirname(current);
-    if (nextCurrent == "/" && current == "/") {
+    const nextCurrent = $.path(current).parent();
+    if (!nextCurrent) {
       break;
     }
     current = nextCurrent;
   }
-  return null;
 }
 
-export function home_dir(): string | null {
+export function homeDir() {
   switch (Deno.build.os) {
     case "linux":
     case "darwin":
@@ -240,13 +302,13 @@ export function home_dir(): string | null {
 }
 
 export function dirs() {
-  const home = home_dir();
+  const home = homeDir();
   if (!home) {
     throw new Error("cannot find home dir");
   }
   return {
     homeDir: home,
-    shareDir: std_path.resolve(home, ".local", "share"),
+    shareDir: $.path(home).resolve(".local", "share"),
   };
 }
 
@@ -258,38 +320,22 @@ if (Number.isNaN(AVAIL_CONCURRENCY)) {
   throw new Error(`Value of DENO_JOBS is NAN: ${Deno.env.get("DENO_JOBS")}`);
 }
 
-export async function importRaw(spec: string) {
+export async function importRaw(spec: string, timeout: dax.Delay = "1m") {
   const url = new URL(spec);
   if (url.protocol == "file:") {
-    return await Deno.readTextFile(url.pathname);
+    return await $.path(url.pathname).readText();
   }
   if (url.protocol.match(/^http/)) {
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      throw new Error(
-        `error importing raw using fetch from ${spec}: ${resp.status} - ${resp.statusText}`,
-      );
+    let request = $.request(url).timeout(timeout);
+    const integrity = url.searchParams.get("integrity");
+    if (integrity) {
+      request = request.integrity(integrity);
     }
-    return await resp.text();
+    return await request.text();
   }
   throw new Error(
     `error importing raw from ${spec}: unrecognized protocol ${url.protocol}`,
   );
-}
-
-export function exponentialBackoff(initialDelayMs: number) {
-  let delay = initialDelayMs;
-  let attempt = 0;
-
-  return {
-    next() {
-      if (attempt > 0) {
-        delay *= 2;
-      }
-      attempt += 1;
-      return delay;
-    },
-  };
 }
 
 export async function shimScript(
@@ -340,12 +386,15 @@ export type DownloadFileArgs = {
   mode?: number;
   headers?: Record<string, string>;
 };
-/// This avoid re-downloading a file if it's already successfully downloaded before.
+
+/**
+ * This avoid re-downloading a file if it's already successfully downloaded before.
+ */
 export async function downloadFile(
   args: DownloadFileArgs,
 ) {
   const { name, mode, url, downloadPath, tmpDirPath, headers } = {
-    name: std_url.basename(args.url),
+    name: $.path(args.url).basename(),
     mode: 0o666,
     headers: {},
     ...args,
@@ -360,16 +409,15 @@ export async function downloadFile(
 
   await $.request(url)
     .header(headers)
-    .showProgress()
     .pipeToPath(tmpFilePath, { create: true, mode });
 
   await $.path(downloadPath).ensureDir();
 
-  await tmpFilePath.copyFile(fileDwnPath);
+  await tmpFilePath.copy(fileDwnPath);
   return downloadPath.toString();
 }
 
-/* *
+/**
  * This returns a tmp path that's guaranteed to be
  * on the same file system as targetDir by
  * checking if $TMPDIR satisfies that constraint
@@ -402,8 +450,19 @@ export async function sameFsTmpRoot(
   // take care of it
   return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
 }
+
 export type Rc<T> = ReturnType<typeof rc<T>>;
 
+/**
+ * A reference counted box that runs the dispose method when all refernces
+ * are disposed of..
+ * @example Basic usage
+ * ```
+ * using myVar = rc(setTimeout(() => console.log("hola)), clearTimeout)
+ * spawnOtherThing(myVar.clone());
+ * // dispose will only run here as long as `spawnOtherThing` has no references
+ * ```
+ */
 export function rc<T>(val: T, onDrop: (val: T) => void) {
   const rc = {
     counter: 1,
@@ -429,6 +488,10 @@ export function rc<T>(val: T, onDrop: (val: T) => void) {
 
 export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
 
+/**
+ * A reference counted box that makse use of `asyncDispose`.
+ * `async using myVar = asyncRc(setTimeout(() => console.log("hola)), clearTimeout)`
+ */
 export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
   const rc = {
     counter: 1,
@@ -458,4 +521,97 @@ export function thinInstallConfig(fat: InstallConfigFat) {
     portRef: getPortRef(port),
     ...lite,
   };
+}
+
+export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
+
+export function switchMap<
+  K extends string | number | symbol,
+  All extends {
+    [Key in K]: All[K];
+  },
+>(
+  val: K,
+  branches: All,
+  // def?: D,
+): K extends keyof All ? OrRetOf<All[K]>
+  : /* All[keyof All] | */ undefined {
+  // return branches[val];
+  const branch = branches[val];
+  return typeof branch == "function" ? branch() : branch;
+}
+
+switchMap(
+  "holla" as string,
+  {
+    hey: () => 1,
+    hello: () => 2,
+    hi: 3,
+    holla: 4,
+  } as const,
+  // () =>5
+);
+
+export async function expandGlobsAndAbsolutize(
+  path: string,
+  wd: string,
+  opts?: Omit<std_fs.ExpandGlobOptions, "root">,
+) {
+  if (std_path.isGlob(path)) {
+    const glob = std_path.isAbsolute(path)
+      ? path
+      : std_path.joinGlobs([wd, path], { extended: true });
+    return (await Array.fromAsync(std_fs.expandGlob(glob, opts)))
+      .map((entry) => std_path.resolve(wd, entry.path));
+  }
+  return [std_path.resolve(wd, path)];
+}
+
+/**
+ * Unwrap the result object returned by the `safeParse` method
+ * on zod schemas.
+ */
+export function unwrapZodRes<In, Out>(
+  res: zod.SafeParseReturnType<In, Out>,
+  cause: object = {},
+  errMessage = "error parsing object",
+) {
+  if (!res.success) {
+    const zodErr = zod_val_err.fromZodError(res.error, {
+      includePath: true,
+      maxIssuesInMessage: 3,
+    });
+    throw new Error(`${errMessage}: ${zodErr}`, {
+      cause: {
+        issues: res.error.issues,
+        ...cause,
+      },
+    });
+  }
+  return res.data;
+}
+
+/**
+ * Attempts to detect the shell in use by the user.
+ */
+export async function detectShellPath(): Promise<string | undefined> {
+  let path = Deno.env.get("SHELL");
+  if (!path) {
+    try {
+      path = await $`ps -p ${Deno.ppid} -o comm=`.text();
+    } catch {
+      return;
+    }
+  }
+  return path;
+}
+
+/**
+ * {@inheritdoc detectShellPath}
+ */
+export async function detectShell(): Promise<string | undefined> {
+  const shellPath = await detectShellPath();
+  return shellPath
+    ? std_path.basename(shellPath, ".exe").toLowerCase().trim()
+    : undefined;
 }
