@@ -19,7 +19,7 @@ const manifest = {
   name: "ruff_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
+  buildDeps: [
     // we have to use tar because their tarballs for darwin use gnu sparse
     std_ports.tar_aa,
   ],

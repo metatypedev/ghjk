@@ -18,7 +18,6 @@ const manifest = {
   name: "infisical_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [],
   // NOTE: infisical supports more arches than deno
   platforms: osXarch(["linux", "darwin", "windows", "netbsd", "freebsd"], [
     "aarch64",

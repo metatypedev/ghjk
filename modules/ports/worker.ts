@@ -145,8 +145,9 @@ type WorkerResp = {
   ty: "install";
 };
 
-/// This creates a new worker for every method
-/// invocation
+/**
+ * This creates a new worker for every method invocation.
+ */
 export class DenoWorkerPort extends PortBase {
   constructor(
     public manifest: DenoWorkerPortManifestX,
@@ -154,7 +155,9 @@ export class DenoWorkerPort extends PortBase {
     super();
   }
 
-  /// create new worker and perform "RPC"
+  /**
+   * Create new worker and perform "RPC".
+   */
   async call(
     req: WorkerReq,
   ): Promise<WorkerResp> {

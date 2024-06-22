@@ -1,20 +1,16 @@
 export * from "./types.ts";
 
 import { cliffy_cmd, zod } from "../../deps/cli.ts";
-import { Json } from "../../utils/mod.ts";
+import { Json, unwrapZodRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
-import type { GhjkCtx, ModuleManifest } from "../types.ts";
+import { type GhjkCtx, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
-import {
-  buildTaskGraph,
-  execCtxFromGhjk,
-  execTask,
-  type TaskGraph,
-} from "./exec.ts";
-import { GlobalEnv } from "../../host/types.ts";
+import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
+import { Blackboard } from "../../host/types.ts";
+import { getTasksCtx } from "./inter.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;
@@ -26,81 +22,76 @@ const lockValidator = zod.object({
 type TasksLockEnt = zod.infer<typeof lockValidator>;
 
 export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
-  async processManifest(
-    ctx: GhjkCtx,
+  processManifest(
+    gcx: GhjkCtx,
     manifest: ModuleManifest,
+    bb: Blackboard,
     _lockEnt: TasksLockEnt | undefined,
-    env: GlobalEnv,
   ) {
-    const res = validators.tasksModuleConfig.safeParse(manifest.config);
-    if (!res.success) {
-      throw new Error("error parsing module config", {
-        cause: {
-          config: manifest.config,
-          zodErr: res.error,
-        },
-      });
+    function unwrapParseCurry<I, O>(res: zod.SafeParseReturnType<I, O>) {
+      return unwrapZodRes<I, O>(res, {
+        id: manifest.id,
+        config: manifest.config,
+        bb,
+      }, "error parsing module config");
     }
-    const config: TasksModuleConfigX = {
-      tasks: Object.fromEntries(
-        Object.entries(res.data.tasks).map(
-          ([name, task]) => [name, {
-            ...task,
-            env: {
-              ...task.env,
-              allowedPortDeps: task.env.allowedPortDeps.map((hash) =>
-                env.allowedPortDeps[hash]
-              ),
-            },
-          }],
-        ),
-      ),
-    };
 
-    await using execCx = await execCtxFromGhjk(ctx);
-    const taskGraph = await buildTaskGraph(execCx, config, env);
-    return {
-      config,
-      taskGraph,
-    };
+    const config = unwrapParseCurry(
+      validators.tasksModuleConfig.safeParse(manifest.config),
+    );
+
+    const taskGraph = buildTaskGraph(gcx, config);
+
+    const tasksCtx = getTasksCtx(gcx);
+    tasksCtx.config = config;
+    tasksCtx.taskGraph = taskGraph;
+
+    return tasksCtx;
   }
 
-  command(
+  commands(
     gcx: GhjkCtx,
     tcx: TasksCtx,
   ) {
-    const commands = Object.entries(tcx.config.tasks).map(
-      ([name, task]) => {
-        let cliffyCmd = new cliffy_cmd.Command()
-          .name(name)
-          .useRawArgs()
-          .action(async (_, ...args) => {
-            await using execCx = await execCtxFromGhjk(gcx);
-            await execTask(
-              execCx,
-              tcx.config,
-              tcx.taskGraph,
-              name,
-              args,
-            );
-          });
-        if (task.desc) {
-          cliffyCmd = cliffyCmd.description(task.desc);
-        }
-
-        return cliffyCmd;
-      },
-    );
-    let root: cliffy_cmd.Command<any, any, any, any> = new cliffy_cmd.Command()
+    const namedSet = new Set(tcx.config.tasksNamed);
+    const commands = Object.keys(tcx.config.tasks)
+      .sort()
+      .map(
+        (key) => {
+          const def = tcx.config.tasks[key];
+          const cmd = new cliffy_cmd.Command()
+            .name(key)
+            .useRawArgs()
+            .action(async (_, ...args) => {
+              await execTask(
+                gcx,
+                tcx.config,
+                tcx.taskGraph,
+                key,
+                args,
+              );
+            });
+          if (def.desc) {
+            cmd.description(def.desc);
+          }
+          if (!namedSet.has(key)) {
+            cmd.hidden();
+          }
+          return cmd;
+        },
+      );
+    const root = new cliffy_cmd.Command()
       .alias("x")
       .action(function () {
         this.showHelp();
       })
       .description("Tasks module.");
     for (const cmd of commands) {
-      root = root.command(cmd.getName(), cmd);
+      root.command(cmd.getName(), cmd);
     }
-    return root;
+    return {
+      tasks: root,
+    };
   }
 
   loadLockEntry(

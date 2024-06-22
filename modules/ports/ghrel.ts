@@ -1,9 +1,4 @@
-import {
-  $,
-  downloadFile,
-  DownloadFileArgs,
-  exponentialBackoff,
-} from "../../utils/mod.ts";
+import { $, downloadFile, DownloadFileArgs } from "../../utils/mod.ts";
 import { zod } from "../../deps/common.ts";
 import { PortBase } from "./base.ts";
 import type { DownloadArgs, ListAllArgs } from "./types.ts";
@@ -22,7 +17,7 @@ export function readGhVars() {
   const out: GithubReleasesInstConf = {
     ghToken,
   };
-  return out;
+  return ghToken ? out : {};
 }
 
 export function ghHeaders(conf: Record<string | number | symbol, unknown>) {
@@ -73,7 +68,7 @@ export abstract class GithubReleasePort extends PortBase {
   async latestStable(args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
-      delay: exponentialBackoff(1000),
+      delay: $.exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
@@ -88,7 +83,7 @@ export abstract class GithubReleasePort extends PortBase {
   async listAll(args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
-      delay: exponentialBackoff(1000),
+      delay: $.exponentialBackoff(1000),
       action: async () =>
         await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`,

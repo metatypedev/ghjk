@@ -30,7 +30,7 @@ const manifest = {
   name: "cargobi_cratesio",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [std_ports.cbin_ghrel, std_ports.rust_rustup],
+  buildDeps: [std_ports.cbin_ghrel, std_ports.rust_rustup],
   // FIXME: we can't know crate platform support at this point
   platforms: osXarch([...ALL_OS], [...ALL_ARCH]),
 };
@@ -56,7 +56,7 @@ export default function conf(config: CargobiInstallConf) {
   const { rustConfOverride, ...thisConf } = config;
   const out: InstallConfigFat = {
     ...confValidator.parse(thisConf),
-    depConfigs: {
+    buildDepConfigs: {
       [std_ports.rust_rustup.name]: thinInstallConfig(rust({
         profile: "minimal",
         ...rustConfOverride,

@@ -1,27 +1,24 @@
 import "../setup_logger.ts";
-import { std_async } from "../deps/dev.ts";
-import { secureConfig, stdDeps } from "../mod.ts";
-import {
-  dockerE2eTest,
-  E2eTestCase,
-  localE2eTest,
-  tsGhjkFileFromInstalls,
-} from "./utils.ts";
+import { FileArgs } from "../mod.ts";
+import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
-import type {
-  InstallConfigFat,
-  PortsModuleSecureConfig,
-} from "../modules/ports/types.ts";
+import dummy from "../ports/dummy.ts";
+import type { InstallConfigFat } from "../modules/ports/types.ts";
 import { testTargetPlatform } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
-  secureConf?: PortsModuleSecureConfig;
-  ignore?: boolean;
+  secureConf?: FileArgs;
 };
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
+  // 0 megs
+  {
+    name: "dummy",
+    installConf: dummy(),
+    ePoint: `dummy`,
+  },
   // 2 megs
   {
     name: "jq",
@@ -100,18 +97,23 @@ const cases: CustomE2eTestCase[] = [
     name: "npmi-node-gyp",
     installConf: ports.npmi({ packageName: "node-gyp" }),
     ePoint: `node-gyp --version`,
-    secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
-    }),
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // node + more megs
   {
     name: "npmi-jco",
     installConf: ports.npmi({ packageName: "@bytecodealliance/jco" }),
     ePoint: `jco --version`,
-    secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
-    }),
+    secureConf: {
+      enableRuntimes: true,
+    },
+  },
+  {
+    name: "deno",
+    installConf: ports.deno_ghrel(),
+    ePoint: `deno --version`,
   },
   // 42 megs
   {
@@ -162,9 +164,9 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
-    secureConf: secureConfig({
-      allowedPortDeps: stdDeps({ enableRuntimes: true }),
-    }),
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // rustup +  600 megs
   {
@@ -201,65 +203,32 @@ const cases: CustomE2eTestCase[] = [
   },
 ];
 
-function testMany(
-  testGroup: string,
-  cases: CustomE2eTestCase[],
-  testFn: (inp: E2eTestCase) => Promise<void>,
-  defaultEnvs: Record<string, string> = {},
-) {
-  for (const testCase of cases) {
-    Deno.test(
-      {
-        name: `${testGroup} - ${testCase.name}`,
-        ignore: testCase.ignore,
-        fn: () =>
-          std_async.deadline(
-            testFn({
-              ...testCase,
-              tsGhjkfileStr: tsGhjkFileFromInstalls(
-                {
-                  installConf: testCase.installConf,
-                  secureConf: testCase.secureConf,
-                  taskDefs: [],
-                },
-              ),
-              ePoints: [
-                ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
-                  cmd: `env ${sh} '${testCase.ePoint}'`,
-                })),
-                // FIXME: better tests for the `InstallDb`
-                // installs db means this shouldn't take too long
-                // as it's the second sync
-                { cmd: "env bash -c 'timeout 1 ghjk ports sync'" },
-              ],
-              envs: {
-                ...defaultEnvs,
-                ...testCase.envs,
-              },
-            }),
-            // building the test docker image might taka a while
-            // but we don't want some bug spinlocking the ci for
-            // an hour
-            300_000,
-          ),
+harness(cases.map((testCase) => ({
+  ...testCase,
+  tsGhjkfileStr: genTsGhjkFile(
+    {
+      secureConf: {
+        ...testCase.secureConf,
+        installs: Array.isArray(testCase.installConf)
+          ? testCase.installConf
+          : [testCase.installConf],
       },
-    );
-  }
-}
-
-const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-if (e2eType == "both") {
-  testMany("portsDockerE2eTest", cases, dockerE2eTest);
-  testMany(`portsLocalE2eTest`, cases, localE2eTest);
-} else if (e2eType == "local") {
-  testMany("portsLocalE2eTest", cases, localE2eTest);
-} else if (
-  e2eType == "docker" ||
-  !e2eType
-) {
-  testMany("portsDockerE2eTest", cases, dockerE2eTest);
-} else {
-  throw new Error(
-    `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-  );
-}
+    },
+  ),
+  ePoints: [
+    ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
+      cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
+    })),
+    /* // FIXME: better tests for the `InstallDb`
+      // installs db means this shouldn't take too long
+      // as it's the second sync
+      {
+        cmd: [
+          ..."env".split(" "),
+          "bash -c 'timeout 1 ghjk envs cook'",
+        ],
+      }, */
+  ],
+  name: `ports/${testCase.name}`,
+  timeout_ms: 10 * 60 * 1000,
+})));

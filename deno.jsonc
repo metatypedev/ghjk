@@ -2,22 +2,36 @@
   "tasks": {
     "test": "deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
     "cache": "deno cache deps/*",
-    "check": "deno run -A check.ts"
+    "check": "deno run -A ./check.ts"
   },
   "fmt": {
     "exclude": [
+      "*.md",
       "**/*.md",
       ".ghjk/**",
-      ".deno-dir/**"
+      ".deno-dir/**",
+      "vendor/**"
     ]
   },
   "lint": {
     "exclude": [
       ".deno-dir/**",
       "ghjk.ts",
-      "play.ts"
+      "play.ts",
+      "vendor/**"
     ],
     "rules": {
+      "include": [
+        "no-console",
+        "no-sync-fn-in-async-fn",
+        "no-external-import",
+        "no-inferrable-types",
+        "no-self-compare",
+        "no-throw-literal"
+        // "verbatim-module-syntax"
+        // "no-await-in-loop"
+        // "ban-untagged-todo"
+      ],
       "exclude": [
         "no-explicit-any"
       ]

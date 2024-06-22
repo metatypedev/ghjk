@@ -22,7 +22,7 @@ export const manifest = {
   name: "asdf_plugin_git",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [git_aa_id],
+  buildDeps: [git_aa_id],
   resolutionDeps: [git_aa_id],
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };

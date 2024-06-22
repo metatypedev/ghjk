@@ -1,21 +1,29 @@
 // Deno.Kv api is unstable
 /// <reference lib="deno.unstable" />
 
-import type {
-  DownloadArtifacts,
-  InstallArtifacts,
-  InstallConfigLite,
-  PortManifestX,
-} from "./types.ts";
+import { zod } from "../../deps/common.ts";
+// import type { PathRef } from "../../utils/mod.ts";
+// import { $ } from "../../utils/mod.ts";
+import validators from "./types.ts";
+// import getLogger from "../../utils/logger.ts";
 
-export type InstallRow = {
-  installId: string;
-  conf: InstallConfigLite;
-  manifest: PortManifestX;
-  installArts?: InstallArtifacts;
-  downloadArts: DownloadArtifacts;
-  progress: "downloaded" | "installed";
-};
+// const logger = getLogger(import.meta);
+
+// NOTE: make sure any changes to here are backwards compatible
+const installRowValidator = zod.object({
+  // version: zod.string(),
+  installId: zod.string(),
+  conf: validators.installConfigResolved,
+  manifest: validators.portManifest,
+  installArts: validators.installArtifacts.nullish(),
+  downloadArts: validators.downloadArtifacts,
+  progress: zod.enum(["downloaded", "installed"]),
+}).passthrough();
+
+type InstallRowVersioned = zod.infer<typeof installRowValidator>;
+// FIXME: this breaks typescript
+// export type InstallRow = Omit<InstallRowVersioned, "version">;
+export type InstallRow = InstallRowVersioned;
 
 export abstract class InstallsDb {
   abstract all(): Promise<InstallRow[]>;
@@ -61,3 +69,51 @@ class DenoKvInstallsDb extends InstallsDb {
     }
   }
 }
+
+/* // TODO: implement me
+
+class InlineInstallsDb extends InstallsDb {
+  #map = new Map<string, InstallRowVersioned>();
+  #dbDir: PathRef;
+  constructor(
+    dbDir: string,
+  ) {
+    super();
+    this.#dbDir = $.path(dbDir);
+  }
+  all(): Promise<InstallRow[]> {
+    throw new Error("Method not implemented.");
+  }
+  async get(id: string): Promise<InstallRow | undefined> {
+    let row = this.#map.get(id);
+    if (!row) {
+      const raw = await this.#dbDir.join(`${id}.meta`).readMaybeText();
+      if (raw) {
+        try {
+          const rawParsed = installRowValidator.parse(JSON.parse(raw));
+          if (rowParsed.version != "0") {
+            throw new Error(`unexpected version string: ${rowParsed.version}`);
+          }
+          row = rowParsed;
+          this.#map.set(id, row);
+        } catch (err) {
+          logger.warn(`error parsing install meta for "${id}"`, err);
+        }
+      }
+    }
+    return row;
+  }
+  set(id: string, row: InstallRow): Promise<void> {
+    const versioned =  { ...row, version: "0" };
+    await this.#dbDir.join(`${id}.meta`).writeJsonPretty(versioned);
+    this.#map.set(id, versioned);
+    throw new Error("Method not implemented.");
+  }
+  delete(id: string): Promise<void> {
+    this.#map.delete(id);
+    throw new Error("Method not implemented.");
+  }
+  [Symbol.dispose](): void {
+    throw new Error("Method not implemented.");
+  }
+} */

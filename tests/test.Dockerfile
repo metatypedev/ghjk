@@ -1,4 +1,4 @@
-ARG DENO_VERSION=1.42.1
+ARG DENO_VERSION=1.44.2
 
 FROM denoland/deno:bin-$DENO_VERSION AS deno
 
@@ -40,15 +40,12 @@ RUN ln -s ./main.ts /bin/ghjk
 
 WORKDIR /app
 
-ENV GHJK_LOG=debug
+ENV GHJK_LOG=info
 ENV GHJK_INSTALL_EXE_DIR=/usr/bin
 ENV GHJK_INSTALL_HOOK_SHELLS=fish,bash,zsh 
 # share the module cache of the image
 ENV GHJK_INSTALL_DENO_DIR=$DENO_DIR
 RUN deno run -A /ghjk/install.ts
-
-ARG GITHUB_TOKEN
-ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
 # avoid variable expansion in the contents of the
 # here-document by quoting the tag
@@ -61,7 +58,7 @@ RUN <<EOT
     cat $(which ghjk)
     export CLICOLOR_FORCE=1 
     ghjk print config
-    ghjk ports sync
+    ghjk envs cook
 EOT
 
 # activate ghjk non-interactive shells execs

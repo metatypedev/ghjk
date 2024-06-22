@@ -1,7 +1,8 @@
-import { deep_eql, jsonHash, std_fs, std_path, zod } from "../../deps/cli.ts";
+import { deep_eql, std_fs, std_path, zod } from "../../deps/cli.ts";
 import getLogger from "../../utils/logger.ts";
 import validators from "./types.ts";
 import type {
+  AllowedPortDep,
   AmbientAccessPortManifestX,
   DenoWorkerPortManifestX,
   DepArts,
@@ -9,20 +10,19 @@ import type {
   InstallArtifacts,
   InstallConfigLiteX,
   InstallConfigResolvedX,
+  InstallSetX,
   PortArgsBase,
   PortDep,
   PortManifestX,
-  PortsModuleConfigX,
 } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
 import { AmbientAccessPort } from "./ambient.ts";
 import {
   $,
   AVAIL_CONCURRENCY,
-  DePromisify,
   getInstallHash,
   getPortRef,
-  objectHashHex,
+  objectHash,
   type Rc,
   rc,
   sameFsTmpRoot,
@@ -33,20 +33,22 @@ import type { GhjkCtx } from "../types.ts";
 const logger = getLogger(import.meta);
 
 export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolvedX>>;
-export type SyncCtx = DePromisify<ReturnType<typeof syncCtxFromGhjk>>;
 
 export function getResolutionMemo(
   gcx: GhjkCtx,
 ) {
-  let memoStore = gcx.state.get("resolutionMemoStore") as
+  const id = "resolutionMemoStore";
+  let memoStore = gcx.blackboard.get(id) as
     | ResolutionMemoStore
     | undefined;
   if (!memoStore) {
     memoStore = new Map();
-    gcx.state.set("resolutionMemoStore", memoStore);
+    gcx.blackboard.set(id, memoStore);
   }
   return memoStore;
 }
+
+export type SyncCtx = Awaited<ReturnType<typeof syncCtxFromGhjk>>;
 
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
@@ -60,7 +62,7 @@ export async function syncCtxFromGhjk(
       sameFsTmpRoot(portsPath.toString()),
     ])
   ).map($.pathToString);
-  let db = gcx.state.get("installsDb") as
+  let db = gcx.blackboard.get("installsDb") as
     | Rc<InstallsDb>
     | undefined;
   if (!db) {
@@ -72,10 +74,10 @@ export async function syncCtxFromGhjk(
       ),
       (db) => {
         db[Symbol.dispose]();
-        gcx.state.delete("installsDb");
+        gcx.blackboard.delete("installsDb");
       },
     );
-    gcx.state.set("installsDb", db);
+    gcx.blackboard.set("installsDb", db);
   } else {
     db = db.clone();
   }
@@ -89,109 +91,6 @@ export async function syncCtxFromGhjk(
     async [Symbol.asyncDispose]() {
       db![Symbol.dispose]();
       await $.removeIfExists(tmpPath);
-    },
-  };
-}
-
-export async function installFromGraphAndShimEnv(
-  scx: SyncCtx,
-  envDir: string,
-  graph: InstallGraph,
-  createShellLoaders = true,
-) {
-  const installArts = await installFromGraph(
-    scx,
-    graph,
-  );
-  // create the shims for the user's environment
-  const shimDir = $.path(envDir).join("shims");
-  await $.removeIfExists(shimDir);
-
-  const [binShimDir, libShimDir, includeShimDir] = await Promise.all([
-    shimDir.join("bin").ensureDir(),
-    shimDir.join("lib").ensureDir(),
-    shimDir.join("include").ensureDir(),
-  ]);
-
-  // extract the env vars exported by the user specified
-  // installs and shim up their exported artifacts
-  const totalEnv: Record<string, [string, string]> = {};
-  // FIXME: detect shim conflicts
-  // FIXME: better support for multi installs
-  for (const instId of graph.user) {
-    const { binPaths, libPaths, includePaths, installPath, env } = installArts
-      .get(
-        instId,
-      )!;
-
-    for (const [key, val] of Object.entries(env)) {
-      const conflict = totalEnv[key];
-      if (conflict) {
-        throw new Error(
-          `duplicate env var found ${key} from sources ${instId} & ${
-            conflict[1]
-          }`,
-        );
-      }
-      totalEnv[key] = [val, instId];
-    }
-
-    // bin shims
-    void await shimLinkPaths(
-      binPaths,
-      installPath,
-      binShimDir.toString(),
-    );
-    // lib shims
-    void await shimLinkPaths(
-      libPaths,
-      installPath,
-      libShimDir.toString(),
-    );
-    // include shims
-    void await shimLinkPaths(
-      includePaths,
-      installPath,
-      includeShimDir.toString(),
-    );
-  }
-  // write loader for the env vars mandated by the installs
-  logger.debug("adding vars to loader", totalEnv);
-  // FIXME: prevent malicious env manipulations
-  let LD_LIBRARY_ENV: string;
-  switch (Deno.build.os) {
-    case "darwin":
-      LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
-      break;
-    case "linux":
-      LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
-      break;
-    default:
-      throw new Error(`unsupported os ${Deno.build.os}`);
-  }
-  const pathVars = {
-    PATH: `${envDir}/shims/bin`,
-    LIBRARY_PATH: `${envDir}/shims/lib`,
-    [LD_LIBRARY_ENV]: `${envDir}/shims/lib`,
-    C_INCLUDE_PATH: `${envDir}/shims/include`,
-    CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
-  };
-  // totalEnv contains info about the origin of the env
-  // which we don't need anymore
-  const simplifedTotalEnvs = Object.fromEntries(
-    Object.entries(totalEnv).map(([key, [val, _]]) => [key, val]),
-  );
-  if (createShellLoaders) {
-    await writeLoader(
-      envDir,
-      simplifedTotalEnvs,
-      pathVars,
-    );
-  }
-  return {
-    env: {
-      ...simplifedTotalEnvs,
-      ...pathVars,
     },
   };
 }
@@ -220,9 +119,9 @@ export async function installFromGraph(
         dir: tmpPath,
         prefix: `shims_${installId}_`,
       });
-      for (
-        const [depInstallId, depPortName] of graph.depEdges[installId] ?? []
-      ) {
+      await Promise.all((graph.depEdges[installId] ?? []).map(async (
+        [depInstallId, depPortName],
+      ) => {
         const depArts = installCtx.artifacts.get(depInstallId);
         if (!depArts) {
           throw new Error(
@@ -254,7 +153,7 @@ export async function installFromGraph(
           ),
           env: depArts.env,
         };
-      }
+      }));
       return { totalDepArts, depShimsRootPath };
     },
 
@@ -373,13 +272,13 @@ export async function installFromGraph(
   return installCtx.artifacts;
 }
 
-export type InstallGraph = DePromisify<ReturnType<typeof buildInstallGraph>>;
+export type InstallGraph = Awaited<ReturnType<typeof buildInstallGraph>>;
 
 // this returns a data structure containing all the info
 // required for installation including the dependency graph
 export async function buildInstallGraph(
   scx: SyncCtx,
-  portsConfig: PortsModuleConfigX,
+  set: InstallSetX,
 ) {
   type GraphInstConf = {
     instId: string;
@@ -387,9 +286,6 @@ export async function buildInstallGraph(
     config: InstallConfigResolvedX;
   };
   // this is all referring to port dependencies
-  // TODO: runtime dependencies
-  // NOTE: keep this easy to deserialize around as it's put directly
-  // into the lockfile
   const graph = {
     // maps from instHashId
     all: {} as Record<string, GraphInstConf | undefined>,
@@ -429,7 +325,7 @@ export async function buildInstallGraph(
   const foundInstalls: GraphInstConf[] = [];
 
   // collect the user specified insts first
-  for (const inst of portsConfig.installs) {
+  for (const inst of set.installs) {
     const { port: manifest, ...instLiteBase } = inst;
     const portRef = addPort(manifest);
     const instLite = validators.installConfigLite.parse({
@@ -438,11 +334,11 @@ export async function buildInstallGraph(
     });
     const resolvedConfig = await resolveConfig(
       scx,
-      portsConfig,
+      set.allowedBuildDeps,
       manifest,
       instLite,
     );
-    const instId = await getInstallHash(resolvedConfig);
+    const instId = getInstallHash(resolvedConfig);
 
     // no dupes allowed in user specified insts
     if (graph.user.includes(instId)) {
@@ -480,27 +376,27 @@ export async function buildInstallGraph(
 
     graph.all[installId] = inst;
 
-    if (!manifest.deps || manifest.deps.length == 0) {
+    if (!manifest.buildDeps || manifest.buildDeps.length == 0) {
       graph.indie.push(installId);
     } else {
       // this goes into graph.depEdges
       const deps: [string, string][] = [];
-      for (const depId of manifest.deps) {
-        const { manifest: depPort } = portsConfig.allowedDeps[depId.name];
-        if (!depPort) {
+      for (const depId of manifest.buildDeps) {
+        const dep = set.allowedBuildDeps[depId.name];
+        if (!dep) {
           throw new Error(
             `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
           );
         }
-        const portRef = addPort(depPort);
+        const portRef = addPort(dep.manifest);
 
         // get the install config of dependency
         // the conf is of the resolved kind which means
         // it's deps are also resolved
         const depInstall = validators.installConfigResolved.parse(
-          inst.config.depConfigs![depId.name],
+          inst.config.buildDepConfigs![depId.name],
         );
-        const depInstallId = await getInstallHash(depInstall);
+        const depInstallId = getInstallHash(depInstall);
 
         // only add the install configuration for this dep port
         // if specific hash hasn't seen before
@@ -512,7 +408,7 @@ export async function buildInstallGraph(
           });
         }
 
-        deps.push([depInstallId, depPort.name]);
+        deps.push([depInstallId, dep.manifest.name]);
 
         // make sure the dependency knows this install depends on it
         const reverseDeps = graph.revDepEdges[depInstallId] ?? [];
@@ -559,13 +455,13 @@ export async function buildInstallGraph(
 // This takes user specified InstallConfigs and resolves
 // their versions to a known, installable version
 // It also resolves any dependencies that the config specifies
-async function resolveConfig(
+function resolveConfig(
   scx: SyncCtx,
-  portsConfig: PortsModuleConfigX,
+  allowedDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
 ) {
-  const hash = await objectHashHex(config as jsonHash.Tree);
+  const hash = objectHash(JSON.parse(JSON.stringify(config)));
   let promise = scx.memoStore.get(hash);
   if (!promise) {
     promise = inner();
@@ -578,7 +474,7 @@ async function resolveConfig(
     const resolvedResolutionDeps = [] as [string, string][];
     for (const dep of manifest.resolutionDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
-        portsConfig,
+        allowedDeps,
         manifest,
         config,
         dep,
@@ -588,7 +484,7 @@ async function resolveConfig(
       // get the version resolved config of the dependency
       const depInstId = await resolveAndInstall(
         scx,
-        portsConfig,
+        allowedDeps,
         depMan,
         depConf,
       );
@@ -605,7 +501,7 @@ async function resolveConfig(
       resolvedResolutionDeps,
     );
 
-    // finally resolve the versino
+    // finally resolve the version
     let version;
     // TODO: fuzzy matching
     const port = getPortImpl(manifest);
@@ -623,7 +519,7 @@ async function resolveConfig(
       );
       if (!match) {
         throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest },
+          cause: { config, manifest, allVersions },
         });
       }
       version = match;
@@ -638,10 +534,10 @@ async function resolveConfig(
     // TODO: port version dependent portDep resolution
     // e.g. use python-2.7 if foo is resolved to <1.0 or use
     // python-3.x if foo is resolved to >1.0
-    const resolveDepConfigs = {} as Record<string, InstallConfigResolvedX>;
-    for (const dep of manifest.deps ?? []) {
+    const buildDepConfigs = {} as Record<string, InstallConfigResolvedX>;
+    for (const dep of manifest.buildDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
-        portsConfig,
+        allowedDeps,
         manifest,
         config,
         dep,
@@ -649,17 +545,18 @@ async function resolveConfig(
       // get the version resolved config of the dependency
       const depInstall = await resolveConfig(
         scx,
-        portsConfig,
+        allowedDeps,
         depMan,
         depConf,
       );
-      resolveDepConfigs[dep.name] = depInstall;
+      buildDepConfigs[dep.name] = depInstall;
     }
 
     return validators.installConfigResolved.parse({
       ...config,
-      depConfigs: resolveDepConfigs,
       version,
+      specifiedVersion: !!config.version,
+      buildDepConfigs,
     });
   }
 }
@@ -668,24 +565,24 @@ async function resolveConfig(
 // config.depPorts[depId] or the default InstallConfig specified
 // for the portsConfig.allowedDeps
 // No version resolution takes place
-function getDepConfig(
-  portsConfig: PortsModuleConfigX,
+export function getDepConfig(
+  allowedBuildDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   config: InstallConfigLiteX,
   depId: PortDep,
   resolutionDep = false,
 ) {
-  const { manifest: depPort, defaultInst: defaultDepInstall } =
-    portsConfig.allowedDeps[depId.name];
-  if (!depPort) {
+  const dep = allowedBuildDeps[depId.name];
+  if (!dep) {
     throw new Error(
       `unrecognized dependency "${depId.name}" specified by port "${manifest.name}@${manifest.version}"`,
     );
   }
+  const { manifest: depPort, defaultInst: defaultDepInstall } = dep;
   // install configuration of an allowed dep port
   // can be overriden by dependent ports
   const res = validators.installConfigLite.safeParse(
-    (resolutionDep ? config.resolutionDepConfigs : config.depConfigs)
+    (resolutionDep ? config.resolutionDepConfigs : config.buildDepConfigs)
       ?.[depId.name] ?? defaultDepInstall,
   );
   if (!res.success) {
@@ -703,23 +600,25 @@ function getDepConfig(
   return { config: res.data, manifest: depPort };
 }
 
-/// This is a simpler version of the graph
-/// based installer that the rest of this module implements
-/// it resolves and installs a single config (and it's deps).
-/// This primarily is used to install the manifest.resolutionDeps
-/// which are required to do version resolution when building the
-/// graph
-/// FIXME: the usage of this function implies that resolution
-/// will be redone if a config specfied by different resolutionDeps
-/// Consider introducing a memoization scheme
-async function resolveAndInstall(
+/**
+ * This is a simpler version of the graph based installer that
+ * the rest of this module implements.
+ * It resolves and installs a single config (and its deps).
+ * This primarily is used to install the manifest.resolutionDeps
+ * which are required to do version resolution when building the
+ * main graphs.
+ */
+// FIXME: the usage of this function implies that resolution
+// will be redone if a config specfied by different resolutionDeps
+// TODO: consider introducing a memoization scheme
+export async function resolveAndInstall(
   scx: SyncCtx,
-  portsConfig: PortsModuleConfigX,
+  allowedDeps: Record<string, AllowedPortDep>,
   manifest: PortManifestX,
   configLite: InstallConfigLiteX,
 ) {
-  const config = await resolveConfig(scx, portsConfig, manifest, configLite);
-  const installId = await getInstallHash(config);
+  const config = await resolveConfig(scx, allowedDeps, manifest, configLite);
+  const installId = getInstallHash(config);
 
   const cached = await scx.db.val.get(installId);
   // we skip it if it's already installed
@@ -736,13 +635,13 @@ async function resolveAndInstall(
       scx,
       depShimsRootPath,
       await Promise.all(
-        manifest.deps?.map(
+        manifest.buildDeps?.map(
           async (dep) => {
-            const depConfig = getDepConfig(portsConfig, manifest, config, dep);
+            const depConfig = getDepConfig(allowedDeps, manifest, config, dep);
             // we not only resolve but install the dep here
             const { installId } = await resolveAndInstall(
               scx,
-              portsConfig,
+              allowedDeps,
               depConfig.manifest,
               depConfig.config,
             );
@@ -810,51 +709,54 @@ async function resolveAndInstall(
 }
 
 // This assumes that the installs are already in the db
-async function getShimmedDepArts(
+export async function getShimmedDepArts(
   scx: SyncCtx,
   shimsRootPath: string,
   installs: [string, string][],
 ) {
   const totalDepArts: DepArts = {};
-  for (
-    const [installId, portName] of installs
-  ) {
-    const installRow = await scx.db.val.get(installId);
-    if (!installRow || !installRow.installArts) {
-      throw new Error(
-        `artifacts not found for "${installId}" not found in db when shimming totalDepArts`,
-        {
-          cause: { installs },
-        },
-      );
-    }
-    const installArts = installRow.installArts;
-    const shimDir = $.path(shimsRootPath).resolve(installId);
-    const [binShimDir, libShimDir, includeShimDir] = (await Promise.all([
-      shimDir.join("bin").ensureDir(),
-      shimDir.join("lib").ensureDir(),
-      shimDir.join("include").ensureDir(),
-    ])).map($.pathToString);
+  await Promise.all(
+    installs
+      .map(
+        async ([installId, portName]) => {
+          const installRow = await scx.db.val.get(installId);
+          if (!installRow || !installRow.installArts) {
+            throw new Error(
+              `artifacts not found for "${installId}" not found in db when shimming totalDepArts`,
+              {
+                cause: { installs },
+              },
+            );
+          }
+          const installArts = installRow.installArts;
+          const shimDir = $.path(shimsRootPath).resolve(installId);
+          const [binShimDir, libShimDir, includeShimDir] = (await Promise.all([
+            shimDir.join("bin").ensureDir(),
+            shimDir.join("lib").ensureDir(),
+            shimDir.join("include").ensureDir(),
+          ])).map($.pathToString);
 
-    totalDepArts[portName] = {
-      execs: await shimLinkPaths(
-        installArts.binPaths,
-        installArts.installPath,
-        binShimDir,
+          totalDepArts[portName] = {
+            execs: await shimLinkPaths(
+              installArts.binPaths,
+              installArts.installPath,
+              binShimDir,
+            ),
+            libs: await shimLinkPaths(
+              installArts.libPaths,
+              installArts.installPath,
+              libShimDir,
+            ),
+            includes: await shimLinkPaths(
+              installArts.includePaths,
+              installArts.installPath,
+              includeShimDir,
+            ),
+            env: installArts.env,
+          };
+        },
       ),
-      libs: await shimLinkPaths(
-        installArts.libPaths,
-        installArts.installPath,
-        libShimDir,
-      ),
-      includes: await shimLinkPaths(
-        installArts.includePaths,
-        installArts.installPath,
-        includeShimDir,
-      ),
-      env: installArts.env,
-    };
-  }
+  );
   return totalDepArts;
 }
 
@@ -896,7 +798,7 @@ async function shimLinkPaths(
         throw error;
       }
     }
-    await $.path(shimPath).createSymlinkTo(filePath, { type: "file" });
+    await $.path(shimPath).symlinkTo(filePath, { type: "file" });
     shims[fileName] = shimPath;
   }
   return shims;
@@ -931,7 +833,7 @@ type DownloadStageArgs = {
   depArts: DepArts;
 };
 
-async function doDownloadStage(
+export async function doDownloadStage(
   {
     installId,
     installPath,
@@ -980,7 +882,7 @@ async function doDownloadStage(
 
 type InstallStageArgs = DownloadStageArgs;
 
-async function doInstallStage(
+export async function doInstallStage(
   {
     installId,
     installPath,
@@ -1053,49 +955,4 @@ async function doInstallStage(
     downloadPath,
     installVersion,
   };
-}
-
-// create the loader scripts
-// loader scripts are responsible for exporting
-// different environment variables from the ports
-// and mainpulating the path strings
-async function writeLoader(
-  envDir: string,
-  env: Record<string, string>,
-  pathVars: Record<string, string>,
-) {
-  const loader = {
-    posix: [
-      `export GHJK_CLEANUP_POSIX="";`,
-      ...Object.entries(env).map(([k, v]) =>
-        // NOTE: single quote the port supplied envs to avoid any embedded expansion/execution
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX"export ${k}='$${k}';";
-export ${k}='${v}';`
-      ),
-      ...Object.entries(pathVars).map(([k, v]) =>
-        // NOTE: double quote the path vars for expansion
-        // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'${k}=$(echo "$${k}" | tr ":" "\\n" | grep -vE "^${envDir}" | tr "\\n" ":");${k}="\${${k}%:}";';
-export ${k}="${v}:$${k}";
-`
-      ),
-    ].join("\n"),
-    fish: [
-      `set --erase GHJK_CLEANUP_FISH`,
-      ...Object.entries(env).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH "set --global --export ${k} '$${k}';";
-set --global --export ${k} '${v}';`
-      ),
-      ...Object.entries(pathVars).map(([k, v]) =>
-        `set --global --append GHJK_CLEANUP_FISH 'set --global --export --path ${k} (string match --invert --regex "^${envDir}" $${k});';
-set --global --export --prepend ${k} ${v};
-`
-      ),
-    ].join("\n"),
-  };
-  const envPathR = await $.path(envDir).ensureDir();
-  await Promise.all([
-    envPathR.join(`loader.fish`).writeText(loader.fish),
-    envPathR.join(`loader.sh`).writeText(loader.posix),
-  ]);
 }

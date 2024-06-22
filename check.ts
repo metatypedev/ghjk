@@ -1,5 +1,4 @@
 #!/bin/env -S ghjk deno run --allow-env --allow-run --allow-read --allow-write=.
-// # FIXME: find a way to resolve !DENO_EXEC_PATH in shebangs
 
 import "./setup_logger.ts";
 import { $ } from "./utils/mod.ts";
@@ -7,9 +6,12 @@ import { $ } from "./utils/mod.ts";
 const files = (await Array.fromAsync(
   $.path(import.meta.url).parentOrThrow().expandGlob("**/*.ts", {
     exclude: [
+      ".git",
       "play.ts",
       ".ghjk/**",
       ".deno-dir/**",
+      "vendor/**",
+      ".git/**", // was throwing an error without this
     ],
   }),
 )).map((ref) => ref.path.toString());

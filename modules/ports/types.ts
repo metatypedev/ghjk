@@ -1,6 +1,7 @@
 //! NOTE: type FooX is a version of Foo after zod processing/transformation
 
 import { semver, zod } from "../../deps/common.ts";
+import moduleValidators from "../types.ts";
 import { relativeFileUrl } from "../../utils/url.ts";
 import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
 
@@ -36,7 +37,7 @@ const portManifestBase = zod.object({
   //   .nullish()
   //   // default value set after transformation
   //   .default("deferToNewer"),
-  deps: zod.array(portDep).nullish(),
+  buildDeps: zod.array(portDep).nullish(),
   resolutionDeps: zod.array(portDep).nullish(),
 }).passthrough();
 
@@ -79,12 +80,12 @@ const portManifest = zod.discriminatedUnion("ty", [
 const installConfigSimple = zod.object({
   version: zod.string()
     .nullish(),
-  // /// A place to put captured env vars
+  // // A place to put captured env vars
   // envVars: zod.record(zod.string(), zod.string()).nullish().default({}),
 }).passthrough();
 
 const installConfigBase = installConfigSimple.merge(zod.object({
-  depConfigs: zod.record(
+  buildDepConfigs: zod.record(
     portName,
     // FIXME: figure out cyclically putting `installConfigLite` here
     zod.unknown(),
@@ -117,7 +118,8 @@ const installConfigFat = stdInstallConfigFat;
 const installConfigResolved = installConfigLite.merge(zod.object({
   // NOTE: version is no longer nullish
   version: zod.string(),
-  // depConfigs: zod.record(
+  versionSpecified: zod.boolean().optional(),
+  // buildDepConfigs: zod.record(
   //   portName,
   //   // FIXME: figure out cyclically putting `installConfigResolved` here
   //   zod.object({ version: zod.string() }).passthrough(),
@@ -144,31 +146,60 @@ const allowedPortDep = zod.object({
   defaultInst: installConfigLite,
 });
 
-const portsModuleSecureConfig = zod.object({
-  allowedPortDeps: zod.array(allowedPortDep).nullish(),
-});
+const allowDepSet = zod.record(zod.string(), allowedPortDep);
 
-const portsModuleConfigBase = zod.object({
+const allowDepSetHashed = zod.record(zod.string(), zod.string());
+
+const installSetHashed = zod.object({
   installs: zod.array(zod.string()),
+  allowedBuildDeps: zod.string(),
 });
 
-const portsModuleConfig = portsModuleConfigBase.merge(zod.object({
-  allowedDeps: zod.record(
-    zod.string(),
-    zod.string(),
-  ),
-}));
-
-const portsModuleConfigBaseX = zod.object({
+const installSet = zod.object({
   installs: zod.array(installConfigFat),
+  allowedBuildDeps: allowDepSet,
 });
 
-const portsModuleConfigX = portsModuleConfigBaseX.merge(zod.object({
-  allowedDeps: zod.record(
-    zod.string(),
-    allowedPortDep,
-  ),
-}));
+const portsModuleConfigHashed = zod.object({
+  sets: zod.record(zod.string(), installSetHashed),
+});
+
+const portsModuleConfig = zod.object({
+  sets: zod.record(zod.string(), installSet),
+});
+
+export const installSetProvisionTy = "ghjk.ports.InstallSet";
+const installSetProvision = zod.object({
+  ty: zod.literal(installSetProvisionTy),
+  set: installSet,
+});
+
+export const installSetRefProvisionTy = "ghjk.ports.InstallSetRef";
+const installSetRefProvision = zod.object({
+  ty: zod.literal(installSetRefProvisionTy),
+  setId: zod.string(),
+});
+
+export const installProvisionTy = "ghjk.ports.Install";
+export const installProvision = zod.object({
+  ty: zod.literal(installProvisionTy),
+  instId: zod.string(),
+});
+
+const downloadArtifacts = zod.object({
+  installVersion: zod.string(),
+  downloadPath: zod.string(),
+});
+
+const installArtifacts = zod.object({
+  env: zod.record(moduleValidators.envVarName, zod.string()),
+  installVersion: zod.string(),
+  binPaths: zod.string().array(),
+  libPaths: zod.string().array(),
+  includePaths: zod.string().array(),
+  installPath: zod.string(),
+  downloadPath: zod.string(),
+});
 
 const validators = {
   osEnum,
@@ -190,12 +221,19 @@ const validators = {
   installConfig,
   installConfigResolved,
   portManifest,
-  portsModuleConfigBase,
-  portsModuleSecureConfig,
   portsModuleConfig,
-  portsModuleConfigX,
+  portsModuleConfigHashed,
   allowedPortDep,
+  allowDepSet,
+  allowDepSetHashed,
+  installSetProvision,
+  installSetRefProvision,
+  installProvision,
+  installSet,
+  installSetHashed,
   string: zod.string(),
+  downloadArtifacts,
+  installArtifacts,
   stringArray: zod.string().min(1).array(),
 };
 export default validators;
@@ -213,7 +251,6 @@ export type AmbientAccessPortManifest = zod.input<
   typeof validators.ambientAccessPortManifest
 >;
 
-// Describes the port itself
 export type PortManifest = zod.input<
   typeof validators.portManifest
 >;
@@ -225,12 +262,16 @@ export type DenoWorkerPortManifestX = zod.infer<
 export type AmbientAccessPortManifestX = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
-/// This is the transformed version of PortManifest, ready for consumption
+/**
+ * This is the transformed version of PortManifest, ready for consumption
+ */
 export type PortManifestX = zod.infer<
   typeof validators.portManifest
 >;
 
-/// PortDeps are used during the port build/install process
+/**
+ * PortDeps are used during the port build/install process
+ */
 export type PortDep = zod.infer<typeof validators.portDep>;
 export type PortDepFat = zod.infer<typeof validators.portDepFat>;
 
@@ -243,61 +284,89 @@ export type InstallConfigBaseLite = zod.input<
 export type InstallConfigBaseFat = zod.input<
   typeof validators.installConfigBaseFat
 >;
-/// Fat install configs include the port manifest within
+/**
+ * Fat install configs include the port manifest within.
+ */
 export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
-/// Fat install configs include the port manifest within
+/**
+ * Fat install configs include the port manifest within.
+ */
 export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
-/// Lite install configs refer to the port they use by name
+/**
+ * Lite install configs refer to the port they use by name.
+ */
 export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
-/// Lite install configs refer to the port they use by name
+/**
+ * Lite install configs refer to the port they use by name.
+ */
 export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
-// Describes a single installation done by a specific plugin.
+/**
+ * Describes a single installation done by a specific plugin.
+ */
 export type InstallConfig = zod.input<typeof validators.installConfig>;
-// Describes a single installation done by a specific plugin.
+/**
+ * Describes a single installation done by a specific plugin.
+ */
 export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+/**
+ * {@link InstallConfig} after the {@link InstallConfig.version} has been deternimed.
+ */
 export type InstallConfigResolved = zod.input<
   typeof validators.installConfigResolved
 >;
+/**
+ * {@inheritDoc InstallConfigResolved}
+ */
 export type InstallConfigResolvedX = zod.infer<
   typeof validators.installConfigResolved
 >;
 
-export type PortsModuleConfigBase = zod.infer<
-  typeof validators.portsModuleConfigBase
+/*
+ * Provisions an [`InstallSet`].
+ */
+export type InstallSetProvision = zod.input<
+  typeof validators.installSetProvision
+>;
+export type InstallSetProvisionX = zod.infer<
+  typeof validators.installSetProvision
+>;
+
+export type InstallProvision = zod.infer<typeof validators.installProvision>;
+
+/*
+ * Provisions an [`InstallSet`] that's been pre-defined in the [`PortsModuleConfigX`].
+ */
+export type InstallSetRefProvision = zod.input<
+  typeof validators.installSetRefProvision
+>;
+export type InstallSetRefProvisionX = zod.infer<
+  typeof validators.installSetRefProvision
 >;
 
 export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
 export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
 
-/// This is a secure sections of the config intended to be direct exports
-/// from the config script instead of the global variable approach the
-/// main [`GhjkConfig`] can take.
-export type PortsModuleSecureConfig = zod.input<
-  typeof validators.portsModuleSecureConfig
+export type InstallSet = zod.input<typeof validators.installSet>;
+export type InstallSetX = zod.infer<
+  typeof validators.installSet
 >;
-export type PortsModuleSecureConfigX = zod.input<
-  typeof validators.portsModuleSecureConfig
+
+export type InstallSetHashed = zod.input<typeof validators.installSetHashed>;
+export type InstallSetHashedX = zod.infer<
+  typeof validators.installSetHashed
 >;
 
 export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
 export type PortsModuleConfigX = zod.infer<
-  typeof validators.portsModuleConfigX
+  typeof validators.portsModuleConfig
 >;
 
-/*
-interface ASDF_CONFIG_EXAMPLE {
-  ASDF_INSTALL_TYPE: "version" | "ref";
-  ASDF_INSTALL_VERSION: string; //	full version number or Git Ref depending on ASDF_INSTALL_TYPE
-  ASDF_INSTALL_PATH: string; //	the path to where the tool should, or has been installed
-  ASDF_CONCURRENCY: number; //	the number of cores to use when compiling the source code. Useful for setting make -j
-  ASDF_DOWNLOAD_PATH: string; //	the path to where the source code or binary was downloaded to by bin/download
-  ASDF_PLUGIN_PATH: string; //	the path the plugin was installed
-  ASDF_PLUGIN_SOURCE_URL: string; //	the source URL of the plugin
-  ASDF_PLUGIN_PREV_REF: string; //	prevous git-ref of the plugin repo
-  ASDF_PLUGIN_POST_REF: string; //	updated git-ref of the plugin repo
-  ASDF_CMD_FILE: string; // resolves to the full path of the file being sourced
-}
-*/
+export type PortsModuleConfigHashed = zod.input<
+  typeof validators.portsModuleConfigHashed
+>;
+export type PortsModuleConfigLiteHashedX = zod.infer<
+  typeof validators.portsModuleConfigHashed
+>;
 
 export type DepArt = {
   execs: Record<string, string>;
@@ -344,17 +413,5 @@ export interface InstallArgs extends PortArgsBase {
   tmpDirPath: string;
 }
 
-export type DownloadArtifacts = {
-  installVersion: string;
-  downloadPath: string;
-};
-
-export type InstallArtifacts = {
-  env: Record<string, string>;
-  installVersion: string;
-  binPaths: string[];
-  libPaths: string[];
-  includePaths: string[];
-  installPath: string;
-  downloadPath: string;
-};
+export type DownloadArtifacts = zod.infer<typeof validators.downloadArtifacts>;
+export type InstallArtifacts = zod.infer<typeof validators.installArtifacts>;

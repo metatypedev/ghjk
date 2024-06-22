@@ -19,7 +19,7 @@ const manifest = {
   name: "wasmedge_ghrel",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  deps: [
+  buildDeps: [
     std_ports.tar_aa,
   ],
   platforms: osXarch(["linux", "darwin"], ["aarch64", "x86_64"]),
