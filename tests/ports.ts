@@ -149,6 +149,9 @@ const cases: CustomE2eTestCase[] = [
     name: "cmake",
     installConf: ports.cmake({}),
     ePoint: `cmake --version`,
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // 80 meg
   {
