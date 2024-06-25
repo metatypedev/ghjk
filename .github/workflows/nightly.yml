@@ -61,6 +61,6 @@ jobs:
         env: 
           GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
-          cd examples/protoc
+          cd examples/tasks
           . $(ghjk print share-dir-path)/env.sh
-          protoc --version
+          ghjk x hey
