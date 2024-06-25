@@ -146,11 +146,8 @@ const cases: CustomE2eTestCase[] = [
   },
   // 77 meg +
   {
-    name: "asdf-cmake",
-    installConf: ports.asdf({
-      pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-      installType: "version",
-    }),
+    name: "cmake",
+    installConf: ports.cmake({}),
     ePoint: `cmake --version`,
   },
   // 80 meg
