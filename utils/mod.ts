@@ -1,3 +1,5 @@
+/// <reference lib="deno.worker" />
+
 import {
   _DaxPath as Path,
   dax,
@@ -193,12 +195,26 @@ export function defaultCommandBuilder() {
 //   : {
 //     (...promises: T): DeArrayify<T>;
 //   };
+//
+
+let requestBuilder;
+try {
+  requestBuilder = new dax.RequestBuilder()
+    .showProgress(Deno.stderr.isTerminal())
+    .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "1m");
+} catch (err) {
+  throw new Error(
+    `invalid timeout param on GHJK_REQ_TIMEOUT: ${
+      Deno.env.get("GHJK_REQ_TIMEOUT")
+    }`,
+    { cause: err },
+  );
+}
 
 export const $ = dax.build$(
   {
     commandBuilder: defaultCommandBuilder(),
-    requestBuilder: new dax.RequestBuilder()
-      .showProgress(Deno.stderr.isTerminal()),
+    requestBuilder,
     extras: {
       mapObject<
         O,

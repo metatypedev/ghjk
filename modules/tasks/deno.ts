@@ -27,8 +27,11 @@ export type DriverRequests = {
 };
 
 export type DriverResponse = {
-  ty: "exec";
+  ty: "execSuccess";
   payload: boolean;
+} | {
+  ty: "execError";
+  payload: unknown;
 };
 
 export type ExecTaskArgs = {
@@ -46,10 +49,18 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   }
   let res: DriverResponse;
   if (req.ty == "exec") {
-    res = {
-      ty: req.ty,
-      payload: await importAndExec(req.uri, req.args),
-    };
+    try {
+      await importAndExec(req.uri, req.args);
+      res = {
+        ty: "execSuccess",
+        payload: true,
+      };
+    } catch (err) {
+      res = {
+        ty: "execError",
+        payload: err,
+      };
+    }
   } else {
     logger().error(`invalid DriverRequest type`, req);
     throw new Error(`unrecognized request type: ${req.ty}`);
@@ -95,9 +106,11 @@ async function rpc(moduleUri: string, req: DriverRequests) {
       resolve(res);
     };
     worker.onmessageerror = (evt) => {
+      evt.preventDefault();
       reject(evt.data);
     };
     worker.onerror = (err) => {
+      err.preventDefault();
       reject(err);
     };
   });
@@ -116,7 +129,11 @@ export async function execTaskDeno(
     uri: moduleUri,
     args,
   });
-  if (resp.ty != "exec") {
-    throw new Error(`invalid response type: ${resp.ty}`);
+  if (resp.ty == "execSuccess") {
+    //
+  } else if (resp.ty == "execError") {
+    throw resp.payload;
+  } else {
+    throw new Error(`invalid response type: ${(resp as any).ty}`);
   }
 }
