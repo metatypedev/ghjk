@@ -9,6 +9,7 @@ export default function conf(
   if (Deno.build.os === "darwin") {
     const pipiConfig: PipiInstallConf = {
       packageName: "cmake",
+      version: config.version,
     };
     return ports.pipi(pipiConfig);
   }
@@ -16,6 +17,7 @@ export default function conf(
     ...config,
     pluginRepo: "https://github.com/asdf-community/asdf-cmake",
     installType: "version",
+    version: config.version,
   };
 
   return [ports.asdf(asdfConfig)];

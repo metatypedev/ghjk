@@ -144,7 +144,13 @@ const cases: CustomE2eTestCase[] = [
       : `meta --version && wasmedge --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
-  // 77 meg +
+  // 80 meg
+  {
+    name: "cpy_bs",
+    installConf: ports.cpy_bs(),
+    ePoint: `python3 --version`,
+  },
+  // 77 meg +, depends on "cpy_bs" on darwin/macos
   {
     name: "cmake",
     installConf: ports.cmake({}),
@@ -152,12 +158,6 @@ const cases: CustomE2eTestCase[] = [
     secureConf: {
       enableRuntimes: true,
     },
-  },
-  // 80 meg
-  {
-    name: "cpy_bs",
-    installConf: ports.cpy_bs(),
-    ePoint: `python3 --version`,
   },
   // 80 meg +
   {
