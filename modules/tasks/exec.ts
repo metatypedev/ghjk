@@ -152,35 +152,47 @@ export async function execTask(
         ),
       ),
     };
-    if (taskDef.ty == "denoFile@v1") {
-      if (!gcx.ghjkfilePath) {
+    try {
+      if (taskDef.ty == "denoFile@v1") {
+        if (!gcx.ghjkfilePath) {
+          throw new Error(
+            "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
+          );
+        }
+        const workingDir = gcx.ghjkfilePath.parentOrThrow();
+        await execTaskDeno(
+          gcx.ghjkfilePath.toFileUrl().toString(),
+          {
+            key: taskDef.key,
+            argv: args,
+            envVars,
+            workingDir: taskDef.workingDir
+              ? workingDir.resolve(taskDef.workingDir).toString()
+              : workingDir.toString(),
+          },
+        );
+      } else {
         throw new Error(
-          "denoFile task found but no ghjkfile. This occurs when ghjk is working just on a lockfile alone",
+          `unsupported task type "${taskDef.ty}"`,
+          {
+            cause: {
+              taskDef,
+            },
+          },
         );
       }
-      const workingDir = gcx.ghjkfilePath.parentOrThrow();
-      await execTaskDeno(
-        gcx.ghjkfilePath.toFileUrl().toString(),
-        {
-          key: taskDef.key,
-          argv: args,
-          envVars,
-          workingDir: taskDef.workingDir
-            ? workingDir.resolve(taskDef.workingDir).toString()
-            : workingDir.toString(),
-        },
-      );
-    } else {
-      throw new Error(
-        `unsupported task type "${taskDef.ty}"`,
-        {
-          cause: {
-            taskDef,
-          },
-        },
-      );
+    } catch (err) {
+      if (err instanceof Error) {
+        err.message = `error executing task: ${err.message}`;
+        throw err;
+      } else if (err instanceof ErrorEvent) {
+        throw err;
+      } else {
+        throw new Error("error executing task", { cause: err });
+      }
+    } finally {
+      $.removeIfExists(taskEnvDir);
     }
-    $.removeIfExists(taskEnvDir);
 
     workSet.delete(taskKey);
     const dependentTasks = (taskGraph.revDepEdges[taskKey] ?? [])

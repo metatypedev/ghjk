@@ -2,10 +2,13 @@
   "tasks": {
     "test": "deno test --parallel --unstable-worker-options --unstable-kv -A tests/*",
     "cache": "deno cache deps/*",
-    "check": "deno run -A ./check.ts"
+    "check": "deno run -A ./scripts/check.ts",
+    "dev": "deno run -A ./scripts/dev.ts"
   },
   "fmt": {
     "exclude": [
+      ".git",
+      ".dev",
       "*.md",
       "**/*.md",
       ".ghjk/**",
@@ -15,6 +18,8 @@
   },
   "lint": {
     "exclude": [
+      ".git",
+      ".dev",
       ".deno-dir/**",
       "ghjk.ts",
       "play.ts",
