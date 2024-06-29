@@ -57,5 +57,11 @@ await install({
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);
-
-await $`${Deno.args}`.env(env);
+let cmd;
+if (Deno.args.length == 1 && Deno.args[0] == "bash") {
+  cmd = $`bash --rcfile ${env.BASH_ENV}`;
+} else {
+  cmd = $`${Deno.args}`;
+}
+await cmd.env(env).noThrow()
+  .cwd(Deno.env.get("CWD") ?? Deno.cwd());
