@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            e2eType: "docker"
+            e2eType: "local"
           - os: macos-latest
             e2eType: "local"
           - os: macos-14

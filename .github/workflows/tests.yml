@@ -48,10 +48,10 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux/x86_64
-            e2eType: "docker"
+            e2eType: "local"
           - os: custom-arm
             platform: linux/aarch64
-            e2eType: "docker"
+            e2eType: "local"
           - os: macos-latest
             platform: darwin/x86_64
             e2eType: "local"
