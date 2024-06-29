@@ -8,6 +8,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
+  DOCKER_NO_RMI: 1
 
 jobs:
   test-e2e:

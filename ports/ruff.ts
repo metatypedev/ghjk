@@ -72,10 +72,15 @@ export class Port extends GithubReleasePort {
       default:
         throw new Error(`unsupported: ${platform}`);
     }
-    const prefix =
-      semver.lt(semver.parse(installVersion), semver.parse("0.1.8"))
-        ? this.repoName
-        : `${this.repoName}-${installVersion.replace(/^v/, "")}`;
+    const parsedVersion = semver.parse(installVersion);
+    const prefix = semver.lessThan(parsedVersion, semver.parse("0.1.8"))
+      ? this.repoName
+      : semver.greaterOrEqual(
+          parsedVersion,
+          semver.parse("0.5.0"),
+        )
+      ? `${this.repoName}`
+      : `${this.repoName}-${installVersion.replace(/^v/, "")}`;
     return [
       this.releaseArtifactUrl(
         installVersion,
@@ -96,10 +101,28 @@ export class Port extends GithubReleasePort {
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-    await std_fs.copy(
-      args.tmpDirPath,
-      installPath.join("bin").toString(),
-    );
+
+    const parsedVersion = semver.parse(args.installVersion);
+    if (
+      semver.greaterOrEqual(
+        parsedVersion,
+        semver.parse("0.5.0"),
+      )
+    ) {
+      const [_root, dir] = await Array.fromAsync(
+        $.path(args.tmpDirPath).walk({ maxDepth: 1 }),
+      );
+      if (!dir.isDirectory) {
+        throw new Error("unexpected archive structure");
+      }
+      await installPath.ensureDir();
+      await dir.path.rename(installPath.join("bin"));
+    } else {
+      await std_fs.copy(
+        args.tmpDirPath,
+        installPath.join("bin").toString(),
+      );
+    }
     // await Deno.chmod(std_path.resolve(args.installPath, "bin", "ruff"), 0o700);
   }
 }
