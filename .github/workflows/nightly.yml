@@ -32,7 +32,11 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
-
+      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+        run: |
+          # we need coreutils on max for the `timeout` command
+          sudo apt update
+          sudo apt install -y --no-install-recommends fish zsh
       - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils
