@@ -21,10 +21,6 @@ install(
   ports.deno_ghrel({ version: DENO_VERSION }),
 );
 
-task("err", () => {
-  throw new Error("shit");
-});
-
 task(
   "lock-sed",
   async ($) => {
