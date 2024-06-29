@@ -193,8 +193,14 @@ export async function cli(args: CliArgs) {
   for (const [name, subcmd] of Object.entries(subcmds)) {
     root.command(name, subcmd);
   }
-  await root.parse(Deno.args);
-  await Promise.all(defer.map((fn) => fn()));
+  try {
+    await root.parse(Deno.args);
+  } catch (err) {
+    logger().error(err);
+    Deno.exit(1);
+  } finally {
+    await Promise.all(defer.map((fn) => fn()));
+  }
 }
 
 async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {

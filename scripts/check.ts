@@ -1,12 +1,13 @@
 #!/bin/env -S ghjk deno run --allow-env --allow-run --allow-read --allow-write=.
 
-import "./setup_logger.ts";
-import { $ } from "./utils/mod.ts";
+import "../setup_logger.ts";
+import { $ } from "../utils/mod.ts";
 
 const files = (await Array.fromAsync(
   $.path(import.meta.url).parentOrThrow().expandGlob("**/*.ts", {
     exclude: [
       ".git",
+      ".dev",
       "play.ts",
       ".ghjk/**",
       ".deno-dir/**",
