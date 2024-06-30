@@ -109,7 +109,7 @@ precmd() {
         rm "$GHJK_NEXTFILE"
 
     #  - the env dir loader mtime changes
-    elif [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
+    elif [ -n "${GHJK_LAST_ENV_DIR+x}" ] && [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
 
         ghjk_reload
 

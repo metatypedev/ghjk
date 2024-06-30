@@ -8,6 +8,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
+  DOCKER_NO_RMI: 1
 
 jobs:
   test-e2e:
@@ -16,11 +17,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            platform: linux/x86_64
-            e2eType: "docker"
-          - os: custom-arm
-            platform: linux/aarch64
-            e2eType: "docker"
+            e2eType: "local"
           - os: macos-latest
             platform: darwin/x86_64
             e2eType: "local"
@@ -36,6 +33,14 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
+      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+        run: |
+          # we need coreutils on max for the `timeout` command
+          sudo apt update
+          sudo apt install -y --no-install-recommends fish zsh
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+        # we need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils
       - name: Cache deno dir
         uses: actions/cache@v4
         with:
