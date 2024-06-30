@@ -1,13 +1,21 @@
 # ghjk
 
-ghjk /jk/ is a programmable runtime manager.
+ghjk /gk/ is a programmable runtime manager and an attempt at a successor for [asdf](https://github.com/asdf-vm/asdf).
 
-> Ghjk is part of the
+> ghjk is part of the
 > [Metatype ecosystem](https://github.com/metatypedev/metatype). Consider
 > checking out how this component integrates with the whole ecosystem and browse
 > the
 > [documentation](https://metatype.dev?utm_source=github&utm_medium=readme&utm_campaign=ghjk)
 > to see more examples.
+
+## Introduction
+
+ghjk offers a unified abstraction to manage package managers (e.g. cargo, pnpm, poetry), languages runtimes (e.g. nightly rust, node@18, python@latest) and developer tools (e.g. pre-commit, eslint, protoc). It enables you to define a consistent environment across your dev environments, CI/CD pipelines and containers keeping everything well-defined in your repo and providing a great DX.
+
+ghjk was designed to be an intermediate alternative between [Earthly](https://github.com/earthly/earthly)/[Dagger](https://github.com/dagger/dagger) (lighter and more flexible) and complex building tools like [Bazel](https://github.com/bazelbuild/bazel/)/[Nix-based devenv](https://github.com/cachix/devenv) (simpler and more extensible). This makes it especially convenient for mono-repos and long-lived projects. See [Metatype](https://github.com/metatypedev/metatype) and its [ghjkfile](https://github.com/metatypedev/metatype/blob/main/ghjk.ts) for a real world example.
+
+![](./ghjk.drawio.svg)
 
 ## Features
 
@@ -71,24 +79,22 @@ ghjk.install(ports.rust());
 
 // the previous block is equivalent to
 ghjk.env("main", {
-  installs: [
-    ports.protoc(),
-    ports.rust(),
-  ],
+  installs: [ports.protoc(), ports.rust()],
 });
 
-ghjk.env("dev", {
-  // by default, all envs are additively based on `main`
-  // pass false here to make env independent.
-  // or pass name(s) of another env to base on top of
-  inherit: false,
-  // envs can specify posix env vars
-  vars: { CARGO_TARGET_DIR: "my_target" },
-  installs: [
-    ports.cargobi({ crateName: "cargo-insta" }),
-    ports.act(),
-  ],
-})
+ghjk
+  .env("dev", {
+    // by default, all envs are additively based on `main`
+    // pass false here to make env independent.
+    // or pass name(s) of another env to base on top of
+    inherit: false,
+    // envs can specify posix env vars
+    vars: { CARGO_TARGET_DIR: "my_target" },
+    installs: [
+      ports.cargobi({ crateName: "cargo-insta" }),
+      ports.act(),
+    ],
+  })
   // use env hooks to run code on activation/deactivation
   .onEnter(ghjk.task(($) => $`echo dev activated`))
   .onExit(ghjk.task(($) => $`echo dev de-activated`));
@@ -98,18 +104,11 @@ ghjk.env({
   desc: "for Dockerfile usage",
   // NOTE: env references are order-independent
   inherit: "ci",
-  installs: [
-    ports.cargobi({ crateName: "cargo-chef" }),
-    ports.zstd(),
-  ],
+  installs: [ports.cargobi({ crateName: "cargo-chef" }), ports.zstd()],
 });
 
 // builder syntax is also availaible
-ghjk.env("ci")
-  .var("CI", "1")
-  .install(
-    ports.opentofu_ghrel(),
-  );
+ghjk.env("ci").var("CI", "1").install(ports.opentofu_ghrel());
 
 // each task describes it's own env as well
 ghjk.task({
@@ -154,9 +153,21 @@ Any malicious third-party module your ghjkfile imports will thus be able to acce
 // evil.ts
 import { env, task } from "https://.../ghjk/hack.ts";
 
-env("main")
-  // lol
-  .onEnter(task($ => $`rm -rf --no-preserve-root`);
+env("trueBase").install(ports.act(), ports.pipi({ packageName: "ruff" }));
+
+env("test").vars({ DEBUG: 1 });
+
+// `stdSecureConfig` is a quick way to make an up to spec `secureConfig`.
+export const secureConfig = stdSecureConfig({
+  defaultBaseEnv: "trueBase",
+  defaultEnv: "test",
+  // by default, nodejs, python and other runtime
+  // ports are not allowed to be used
+  // during the build process of other ports.
+  // Disable this security measure here.
+  // (More security features inbound!.)
+  enableRuntimes: true,
+});
 ```
 
 To prevent this scenario, the exports from `hack.ts` inspect the call stack and panic if they detect more than one module using them.
