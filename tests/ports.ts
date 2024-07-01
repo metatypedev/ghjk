@@ -144,20 +144,20 @@ const cases: CustomE2eTestCase[] = [
       : `meta --version && wasmedge --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
-  // 77 meg +
-  {
-    name: "asdf-cmake",
-    installConf: ports.asdf({
-      pluginRepo: "https://github.com/asdf-community/asdf-cmake",
-      installType: "version",
-    }),
-    ePoint: `cmake --version`,
-  },
   // 80 meg
   {
     name: "cpy_bs",
     installConf: ports.cpy_bs(),
     ePoint: `python3 --version`,
+  },
+  // 77 meg +, depends on "cpy_bs" on darwin/macos
+  {
+    name: "cmake",
+    installConf: ports.cmake({}),
+    ePoint: `cmake --version`,
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // 80 meg +
   {

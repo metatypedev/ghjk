@@ -18,7 +18,7 @@ import {
 import cpy_bs from "./cpy_bs.ts";
 import * as std_ports from "../modules/ports/std.ts";
 
-const manifest = {
+export const manifest = {
   ty: "denoWorker@v1" as const,
   name: "pipi_pypi",
   version: "0.1.0",
