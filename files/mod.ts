@@ -4,7 +4,13 @@
 // here to make the resulting config reasonably stable
 // across repeated serializaitons. No random identifiers.
 
-import { deep_eql, multibase32, multibase64, zod } from "../deps/common.ts";
+import {
+  deep_eql,
+  hashAnyValue,
+  multibase32,
+  multibase64,
+  zod,
+} from "../deps/common.ts";
 
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
@@ -70,6 +76,7 @@ export type EnvDefArgs = {
   inherit?: EnvParent;
   desc?: string;
   vars?: Record<string, string | number>;
+  dynVars?: Record<string, DynEnvValue>;
   /**
    * Task to execute when environment is activated.
    */
@@ -894,6 +901,12 @@ type EnvFinalizer = () => {
 export type EnvDefArgsPartial =
   & { name?: string }
   & Omit<EnvDefArgs, "name">;
+
+export type DynEnvValue =
+  | (() => string | number)
+  | (($_: typeof $) => string | number)
+  | (($_: typeof $) => Promise<string | number>);
+
 //
 // /**
 //  * A version of {@link EnvDefArgs} that has all container
@@ -938,6 +951,7 @@ export class EnvBuilder {
   #file: Ghjkfile;
   #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
+  #dynVarEvaluators: Record<string, DynEnvValue> = {};
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -991,36 +1005,39 @@ export class EnvBuilder {
   /**
    * Add an environment variable.
    */
-  var(key: string, val: string | (() => string)) {
-    this.vars({ [key]: typeof val == "string" ? val : val() });
-    return this;
-  }
-
-  /**
-   * Add an environment variable.
-   */
-  async varAsync(
-    key: string,
-    val: string | Promise<string> | ((_$: typeof $) => Promise<string>),
-  ) {
-    let actual;
-    if (typeof val == "string" || val instanceof Promise) {
-      actual = await Promise.resolve(val);
-    } else {
-      // eg. () => $`echo hello`.text()
-      actual = await val($);
-    }
-    this.vars({ [key]: actual! });
+  var(key: string, val: string | DynEnvValue) {
+    this.vars({ [key]: val });
     return this;
   }
 
   /**
    * Add multiple environment variable.
    */
-  vars(envVars: Record<string, string | number>) {
+  vars(envVars: Record<string, string | number | DynEnvValue>) {
+    const vars = {};
+    for (const [k, v] of Object.entries(envVars)) {
+      switch (typeof v) {
+        case "string":
+        case "number":
+          Object.assign(vars, { [k]: v });
+          break;
+        case "function": {
+          const fnHash = `dyn__${hashAnyValue(v, { algorithm: "md5" })}`;
+          Object.assign(vars, { [k]: fnHash });
+          const fnKey = getDynEvalKey(k, fnHash);
+          Object.assign(this.#dynVarEvaluators, { [fnKey]: v });
+          break;
+        }
+        default:
+          throw new Error(
+            `environment value of type "${typeof v}" is not supported`,
+          );
+      }
+    }
+
     Object.assign(
       this.#vars,
-      unwrapZodRes(validators.envVars.safeParse(envVars), { envVars }),
+      unwrapZodRes(validators.envVars.safeParse(vars), { envVars: vars }),
     );
     return this;
   }
@@ -1117,4 +1134,8 @@ export function reduceAllowedDeps(
 
 function objectHashSafe(obj: unknown) {
   return objectHash(JSON.parse(JSON.stringify(obj)));
+}
+
+function getDynEvalKey(name: string, fnHash: string) {
+  return `${name}__${fnHash}`;
 }

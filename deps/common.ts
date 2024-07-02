@@ -11,6 +11,7 @@ export * as std_url from "https://deno.land/std@0.213.0/url/mod.ts";
 export * as std_path from "https://deno.land/std@0.213.0/path/mod.ts";
 export * as std_fs from "https://deno.land/std@0.213.0/fs/mod.ts";
 export * as zod_val_err from "npm:zod-validation-error@3.3.0";
+export { default as hashAnyValue } from "https://deno.land/x/object_hash@2.0.3.1/mod.ts";
 
 // avoid using the following directly and go through the
 // wrappers in ./utils/mod.ts
