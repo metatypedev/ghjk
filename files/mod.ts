@@ -991,8 +991,26 @@ export class EnvBuilder {
   /**
    * Add an environment variable.
    */
-  var(key: string, val: string) {
-    this.vars({ [key]: val });
+  var(key: string, val: string | (() => string)) {
+    this.vars({ [key]: typeof val == "string" ? val : val() });
+    return this;
+  }
+
+  /**
+   * Add an environment variable.
+   */
+  async varAsync(
+    key: string,
+    val: string | Promise<string> | ((_$: typeof $) => Promise<string>),
+  ) {
+    let actual;
+    if (typeof val == "string" || val instanceof Promise) {
+      actual = await Promise.resolve(val);
+    } else {
+      // eg. () => $`echo hello`.text()
+      actual = await val($);
+    }
+    this.vars({ [key]: actual! });
     return this;
   }
 
