@@ -25,6 +25,7 @@ export const installProvisionTypes = [
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
+  //  "posix.envVarDyn",
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
   ...installProvisionTypes,
@@ -38,6 +39,11 @@ const wellKnownProvision = zod.discriminatedUnion(
       key: moduleValidators.envVarName,
       val: zod.string(),
     }),
+    // zod.object({
+    //   ty: zod.literal(wellKnownProvisionTypes[1]),
+    //   key: moduleValidators.envVarName,
+    //   val: zod.string(),
+    // }),
     ...hookProvisionTypes.map((ty) =>
       zod.object({
         ty: zod.literal(ty),

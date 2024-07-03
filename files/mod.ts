@@ -4,13 +4,7 @@
 // here to make the resulting config reasonably stable
 // across repeated serializaitons. No random identifiers.
 
-import {
-  deep_eql,
-  hashAnyValue,
-  multibase32,
-  multibase64,
-  zod,
-} from "../deps/common.ts";
+import { deep_eql, multibase32, multibase64, zod } from "../deps/common.ts";
 
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
@@ -76,7 +70,6 @@ export type EnvDefArgs = {
   inherit?: EnvParent;
   desc?: string;
   vars?: Record<string, string | number>;
-  dynVars?: Record<string, DynEnvValue>;
   /**
    * Task to execute when environment is activated.
    */
@@ -107,7 +100,7 @@ export type TaskDefArgs = {
   desc?: string;
   dependsOn?: string | string[];
   workingDir?: string | Path;
-  vars?: Record<string, string | number>;
+  vars?: Record<string, string | number>; // TODO: add DynEnvValue?
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   installs?: InstallConfigFat | InstallConfigFat[];
   inherit?: EnvParent;
@@ -660,6 +653,12 @@ export class Ghjkfile {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
+          ...Object.entries(final.dynVars).map((
+            [key, val],
+          ) => {
+            const prov = { ty: "posix.envVarDyn", key, val } as Provision;
+            return prov;
+          }),
           // env hooks
           ...hooks,
         ],
@@ -893,6 +892,7 @@ type EnvFinalizer = () => {
   installSetId: string;
   inherit: string | string[] | boolean;
   vars: Record<string, string>;
+  dynVars: Record<string, string>;
   desc?: string;
   onEnterHookTasks: string[];
   onExitHookTasks: string[];
@@ -951,7 +951,7 @@ export class EnvBuilder {
   #file: Ghjkfile;
   #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
-  #dynVarEvaluators: Record<string, DynEnvValue> = {};
+  #dynVars: Record<string, string> = {};
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -972,6 +972,7 @@ export class EnvBuilder {
       vars: Object.fromEntries(
         Object.entries(this.#vars).map(([key, val]) => [key, val.toString()]),
       ),
+      dynVars: this.#dynVars,
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -1014,7 +1015,7 @@ export class EnvBuilder {
    * Add multiple environment variable.
    */
   vars(envVars: Record<string, string | number | DynEnvValue>) {
-    const vars = {};
+    const vars = {}, dynVars = {};
     for (const [k, v] of Object.entries(envVars)) {
       switch (typeof v) {
         case "string":
@@ -1022,10 +1023,12 @@ export class EnvBuilder {
           Object.assign(vars, { [k]: v });
           break;
         case "function": {
-          const fnHash = `dyn__${hashAnyValue(v, { algorithm: "md5" })}`;
-          Object.assign(vars, { [k]: fnHash });
-          const fnKey = getDynEvalKey(k, fnHash);
-          Object.assign(this.#dynVarEvaluators, { [fnKey]: v });
+          const taskKey = this.#file.addTask({
+            ty: "denoFile@v1",
+            fn: v,
+            nonce: k,
+          });
+          Object.assign(dynVars, { [k]: taskKey });
           break;
         }
         default:
@@ -1038,6 +1041,10 @@ export class EnvBuilder {
     Object.assign(
       this.#vars,
       unwrapZodRes(validators.envVars.safeParse(vars), { envVars: vars }),
+    );
+    Object.assign(
+      this.#dynVars,
+      dynVars,
     );
     return this;
   }
@@ -1134,8 +1141,4 @@ export function reduceAllowedDeps(
 
 function objectHashSafe(obj: unknown) {
   return objectHash(JSON.parse(JSON.stringify(obj)));
-}
-
-function getDynEvalKey(name: string, fnHash: string) {
-  return `${name}__${fnHash}`;
 }
