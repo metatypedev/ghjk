@@ -43,6 +43,7 @@ import type {
   WellKnownProvision,
 } from "../modules/envs/types.ts";
 import modulesValidators from "../modules/types.ts";
+import { hashAnyValue } from "../port.ts";
 
 const validators = {
   envVars: zod.record(
@@ -907,6 +908,8 @@ export type DynEnvValue =
   | (($_: typeof $) => string | number)
   | (($_: typeof $) => Promise<string | number>);
 
+export const globalBlackboard = new Map<string, unknown>();
+
 //
 // /**
 //  * A version of {@link EnvDefArgs} that has all container
@@ -1023,12 +1026,17 @@ export class EnvBuilder {
           Object.assign(vars, { [k]: v });
           break;
         case "function": {
-          const taskKey = this.#file.addTask({
-            ty: "denoFile@v1",
-            fn: v,
-            nonce: k,
-          });
-          Object.assign(dynVars, { [k]: taskKey });
+          // const taskKey = this.#file.addTask({
+          //   ty: "denoFile@v1",
+          //   fn: v,
+          //   nonce: k,
+          // });
+          const fnKey = hashAnyValue(v, { algorithm: "md5" });
+          Object.assign(dynVars, { [k]: fnKey });
+          globalBlackboard.set(`fn.${fnKey}`, () => v($));
+
+          // console.log("vars", isInWorkerContext() ? "IN WORKER" : "globals shareable");
+
           break;
         }
         default:

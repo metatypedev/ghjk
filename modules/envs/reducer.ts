@@ -1,3 +1,4 @@
+import { globalBlackboard } from "../../files/mod.ts";
 import { unwrapZodRes } from "../../port.ts";
 // import { execTask } from "../tasks/exec.ts";
 import type { GhjkCtx } from "../types.ts";
@@ -93,11 +94,22 @@ function getEnvReducer(_gcx: GhjkCtx) {
   // How to exec task from here? how to look for envs.#task?
   // execTask(gcx, tasksConfig, taskGraph, targetKey, args)
   // await execTask(gcx, {...??}, {}, "", "");
+  // console.log(globalBlackboard);
+  // console.log(gcx);
+
   return (provisions: Provision[]) => {
     return Promise.resolve(provisions.map((p) => {
-      p.ty = "posix.envVar";
-      // TODO
-      return p;
+      const ty = "posix.envVar";
+      let val = p.val;
+      const dynEval = globalBlackboard.get(`fn.${p.val}`) as CallableFunction;
+      if (dynEval) {
+        val = dynEval();
+      }
+      // if (isInWorkerContext()) {
+      //   console.log("reducer within a WORKER?");
+      // }
+
+      return { ...p, ty: ty, val };
     }));
   };
 }

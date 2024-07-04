@@ -632,6 +632,11 @@ export async function detectShell(): Promise<string | undefined> {
     : undefined;
 }
 
+export function isInWorkerContext() {
+  return typeof WorkerGlobalScope !== "undefined" &&
+    self instanceof WorkerGlobalScope;
+}
+
 // /**
 //  * Blocks the event loop till the promise is resolved
 //  */
