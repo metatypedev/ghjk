@@ -91,7 +91,7 @@ export async function execTask(
   args: string[],
   // taskEnv: TaskEnvX,
   // installGraph: InstallGraph,
-): Promise<void> {
+): Promise<unknown | undefined> {
   let workSet = new Set([targetKey]);
   {
     const stack = [targetKey];
@@ -152,6 +152,8 @@ export async function execTask(
         ),
       ),
     };
+
+    let output: unknown | undefined;
     try {
       if (taskDef.ty == "denoFile@v1") {
         if (!gcx.ghjkfilePath) {
@@ -160,7 +162,7 @@ export async function execTask(
           );
         }
         const workingDir = gcx.ghjkfilePath.parentOrThrow();
-        await execTaskDeno(
+        output = await execTaskDeno(
           gcx.ghjkfilePath.toFileUrl().toString(),
           {
             key: taskDef.key,
@@ -214,6 +216,8 @@ export async function execTask(
       }
     }
     pendingTasks.push(...readyTasks);
+
+    return output;
   }
   if (workSet.size > 0) {
     throw new Error("something went wrong, task graph work set is not empty");

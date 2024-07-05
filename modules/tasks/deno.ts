@@ -28,7 +28,7 @@ export type DriverRequests = {
 
 export type DriverResponse = {
   ty: "execSuccess";
-  payload: boolean;
+  payload: { data?: unknown; status: boolean };
 } | {
   ty: "execError";
   payload: unknown;
@@ -50,10 +50,10 @@ async function onMsg(msg: MessageEvent<DriverRequests>) {
   let res: DriverResponse;
   if (req.ty == "exec") {
     try {
-      await importAndExec(req.uri, req.args);
+      const execOutput = await importAndExec(req.uri, req.args);
       res = {
         ty: "execSuccess",
-        payload: true,
+        payload: execOutput,
       };
     } catch (err) {
       res = {
@@ -74,8 +74,8 @@ async function importAndExec(
 ) {
   const _shimHandle = shimDenoNamespace(args.envVars);
   const mod = await import(uri);
-  await mod.sophon.execTask(args);
-  return true;
+  const ret = await mod.sophon.execTask(args);
+  return { data: ret, status: true };
 }
 
 async function rpc(moduleUri: string, req: DriverRequests) {
@@ -130,7 +130,7 @@ export async function execTaskDeno(
     args,
   });
   if (resp.ty == "execSuccess") {
-    //
+    return resp.payload.data;
   } else if (resp.ty == "execError") {
     throw resp.payload;
   } else {

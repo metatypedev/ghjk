@@ -306,7 +306,7 @@ export class Ghjkfile {
         workingDir,
         `<task:${task.name ?? key}>`,
       );
-      await task.fn(custom$, {
+      return await task.fn(custom$, {
         argv,
         env: Object.freeze(envVars),
         $: custom$,
