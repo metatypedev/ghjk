@@ -1,6 +1,4 @@
-import { globalBlackboard } from "../../files/mod.ts";
 import { unwrapZodRes } from "../../port.ts";
-// import { execTask } from "../tasks/exec.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
@@ -31,7 +29,6 @@ export function getProvisionReducerStore(
     | undefined;
   if (!store) {
     store = new Map();
-    store.set("posix.envVarDyn", getEnvReducer(gcx));
     gcx.blackboard.set(id, store);
   }
   return store;
@@ -87,29 +84,4 @@ export async function reduceStrangeProvisions(
     provides: reducedSet,
   };
   return out;
-}
-
-function getEnvReducer(_gcx: GhjkCtx) {
-  // TODO:
-  // How to exec task from here? how to look for envs.#task?
-  // execTask(gcx, tasksConfig, taskGraph, targetKey, args)
-  // await execTask(gcx, {...??}, {}, "", "");
-  // console.log(globalBlackboard);
-  // console.log(gcx);
-
-  return (provisions: Provision[]) => {
-    return Promise.resolve(provisions.map((p) => {
-      const ty = "posix.envVar";
-      let val = p.val;
-      const dynEval = globalBlackboard.get(`fn.${p.val}`) as CallableFunction;
-      if (dynEval) {
-        val = dynEval();
-      }
-      // if (isInWorkerContext()) {
-      //   console.log("reducer within a WORKER?");
-      // }
-
-      return { ...p, ty: ty, val };
-    }));
-  };
 }

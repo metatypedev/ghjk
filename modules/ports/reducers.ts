@@ -2,6 +2,8 @@
 
 import { expandGlobsAndAbsolutize, unwrapZodRes } from "../../utils/mod.ts";
 import { Provision } from "../envs/types.ts";
+import { execTask } from "../tasks/exec.ts";
+import { getTasksCtx } from "../tasks/inter.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
 import type { PortsCtx } from "./mod.ts";
@@ -133,4 +135,23 @@ async function reduceInstArts(
   }));
 
   return out;
+}
+
+export function installDynEnvReducer(_gcx: GhjkCtx) {
+  return (provisions: Provision[]) => {
+    // const taskCtx = getTasksCtx(gcx);
+    const evalProv = [];
+    for (const provision of provisions) {
+      const ty = "posix.envVar";
+      // const key = provision.val as string;
+      // // const taskGraph = taskCtx.taskGraph;
+      // // const taskConf = taskCtx.config;
+
+      // // console.log(gcx.blackboard);
+      // // await execTask(gcx, taskConf, taskGraph, "bciqnirycxp3vmwf5jryivhqlmlscsqkio3jobpgoa7cukuduese5tta", []);
+
+      evalProv.push({ ...provision, ty, val: "fromTask" });
+    }
+    return Promise.resolve(evalProv);
+  };
 }

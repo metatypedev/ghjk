@@ -36,14 +36,14 @@ import * as std_modules from "../modules/std.ts";
 import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
 import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
-import type {
-  EnvRecipe,
-  EnvsModuleConfig,
-  Provision,
-  WellKnownProvision,
+import {
+  type EnvRecipe,
+  type EnvsModuleConfig,
+  type Provision,
+  type WellKnownProvision,
 } from "../modules/envs/types.ts";
+import envsValidators from "../modules/envs/types.ts";
 import modulesValidators from "../modules/types.ts";
-import { hashAnyValue } from "../port.ts";
 
 const validators = {
   envVars: zod.record(
@@ -657,8 +657,11 @@ export class Ghjkfile {
           ...Object.entries(final.dynVars).map((
             [key, val],
           ) => {
-            const prov = { ty: "posix.envVarDyn", key, val } as Provision;
-            return prov;
+            const prov = { ty: "posix.envVarDyn", key, taskKey: val };
+            return unwrapZodRes(
+              envsValidators.envVarDynProvision.safeParse(prov),
+              prov,
+            );
           }),
           // env hooks
           ...hooks,
@@ -908,8 +911,6 @@ export type DynEnvValue =
   | (($_: typeof $) => string | number)
   | (($_: typeof $) => Promise<string | number>);
 
-export const globalBlackboard = new Map<string, unknown>();
-
 //
 // /**
 //  * A version of {@link EnvDefArgs} that has all container
@@ -1026,17 +1027,12 @@ export class EnvBuilder {
           Object.assign(vars, { [k]: v });
           break;
         case "function": {
-          // const taskKey = this.#file.addTask({
-          //   ty: "denoFile@v1",
-          //   fn: v,
-          //   nonce: k,
-          // });
-          const fnKey = hashAnyValue(v, { algorithm: "md5" });
-          Object.assign(dynVars, { [k]: fnKey });
-          globalBlackboard.set(`fn.${fnKey}`, () => v($));
-
-          // console.log("vars", isInWorkerContext() ? "IN WORKER" : "globals shareable");
-
+          const taskKey = this.#file.addTask({
+            ty: "denoFile@v1",
+            fn: v,
+            nonce: k,
+          });
+          Object.assign(dynVars, { [k]: taskKey });
           break;
         }
         default:
