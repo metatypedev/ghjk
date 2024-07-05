@@ -137,21 +137,37 @@ async function reduceInstArts(
   return out;
 }
 
-export function installDynEnvReducer(_gcx: GhjkCtx) {
-  return (provisions: Provision[]) => {
-    // const taskCtx = getTasksCtx(gcx);
-    const evalProv = [];
+export function installDynEnvReducer(gcx: GhjkCtx) {
+  return async (provisions: Provision[]) => {
+    const output = [];
+    const badProvisions = [];
+    const taskCtx = getTasksCtx(gcx);
+
     for (const provision of provisions) {
       const ty = "posix.envVar";
-      // const key = provision.val as string;
-      // // const taskGraph = taskCtx.taskGraph;
-      // // const taskConf = taskCtx.config;
+      const key = provision.taskKey as string;
 
-      // // console.log(gcx.blackboard);
-      // // await execTask(gcx, taskConf, taskGraph, "bciqnirycxp3vmwf5jryivhqlmlscsqkio3jobpgoa7cukuduese5tta", []);
+      const taskGraph = taskCtx.taskGraph;
+      const taskConf = taskCtx.config;
 
-      evalProv.push({ ...provision, ty, val: "fromTask" });
+      const targetKey = Object.entries(taskConf.tasks)
+        .filter(([_, task]) => task.key == key)
+        .shift()?.[0];
+
+      if (targetKey) {
+        // console.log("key", key, " maps to target ", targetKey);
+        const val = await execTask(gcx, taskConf, taskGraph, targetKey, []);
+        output.push({ ...provision, ty, val: val as any ?? "" });
+      } else {
+        badProvisions.push(provision);
+      }
     }
-    return Promise.resolve(evalProv);
+
+    if (badProvisions.length >= 1) {
+      throw new Error("cannot deduce task from keys", {
+        cause: { badProvisions },
+      });
+    }
+    return output;
   };
 }

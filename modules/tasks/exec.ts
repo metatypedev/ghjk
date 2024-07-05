@@ -98,8 +98,8 @@ export async function execTask(
     while (stack.length > 0) {
       const taskHash = stack.pop()!;
       const taskDef = tasksConfig.tasks[taskHash];
-      stack.push(...taskDef.dependsOn ?? []);
-      workSet = new Set([...workSet.keys(), ...taskDef.dependsOn ?? []]);
+      stack.push(...(taskDef?.dependsOn ?? []));
+      workSet = new Set([...workSet.keys(), ...(taskDef?.dependsOn ?? [])]);
     }
   }
   const pendingDepEdges = new Map(
