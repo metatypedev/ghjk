@@ -25,7 +25,7 @@ import * as ports from "./mod.ts";
  *
  */
 export default function conf(
-  config: InstallConfigSimple,
+  config: InstallConfigSimple = {},
 ): InstallConfigFat[] {
   /*
     The universal macOS cmake build downloaded by asdf crashes
