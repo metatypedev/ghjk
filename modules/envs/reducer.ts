@@ -1,4 +1,6 @@
 import { unwrapZodRes } from "../../port.ts";
+import { execTask } from "../tasks/exec.ts";
+import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
@@ -7,7 +9,7 @@ import type {
   WellKnownEnvRecipeX,
   WellKnownProvision,
 } from "./types.ts";
-import { wellKnownProvisionTypes } from "./types.ts";
+import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<
@@ -31,6 +33,10 @@ export function getProvisionReducerStore(
     store = new Map();
     gcx.blackboard.set(id, store);
   }
+  store?.set(
+    envVarDynTy,
+    installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
+  );
   return store;
 }
 
@@ -84,4 +90,40 @@ export async function reduceStrangeProvisions(
     provides: reducedSet,
   };
   return out;
+}
+
+
+export function installDynEnvReducer(gcx: GhjkCtx) {
+  return async (provisions: Provision[]) => {
+    const output = [];
+    const badProvisions = [];
+    const taskCtx = getTasksCtx(gcx);
+
+    for (const provision of provisions) {
+      const ty = "posix.envVar";
+      const key = provision.taskKey as string;
+
+      const taskGraph = taskCtx.taskGraph;
+      const taskConf = taskCtx.config;
+
+      const targetKey = Object.entries(taskConf.tasks)
+        .filter(([_, task]) => task.key == key)
+        .shift()?.[0];
+
+      if (targetKey) {
+        // console.log("key", key, " maps to target ", targetKey);
+        const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
+        output.push({ ...provision, ty, val: results[key] as any ?? "" });
+      } else {
+        badProvisions.push(provision);
+      }
+    }
+
+    if (badProvisions.length >= 1) {
+      throw new Error("cannot deduce task from keys", {
+        cause: { badProvisions },
+      });
+    }
+    return output;
+  };
 }

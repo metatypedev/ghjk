@@ -31,7 +31,6 @@ import {
 import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import {
-  installDynEnvReducer,
   installSetReducer,
   installSetRefReducer,
 } from "./reducers.ts";
@@ -111,10 +110,6 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     reducerStore.set(
       installSetProvisionTy,
       installSetReducer(gcx) as ProvisionReducer<Provision, Provision>,
-    );
-    reducerStore.set(
-      envVarDynTy,
-      installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
     );
     return pcx;
   }

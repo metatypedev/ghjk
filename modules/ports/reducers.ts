@@ -136,38 +136,3 @@ async function reduceInstArts(
 
   return out;
 }
-
-export function installDynEnvReducer(gcx: GhjkCtx) {
-  return async (provisions: Provision[]) => {
-    const output = [];
-    const badProvisions = [];
-    const taskCtx = getTasksCtx(gcx);
-
-    for (const provision of provisions) {
-      const ty = "posix.envVar";
-      const key = provision.taskKey as string;
-
-      const taskGraph = taskCtx.taskGraph;
-      const taskConf = taskCtx.config;
-
-      const targetKey = Object.entries(taskConf.tasks)
-        .filter(([_, task]) => task.key == key)
-        .shift()?.[0];
-
-      if (targetKey) {
-        // console.log("key", key, " maps to target ", targetKey);
-        const val = await execTask(gcx, taskConf, taskGraph, targetKey, []);
-        output.push({ ...provision, ty, val: val as any ?? "" });
-      } else {
-        badProvisions.push(provision);
-      }
-    }
-
-    if (badProvisions.length >= 1) {
-      throw new Error("cannot deduce task from keys", {
-        cause: { badProvisions },
-      });
-    }
-    return output;
-  };
-}
