@@ -1,4 +1,4 @@
-import { file } from "../../mod.ts";
+import { file } from "../../hack.ts";
 
 const ghjk = file({
   defaultEnv: "empty",
