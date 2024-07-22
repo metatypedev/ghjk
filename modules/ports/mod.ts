@@ -8,7 +8,7 @@ import validators, {
   installSetProvisionTy,
   installSetRefProvisionTy,
 } from "./types.ts";
-import envsValidators, { envVarDynTy } from "../envs/types.ts";
+import envsValidators from "../envs/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigResolved,
@@ -30,10 +30,7 @@ import {
 } from "./sync.ts"; // TODO: rename to install.ts
 import type { Blackboard } from "../../host/types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
-import {
-  installSetReducer,
-  installSetRefReducer,
-} from "./reducers.ts";
+import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";
 import { getPortsCtx } from "./inter.ts";
 import { updateInstall } from "./utils.ts";

@@ -219,7 +219,7 @@ export async function execTask(
     }
     pendingTasks.push(...readyTasks);
 
-    Object.assign(output, {[taskDef.key]: taskOutput});
+    Object.assign(output, { [taskDef.key]: taskOutput });
   }
 
   if (workSet.size > 0) {

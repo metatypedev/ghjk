@@ -2,8 +2,6 @@
 
 import { expandGlobsAndAbsolutize, unwrapZodRes } from "../../utils/mod.ts";
 import { Provision } from "../envs/types.ts";
-import { execTask } from "../tasks/exec.ts";
-import { getTasksCtx } from "../tasks/inter.ts";
 import { GhjkCtx } from "../types.ts";
 // NOTE: mod.ts must always be a type import
 import type { PortsCtx } from "./mod.ts";

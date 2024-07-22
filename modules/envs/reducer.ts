@@ -92,7 +92,6 @@ export async function reduceStrangeProvisions(
   return out;
 }
 
-
 export function installDynEnvReducer(gcx: GhjkCtx) {
   return async (provisions: Provision[]) => {
     const output = [];
