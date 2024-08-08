@@ -24,7 +24,7 @@ install(
 task(
   "lock-sed",
   async ($) => {
-    const GHJK_VERSION = "0.2.0";
+    const GHJK_VERSION = "0.2.1";
     await sedLock(
       $.path(import.meta.dirname!),
       {
@@ -41,7 +41,7 @@ task(
           ],
           "./README.md": [
             [
-              /(.*\/metatypedev\/ghjk\/)[^/]*(\/.*)/,
+              /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
               GHJK_VERSION,
             ],
           ],

@@ -2,3 +2,13 @@
 play.*
 examples/**/.ghjk
 .dev
+
+deps/https
+node_analysis_*
+v8_code_cache_*
+dep_analysis_*
+gen
+npm
+deno.land
+jsr.io
+esm.sh
