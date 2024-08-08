@@ -201,7 +201,7 @@ let requestBuilder;
 try {
   requestBuilder = new dax.RequestBuilder()
     .showProgress(Deno.stderr.isTerminal())
-    .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "1m");
+    .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "5m");
 } catch (err) {
   throw new Error(
     `invalid timeout param on GHJK_REQ_TIMEOUT: ${
@@ -425,6 +425,7 @@ export async function downloadFile(
 
   await $.request(url)
     .header(headers)
+    .timeout(undefined)
     .pipeToPath(tmpFilePath, { create: true, mode });
 
   await $.path(downloadPath).ensureDir();

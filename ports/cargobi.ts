@@ -22,6 +22,7 @@ import * as std_ports from "../modules/ports/std.ts";
 import {
   ghConfValidator,
   GithubReleasesInstConf,
+  readGhVars,
 } from "../modules/ports/ghrel.ts";
 import rust, { RustInstallConf } from "./rust.ts";
 
@@ -55,15 +56,17 @@ export type CargobiInstallConf =
 export default function conf(config: CargobiInstallConf) {
   const { rustConfOverride, ...thisConf } = config;
   const out: InstallConfigFat = {
+    ...readGhVars(),
     ...confValidator.parse(thisConf),
-    buildDepConfigs: {
-      [std_ports.rust_rustup.name]: thinInstallConfig(rust({
-        profile: "minimal",
-        ...rustConfOverride,
-      })),
-    },
     port: manifest,
   };
+  if (rustConfOverride) {
+    out.buildDepConfigs = {
+      [std_ports.rust_rustup.name]: thinInstallConfig(rust({
+        ...rustConfOverride,
+      })),
+    };
+  }
   return out;
 }
 

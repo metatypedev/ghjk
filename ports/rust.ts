@@ -70,8 +70,14 @@ export type RustInstallConf =
   & InstallConfigSimple
   & zod.input<typeof confValidator>;
 
+/**
+ * Uses {@link import("./rustup.ts").conf} to install a rust toolchain.
+ *
+ * Defaults to the minimal profile installation of
+ */
 export default function conf(config: RustInstallConf = {}) {
   return {
+    profile: "minimal",
     ...config,
     port: manifest,
   };
