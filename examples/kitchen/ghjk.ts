@@ -1,6 +1,7 @@
 import { stdDeps } from "../../files/mod.ts";
 import { file } from "../../mod.ts";
 import * as ports from "../../ports/mod.ts";
+import { pyEnv } from "../../library/py.ts";
 
 const ghjk = file({
   // configre an empty env so that no ports are avail by default in our workdir
@@ -120,3 +121,7 @@ env("dev")
     workingDir: "..",
     fn: ($) => $`ls`,
   }));
+
+// --
+env("venv")
+  .use(pyEnv({ version: "3.8.18", releaseTag: "20240224" }));

@@ -120,7 +120,7 @@ export type DenoTaskDefArgs = TaskDefArgs & {
    * execution of a specific task, we identify each using a hash.
    * The {@field fn} is `toString`ed in the hash input.
    * If a ghjkfile is produing identical anonymous tasks for
-   * instance, it can provide a none to disambiguate beteween each
+   * instance, it can provide a nonce to disambiguate between each
    * through hash differences.
    *
    * NOTE: the nonce must be stable across serialization.
@@ -1074,6 +1074,20 @@ export class EnvBuilder {
    */
   onExit(...taskKey: string[]) {
     this.#onExitHookTasks.push(...taskKey);
+    return this;
+  }
+
+  use(
+    setup: (
+      builder: EnvBuilder,
+      ghjk: { task(args: DenoTaskDefArgs): void },
+    ) => void,
+  ) {
+    setup(this, {
+      task: (args) => {
+        return this.#file.addTask({ ...args, ty: "denoFile@v1" });
+      },
+    });
     return this;
   }
 }
