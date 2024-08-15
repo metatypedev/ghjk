@@ -4,7 +4,7 @@ import * as ports from "../ports/mod.ts";
 interface PyEnvConfig {
   /** Python version */
   version: string;
-  releatTag: string;
+  releaseTag: string;
   /** venv dir, relative to Ghjk dir; default: ".venv" */
   dir?: string;
   /** create the venv if missing; default: true */
@@ -21,7 +21,6 @@ export function pyEnv(
     if (create) {
       builder.onEnter(ghjk.task({
         name: "activate-py-venv",
-        vars: { STUFF: "stuffier" },
         fn: async ($, { workingDir }) => {
           const venvDir = $.path(workingDir).join(dir);
           if (!(await venvDir.exists())) {
