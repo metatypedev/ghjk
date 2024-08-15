@@ -38,6 +38,7 @@ export async function cookPosixEnv(
   const binPaths = [] as string[];
   const libPaths = [] as string[];
   const includePaths = [] as string[];
+  const binDirs = [] as string[];
   const vars = {
     GHJK_ENV: envKey,
   } as Record<string, string>;
@@ -73,6 +74,9 @@ export async function cookPosixEnv(
         }
         vars[wellKnownProv.key] = wellKnownProv.val;
         // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
+        break;
+      case "posix.binDir":
+        binDirs.push(wellKnownProv.path);
         break;
       case "hook.onEnter.posixExec":
         onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
@@ -119,8 +123,9 @@ export async function cookPosixEnv(
     default:
       throw new Error(`unsupported os ${Deno.build.os}`);
   }
+  binDirs.push(`${envDir}/shims/bin`);
   const pathVars = {
-    PATH: `${envDir}/shims/bin`,
+    PATH: binDirs.join(":"),
     LIBRARY_PATH: `${envDir}/shims/lib`,
     [LD_LIBRARY_ENV]: `${envDir}/shims/lib`,
     C_INCLUDE_PATH: `${envDir}/shims/include`,

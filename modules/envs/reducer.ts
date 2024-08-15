@@ -9,7 +9,7 @@ import type {
   WellKnownEnvRecipeX,
   WellKnownProvision,
 } from "./types.ts";
-import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
+import { binPathDynTy, envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<
@@ -36,6 +36,10 @@ export function getProvisionReducerStore(
   store?.set(
     envVarDynTy,
     installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
+  );
+  store?.set(
+    binPathDynTy,
+    installDynBinPathReducer(gcx) as ProvisionReducer<Provision, Provision>,
   );
   return store;
 }
@@ -124,5 +128,39 @@ export function installDynEnvReducer(gcx: GhjkCtx) {
       });
     }
     return output;
+  };
+}
+
+export function installDynBinPathReducer(gcx: GhjkCtx) {
+  return async (provisions: Provision[]) => {
+    const output = [];
+    const badProvisions = [];
+    const taskCtx = getTasksCtx(gcx);
+
+    for (const provision of provisions) {
+      const ty = "posix.binDir";
+      const key = provision.taskKey;
+
+      const taskGraph = taskCtx.taskGraph;
+      const taskConf = taskCtx.config;
+
+      const targetKey = Object.entries(taskConf.tasks)
+        .find(([_, task]) => task.key === key)?.[0];
+
+      if (targetKey) {
+        const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
+        output.push({ ...provision, ty, path: results[key] as string });
+      } else {
+        badProvisions.push(provision);
+      }
+
+      if (badProvisions.length >= 1) {
+        throw new Error("cannot deduce task from keys", {
+          cause: { badProvisions },
+        });
+      }
+
+      return output;
+    }
   };
 }

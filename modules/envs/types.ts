@@ -22,11 +22,13 @@ export const installProvisionTypes = [
 ] as const;
 
 export const envVarDynTy = "posix.envVarDyn";
+export const binPathDynTy = "posix.binDirDyn";
 
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
+  "posix.binDir",
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
   ...installProvisionTypes,
@@ -39,6 +41,10 @@ const wellKnownProvision = zod.discriminatedUnion(
       ty: zod.literal(wellKnownProvisionTypes[0]),
       key: moduleValidators.envVarName,
       val: zod.string(),
+    }),
+    zod.object({
+      ty: zod.literal(wellKnownProvisionTypes[1]),
+      path: absolutePath,
     }),
     ...hookProvisionTypes.map((ty) =>
       zod.object({

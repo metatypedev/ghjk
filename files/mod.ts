@@ -663,6 +663,14 @@ export class Ghjkfile {
               prov,
             );
           }),
+          ...final.binDirs.map((path) => {
+            const prov: WellKnownProvision = { ty: "posix.binDir", path };
+            return prov;
+          }),
+          ...final.dynBinDirs.map((taskKey) => {
+            const prov = { ty: "posix.binDirDyn", taskKey };
+            return prov;
+          }),
           // env hooks
           ...hooks,
         ],
@@ -897,6 +905,8 @@ type EnvFinalizer = () => {
   inherit: string | string[] | boolean;
   vars: Record<string, string>;
   dynVars: Record<string, string>;
+  binDirs: string[];
+  dynBinDirs: string[];
   desc?: string;
   onEnterHookTasks: string[];
   onExitHookTasks: string[];
@@ -908,8 +918,12 @@ export type EnvDefArgsPartial =
 
 export type DynEnvValue =
   | (() => string | number)
-  | (($_: typeof $) => string | number)
-  | (($_: typeof $) => Promise<string | number>);
+  | (($_: typeof $, args: ExecTaskArgs) => string | number)
+  | (($_: typeof $, args: ExecTaskArgs) => Promise<string | number>);
+
+export type DynPathValue =
+  | ((...params: Parameters<TaskFn>) => string)
+  | ((...params: Parameters<TaskFn>) => Promise<string>);
 
 //
 // /**
@@ -956,6 +970,8 @@ export class EnvBuilder {
   #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
   #dynVars: Record<string, string> = {};
+  #binDirs: string[] = [];
+  #dynBinDirs: string[] = [];
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -977,6 +993,8 @@ export class EnvBuilder {
         Object.entries(this.#vars).map(([key, val]) => [key, val.toString()]),
       ),
       dynVars: this.#dynVars,
+      binDirs: this.#binDirs,
+      dynBinDirs: this.#dynBinDirs,
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -1050,6 +1068,32 @@ export class EnvBuilder {
       this.#dynVars,
       dynVars,
     );
+    return this;
+  }
+
+  /**
+   * Add a directory to $PATH
+   */
+  binDir(path: string | DynPathValue) {
+    switch (typeof path) {
+      case "string":
+        // TODO: validate path
+        this.#binDirs.push(path);
+        break;
+
+      case "function": {
+        const taskKey = this.#file.addTask({
+          ty: "denoFile@v1",
+          fn: path,
+        });
+        this.#dynBinDirs.push(taskKey);
+        break;
+      }
+
+      default:
+        throw new Error(`type "${typeof path}" is not supported for path`);
+    }
+
     return this;
   }
 
