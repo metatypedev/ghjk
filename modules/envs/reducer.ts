@@ -139,7 +139,7 @@ export function installDynBinPathReducer(gcx: GhjkCtx) {
 
     for (const provision of provisions) {
       const ty = "posix.binDir";
-      const key = provision.taskKey;
+      const key = provision.taskKey as string;
 
       const taskGraph = taskCtx.taskGraph;
       const taskConf = taskCtx.config;

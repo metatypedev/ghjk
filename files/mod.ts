@@ -917,9 +917,8 @@ export type EnvDefArgsPartial =
   & Omit<EnvDefArgs, "name">;
 
 export type DynEnvValue =
-  | (() => string | number)
-  | (($_: typeof $, args: ExecTaskArgs) => string | number)
-  | (($_: typeof $, args: ExecTaskArgs) => Promise<string | number>);
+  | ((...params: Parameters<TaskFn>) => string | number)
+  | ((...params: Parameters<TaskFn>) => Promise<string | number>);
 
 export type DynPathValue =
   | ((...params: Parameters<TaskFn>) => string)
