@@ -2,9 +2,11 @@ import { EnvBuilder } from "../files/mod.ts";
 import * as ports from "../ports/mod.ts";
 
 interface PyEnvConfig {
-  /** Python version */
-  version: string;
-  releaseTag: string;
+  install?: {
+    /** Python version */
+    version: string;
+    releaseTag: string;
+  };
   /** venv dir, relative to Ghjk dir; default: ".venv" */
   dir?: string;
   /** create the venv if missing; default: true */
@@ -12,12 +14,15 @@ interface PyEnvConfig {
 }
 
 export function pyEnv(
-  { version, releaseTag, dir = ".venv", create = true }: PyEnvConfig = {},
+  { install, dir = ".venv", create = true }: PyEnvConfig = {},
 ) {
   return (builder: EnvBuilder, ghjk) => {
-    builder.install(
-      ports.cpy_bs({ version, releaseTag }),
-    );
+    if (install) {
+      const { version, releaseTag } = install;
+      builder.install(
+        ports.cpy_bs({ version, releaseTag }),
+      );
+    }
     if (create) {
       builder.onEnter(ghjk.task({
         name: "activate-py-venv",

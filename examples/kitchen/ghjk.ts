@@ -123,4 +123,4 @@ env("dev")
   }));
 
 env("venv")
-  .mixin(pyEnv({ version: "3.8.18", releaseTag: "20240224" }));
+  .mixin(pyEnv({ install: { version: "3.8.18", releaseTag: "20240224" } }));
