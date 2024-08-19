@@ -37,7 +37,7 @@ import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
 import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
 import {
-  DynamicPathVarProvision,
+  DynamicPosixDirProvision,
   type EnvRecipe,
   type EnvsModuleConfig,
   PosixDirProvision,
@@ -921,8 +921,7 @@ type EnvFinalizer = () => {
   vars: Record<string, string>;
   dynVars: Record<string, string>;
   posixDirs: Array<PosixDirProvision>;
-  dynamicPosixDirs: Array<DynamicPathVarProvision>;
-  dynBinDirs: string[];
+  dynamicPosixDirs: Array<DynamicPosixDirProvision>;
   desc?: string;
   onEnterHookTasks: string[];
   onExitHookTasks: string[];
@@ -986,7 +985,7 @@ export class EnvBuilder {
   #vars: Record<string, string | number> = {};
   #dynVars: Record<string, string> = {};
   #posixDirs: Array<PosixDirProvision> = [];
-  #dynamicPosixDirs: Array<DynamicPathVarProvision> = [];
+  #dynamicPosixDirs: Array<DynamicPosixDirProvision> = [];
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -1095,7 +1094,7 @@ export class EnvBuilder {
       case "string": {
         const prov = { ty: type, path: val };
         this.#posixDirs.push(unwrapZodRes(
-          envsValidators.pathVarProvision.safeParse(prov),
+          envsValidators.posixDirProvision.safeParse(prov),
           prov,
         ));
         break;
@@ -1108,7 +1107,7 @@ export class EnvBuilder {
         });
         const prov = { ty: type + ".dynamic", taskKey };
         this.#dynamicPosixDirs.push(unwrapZodRes(
-          envsValidators.dynamicPathVarProvision.safeParse(prov),
+          envsValidators.dynamicPosixDirProvision.safeParse(prov),
           prov,
         ));
         break;

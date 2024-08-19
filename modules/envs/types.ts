@@ -27,7 +27,7 @@ const posixDirProvision = zod.object({
 
 export type PosixDirProvision = zod.infer<typeof posixDirProvision>;
 
-const dynamicPathVarProvisionTypes = [
+const dynamicPosixDirProvisionTypes = [
   "posix.execDir.dynamic",
   "posix.sharedLibDir.dynamic",
   "posix.headerDir.dynamic",
@@ -114,18 +114,20 @@ const envVarDynProvision = zod.object({
   taskKey: zod.string(),
 });
 
-const dynamicPathVarProvision = zod.object({
-  ty: zod.enum(dynamicPathVarProvisionTypes),
+const dynamicPosixDirProvision = zod.object({
+  ty: zod.enum(dynamicPosixDirProvisionTypes),
   taskKey: zod.string(),
 });
-export type DynamicPathVarProvision = zod.infer<typeof dynamicPathVarProvision>;
+export type DynamicPosixDirProvision = zod.infer<
+  typeof dynamicPosixDirProvision
+>;
 
 const validators = {
   provision,
   wellKnownProvision,
   envVarDynProvision,
   posixDirProvision,
-  dynamicPathVarProvision,
+  dynamicPosixDirProvision,
   envRecipe,
   envsModuleConfig,
   wellKnownEnvRecipe,
