@@ -74,6 +74,9 @@ export type EnvDefArgs = {
   inherit?: EnvParent;
   desc?: string;
   vars?: Record<string, string | number>;
+  execDirs?: string[];
+  sharedLibDirs?: string[];
+  headerDirs?: string[];
   /**
    * Task to execute when environment is activated.
    */
@@ -282,6 +285,21 @@ export class Ghjkfile {
     }
     if (args.vars) {
       env.vars(args.vars);
+    }
+    if (args.execDirs) {
+      for (const dir of args.execDirs) {
+        env.execDir(dir);
+      }
+    }
+    if (args.sharedLibDirs) {
+      for (const dir of args.sharedLibDirs) {
+        env.sharedLibDir(dir);
+      }
+    }
+    if (args.headerDirs) {
+      for (const dir of args.headerDirs) {
+        env.headerDir(dir);
+      }
     }
     if (args.onEnter) {
       env.onEnter(...args.onEnter);
@@ -667,7 +685,7 @@ export class Ghjkfile {
             );
           }),
           ...final.posixDirs,
-          ...final.dynamicPathVars,
+          ...final.dynamicPosixDirs,
           // env hooks
           ...hooks,
         ],
@@ -903,7 +921,7 @@ type EnvFinalizer = () => {
   vars: Record<string, string>;
   dynVars: Record<string, string>;
   posixDirs: Array<PosixDirProvision>;
-  dynamicPathVars: Array<DynamicPathVarProvision>;
+  dynamicPosixDirs: Array<DynamicPathVarProvision>;
   dynBinDirs: string[];
   desc?: string;
   onEnterHookTasks: string[];
@@ -968,7 +986,7 @@ export class EnvBuilder {
   #vars: Record<string, string | number> = {};
   #dynVars: Record<string, string> = {};
   #posixDirs: Array<PosixDirProvision> = [];
-  #dynamicPathVars: Array<DynamicPathVarProvision> = [];
+  #dynamicPosixDirs: Array<DynamicPathVarProvision> = [];
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -991,7 +1009,7 @@ export class EnvBuilder {
       ),
       dynVars: this.#dynVars,
       posixDirs: this.#posixDirs,
-      dynamicPathVars: this.#dynamicPathVars,
+      dynamicPosixDirs: this.#dynamicPosixDirs,
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -1072,7 +1090,7 @@ export class EnvBuilder {
    * Add a directory to the path environment variable
    * $PATH, $LD_LIBRARY_PATH, $INCLUDE_PATH, etc.
    */
-  pathVar(type: PosixDirProvisionType, val: string | DynamicPathVarFn) {
+  posixDir(type: PosixDirProvisionType, val: string | DynamicPathVarFn) {
     switch (typeof val) {
       case "string": {
         const prov = { ty: type, path: val };
@@ -1089,7 +1107,7 @@ export class EnvBuilder {
           fn: val,
         });
         const prov = { ty: type + ".dynamic", taskKey };
-        this.#dynamicPathVars.push(unwrapZodRes(
+        this.#dynamicPosixDirs.push(unwrapZodRes(
           envsValidators.dynamicPathVarProvision.safeParse(prov),
           prov,
         ));
@@ -1104,13 +1122,13 @@ export class EnvBuilder {
   }
 
   execDir(val: string | DynamicPathVarFn) {
-    return this.pathVar("posix.execDir", val);
+    return this.posixDir("posix.execDir", val);
   }
   sharedLibDir(val: string | DynamicPathVarFn) {
-    return this.pathVar("posix.sharedLibDir", val);
+    return this.posixDir("posix.sharedLibDir", val);
   }
   headerDir(val: string | DynamicPathVarFn) {
-    return this.pathVar("posix.headerDir", val);
+    return this.posixDir("posix.headerDir", val);
   }
 
   /**
