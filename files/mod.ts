@@ -37,8 +37,11 @@ import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
 import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
 import {
+  DynamicPathVarProvision,
   type EnvRecipe,
   type EnvsModuleConfig,
+  PosixDirProvision,
+  PosixDirProvisionType,
   type Provision,
   type WellKnownProvision,
 } from "../modules/envs/types.ts";
@@ -663,14 +666,8 @@ export class Ghjkfile {
               prov,
             );
           }),
-          ...final.binDirs.map((path) => {
-            const prov: WellKnownProvision = { ty: "posix.binDir", path };
-            return prov;
-          }),
-          ...final.dynBinDirs.map((taskKey) => {
-            const prov = { ty: "posix.binDirDyn", taskKey };
-            return prov;
-          }),
+          ...final.posixDirs,
+          ...final.dynamicPathVars,
           // env hooks
           ...hooks,
         ],
@@ -905,7 +902,8 @@ type EnvFinalizer = () => {
   inherit: string | string[] | boolean;
   vars: Record<string, string>;
   dynVars: Record<string, string>;
-  binDirs: string[];
+  posixDirs: Array<PosixDirProvision>;
+  dynamicPathVars: Array<DynamicPathVarProvision>;
   dynBinDirs: string[];
   desc?: string;
   onEnterHookTasks: string[];
@@ -920,7 +918,7 @@ export type DynEnvValue =
   | ((...params: Parameters<TaskFn>) => string | number)
   | ((...params: Parameters<TaskFn>) => Promise<string | number>);
 
-export type DynPathValue =
+export type DynamicPathVarFn =
   | ((...params: Parameters<TaskFn>) => string)
   | ((...params: Parameters<TaskFn>) => Promise<string>);
 
@@ -969,8 +967,8 @@ export class EnvBuilder {
   #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
   #dynVars: Record<string, string> = {};
-  #binDirs: string[] = [];
-  #dynBinDirs: string[] = [];
+  #posixDirs: Array<PosixDirProvision> = [];
+  #dynamicPathVars: Array<DynamicPathVarProvision> = [];
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -992,8 +990,8 @@ export class EnvBuilder {
         Object.entries(this.#vars).map(([key, val]) => [key, val.toString()]),
       ),
       dynVars: this.#dynVars,
-      binDirs: this.#binDirs,
-      dynBinDirs: this.#dynBinDirs,
+      posixDirs: this.#posixDirs,
+      dynamicPathVars: this.#dynamicPathVars,
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -1071,29 +1069,48 @@ export class EnvBuilder {
   }
 
   /**
-   * Add a directory to $PATH
+   * Add a directory to the path environment variable
+   * $PATH, $LD_LIBRARY_PATH, $INCLUDE_PATH, etc.
    */
-  binDir(path: string | DynPathValue) {
-    switch (typeof path) {
-      case "string":
-        // TODO: validate path
-        this.#binDirs.push(path);
+  pathVar(type: PosixDirProvisionType, val: string | DynamicPathVarFn) {
+    switch (typeof val) {
+      case "string": {
+        const prov = { ty: type, path: val };
+        this.#posixDirs.push(unwrapZodRes(
+          envsValidators.pathVarProvision.safeParse(prov),
+          prov,
+        ));
         break;
+      }
 
       case "function": {
         const taskKey = this.#file.addTask({
           ty: "denoFile@v1",
-          fn: path,
+          fn: val,
         });
-        this.#dynBinDirs.push(taskKey);
+        const prov = { ty: type + ".dynamic", taskKey };
+        this.#dynamicPathVars.push(unwrapZodRes(
+          envsValidators.dynamicPathVarProvision.safeParse(prov),
+          prov,
+        ));
         break;
       }
 
       default:
-        throw new Error(`type "${typeof path}" is not supported for path`);
+        throw new Error(`type "${typeof val}" is not supported for path`);
     }
 
     return this;
+  }
+
+  execDir(val: string | DynamicPathVarFn) {
+    return this.pathVar("posix.execDir", val);
+  }
+  sharedLibDir(val: string | DynamicPathVarFn) {
+    return this.pathVar("posix.sharedLibDir", val);
+  }
+  headerDir(val: string | DynamicPathVarFn) {
+    return this.pathVar("posix.headerDir", val);
   }
 
   /**
@@ -1120,7 +1137,7 @@ export class EnvBuilder {
     return this;
   }
 
-  use(
+  mixin(
     setup: (
       builder: EnvBuilder,
       ghjk: { task(args: DenoTaskDefArgs): void },

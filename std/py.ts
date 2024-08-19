@@ -36,7 +36,7 @@ export function pyEnv(
       return venvDir.toString();
     });
 
-    builder.binDir(($, { workingDir }) => {
+    builder.execDir(($, { workingDir }) => {
       const path = $.path(workingDir).join(dir).join("bin");
       return path.toString();
     });

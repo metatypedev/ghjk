@@ -4,12 +4,17 @@ import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
+  PosixDirProvisionType,
   Provision,
   ProvisionReducer,
   WellKnownEnvRecipeX,
   WellKnownProvision,
 } from "./types.ts";
-import { binPathDynTy, envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
+import {
+  envVarDynTy,
+  posixDirProvisionTypes,
+  wellKnownProvisionTypes,
+} from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<
@@ -37,10 +42,15 @@ export function getProvisionReducerStore(
     envVarDynTy,
     installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
   );
-  store?.set(
-    binPathDynTy,
-    installDynBinPathReducer(gcx) as ProvisionReducer<Provision, Provision>,
-  );
+  for (const ty of posixDirProvisionTypes) {
+    store?.set(
+      ty + ".dynamic",
+      installDynamicPathVarReducer(gcx, ty) as ProvisionReducer<
+        Provision,
+        Provision
+      >,
+    );
+  }
   return store;
 }
 
@@ -131,14 +141,16 @@ export function installDynEnvReducer(gcx: GhjkCtx) {
   };
 }
 
-export function installDynBinPathReducer(gcx: GhjkCtx) {
+export function installDynamicPathVarReducer(
+  gcx: GhjkCtx,
+  ty: PosixDirProvisionType,
+) {
   return async (provisions: Provision[]) => {
     const output = [];
     const badProvisions = [];
     const taskCtx = getTasksCtx(gcx);
 
     for (const provision of provisions) {
-      const ty = "posix.binDir";
       const key = provision.taskKey as string;
 
       const taskGraph = taskCtx.taskGraph;

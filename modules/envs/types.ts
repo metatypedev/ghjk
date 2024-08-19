@@ -12,6 +12,27 @@ const posixFileProvisionTypes = [
   "posix.headerFile",
 ] as const;
 
+export const posixDirProvisionTypes = [
+  "posix.execDir",
+  "posix.sharedLibDir",
+  "posix.headerDir",
+] as const;
+
+export type PosixDirProvisionType = typeof posixDirProvisionTypes[number];
+
+const posixDirProvision = zod.object({
+  ty: zod.enum(posixDirProvisionTypes),
+  path: absolutePath,
+});
+
+export type PosixDirProvision = zod.infer<typeof posixDirProvision>;
+
+const dynamicPathVarProvisionTypes = [
+  "posix.execDir.dynamic",
+  "posix.sharedLibDir.dynamic",
+  "posix.headerDir.dynamic",
+] as const;
+
 export const hookProvisionTypes = [
   "hook.onEnter.posixExec",
   "hook.onExit.posixExec",
@@ -22,13 +43,12 @@ export const installProvisionTypes = [
 ] as const;
 
 export const envVarDynTy = "posix.envVarDyn";
-export const binPathDynTy = "posix.binDirDyn";
 
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
-  "posix.binDir",
+  ...posixDirProvisionTypes,
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
   ...installProvisionTypes,
@@ -42,10 +62,12 @@ const wellKnownProvision = zod.discriminatedUnion(
       key: moduleValidators.envVarName,
       val: zod.string(),
     }),
-    zod.object({
-      ty: zod.literal(wellKnownProvisionTypes[1]),
-      path: absolutePath,
-    }),
+    ...posixDirProvisionTypes.map((ty) =>
+      zod.object({
+        ty: zod.literal(ty),
+        path: absolutePath,
+      })
+    ),
     ...hookProvisionTypes.map((ty) =>
       zod.object({
         ty: zod.literal(ty),
@@ -92,10 +114,18 @@ const envVarDynProvision = zod.object({
   taskKey: zod.string(),
 });
 
+const dynamicPathVarProvision = zod.object({
+  ty: zod.enum(dynamicPathVarProvisionTypes),
+  taskKey: zod.string(),
+});
+export type DynamicPathVarProvision = zod.infer<typeof dynamicPathVarProvision>;
+
 const validators = {
   provision,
   wellKnownProvision,
   envVarDynProvision,
+  posixDirProvision,
+  dynamicPathVarProvision,
   envRecipe,
   envsModuleConfig,
   wellKnownEnvRecipe,
