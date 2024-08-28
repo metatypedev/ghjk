@@ -47,6 +47,7 @@ import {
 } from "../modules/envs/types.ts";
 import envsValidators from "../modules/envs/types.ts";
 import modulesValidators from "../modules/types.ts";
+import { ParentEnvs } from "./MergedEnvs.ts";
 
 const validators = {
   envVars: zod.record(
@@ -139,6 +140,14 @@ export type DenoTaskDefArgs = TaskDefArgs & {
 
 type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 
+export type FinalizedEnvs = {
+  finalized: ReturnType<EnvFinalizer>;
+  installSetId?: string;
+  vars: Record<string, string>;
+  dynVars: Record<string, string>;
+  envHash: string;
+};
+
 export class Ghjkfile {
   #installSets = new Map<
     string,
@@ -149,15 +158,7 @@ export class Ghjkfile {
   #tasks = new Map<string, TaskDefTyped>();
   #bb = new Map<string, unknown>();
   #seenEnvs: Record<string, [EnvBuilder, EnvFinalizer]> = {};
-  #finalizedEnvs: Record<
-    string,
-    {
-      finalized: ReturnType<EnvFinalizer>;
-      installSetId?: string;
-      vars: Record<string, string>;
-      envHash: string;
-    }
-  > = {};
+  #finalizedEnvs: Record<string, FinalizedEnvs> = {};
 
   /* dump() {
     return {
@@ -390,6 +391,7 @@ export class Ghjkfile {
       };
       return config;
     } catch (cause) {
+      logger.error(`error constructing config for serialization`, { cause });
       throw new Error(`error constructing config for serialization`, { cause });
     }
   }
@@ -414,75 +416,27 @@ export class Ghjkfile {
   }
 
   #mergeEnvs(keys: string[], childName: string) {
-    const mergedVars = {} as Record<string, [string, string] | undefined>;
-    let mergedInstalls = new Set<string>();
-    const mergedOnEnterHooks = [];
-    const mergedOnExitHooks = [];
-    const mergedAllowedBuildDeps = {} as Record<
-      string,
-      [string, string] | undefined
-    >;
+    const parentEnvs = new ParentEnvs(childName);
     for (const parentName of keys) {
-      const { vars, installSetId, finalized } = this.#finalizedEnvs[parentName];
-      mergedOnEnterHooks.push(...finalized.onEnterHookTasks);
-      mergedOnExitHooks.push(...finalized.onExitHookTasks);
-      for (const [key, val] of Object.entries(vars)) {
-        const conflict = mergedVars[key];
-        // if parents share a parent themselves, they will have
-        // the same item so it's not exactly a conflict
-        if (conflict && val !== conflict[0]) {
-          logger.warn(
-            "environment variable conflict on multiple env inheritance, parent2 was chosen",
-            {
-              child: childName,
-              parent1: conflict[1],
-              parent2: parentName,
-              variable: key,
-            },
-          );
-        }
-        mergedVars[key] = [val, parentName];
-      }
-      if (!installSetId) {
-        continue;
-      }
-      const set = this.#installSets.get(installSetId)!;
-      mergedInstalls = mergedInstalls.union(set.installs);
-      for (
-        const [key, val] of Object.entries(set.allowedBuildDeps)
-      ) {
-        const conflict = mergedAllowedBuildDeps[key];
-        if (conflict && !deep_eql(val, conflict[0])) {
-          logger.warn(
-            "allowedBuildDeps conflict on multiple env inheritance, parent2 was chosen",
-            {
-              child: childName,
-              parent1: conflict[1],
-              parent2: parentName,
-              depPort: key,
-            },
-          );
-        }
-        mergedAllowedBuildDeps[key] = [val, parentName];
+      const { installSetId, vars, dynVars, finalized } =
+        this.#finalizedEnvs[parentName];
+      parentEnvs.addHooks(
+        finalized.onEnterHookTasks,
+        finalized.onExitHookTasks,
+      );
+      parentEnvs.mergeVars(parentName, vars);
+      parentEnvs.mergeDynVars(parentName, dynVars);
+      if (installSetId) {
+        const set = this.#installSets.get(installSetId)!;
+        parentEnvs.mergeInstalls(
+          parentName,
+          set.installs,
+          set.allowedBuildDeps,
+        );
       }
     }
-    const outInstallSet = {
-      installs: mergedInstalls,
-      allowedBuildDeps: Object.fromEntries(
-        Object.entries(mergedAllowedBuildDeps).map((
-          [key, val],
-        ) => [key, val![0]]),
-      ),
-    };
-    const outVars = Object.fromEntries(
-      Object.entries(mergedVars).map(([key, val]) => [key, val![0]]),
-    );
-    return {
-      installSet: outInstallSet,
-      onEnterHookTasks: mergedOnEnterHooks,
-      onExitHookTasks: mergedOnExitHooks,
-      vars: outVars,
-    };
+
+    return parentEnvs.finalize();
   }
 
   #resolveEnvBases(
@@ -592,6 +546,10 @@ export class Ghjkfile {
         ...base.vars,
         ...final.vars,
       };
+      const finalDynVars = {
+        ...base.dynVars,
+        ...final.dynVars,
+      };
 
       let finalInstallSetId: string | undefined;
       {
@@ -675,7 +633,7 @@ export class Ghjkfile {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
-          ...Object.entries(final.dynVars).map((
+          ...Object.entries(finalDynVars).map((
             [key, val],
           ) => {
             const prov = { ty: "posix.envVarDyn", key, taskKey: val };
@@ -704,6 +662,7 @@ export class Ghjkfile {
       this.#finalizedEnvs[final.key] = {
         installSetId: finalInstallSetId,
         vars: finalVars,
+        dynVars: finalDynVars,
         finalized: final,
         envHash,
       };

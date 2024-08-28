@@ -107,7 +107,8 @@ env("python")
     ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
     ports.tar(),
     ports.zstd(),
-  );
+  )
+  .mixin(pyEnv());
 
 env("dev")
   // we can inherit from many envs
@@ -123,4 +124,4 @@ env("dev")
   }));
 
 env("venv")
-  .mixin(pyEnv({ install: { version: "3.8.18", releaseTag: "20240224" } }));
+  .inherit(["python"]);

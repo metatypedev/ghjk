@@ -25,7 +25,7 @@ export function pyEnv(
     }
     if (create) {
       builder.onEnter(ghjk.task({
-        name: "activate-py-venv",
+        name: "create-py-venv",
         fn: async ($, { workingDir }) => {
           const venvDir = $.path(workingDir).join(dir);
           if (!(await venvDir.exists())) {
