@@ -1,4 +1,8 @@
 import { deep_eql } from "../deps/common.ts";
+import {
+  DynamicPosixDirProvision,
+  PosixDirProvision,
+} from "../modules/envs/types.ts";
 import getLogger from "../utils/logger.ts";
 
 const logger = getLogger(import.meta);
@@ -10,6 +14,8 @@ type Var =
 export class ParentEnvs {
   #childName: string;
   #vars: Map<string, Var> = new Map();
+  #posixDirs: Array<PosixDirProvision> = [];
+  #dynamicPosixDirs: Array<DynamicPosixDirProvision> = [];
   #installs: Set<string> = new Set();
   #onEnterHooks: string[] = [];
   #onExitHooks: string[] = [];
@@ -68,6 +74,14 @@ export class ParentEnvs {
     }
   }
 
+  mergePosixDirs(
+    posixDirs: Array<PosixDirProvision>,
+    dynamicPosixDirs: Array<DynamicPosixDirProvision>,
+  ) {
+    this.#posixDirs.push(...posixDirs);
+    this.#dynamicPosixDirs.push(...dynamicPosixDirs);
+  }
+
   mergeInstalls(
     parentName: string,
     installs: Set<string>,
@@ -118,6 +132,8 @@ export class ParentEnvs {
       onExitHookTasks: this.#onExitHooks,
       vars,
       dynVars,
+      posixDirs: this.#posixDirs,
+      dynamicPosixDirs: this.#dynamicPosixDirs,
     };
   }
 }

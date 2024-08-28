@@ -426,6 +426,10 @@ export class Ghjkfile {
       );
       parentEnvs.mergeVars(parentName, vars);
       parentEnvs.mergeDynVars(parentName, dynVars);
+      parentEnvs.mergePosixDirs(
+        finalized.posixDirs,
+        finalized.dynamicPosixDirs,
+      );
       if (installSetId) {
         const set = this.#installSets.get(installSetId)!;
         parentEnvs.mergeInstalls(
@@ -642,7 +646,9 @@ export class Ghjkfile {
               prov,
             );
           }),
+          ...base.posixDirs,
           ...final.posixDirs,
+          ...base.dynamicPosixDirs,
           ...final.dynamicPosixDirs,
           // env hooks
           ...hooks,
