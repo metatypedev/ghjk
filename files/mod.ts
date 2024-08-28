@@ -4,7 +4,7 @@
 // here to make the resulting config reasonably stable
 // across repeated serializaitons. No random identifiers.
 
-import { deep_eql, multibase32, multibase64, zod } from "../deps/common.ts";
+import { multibase32, multibase64, zod } from "../deps/common.ts";
 
 // ports specific imports
 import portsValidators from "../modules/ports/types.ts";
