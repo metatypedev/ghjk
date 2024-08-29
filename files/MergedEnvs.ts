@@ -78,6 +78,7 @@ export class ParentEnvs {
     posixDirs: Array<PosixDirProvision>,
     dynamicPosixDirs: Array<DynamicPosixDirProvision>,
   ) {
+    logger.debug("merge posix dirs", { posixDirs, dynamicPosixDirs });
     this.#posixDirs.push(...posixDirs);
     this.#dynamicPosixDirs.push(...dynamicPosixDirs);
   }

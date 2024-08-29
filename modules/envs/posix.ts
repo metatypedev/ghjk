@@ -22,6 +22,7 @@ export async function cookPosixEnv(
   },
 ) {
   logger.debug("cooking env", envKey, { envDir });
+  logger.debug("recipe", recipe);
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment

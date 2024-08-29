@@ -1,4 +1,5 @@
 import { unwrapZodRes } from "../../port.ts";
+import logger from "../../utils/logger.ts";
 import { execTask } from "../tasks/exec.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
@@ -66,6 +67,7 @@ export async function reduceStrangeProvisions(
   const reducerStore = getProvisionReducerStore(gcx);
   // Replace by `Object.groupBy` once the types for it are fixed
   const bins = {} as Record<string, Provision[]>;
+  logger(import.meta).debug("provides", env.provides);
   for (const item of env.provides) {
     let bin = bins[item.ty];
     if (!bin) {

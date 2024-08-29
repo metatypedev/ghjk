@@ -544,6 +544,7 @@ export class Ghjkfile {
       const final = all[item];
 
       const base = this.#mergeEnvs(final.envBaseResolved ?? [], final.key);
+      logger.debug("base", final.key, base);
       // console.log({ parents: final.envBaseResolved, child: final.key, base });
 
       const finalVars = {
@@ -646,10 +647,10 @@ export class Ghjkfile {
               prov,
             );
           }),
-          ...base.posixDirs,
           ...final.posixDirs,
-          ...base.dynamicPosixDirs,
+          ...base.posixDirs,
           ...final.dynamicPosixDirs,
+          ...base.dynamicPosixDirs,
           // env hooks
           ...hooks,
         ],
