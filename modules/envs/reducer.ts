@@ -28,13 +28,9 @@ export type ProvisionReducerStore = Map<
  * environment provisions, {@link ProvisionReducer}s can be registered
  * here.
  */
-export function getProvisionReducerStore(
-  gcx: GhjkCtx,
-) {
+export function getProvisionReducerStore(gcx: GhjkCtx) {
   const id = "provisionReducerStore";
-  let store = gcx.blackboard.get(id) as
-    | ProvisionReducerStore
-    | undefined;
+  let store = gcx.blackboard.get(id) as ProvisionReducerStore | undefined;
   if (!store) {
     store = new Map();
     gcx.blackboard.set(id, store);
@@ -60,14 +56,10 @@ export function getProvisionReducerStore(
  * {@link WellKnownProvision}, looks for reducers in
  * {@link ProvisionReducer} to convert it to one.
  */
-export async function reduceStrangeProvisions(
-  gcx: GhjkCtx,
-  env: EnvRecipeX,
-) {
+export async function reduceStrangeProvisions(gcx: GhjkCtx, env: EnvRecipeX) {
   const reducerStore = getProvisionReducerStore(gcx);
   // Replace by `Object.groupBy` once the types for it are fixed
   const bins = {} as Record<string, Provision[]>;
-  logger(import.meta).debug("provides", env.provides);
   for (const item of env.provides) {
     let bin = bins[item.ty];
     if (!bin) {
@@ -97,7 +89,7 @@ export async function reduceStrangeProvisions(
           validators.wellKnownProvision.safeParse(prov),
           { prov },
           `error parsing reduced provision`,
-        )
+        ),
       ),
     );
   }
@@ -128,7 +120,7 @@ export function installDynEnvReducer(gcx: GhjkCtx) {
       if (targetKey) {
         // console.log("key", key, " maps to target ", targetKey);
         const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
-        output.push({ ...provision, ty, val: results[key] as any ?? "" });
+        output.push({ ...provision, ty, val: (results[key] as any) ?? "" });
       } else {
         badProvisions.push(provision);
       }
@@ -158,8 +150,9 @@ export function installDynamicPathVarReducer(
       const taskGraph = taskCtx.taskGraph;
       const taskConf = taskCtx.config;
 
-      const targetKey = Object.entries(taskConf.tasks)
-        .find(([_, task]) => task.key === key)?.[0];
+      const targetKey = Object.entries(taskConf.tasks).find(
+        ([_, task]) => task.key === key,
+      )?.[0];
 
       if (targetKey) {
         const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);

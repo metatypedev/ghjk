@@ -12,17 +12,21 @@ import getLogger from "../../utils/logger.ts";
 
 const logger = getLogger(import.meta);
 
-export async function cookPosixEnv(
-  { gcx, recipe, envKey, envDir, createShellLoaders = false }: {
-    gcx: GhjkCtx;
-    recipe: EnvRecipeX;
-    envKey: string;
-    envDir: string;
-    createShellLoaders?: boolean;
-  },
-) {
+export async function cookPosixEnv({
+  gcx,
+  recipe,
+  envKey,
+  envDir,
+  createShellLoaders = false,
+}: {
+  gcx: GhjkCtx;
+  recipe: EnvRecipeX;
+  envKey: string;
+  envDir: string;
+  createShellLoaders?: boolean;
+}) {
   logger.debug("cooking env", envKey, { envDir });
-  logger.debug("recipe", recipe);
+  // logger.debug("recipe", recipe);
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
@@ -50,76 +54,69 @@ export async function cookPosixEnv(
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
-  await Promise.all(reducedRecipe.provides.map((item) => {
-    if (!wellKnownProvisionTypes.includes(item.ty)) {
-      return Promise.resolve();
-    }
+  await Promise.all(
+    reducedRecipe.provides.map((item) => {
+      if (!wellKnownProvisionTypes.includes(item.ty)) {
+        return Promise.resolve();
+      }
 
-    const wellKnownProv = item as WellKnownProvision;
-    switch (wellKnownProv.ty) {
-      case "posix.exec":
-        binPaths.push(wellKnownProv.absolutePath);
-        break;
-      case "posix.sharedLib":
-        libPaths.push(wellKnownProv.absolutePath);
-        break;
-      case "posix.headerFile":
-        includePaths.push(wellKnownProv.absolutePath);
-        break;
-      // case "posix.envVarDyn":
-      case "posix.envVar":
-        if (vars[wellKnownProv.key]) {
-          throw new Error(
-            `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
-              vars[wellKnownProv.key]
-            }" and "${wellKnownProv.val}"`,
+      const wellKnownProv = item as WellKnownProvision;
+      switch (wellKnownProv.ty) {
+        case "posix.exec":
+          binPaths.push(wellKnownProv.absolutePath);
+          break;
+        case "posix.sharedLib":
+          libPaths.push(wellKnownProv.absolutePath);
+          break;
+        case "posix.headerFile":
+          includePaths.push(wellKnownProv.absolutePath);
+          break;
+        // case "posix.envVarDyn":
+        case "posix.envVar":
+          if (vars[wellKnownProv.key]) {
+            throw new Error(
+              `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
+                vars[wellKnownProv.key]
+              }" and "${wellKnownProv.val}"`,
+            );
+          }
+          vars[wellKnownProv.key] = wellKnownProv.val;
+          // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
+          break;
+        case "posix.execDir":
+          execDirs.push(wellKnownProv.path);
+          break;
+        case "posix.sharedLibDir":
+          sharedLibDirs.push(wellKnownProv.path);
+          break;
+        case "posix.headerDir":
+          headerDirs.push(wellKnownProv.path);
+          break;
+        case "hook.onEnter.posixExec":
+          onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
+          break;
+        case "hook.onExit.posixExec":
+          onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
+          break;
+        case "ghjk.ports.Install":
+          // do nothing
+          break;
+        default:
+          throw Error(
+            `unsupported provision type: ${(wellKnownProv as any).ty}`,
           );
-        }
-        vars[wellKnownProv.key] = wellKnownProv.val;
-        // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
-        break;
-      case "posix.execDir":
-        execDirs.push(wellKnownProv.path);
-        break;
-      case "posix.sharedLibDir":
-        sharedLibDirs.push(wellKnownProv.path);
-        break;
-      case "posix.headerDir":
-        headerDirs.push(wellKnownProv.path);
-        break;
-      case "hook.onEnter.posixExec":
-        onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
-        break;
-      case "hook.onExit.posixExec":
-        onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
-        break;
-      case "ghjk.ports.Install":
-        // do nothing
-        break;
-      default:
-        throw Error(
-          `unsupported provision type: ${(wellKnownProv as any).ty}`,
-        );
-    }
-  }));
-  void await Promise.all([
+      }
+    }),
+  );
+  void (await Promise.all([
     // bin shims
-    await shimLinkPaths(
-      binPaths,
-      binShimDir,
-    ),
+    await shimLinkPaths(binPaths, binShimDir),
     // lib shims
-    await shimLinkPaths(
-      libPaths,
-      libShimDir,
-    ),
+    await shimLinkPaths(libPaths, libShimDir),
     // include shims
-    await shimLinkPaths(
-      includePaths,
-      includeShimDir,
-    ),
+    await shimLinkPaths(includePaths, includeShimDir),
     $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
-  ]);
+  ]));
   // FIXME: prevent malicious env manipulations
   let LD_LIBRARY_ENV: string;
   switch (Deno.build.os) {
@@ -162,10 +159,7 @@ export async function cookPosixEnv(
 }
 
 /// This expands globs found in the targetPaths
-async function shimLinkPaths(
-  targetPaths: string[],
-  shimDir: Path,
-) {
+async function shimLinkPaths(targetPaths: string[], shimDir: Path) {
   // map of filename to shimPath
   const shims: Record<string, string> = {};
   // a work sack to append to incase there are globs expanded
@@ -174,8 +168,9 @@ async function shimLinkPaths(
     const file = foundTargetPaths.pop()!;
     if (std_path.isGlob(file)) {
       foundTargetPaths.push(
-        ...(await Array.fromAsync(std_fs.expandGlob(file)))
-          .map((entry) => entry.path),
+        ...(await Array.fromAsync(std_fs.expandGlob(file))).map(
+          (entry) => entry.path,
+        ),
       );
       continue;
     }
@@ -221,9 +216,7 @@ async function writeActivators(
   const shareDirVar = "_ghjk_share_dir";
   pathVars = {
     ...Object.fromEntries(
-      Object.entries(pathVars).map((
-        [key, val],
-      ) => [
+      Object.entries(pathVars).map(([key, val]) => [
         key,
         val
           .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
@@ -236,11 +229,12 @@ async function writeActivators(
   const onEnterHooksEscaped = onEnterHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
       .join(" ")
-      .replaceAll("'", "'\\''")
+      .replaceAll("'", "'\\''"),
   );
   const onExitHooksEscaped = onExitHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
-      .join(" ").replaceAll("'", "'\\''")
+      .join(" ")
+      .replaceAll("'", "'\\''"),
   );
 
   // ghjk.sh sets the DENO_DIR so we can usually
@@ -270,9 +264,9 @@ async function writeActivators(
         // by defaulting to a value that's guranteed to
         // be differeint than `key`
         // TODO: avoid invalid key values elsewhere
-        const safeComparisionKey = `$\{${key}:-_${
-          val.replace(/['"]/g, "").slice(0, 2)
-        }}`;
+        const safeComparisionKey = `$\{${key}:-_${val
+          .replace(/['"]/g, "")
+          .slice(0, 2)}}`;
         return [
           // we only restore the old $KEY value at cleanup if value of $KEY
           // is the one set by the activate script
@@ -283,13 +277,13 @@ async function writeActivators(
           // string (that's why we "escaped single quote" the value)
           // NOTE: the addition sign at the end
           `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"${safeComparisionKey}\" = '\\''${safeVal}'\\'' ] && '` +
-          // we want to capture the old $key value here so we wrap those
-          // with double quotes but the rest is in single quotes
-          // within the value of $key
-          // i.e. export KEY='OLD $VALUE OF KEY'
-          // but $VALUE won't be expanded when the cleanup actually runs
-          // we also unset the key if it wasn't previously set
-          `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
+            // we want to capture the old $key value here so we wrap those
+            // with double quotes but the rest is in single quotes
+            // within the value of $key
+            // i.e. export KEY='OLD $VALUE OF KEY'
+            // but $VALUE won't be expanded when the cleanup actually runs
+            // we also unset the key if it wasn't previously set
+            `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
           `export ${key}='${safeVal}';`,
           ``,
         ];
@@ -357,7 +351,7 @@ async function writeActivators(
         // - we don't have to deal with 'set -o nounset'
         return [
           `set --global --append GHJK_CLEANUP_FISH 'test "$${key}" = \\'${safeVal}\\'; and '` +
-          `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
+            `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
           `set --global --export ${key} '${val}';`,
           ``,
         ];
@@ -384,8 +378,8 @@ async function writeActivators(
       ,
       ``,
       `    # on exit hooks`,
-      ...onExitHooksEscaped.map((cmd) =>
-        `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`
+      ...onExitHooksEscaped.map(
+        (cmd) => `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`,
       ),
       `end`,
     ],

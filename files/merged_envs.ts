@@ -4,12 +4,30 @@ import {
   PosixDirProvision,
 } from "../modules/envs/types.ts";
 import getLogger from "../utils/logger.ts";
+import { Final } from "./cookbook.ts";
 
 const logger = getLogger(import.meta);
 
 type Var =
   | { kind: "static"; value: string; parentName: string }
   | { kind: "dynamic"; taskId: string; parentName: string };
+
+export interface InstallSet {
+  installs: Set<string>;
+  allowedBuildDeps: Record<string, string>;
+}
+
+export interface MergedEnvs {
+  desc: string | undefined;
+  name: string | undefined;
+  installSet: InstallSet;
+  onEnterHookTasks: string[];
+  onExitHookTasks: string[];
+  vars: Record<string, string>;
+  dynVars: Record<string, string>;
+  posixDirs: PosixDirProvision[];
+  dynamicPosixDirs: DynamicPosixDirProvision[];
+}
 
 export class ParentEnvs {
   #childName: string;
@@ -35,7 +53,8 @@ export class ParentEnvs {
       const conflict = this.#vars.get(key);
 
       if (
-        conflict && !(conflict.kind === "static" && conflict.value === value)
+        conflict &&
+        !(conflict.kind === "static" && conflict.value === value)
       ) {
         logger.warn(
           "environment variable conflict on multiple env inheritance, parent 2 was chosen",
@@ -57,7 +76,8 @@ export class ParentEnvs {
       const conflict = this.#vars.get(key);
 
       if (
-        conflict && !(conflict.kind === "dynamic" && conflict.taskId === taskId)
+        conflict &&
+        !(conflict.kind === "dynamic" && conflict.taskId === taskId)
       ) {
         logger.warn(
           "dynamic environment variable conflict on multiple env inheritance, parent 2 was chosen",
@@ -108,7 +128,7 @@ export class ParentEnvs {
     }
   }
 
-  finalize() {
+  withChild(child: Final): MergedEnvs {
     const vars: Record<string, string> = {};
     const dynVars: Record<string, string> = {};
 
@@ -121,20 +141,27 @@ export class ParentEnvs {
     }
 
     return {
+      desc: child.desc,
+      name: child.name,
+      // installSets are not merged here...
       installSet: {
         installs: this.#installs,
         allowedBuildDeps: Object.fromEntries(
-          [...this.#allowedBuildDeps.entries()].map((
-            [key, [val]],
-          ) => [key, val]),
+          [...this.#allowedBuildDeps.entries()].map(([key, [val]]) => [
+            key,
+            val,
+          ]),
         ),
       },
-      onEnterHookTasks: this.#onEnterHooks,
-      onExitHookTasks: this.#onExitHooks,
-      vars,
-      dynVars,
-      posixDirs: this.#posixDirs,
-      dynamicPosixDirs: this.#dynamicPosixDirs,
+      onEnterHookTasks: [...this.#onEnterHooks, ...child.onEnterHookTasks],
+      onExitHookTasks: [...this.#onExitHooks, ...child.onExitHookTasks],
+      vars: { ...vars, ...child.vars },
+      dynVars: { ...dynVars, ...child.dynVars },
+      posixDirs: [...child.posixDirs, ...this.#posixDirs],
+      dynamicPosixDirs: [
+        ...child.dynamicPosixDirs,
+        ...this.#dynamicPosixDirs,
+      ],
     };
   }
 }
