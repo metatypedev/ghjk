@@ -229,12 +229,12 @@ async function writeActivators(
   const onEnterHooksEscaped = onEnterHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
       .join(" ")
-      .replaceAll("'", "'\\''"),
+      .replaceAll("'", "'\\''")
   );
   const onExitHooksEscaped = onExitHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
       .join(" ")
-      .replaceAll("'", "'\\''"),
+      .replaceAll("'", "'\\''")
   );
 
   // ghjk.sh sets the DENO_DIR so we can usually
@@ -264,9 +264,11 @@ async function writeActivators(
         // by defaulting to a value that's guranteed to
         // be differeint than `key`
         // TODO: avoid invalid key values elsewhere
-        const safeComparisionKey = `$\{${key}:-_${val
-          .replace(/['"]/g, "")
-          .slice(0, 2)}}`;
+        const safeComparisionKey = `$\{${key}:-_${
+          val
+            .replace(/['"]/g, "")
+            .slice(0, 2)
+        }}`;
         return [
           // we only restore the old $KEY value at cleanup if value of $KEY
           // is the one set by the activate script
@@ -277,13 +279,13 @@ async function writeActivators(
           // string (that's why we "escaped single quote" the value)
           // NOTE: the addition sign at the end
           `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"${safeComparisionKey}\" = '\\''${safeVal}'\\'' ] && '` +
-            // we want to capture the old $key value here so we wrap those
-            // with double quotes but the rest is in single quotes
-            // within the value of $key
-            // i.e. export KEY='OLD $VALUE OF KEY'
-            // but $VALUE won't be expanded when the cleanup actually runs
-            // we also unset the key if it wasn't previously set
-            `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
+          // we want to capture the old $key value here so we wrap those
+          // with double quotes but the rest is in single quotes
+          // within the value of $key
+          // i.e. export KEY='OLD $VALUE OF KEY'
+          // but $VALUE won't be expanded when the cleanup actually runs
+          // we also unset the key if it wasn't previously set
+          `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
           `export ${key}='${safeVal}';`,
           ``,
         ];
@@ -351,7 +353,7 @@ async function writeActivators(
         // - we don't have to deal with 'set -o nounset'
         return [
           `set --global --append GHJK_CLEANUP_FISH 'test "$${key}" = \\'${safeVal}\\'; and '` +
-            `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
+          `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
           `set --global --export ${key} '${val}';`,
           ``,
         ];

@@ -1,5 +1,4 @@
 import { unwrapZodRes } from "../../port.ts";
-import logger from "../../utils/logger.ts";
 import { execTask } from "../tasks/exec.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
@@ -89,7 +88,7 @@ export async function reduceStrangeProvisions(gcx: GhjkCtx, env: EnvRecipeX) {
           validators.wellKnownProvision.safeParse(prov),
           { prov },
           `error parsing reduced provision`,
-        ),
+        )
       ),
     );
   }
