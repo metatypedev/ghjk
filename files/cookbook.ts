@@ -13,10 +13,13 @@ import {
 import { InstallSetRefProvision, unwrapZodRes } from "../port.ts";
 import { InstallSet, MergedEnvs } from "./merged_envs.ts";
 import envsValidators from "../modules/envs/types.ts";
+import getLogger from "../utils/logger.ts";
 
 export type Final = ReturnType<EnvFinalizer> & {
   envBaseResolved: null | string[];
 };
+
+const logger = getLogger(import.meta);
 
 interface MergedEntries {
   vars: Record<string, string>;
@@ -55,11 +58,11 @@ export class Cookbook {
     this.finalizedEnvs[final.key] = {
       installSetId,
       finalized: final,
-      vars: merged.vars,
-      dynVars: merged.dynVars,
+      merged,
       envHash: hash,
     };
 
+    logger.debug("registering env", { key: final.key, name: final.name, hash });
     this.#moduleConfig.envs[hash] = recipe;
     if (final.name) {
       this.#moduleConfig.envsNamed[final.name] = hash;

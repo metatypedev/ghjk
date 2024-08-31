@@ -11,7 +11,6 @@ import portsValidators from "../modules/ports/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigFat,
-  InstallSetRefProvision,
   PortsModuleConfigHashed,
 } from "../modules/ports/types.ts";
 import getLogger from "../utils/logger.ts";
@@ -38,7 +37,6 @@ import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
 import {
   DynamicPosixDirProvision,
-  type EnvRecipe,
   type EnvsModuleConfig,
   PosixDirProvision,
   PosixDirProvisionType,
@@ -47,7 +45,7 @@ import {
 } from "../modules/envs/types.ts";
 import envsValidators from "../modules/envs/types.ts";
 import modulesValidators from "../modules/types.ts";
-import { InstallSet, ParentEnvs } from "./merged_envs.ts";
+import { InstallSet, MergedEnvs, ParentEnvs } from "./merged_envs.ts";
 import { Cookbook, Final } from "./cookbook.ts";
 
 const validators = {
@@ -144,8 +142,7 @@ export type TaskDefTyped = DenoTaskDefArgs & { ty: "denoFile@v1" };
 export type FinalizedEnv = {
   finalized: ReturnType<EnvFinalizer>;
   installSetId?: string;
-  vars: Record<string, string>;
-  dynVars: Record<string, string>;
+  merged: MergedEnvs;
   envHash: string;
 };
 
@@ -413,22 +410,21 @@ export class Ghjkfile {
 
   #mergeEnvs(final: Final) {
     const parents = final.envBaseResolved ?? [];
+    logger.debug("merging envs", { base: parents, child: final.key });
     const childName = final.key;
-    logger.debug({ childName, parents });
     const parentEnvs = new ParentEnvs(childName);
     for (const parentName of parents) {
-      logger.debug("finalized envs", this.#finalizedEnvs[parentName]);
-      const { installSetId, vars, dynVars, finalized } =
-        this.#finalizedEnvs[parentName];
+      const { installSetId, merged: base } = this.#finalizedEnvs[parentName];
+      // FIXME unique??
       parentEnvs.addHooks(
-        finalized.onEnterHookTasks,
-        finalized.onExitHookTasks,
+        base.onEnterHookTasks,
+        base.onExitHookTasks,
       );
-      parentEnvs.mergeVars(parentName, vars);
-      parentEnvs.mergeDynVars(parentName, dynVars);
+      parentEnvs.mergeVars(parentName, base.vars);
+      parentEnvs.mergeDynVars(parentName, base.dynVars);
       parentEnvs.mergePosixDirs(
-        finalized.posixDirs,
-        finalized.dynamicPosixDirs,
+        base.posixDirs,
+        base.dynamicPosixDirs,
       );
       if (installSetId) {
         const set = this.#installSets.get(installSetId)!;
@@ -508,7 +504,6 @@ export class Ghjkfile {
       )
     ) {
       const final = finalizer();
-      logger.debug("seen env", _key, final.key);
 
       const envBaseResolved = this.#resolveEnvBases(
         final.inherit,
@@ -547,7 +542,6 @@ export class Ghjkfile {
       const item = workingSet.pop()!;
       const final = all[item];
 
-      logger.debug("base", final.envBaseResolved);
       const mergedEnvs = this.#mergeEnvs(final);
 
       cookbook.registerEnv(final, mergedEnvs);
