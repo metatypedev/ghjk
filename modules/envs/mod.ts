@@ -394,7 +394,7 @@ async function activateEnv(envKey: string) {
     const shell = await detectShellPath();
     if (!shell) {
       throw new Error(
-        "unable to detct shell in use. Use `--shell` flag to explicitly pass shell program.",
+        "unable to detect shell in use. Use `--shell` flag to explicitly pass shell program.",
       );
     }
     // FIXME: the ghjk process will be around and consumer resources

@@ -12,6 +12,27 @@ const posixFileProvisionTypes = [
   "posix.headerFile",
 ] as const;
 
+export const posixDirProvisionTypes = [
+  "posix.execDir",
+  "posix.sharedLibDir",
+  "posix.headerDir",
+] as const;
+
+export type PosixDirProvisionType = typeof posixDirProvisionTypes[number];
+
+const posixDirProvision = zod.object({
+  ty: zod.enum(posixDirProvisionTypes),
+  path: absolutePath,
+});
+
+export type PosixDirProvision = zod.infer<typeof posixDirProvision>;
+
+const dynamicPosixDirProvisionTypes = [
+  "posix.execDir.dynamic",
+  "posix.sharedLibDir.dynamic",
+  "posix.headerDir.dynamic",
+] as const;
+
 export const hookProvisionTypes = [
   "hook.onEnter.posixExec",
   "hook.onExit.posixExec",
@@ -27,6 +48,7 @@ export const envVarDynTy = "posix.envVarDyn";
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
   "posix.envVar",
+  ...posixDirProvisionTypes,
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
   ...installProvisionTypes,
@@ -40,6 +62,12 @@ const wellKnownProvision = zod.discriminatedUnion(
       key: moduleValidators.envVarName,
       val: zod.string(),
     }),
+    ...posixDirProvisionTypes.map((ty) =>
+      zod.object({
+        ty: zod.literal(ty),
+        path: absolutePath,
+      })
+    ),
     ...hookProvisionTypes.map((ty) =>
       zod.object({
         ty: zod.literal(ty),
@@ -86,10 +114,20 @@ const envVarDynProvision = zod.object({
   taskKey: zod.string(),
 });
 
+const dynamicPosixDirProvision = zod.object({
+  ty: zod.enum(dynamicPosixDirProvisionTypes),
+  taskKey: zod.string(),
+});
+export type DynamicPosixDirProvision = zod.infer<
+  typeof dynamicPosixDirProvision
+>;
+
 const validators = {
   provision,
   wellKnownProvision,
   envVarDynProvision,
+  posixDirProvision,
+  dynamicPosixDirProvision,
   envRecipe,
   envsModuleConfig,
   wellKnownEnvRecipe,

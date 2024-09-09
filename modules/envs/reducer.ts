@@ -4,12 +4,17 @@ import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
   EnvRecipeX,
+  PosixDirProvisionType,
   Provision,
   ProvisionReducer,
   WellKnownEnvRecipeX,
   WellKnownProvision,
 } from "./types.ts";
-import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
+import {
+  envVarDynTy,
+  posixDirProvisionTypes,
+  wellKnownProvisionTypes,
+} from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<
@@ -22,13 +27,9 @@ export type ProvisionReducerStore = Map<
  * environment provisions, {@link ProvisionReducer}s can be registered
  * here.
  */
-export function getProvisionReducerStore(
-  gcx: GhjkCtx,
-) {
+export function getProvisionReducerStore(gcx: GhjkCtx) {
   const id = "provisionReducerStore";
-  let store = gcx.blackboard.get(id) as
-    | ProvisionReducerStore
-    | undefined;
+  let store = gcx.blackboard.get(id) as ProvisionReducerStore | undefined;
   if (!store) {
     store = new Map();
     gcx.blackboard.set(id, store);
@@ -37,6 +38,15 @@ export function getProvisionReducerStore(
     envVarDynTy,
     installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
   );
+  for (const ty of posixDirProvisionTypes) {
+    store?.set(
+      ty + ".dynamic",
+      installDynamicPathVarReducer(gcx, ty) as ProvisionReducer<
+        Provision,
+        Provision
+      >,
+    );
+  }
   return store;
 }
 
@@ -45,10 +55,7 @@ export function getProvisionReducerStore(
  * {@link WellKnownProvision}, looks for reducers in
  * {@link ProvisionReducer} to convert it to one.
  */
-export async function reduceStrangeProvisions(
-  gcx: GhjkCtx,
-  env: EnvRecipeX,
-) {
+export async function reduceStrangeProvisions(gcx: GhjkCtx, env: EnvRecipeX) {
   const reducerStore = getProvisionReducerStore(gcx);
   // Replace by `Object.groupBy` once the types for it are fixed
   const bins = {} as Record<string, Provision[]>;
@@ -112,7 +119,7 @@ export function installDynEnvReducer(gcx: GhjkCtx) {
       if (targetKey) {
         // console.log("key", key, " maps to target ", targetKey);
         const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
-        output.push({ ...provision, ty, val: results[key] as any ?? "" });
+        output.push({ ...provision, ty, val: (results[key] as any) ?? "" });
       } else {
         badProvisions.push(provision);
       }
@@ -124,5 +131,42 @@ export function installDynEnvReducer(gcx: GhjkCtx) {
       });
     }
     return output;
+  };
+}
+
+export function installDynamicPathVarReducer(
+  gcx: GhjkCtx,
+  ty: PosixDirProvisionType,
+) {
+  return async (provisions: Provision[]) => {
+    const output = [];
+    const badProvisions = [];
+    const taskCtx = getTasksCtx(gcx);
+
+    for (const provision of provisions) {
+      const key = provision.taskKey as string;
+
+      const taskGraph = taskCtx.taskGraph;
+      const taskConf = taskCtx.config;
+
+      const targetKey = Object.entries(taskConf.tasks).find(
+        ([_, task]) => task.key === key,
+      )?.[0];
+
+      if (targetKey) {
+        const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
+        output.push({ ...provision, ty, path: results[key] as string });
+      } else {
+        badProvisions.push(provision);
+      }
+
+      if (badProvisions.length >= 1) {
+        throw new Error("cannot deduce task from keys", {
+          cause: { badProvisions },
+        });
+      }
+
+      return output;
+    }
   };
 }
