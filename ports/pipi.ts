@@ -39,7 +39,7 @@ const confValidator = zod.object({
 
 export type PipiInstallConf =
   & InstallConfigSimple
-  & zod.input<Omit<typeof confValidator, "dependencies">>; // FIXME: Make it public?
+  & Omit<zod.infer<typeof confValidator>, "dependencies">; // FIXME: Make it public?
 
 export default function conf(config: PipiInstallConf) {
   return [{
