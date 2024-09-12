@@ -11,6 +11,7 @@ import {
   ALL_OS,
   DownloadArgs,
   InstallArgs,
+  InstallConfigLiteX,
   ListAllArgs,
 } from "../modules/ports/types.ts";
 import * as std_ports from "../modules/ports/std.ts";
@@ -42,45 +43,29 @@ export default function conf(config: PoetryInstallConf = {}) {
   };
 }
 
+const toPipiConfig = (config: InstallConfigLiteX) => ({
+  ...config,
+  packageName: "poetry",
+  dependencies: config.plugins,
+});
+
 export class Port extends PipiPort {
   listAll(args: ListAllArgs) {
-    return super.listAll({
-      ...args,
-      config: { ...args.config, packageName: "poetry" },
-    });
+    return super.listAll({ ...args, config: toPipiConfig(args.config) });
   }
 
   latestStable(args: ListAllArgs) {
     return defaultLatestStable(this, {
       ...args,
-      config: { ...args.config, packageName: "poetry" },
+      config: toPipiConfig(args.config),
     });
   }
 
   download(args: DownloadArgs) {
-    return super.download({
-      ...args,
-      config: { ...args.config, packageName: "poetry" },
-    });
+    return super.download({ ...args, config: toPipiConfig(args.config) });
   }
 
-  // FIXME: Plugins should be installed using pip for a true standalone install
-  // Poetry stores data about the plugins somewhere when using self add
-  async install(args: InstallArgs) {
-    await super.install({
-      ...args,
-      config: { ...args.config, packageName: "poetry" },
-    });
-
-    const conf = confValidator.parse(args.config);
-
-    const plugins = conf.plugins?.map((p) =>
-      p.version ? [p.name, p.version].join("@") : p.name
-    ).join(" ");
-
-    if (plugins) {
-      const execPath = $.path(args.installPath).join("bin", "poetry");
-      await $`${execPath} self add ${plugins}`;
-    }
+  install(args: InstallArgs) {
+    return super.install({ ...args, config: toPipiConfig(args.config) });
   }
 }
