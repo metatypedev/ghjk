@@ -17,6 +17,10 @@ import {
 } from "../port.ts";
 import cpy_bs from "./cpy_bs.ts";
 import * as std_ports from "../modules/ports/std.ts";
+import {
+  PackageMetadataSimple,
+  resolveCompatibleVersions,
+} from "../modules/ports/pipi.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,
@@ -51,11 +55,9 @@ export class Port extends PortBase {
       `https://pypi.org/simple/${conf.packageName}/`,
     )
       .header("Accept", "application/vnd.pypi.simple.v1+json")
-      .json() as {
-        versions: string[];
-      };
+      .json() as PackageMetadataSimple;
 
-    return metadata.versions;
+    return resolveCompatibleVersions(args, metadata);
   }
 
   latestStable(args: ListAllArgs): Promise<string> {
