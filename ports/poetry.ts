@@ -53,7 +53,7 @@ export class Port extends PipiPort {
     return super.listAll({ ...args, config: toPipiConfig(args.config) });
   }
 
-  latestStable(args: ListAllArgs) {
+  latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, {
       ...args,
       config: toPipiConfig(args.config),
