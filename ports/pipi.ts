@@ -109,7 +109,9 @@ export class Port extends PortBase {
 
     await $`${
       depExecShimPath(std_ports.cpy_bs_ghrel, "python3", args.depArts)
-    } -m pip -qq install ${conf.packageName}==${args.installVersion} ${dependencies ?? []}`
+    } -m pip -qq install ${conf.packageName}==${args.installVersion} ${
+      dependencies ?? []
+    }`
       .env(
         {
           ...depPathEnvs,

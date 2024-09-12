@@ -1,5 +1,4 @@
 import {
-  $,
   defaultLatestStable,
   InstallConfigSimple,
   osXarch,
