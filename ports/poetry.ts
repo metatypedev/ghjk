@@ -45,7 +45,7 @@ export default function conf(config: PoetryInstallConf = {}) {
 const toPipiConfig = (config: InstallConfigLiteX) => ({
   ...config,
   packageName: "poetry",
-  dependencies: config.plugins,
+  peerDeps: config.plugins,
 });
 
 export class Port extends PipiPort {

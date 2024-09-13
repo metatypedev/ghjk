@@ -31,7 +31,7 @@ export const manifest = {
 
 const confValidator = zod.object({
   packageName: zod.string().regex(/[a-z0-9._-]*/),
-  dependencies: zod.array(zod.object({
+  peerDeps: zod.array(zod.object({
     name: zod.string(),
     version: zod.string().nullish(),
   })).nullish(),
@@ -39,7 +39,7 @@ const confValidator = zod.object({
 
 export type PipiInstallConf =
   & InstallConfigSimple
-  & Omit<zod.infer<typeof confValidator>, "dependencies">; // FIXME: Make it public?
+  & zod.input<typeof confValidator>;
 
 export default function conf(config: PipiInstallConf) {
   return [{
@@ -103,15 +103,13 @@ export class Port extends PortBase {
       args.installVersion,
     );
 
-    const dependencies = conf.dependencies?.map((dep) =>
+    const dependencies = conf.peerDeps?.map((dep) => (
       dep.version ? [dep.name, dep.version].join("==") : dep.name
-    );
+    )) ?? [];
 
     await $`${
       depExecShimPath(std_ports.cpy_bs_ghrel, "python3", args.depArts)
-    } -m pip -qq install ${conf.packageName}==${args.installVersion} ${
-      dependencies ?? []
-    }`
+    } -m pip -qq install ${conf.packageName}==${args.installVersion} ${dependencies}`
       .env(
         {
           ...depPathEnvs,
