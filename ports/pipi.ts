@@ -31,6 +31,10 @@ export const manifest = {
 
 const confValidator = zod.object({
   packageName: zod.string().regex(/[a-z0-9._-]*/),
+  peerDeps: zod.array(zod.object({
+    name: zod.string(),
+    version: zod.string().nullish(),
+  })).nullish(),
 }).passthrough();
 
 export type PipiInstallConf =
@@ -98,9 +102,14 @@ export class Port extends PortBase {
       conf.packageName,
       args.installVersion,
     );
+
+    const dependencies = conf.peerDeps?.map((dep) => (
+      dep.version ? [dep.name, dep.version].join("==") : dep.name
+    )) ?? [];
+
     await $`${
       depExecShimPath(std_ports.cpy_bs_ghrel, "python3", args.depArts)
-    } -m pip -qq install ${conf.packageName}==${args.installVersion}`
+    } -m pip -qq install ${conf.packageName}==${args.installVersion} ${dependencies}`
       .env(
         {
           ...depPathEnvs,
