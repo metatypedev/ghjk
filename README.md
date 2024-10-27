@@ -15,7 +15,9 @@ ghjk offers a unified abstraction to manage package managers (e.g. cargo, pnpm, 
 
 ghjk was designed to be an intermediate alternative between [Earthly](https://github.com/earthly/earthly)/[Dagger](https://github.com/dagger/dagger) (lighter and more flexible) and complex building tools like [Bazel](https://github.com/bazelbuild/bazel/)/[Nix-based devenv](https://github.com/cachix/devenv) (simpler and more extensible). This makes it especially convenient for mono-repos and long-lived projects. See [Metatype](https://github.com/metatypedev/metatype) and its [ghjkfile](https://github.com/metatypedev/metatype/blob/main/ghjk.ts) for a real world example.
 
-![](./ghjk.drawio.svg)
+<p align="center">
+  <img src="./ghjk.drawio.svg" alt="ghjk" />
+</p>
 
 ## Features
 
@@ -36,19 +38,18 @@ curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/install.sh |
 In your project, create a configuration file called `ghjk.ts` that look something like:
 
 ```ts
-// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' proxy 
+// NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' proxy
 // object exported here.
 // WARN: always import `hack.ts` file first
 export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
 import {
-  install, task,
+  install,
+  task,
 } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
 import node from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/ports/node.ts";
 
 // install programs (ports) into your env
-install(
-  node({ version: "14.17.0" }),
-);
+install(node({ version: "14.17.0" }));
 
 // write simple scripts and execute them using
 // `$ ghjk x greet`
@@ -65,7 +66,7 @@ ghjk sync
 
 ### Environments
 
-Ghjk is primarily configured through constructs called "environments" or "envs" for short. 
+Ghjk is primarily configured through constructs called "environments" or "envs" for short.
 They serve as recipes for making (mostly) reproducable posix shells.
 
 ```ts
@@ -90,10 +91,7 @@ ghjk
     inherit: false,
     // envs can specify posix env vars
     vars: { CARGO_TARGET_DIR: "my_target" },
-    installs: [
-      ports.cargobi({ crateName: "cargo-insta" }),
-      ports.act(),
-    ],
+    installs: [ports.cargobi({ crateName: "cargo-insta" }), ports.act()],
   })
   // use env hooks to run code on activation/deactivation
   .onEnter(ghjk.task(($) => $`echo dev activated`))
@@ -131,7 +129,7 @@ Once you've configured your environments:
 
 ### Ports
 
-TBD: this feature is in development. 
+TBD: this feature is in development.
 Look in the [kitchen sink](./examples/kitchen/ghjk.ts) for what's currently implemented.
 
 ### Tasks
@@ -141,7 +139,7 @@ Look in the [tasks example](./examples/tasks/ghjk.ts) for what's currently imple
 
 #### Anonymous tasks
 
-Tasks that aren't give names cannot be invoked from the CLI. 
+Tasks that aren't give names cannot be invoked from the CLI.
 They can be useful for tasks that are meant to be common dependencies of other tasks.
 
 ### `hack.ts`
