@@ -62,6 +62,7 @@ export async function cookPosixEnv(
       case "posix.headerFile":
         includePaths.push(wellKnownProv.absolutePath);
         break;
+      // case "posix.envVarDyn":
       case "posix.envVar":
         if (vars[wellKnownProv.key]) {
           throw new Error(
@@ -84,7 +85,7 @@ export async function cookPosixEnv(
         break;
       default:
         throw Error(
-          `unsupported provision type: ${(wellKnownProv as any).provision}`,
+          `unsupported provision type: ${(wellKnownProv as any).ty}`,
         );
     }
   }));

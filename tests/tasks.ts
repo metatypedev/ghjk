@@ -144,6 +144,29 @@ ghjk x eddy
 test (cat eddy) = 'ed edd eddy'
 `,
   },
+  {
+    name: "dyn_vars",
+    ghjkTs: `
+import { file } from "$ghjk/hack.ts";
+
+const ghjk = file({});
+
+export const sophon = ghjk.sophon;
+const { env, task } = ghjk;
+
+env("main")
+  .var("A", "A#STATIC")
+  .var("B", () => "B#DYNAMIC")
+  .var("D",  ($) => $\`echo $A, $B > output.txt\`.text())
+  .onEnter(task({ fn: ($) => $\`echo enter\` })) // not executing in test env?
+`,
+    ePoint: `fish`,
+    stdin: `
+ghjk sync main
+cat output.txt
+test (cat output.txt) = 'A#STATIC, B#DYNAMIC'
+`,
+  },
 ];
 
 harness(cases.map((testCase) => ({

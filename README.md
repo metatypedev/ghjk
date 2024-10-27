@@ -30,9 +30,9 @@ ghjk was designed to be an intermediate alternative between [Earthly](https://gi
 
 ```bash
 # stable
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/install.sh | bash
 # latest (main)
-curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/install.sh | GHJK_VERSION=main bash/fish/zsh
+curl -fsSL https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/install.sh | GHJK_VERSION=main bash/fish/zsh
 ```
 
 In your project, create a configuration file called `ghjk.ts` that look something like:
@@ -41,7 +41,7 @@ In your project, create a configuration file called `ghjk.ts` that look somethin
 // NOTE: All the calls in your `ghjk.ts` file are ultimately modifying the 'sophon' proxy
 // object exported here.
 // WARN: always import `hack.ts` file first
-export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/hack.ts";
 import {
   install,
   task,
@@ -70,9 +70,9 @@ Ghjk is primarily configured through constructs called "environments" or "envs" 
 They serve as recipes for making (mostly) reproducable posix shells.
 
 ```ts
-export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
-import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/hack.ts";
-import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/0.2.0/ports/mod.ts";
+export { sophon } from "https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/hack.ts";
+import * as ghjk from "https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/hack.ts";
+import * as ports from "https://raw.githubusercontent.com/metatypedev/ghjk/v0.2.1/ports/mod.ts";
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());

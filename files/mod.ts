@@ -36,12 +36,13 @@ import * as std_modules from "../modules/std.ts";
 import type { ExecTaskArgs } from "../modules/tasks/deno.ts";
 import { TaskDefHashed, TasksModuleConfig } from "../modules/tasks/types.ts";
 // envs
-import type {
-  EnvRecipe,
-  EnvsModuleConfig,
-  Provision,
-  WellKnownProvision,
+import {
+  type EnvRecipe,
+  type EnvsModuleConfig,
+  type Provision,
+  type WellKnownProvision,
 } from "../modules/envs/types.ts";
+import envsValidators from "../modules/envs/types.ts";
 import modulesValidators from "../modules/types.ts";
 
 const validators = {
@@ -100,7 +101,7 @@ export type TaskDefArgs = {
   desc?: string;
   dependsOn?: string | string[];
   workingDir?: string | Path;
-  vars?: Record<string, string | number>;
+  vars?: Record<string, string | number>; // TODO: add DynEnvValue?
   allowedBuildDeps?: (InstallConfigFat | AllowedPortDep)[];
   installs?: InstallConfigFat | InstallConfigFat[];
   inherit?: EnvParent;
@@ -305,7 +306,7 @@ export class Ghjkfile {
         workingDir,
         `<task:${task.name ?? key}>`,
       );
-      await task.fn(custom$, {
+      return await task.fn(custom$, {
         argv,
         env: Object.freeze(envVars),
         $: custom$,
@@ -653,6 +654,15 @@ export class Ghjkfile {
             const prov: WellKnownProvision = { ty: "posix.envVar", key, val };
             return prov;
           }),
+          ...Object.entries(final.dynVars).map((
+            [key, val],
+          ) => {
+            const prov = { ty: "posix.envVarDyn", key, taskKey: val };
+            return unwrapZodRes(
+              envsValidators.envVarDynProvision.safeParse(prov),
+              prov,
+            );
+          }),
           // env hooks
           ...hooks,
         ],
@@ -886,6 +896,7 @@ type EnvFinalizer = () => {
   installSetId: string;
   inherit: string | string[] | boolean;
   vars: Record<string, string>;
+  dynVars: Record<string, string>;
   desc?: string;
   onEnterHookTasks: string[];
   onExitHookTasks: string[];
@@ -894,6 +905,12 @@ type EnvFinalizer = () => {
 export type EnvDefArgsPartial =
   & { name?: string }
   & Omit<EnvDefArgs, "name">;
+
+export type DynEnvValue =
+  | (() => string | number)
+  | (($_: typeof $) => string | number)
+  | (($_: typeof $) => Promise<string | number>);
+
 //
 // /**
 //  * A version of {@link EnvDefArgs} that has all container
@@ -938,6 +955,7 @@ export class EnvBuilder {
   #file: Ghjkfile;
   #inherit: string | string[] | boolean = true;
   #vars: Record<string, string | number> = {};
+  #dynVars: Record<string, string> = {};
   #desc?: string;
   #onEnterHookTasks: string[] = [];
   #onExitHookTasks: string[] = [];
@@ -958,6 +976,7 @@ export class EnvBuilder {
       vars: Object.fromEntries(
         Object.entries(this.#vars).map(([key, val]) => [key, val.toString()]),
       ),
+      dynVars: this.#dynVars,
       desc: this.#desc,
       onExitHookTasks: this.#onExitHookTasks,
       onEnterHookTasks: this.#onEnterHookTasks,
@@ -991,7 +1010,7 @@ export class EnvBuilder {
   /**
    * Add an environment variable.
    */
-  var(key: string, val: string) {
+  var(key: string, val: string | DynEnvValue) {
     this.vars({ [key]: val });
     return this;
   }
@@ -999,10 +1018,37 @@ export class EnvBuilder {
   /**
    * Add multiple environment variable.
    */
-  vars(envVars: Record<string, string | number>) {
+  vars(envVars: Record<string, string | number | DynEnvValue>) {
+    const vars = {}, dynVars = {};
+    for (const [k, v] of Object.entries(envVars)) {
+      switch (typeof v) {
+        case "string":
+        case "number":
+          Object.assign(vars, { [k]: v });
+          break;
+        case "function": {
+          const taskKey = this.#file.addTask({
+            ty: "denoFile@v1",
+            fn: v,
+            nonce: k,
+          });
+          Object.assign(dynVars, { [k]: taskKey });
+          break;
+        }
+        default:
+          throw new Error(
+            `environment value of type "${typeof v}" is not supported`,
+          );
+      }
+    }
+
     Object.assign(
       this.#vars,
-      unwrapZodRes(validators.envVars.safeParse(envVars), { envVars }),
+      unwrapZodRes(validators.envVars.safeParse(vars), { envVars: vars }),
+    );
+    Object.assign(
+      this.#dynVars,
+      dynVars,
     );
     return this;
   }

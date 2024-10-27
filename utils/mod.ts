@@ -201,7 +201,7 @@ let requestBuilder;
 try {
   requestBuilder = new dax.RequestBuilder()
     .showProgress(Deno.stderr.isTerminal())
-    .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "1m");
+    .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "5m");
 } catch (err) {
   throw new Error(
     `invalid timeout param on GHJK_REQ_TIMEOUT: ${
@@ -425,6 +425,7 @@ export async function downloadFile(
 
   await $.request(url)
     .header(headers)
+    .timeout(undefined)
     .pipeToPath(tmpFilePath, { create: true, mode });
 
   await $.path(downloadPath).ensureDir();
@@ -631,3 +632,36 @@ export async function detectShell(): Promise<string | undefined> {
     ? std_path.basename(shellPath, ".exe").toLowerCase().trim()
     : undefined;
 }
+
+export function isInWorkerContext() {
+  return typeof WorkerGlobalScope !== "undefined" &&
+    self instanceof WorkerGlobalScope;
+}
+
+// /**
+//  * Blocks the event loop till the promise is resolved
+//  */
+// export function deasyncPromise<T>(promise: Promise<T>) {
+//   // Note: npm:deasync does not work on deno
+//   // TODO: better impl or use a lib?
+//   const sleepSync = (timeout: number) => {
+//     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, timeout);
+//   };
+
+//   let resolved = false;
+//   let ret: T | undefined, err;
+
+//   promise
+//     .then((r) => { ret = r; })
+//     .catch((e) => { err = e; })
+//     .finally(() => { resolved = true; });
+
+//   while (!resolved) {
+//     sleepSync(100);
+//   }
+
+//   if (err) {
+//     throw err;
+//   }
+//   return ret;
+// }

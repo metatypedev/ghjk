@@ -21,6 +21,8 @@ export const installProvisionTypes = [
   installProvisionTy,
 ] as const;
 
+export const envVarDynTy = "posix.envVarDyn";
+
 // we separate the posix file types in a separate
 // array in the interest of type inference
 export const wellKnownProvisionTypes = [
@@ -78,9 +80,16 @@ const envsModuleConfig = zod.object({
   message: `no env found under the provided "defaultEnv"`,
 });
 
+const envVarDynProvision = zod.object({
+  ty: zod.literal(envVarDynTy),
+  key: moduleValidators.envVarName,
+  taskKey: zod.string(),
+});
+
 const validators = {
   provision,
   wellKnownProvision,
+  envVarDynProvision,
   envRecipe,
   envsModuleConfig,
   wellKnownEnvRecipe,
