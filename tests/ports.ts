@@ -11,6 +11,9 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: FileArgs;
 };
+
+// FIXME: where did the asdf test go?
+
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
   // 0 megs
@@ -187,6 +190,9 @@ const cases: CustomE2eTestCase[] = [
         profile: "minimal",
       },
     }),
+    secureConf: {
+      enableRuntimes: true,
+    },
     ePoint: `sd --version`,
   },
   // rust + cargo_binstall + 22 megs
@@ -199,6 +205,9 @@ const cases: CustomE2eTestCase[] = [
         profile: "minimal",
       },
     }),
+    secureConf: {
+      enableRuntimes: true,
+    },
     ePoint: `sd --version`,
   },
 ];

@@ -15,6 +15,7 @@ export const config = Object.freeze(firstCallerCheck(ghjk.config));
 export const env = Object.freeze(firstCallerCheck(ghjk.env));
 export const install = Object.freeze(firstCallerCheck(ghjk.install));
 export const task = Object.freeze(firstCallerCheck(ghjk.task));
+export const tasks = Object.freeze(firstCallerCheck(ghjk.tasks));
 
 // capture exit fn to avoid malicous caller from
 // changing it on Deno object

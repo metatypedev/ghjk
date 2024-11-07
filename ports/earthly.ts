@@ -31,7 +31,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "earthly";
   repoName = "earthly";
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {
@@ -57,7 +57,7 @@ export class Port extends GithubReleasePort {
     ];
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });

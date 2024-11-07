@@ -141,7 +141,7 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         .command(
           "outdated",
           new cliffy_cmd.Command()
-            .description("Show a version table for installs")
+            .description("Show a version table for installs.")
             .option(
               "-u, --update-install <installName>",
               "Update specific install",

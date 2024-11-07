@@ -201,15 +201,15 @@ export async function install(
   }
 
   if (!args.skipExecInstall) {
+    const installDir = await $.path(args.ghjkExecInstallDir).ensureDir();
     switch (Deno.build.os) {
       case "linux":
       case "freebsd":
       case "solaris":
       case "illumos":
       case "darwin": {
-        const installDir = await $.path(args.ghjkExecInstallDir).ensureDir();
         const exePath = installDir.resolve(`ghjk`);
-        logger.info("installing executable", { exePath });
+        logger.debug("installing executable", { exePath });
 
         // use an isolated cache by default
         const denoCacheDir = args.ghjkDenoCacheDir
@@ -244,6 +244,12 @@ export async function install(
       default:
         throw new Error(`${Deno.build.os} is not yet supported`);
     }
+    logger.warn(
+      "make sure to add the following to your $PATH to access the ghjk CLI",
+    );
+    logger.warn(
+      installDir.toString(),
+    );
   }
   logger.info("install success");
 }

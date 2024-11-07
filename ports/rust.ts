@@ -128,13 +128,13 @@ export class Port extends PortBase {
     return versions;
   }
 
-  async latestStable(args: ListAllArgs) {
+  override async latestStable(args: ListAllArgs) {
     const versions = await this.listAll(args);
     // stable releases are just version numbers, no
     return versions.findLast((ver) => !ver.match(/[a-zA-Z]/))!;
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
 
     const tmpPath = $.path(args.tmpDirPath);
@@ -159,7 +159,7 @@ export class Port extends PortBase {
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });

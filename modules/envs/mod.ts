@@ -181,7 +181,7 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
               });
               const env = ecx.config.envs[envKey];
               if (!env) {
-                throw new Error(`no env found under "${envKeyMaybe}"`);
+                throw new Error(`no env found under "${envKey}"`);
               }
               // deno-lint-ignore no-console
               console.log($.inspect(await showableEnv(gcx, env, envKey)));

@@ -48,8 +48,13 @@ const envVarTestEnvs: EnvDefArgs[] = [
 const envVarTestsPosix = `
 set -ex
 # by default, we should be in main
-[ "$SONG" = "ditto" ] || exit 101
+[ "$SONG" = "ditto" ] || exit 1010
 [ "$GHJK_ENV" = "main" ] || exit 1011
+
+# vars should be gone after deactivation
+ghjk_deactivate
+[ "$SONG" = "ditto" ] && exit 1022
+[ "$GHJK_ENV" = "main" ] && exit 1022
 
 ghjk envs cook sss
 . .ghjk/envs/sss/activate.sh
@@ -60,6 +65,7 @@ ghjk envs cook sss
 [ "$GHJK_ENV" = "sss" ] || exit 1012
 
 # go back to main and "sss" variables shouldn't be around
+# through deactivation
 . .ghjk/envs/main/activate.sh
 [ "$SONG" = "ditto" ] || exit 104
 [ "$SING" = "Seoul Sonyo Sound" ] && exit 105
@@ -77,6 +83,11 @@ set fish_trace 1
 # by default, we should be in main
 test "$SONG" = "ditto"; or exit 101;
 test "$GHJK_ENV" = "main"; or exit 1010;
+
+# vars should be gone after deactivation
+ghjk_deactivate
+test "$SONG" = "ditto"; and exit 101;
+test "$GHJK_ENV" = "main"; and exit 1010;
 
 ghjk envs cook sss
 . .ghjk/envs/sss/activate.fish

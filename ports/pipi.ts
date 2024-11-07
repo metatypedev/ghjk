@@ -62,12 +62,12 @@ export class Port extends PortBase {
     return metadata.versions;
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 
   // this creates the venv and install the package into it
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const downloadPath = $.path(args.downloadPath);
     if (await downloadPath.exists()) {
       return;
@@ -142,7 +142,7 @@ export class Port extends PortBase {
 
   // this modifies the venv so that it works with ghjk
   // and exposes the packages and only the package's console scripts
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const tmpPath = $.path(args.tmpDirPath);
     const conf = confValidator.parse(args.config);
 
@@ -202,7 +202,7 @@ export class Port extends PortBase {
         .map((execPath) =>
           Deno.symlink(
             // create a relative symlink
-            // TODO: open ticket on dsherret/tax about createSymlinkTo(relative) bug
+            // TODO: open ticket on dsherret/jax about createSymlinkTo(relative) bug
             ".." + execPath.slice(tmpPath.toString().length),
             tmpPath
               .join("bin", $.path(execPath).basename()).toString(),

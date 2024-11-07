@@ -290,7 +290,7 @@ export function inWorker() {
     self instanceof WorkerGlobalScope;
 }
 
-export async function findEntryRecursive(path: string, name: string) {
+export async function findEntryRecursive(path: string | Path, name: string) {
   let current = $.path(path);
   while (true) {
     const location = `${current}/${name}`;

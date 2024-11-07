@@ -201,7 +201,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async latestStable(env: ListAllArgs) {
+  override async latestStable(env: ListAllArgs) {
     const req: WorkerReq = {
       ty: "latestStable",
       arg: env,
@@ -214,7 +214,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async execEnv(
+  override async execEnv(
     args: ExecEnvArgs,
   ) {
     const req: WorkerReq = {
@@ -228,7 +228,7 @@ export class DenoWorkerPort extends PortBase {
     }
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async listBinPaths(
+  override async listBinPaths(
     args: ListBinPathsArgs,
   ) {
     const req: WorkerReq = {
@@ -243,7 +243,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async listLibPaths(
+  override async listLibPaths(
     args: ListBinPathsArgs,
   ) {
     const req: WorkerReq = {
@@ -258,7 +258,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async listIncludePaths(
+  override async listIncludePaths(
     args: ListBinPathsArgs,
   ) {
     const req: WorkerReq = {
@@ -273,7 +273,7 @@ export class DenoWorkerPort extends PortBase {
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const req: WorkerReq = {
       ty: "download",
       arg: args,
@@ -285,7 +285,7 @@ export class DenoWorkerPort extends PortBase {
     }
     throw new Error(`unexpected response from worker ${JSON.stringify(res)}`);
   }
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const req: WorkerReq = {
       ty: "install",
       arg: args,

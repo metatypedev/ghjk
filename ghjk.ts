@@ -1,3 +1,5 @@
+// @ts-nocheck: Ghjkfile based on Deno
+
 export { sophon } from "./hack.ts";
 import { config, install, task } from "./hack.ts";
 import * as ports from "./ports/mod.ts";
@@ -6,6 +8,7 @@ import { sedLock } from "./std.ts";
 config({
   defaultBaseEnv: "test",
   enableRuntimes: true,
+  allowedBuildDeps: [ports.cpy_bs({ version: "3.12.7" })],
 });
 
 // these are just for quick testing
@@ -17,7 +20,7 @@ const DENO_VERSION = "1.44.2";
 install(
   ports.act(),
   ports.pipi({ packageName: "pre-commit" })[0],
-  ports.cpy_bs(),
+  ports.pipi({ packageName: "vale" })[0],
   ports.deno_ghrel({ version: DENO_VERSION }),
 );
 
@@ -38,6 +41,16 @@ task(
           "./install.sh": [
             [/(GHJK_VERSION="\$\{GHJK_VERSION:-v).*(\}")/, GHJK_VERSION],
             [/(DENO_VERSION="\$\{DENO_VERSION:-v).*(\}")/, DENO_VERSION],
+          ],
+          "./docs/*.md": [
+            [
+              /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
+              GHJK_VERSION,
+            ],
+            [
+              /(GHJK_VERSION\s*=\s*v)[^\s]*(.*)/,
+              GHJK_VERSION,
+            ],
           ],
           "./README.md": [
             [

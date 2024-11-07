@@ -39,7 +39,7 @@ export default function conf(config: DummyInstallConf = {}) {
 }
 
 export class Port extends PortBase {
-  execEnv() {
+  override execEnv() {
     return {
       DUMMY_ENV: "dummy",
     };
@@ -49,7 +49,7 @@ export class Port extends PortBase {
     return ["dummy"];
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
     // TODO: windows suport
     await $.path(args.downloadPath).join("bin", "dummy").writeText(
@@ -61,7 +61,7 @@ echo ${conf.output ?? "dummy hey"}`,
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     await $.removeIfExists(installPath);
     await std_fs.copy(args.downloadPath, args.installPath);

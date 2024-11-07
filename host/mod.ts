@@ -11,9 +11,11 @@ import {
 import validators, { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 import * as denoFile from "../files/deno/mod.ts";
+import { task$ } from "../files/mod.ts";
 import type { ModuleBase } from "../modules/mod.ts";
 import { GhjkCtx } from "../modules/types.ts";
 import { serializePlatform } from "../modules/ports/types/platform.ts";
+import { default as initTasks } from "./init/mod.ts";
 
 export interface CliArgs {
   ghjkShareDir: string;
@@ -102,6 +104,26 @@ export async function cli(args: CliArgs) {
     }
   }
 
+  const initCmd = new cliffy_cmd.Command()
+    .description("Commands for setting up cwd for ghjk.")
+    .action(function () {
+      this.showHelp();
+    });
+  for (const [name, def] of Object.entries(initTasks)) {
+    initCmd.command(
+      name.replace("init-", ""),
+      new cliffy_cmd.Command()
+        .description(def.desc!)
+        .useRawArgs()
+        .action(async (_, ...argv) => {
+          const env = Deno.env.toObject();
+          const workingDir = Deno.cwd();
+          const dollar = task$(argv, env, workingDir, name);
+          await def.fn!(dollar, { argv, workingDir, env, $: dollar });
+        }),
+    );
+  }
+
   const root = new cliffy_cmd.Command()
     .name("ghjk")
     .version(GHJK_VERSION)
@@ -110,19 +132,8 @@ export async function cli(args: CliArgs) {
       this.showHelp();
     })
     .command(
-      "completions",
-      new cliffy_cmd.CompletionsCommand(),
-    )
-    .command(
-      "deno",
-      new cliffy_cmd.Command()
-        .description("Access the deno cli.")
-        .useRawArgs()
-        .action(async function (_, ...args) {
-          logger().debug(args);
-          await $.raw`${Deno.execPath()} ${args}`
-            .env("DENO_EXEC_PATH", Deno.execPath());
-        }),
+      "init",
+      initCmd,
     )
     .command(
       "print",
@@ -158,7 +169,7 @@ export async function cli(args: CliArgs) {
         .command(
           "ghjkfile-path",
           new cliffy_cmd.Command()
-            .description("Print the path of the ghjk.ts used")
+            .description("Print the path of the ghjk.ts used.")
             .action(function () {
               if (!gcx?.ghjkfilePath) {
                 throw new Error("no ghjkfile found.");
@@ -171,7 +182,7 @@ export async function cli(args: CliArgs) {
           "config",
           new cliffy_cmd.Command()
             .description(
-              "Print the extracted ans serialized config from the ghjkfile",
+              "Print the extracted and serialized config from the ghjkfile.",
             )
             .option(
               "--json",
@@ -189,10 +200,27 @@ export async function cli(args: CliArgs) {
               );
             }),
         ),
+    )
+    .command(
+      "completions",
+      new cliffy_cmd.CompletionsCommand(),
+    )
+    .command(
+      "deno",
+      new cliffy_cmd.Command()
+        .description("Access the deno cli.")
+        .useRawArgs()
+        .action(async function (_, ...args) {
+          logger().debug(args);
+          await $.raw`${Deno.execPath()} ${args}`
+            .env("DENO_EXEC_PATH", Deno.execPath());
+        }),
     );
+
   for (const [name, subcmd] of Object.entries(subcmds)) {
     root.command(name, subcmd);
   }
+
   try {
     await root.parse(Deno.args);
   } catch (err) {
@@ -313,14 +341,6 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
     }
   }
 
-  if (
-    !hcx.lockedFlagSet && wasReSerialized && (
-      !foundHashObj || !deep_eql(newHashObj, foundHashObj)
-    )
-  ) {
-    await hashFilePath.writeJsonPretty(newHashObj);
-  }
-
   // `writeLockFile` can be invoked multiple times
   // so we keep track of the last lockfile wrote
   // out to disk
@@ -357,6 +377,16 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
       if (!lastLockObj || !deep_eql(newLockObj, lastLockObj)) {
         lastLockObj = { ...newLockObj };
         await lockFilePath.writeJsonPretty(newLockObj);
+      }
+
+      // we only write out hashfile when the serialization
+      // result was saved in the lock file
+      if (
+        !hcx.lockedFlagSet && wasReSerialized && (
+          !foundHashObj || !deep_eql(newHashObj, foundHashObj)
+        )
+      ) {
+        await hashFilePath.writeJsonPretty(newHashObj);
       }
     },
   };

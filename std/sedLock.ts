@@ -40,6 +40,8 @@ export async function sedLock(
 
   let dirty = false;
 
+  const workSet = [] as [Path, string][];
+
   await $.co(
     Object
       .entries(lines)
@@ -88,8 +90,7 @@ export async function sedLock(
 
             const newText = rewrite.join("\n");
             if (text != newText) {
-              await path.writeText(newText);
-              $.logStep(`Updated ${workingDir.relative(path)}`);
+              workSet.push([path, newText]);
               dirty = true;
             } else {
               // $.logLight(`No change ${workingDir.relative(path)}`);
@@ -105,6 +106,14 @@ export async function sedLock(
           }
         }
       }),
+  );
+
+  // we prefer all settled for the destructive operation
+  await Promise.allSettled(
+    workSet.map(async ([path, newText]) => {
+      await path.writeText(newText);
+      $.logStep(`Updated ${workingDir.relative(path)}`);
+    }),
   );
 
   return dirty;

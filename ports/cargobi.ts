@@ -101,11 +101,11 @@ export class Port extends PortBase {
     return versions.map((ver) => ver.vers);
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
     const fileName = conf.crateName;
     if (await std_fs.exists(std_path.resolve(args.downloadPath, fileName))) {
@@ -181,7 +181,7 @@ export class Port extends PortBase {
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });

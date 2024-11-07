@@ -119,4 +119,5 @@ env("dev")
   .onEnter(task({
     workingDir: "..",
     fn: ($) => $`ls`,
-  }));
+  }))
+  .onExit(task(($) => $`echo exit`));

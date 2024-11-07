@@ -38,6 +38,10 @@ echo "test" > $GHJK_NEXTFILE
 const posixNonInteractiveScript = `
 set -eux
 
+# FIXME: make decision about this
+# test that ghjk_reload doesn't run by default on non-interactive shells
+# [ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1011
+
 # test that ghjk_reload is avail because BASH_ENV exposed by the suite
 ghjk_reload
 [ "\${DUMMY_ENV:-}" = "dummy" ] || exit 101
@@ -103,6 +107,9 @@ test $DUMMY_ENV = "dummy"; or exit 105
 
 const fishNoninteractiveScript = `
 set fish_trace 1
+# test that ghjk_reload doesn't run by default on non-interactive shells
+# test $DUMMY_ENV = "dummy"; and exit 1011
+
 # test that ghjk_reload is avail because config.fish exposed by the suite
 ghjk_reload
 

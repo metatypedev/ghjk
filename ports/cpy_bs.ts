@@ -61,7 +61,7 @@ export default function conf(
 export class Port extends PortBase {
   repoOwner = "indygreg";
   repoName = "python-build-standalone";
-  execEnv(
+  override execEnv(
     args: PortArgsBase,
   ): Record<string, string> | Promise<Record<string, string>> {
     return {
@@ -136,7 +136,7 @@ export class Port extends PortBase {
       .sort((va, vb) => va.localeCompare(vb, undefined, { numeric: true }));
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const headers = ghHeaders(args.config);
     const conf = confValidator.parse(args.config);
     let tag = conf.releaseTag;
@@ -176,7 +176,7 @@ export class Port extends PortBase {
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [_, fileDwnEntry] = await Array.fromAsync(
       $.path(args.downloadPath).walk(),
     );

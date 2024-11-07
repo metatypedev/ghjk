@@ -85,7 +85,9 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
       .action(function () {
         this.showHelp();
       })
-      .description("Tasks module.");
+      .description(`Tasks module.
+
+The named tasks in your ghjkfile will be listed here.`);
     for (const cmd of commands) {
       root.command(cmd.getName(), cmd);
     }

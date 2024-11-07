@@ -53,14 +53,14 @@ export class Port extends PipiPort {
     return super.listAll({ ...args, config: toPipiConfig(args.config) });
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, {
       ...args,
       config: toPipiConfig(args.config),
     });
   }
 
-  download(args: DownloadArgs) {
+  override download(args: DownloadArgs) {
     return super.download({ ...args, config: toPipiConfig(args.config) });
   }
 

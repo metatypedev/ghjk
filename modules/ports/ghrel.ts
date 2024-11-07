@@ -50,7 +50,7 @@ export abstract class GithubReleasePort extends PortBase {
     return [];
   }
 
-  async download(args: DownloadArgs): Promise<void> {
+  override async download(args: DownloadArgs): Promise<void> {
     const urls = await this.downloadUrls(args);
     if (urls.length == 0) {
       throw new Error(
@@ -65,7 +65,7 @@ export abstract class GithubReleasePort extends PortBase {
     );
   }
 
-  async latestStable(args: ListAllArgs) {
+  override async latestStable(args: ListAllArgs) {
     const metadata = await $.withRetries({
       count: 10,
       delay: $.exponentialBackoff(1000),

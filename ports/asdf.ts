@@ -72,7 +72,7 @@ export class Port extends PortBase {
     return out.split(/\s/).filter(Boolean).map((str) => str.trim());
   }
 
-  async latestStable(args: ListAllArgs) {
+  override async latestStable(args: ListAllArgs) {
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
       "latest-stable",
@@ -93,7 +93,7 @@ export class Port extends PortBase {
     return out.trim();
   }
 
-  async listBinPaths(args: ListBinPathsArgs) {
+  override async listBinPaths(args: ListBinPathsArgs) {
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
       "list-bin-paths",
@@ -113,7 +113,7 @@ export class Port extends PortBase {
     return out.split(/\s/).filter(Boolean).map((str) => str.trim());
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     // some plugins don't have a download script despite the spec
     const binPath = tryDepExecShimPath(
       std_ports.asdf_plugin_git,
@@ -134,7 +134,7 @@ export class Port extends PortBase {
         ASDF_DOWNLOAD_PATH: args.downloadPath,
       });
   }
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const conf = confValidator.parse(args.config);
     await $`${
       depExecShimPath(std_ports.asdf_plugin_git, "install", args.depArts)

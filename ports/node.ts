@@ -44,19 +44,19 @@ export default function conf(config: InstallConfigSimple = {}) {
 }
 
 export class Port extends PortBase {
-  execEnv(args: ExecEnvArgs) {
+  override execEnv(args: ExecEnvArgs) {
     return {
       NODE_PATH: args.installPath,
     };
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 
   // we wan't to avoid adding libraries found by default at /lib
   // to PATHs as they're just node_module sources
-  listLibPaths(): string[] {
+  override listLibPaths(): string[] {
     return [];
   }
 
@@ -109,14 +109,14 @@ export class Port extends PortBase {
     ].map(dwnUrlOut);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const urls = this.downloadUrls(args);
     await Promise.all(
       urls.map((obj) => downloadFile({ ...args, ...obj })),
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 

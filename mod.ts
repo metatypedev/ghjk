@@ -51,6 +51,14 @@ export type AddTask = {
   ): string;
 };
 
+/**
+ * Define and register multiple tasks.
+ */
+export type AddTasks = {
+  (args: (DenoTaskDefArgs | TaskFn)[]): string[];
+  (args: Record<string, TaskFn | Omit<DenoTaskDefArgs, "name">>): string[];
+};
+
 export type FileArgs = {
   /**
    * The env to activate by default. When entering the working
@@ -111,6 +119,10 @@ type DenoFileKnobs = {
    * {@inheritdoc AddTask}
    */
   task: AddTask;
+  /**
+   * {@inheritdoc AddTasks}
+   */
+  tasks: AddTasks;
   /**
    * {@inheritDoc AddEnv}
    */
@@ -216,6 +228,34 @@ export const file = Object.freeze(function file(
     ),
   });
 
+  function task(
+    nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
+    argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
+    argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
+  ) {
+    let args: DenoTaskDefArgs;
+    if (typeof nameOrArgsOrFn == "object") {
+      args = nameOrArgsOrFn;
+    } else if (typeof nameOrArgsOrFn == "function") {
+      args = {
+        ...(argsOrFn ?? {}),
+        fn: nameOrArgsOrFn,
+      };
+    } else if (typeof argsOrFn == "object") {
+      args = { ...argsOrFn, name: nameOrArgsOrFn };
+    } else if (argsOrFn) {
+      args = {
+        ...(argsMaybe ?? {}),
+        name: nameOrArgsOrFn,
+        fn: argsOrFn,
+      };
+    } else {
+      args = {
+        name: nameOrArgsOrFn,
+      };
+    }
+    return builder.addTask({ ...args, ty: "denoFile@v1" });
+  }
   // we return a bunch of functions here
   // to ease configuring the main environment
   // including overloads
@@ -226,33 +266,18 @@ export const file = Object.freeze(function file(
       mainEnv.install(...configs);
     },
 
-    task(
-      nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
-      argsOrFn?: Omit<DenoTaskDefArgs, "name"> | TaskFn,
-      argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
+    task,
+
+    tasks(
+      defs:
+        | (DenoTaskDefArgs | TaskFn)[]
+        | Record<string, TaskFn | Omit<DenoTaskDefArgs, "name">>,
     ) {
-      let args: DenoTaskDefArgs;
-      if (typeof nameOrArgsOrFn == "object") {
-        args = nameOrArgsOrFn;
-      } else if (typeof nameOrArgsOrFn == "function") {
-        args = {
-          ...(argsOrFn ?? {}),
-          fn: nameOrArgsOrFn,
-        };
-      } else if (typeof argsOrFn == "object") {
-        args = { ...argsOrFn, name: nameOrArgsOrFn };
-      } else if (argsOrFn) {
-        args = {
-          ...(argsMaybe ?? {}),
-          name: nameOrArgsOrFn,
-          fn: argsOrFn,
-        };
+      if (Array.isArray(defs)) {
+        return defs.map((def) => task(def));
       } else {
-        args = {
-          name: nameOrArgsOrFn,
-        };
+        return Object.entries(defs).map(([key, val]) => task(key, val));
       }
-      return builder.addTask({ ...args, ty: "denoFile@v1" });
     },
 
     env(

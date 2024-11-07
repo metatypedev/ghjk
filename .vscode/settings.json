@@ -1,6 +1,7 @@
 {
   "deno.enablePaths": [
-    "."
+    ".",
+    "ghjk.ts"
   ],
   "deno.suggest.completeFunctionCalls": true,
   "deno.inlayHints.variableTypes.enabled": true,
@@ -18,7 +19,13 @@
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
   "cSpell.words": [
-    "ghjk"
+    "DENO",
+    "ghjk",
+    "ghjkfile",
+    "Hashfile",
+    "POSIX",
+    "runtimes",
+    "sophon"
   ],
   "spellright.language": [
     "en-US-10-1."

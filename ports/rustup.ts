@@ -60,7 +60,7 @@ export class Port extends PortBase {
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 
@@ -99,14 +99,14 @@ export class Port extends PortBase {
     ].map(dwnUrlOut);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const urls = this.downloadUrls(args);
     await Promise.all(
       urls.map((obj) => downloadFile({ ...args, ...obj, mode: 0o700 })),
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });

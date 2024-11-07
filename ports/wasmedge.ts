@@ -63,7 +63,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "WasmEdge";
   repoName = "WasmEdge";
 
-  execEnv(args: ExecEnvArgs) {
+  override execEnv(args: ExecEnvArgs) {
     return {
       WASMEDGE_DIR: args.installPath,
       // WASMEDGE_LIB_DIR: std_path.resolve(args.installPath, "lib64"),
@@ -71,11 +71,11 @@ export class Port extends GithubReleasePort {
     };
   }
 
-  listLibPaths(): string[] {
+  override listLibPaths(): string[] {
     return ["lib*/*"];
   }
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     let fileName;
     if (platform.os == "darwin") {
@@ -120,7 +120,7 @@ export class Port extends GithubReleasePort {
     ].map(dwnUrlOut);
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 

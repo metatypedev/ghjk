@@ -12,7 +12,7 @@ export class AmbientAccessPort extends PortBase {
       );
     }
   }
-  async latestStable() {
+  override async latestStable() {
     const execPath = await this.pathToExec();
     let versionOut;
     try {
@@ -44,11 +44,11 @@ export class AmbientAccessPort extends PortBase {
     return [await this.latestStable()];
   }
 
-  async listBinPaths(): Promise<string[]> {
+  override async listBinPaths(): Promise<string[]> {
     return [await this.pathToExec()];
   }
 
-  async download() {
+  override async download() {
     // no op
   }
 

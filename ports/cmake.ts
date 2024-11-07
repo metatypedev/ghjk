@@ -9,20 +9,17 @@ import * as ports from "./mod.ts";
  * For macOS users, you need to add python as allowed build dependencies
  * as cmake is downladed via pip install.
  *
- * Example:
- * ```typescript
- * const installs = {
-    python_latest: ports.cpy_bs({ version: "3.12.2", releaseTag: "20240224" }),
-};
- * config({
-    stdDeps: true,
-    allowedBuildDeps: [
-        installs.python_latest
-    ],
-    enableRuntimes: true
-});
- * ```
+ * For other platforms, the `asdf_plugin_git` build dependency is required.
  *
+ * Set the `enableRuntimes` flag to setup both cases.
+ *
+ * ```typescript
+ * ghjk.config({
+ *    enableRuntimes: true,
+ * });
+ *
+ * ghjk.install(ports.cmake());
+ * ```
  */
 export default function conf(
   config: InstallConfigSimple = {},
