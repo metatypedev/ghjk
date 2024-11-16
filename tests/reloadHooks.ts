@@ -1,7 +1,7 @@
 import "../setup_logger.ts";
 import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
-import type { InstallConfigFat } from "../port.ts";
+import { type InstallConfigFat } from "../port.ts";
 
 // TODO: test for hook reload when ghjk.ts is touched
 // TODO: test for hook reload when nextfile is touched
@@ -19,7 +19,7 @@ pushd ../
 # it shouldn't be avail here
 set +ex
 [ $(dummy) ] && exit 102
-[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 103
+[ "\${DUMMY_ENV:-}" = "old_dummy" ] || exit 103
 set -ex
 
 # cd back in
@@ -38,15 +38,8 @@ echo "test" > $GHJK_NEXTFILE
 const posixNonInteractiveScript = `
 set -eux
 
-# test that ghjk_hook doesn't run by default on non-interactive shells
-# [ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1011
-
-# prepare DUMMY_ENV for restore check
-
-DUMMY_ENV=old_dummy
-
-# test that ghjk_hook is avail because BASH_ENV exposed by the suite
-ghjk_hook
+# items should be avail on new shell
+# either due to auto hook and BASH_ENV/ZDOTDIR
 [ "\${DUMMY_ENV:-}" = "dummy" ] || exit 101
 dummy
 
@@ -87,15 +80,21 @@ GHJK_ENV=test ghjk_hook
 [ "\${GHJK_ENV:-}" = "test" ] || exit 112
 `;
 
+// assumes BASH_ENV/ZDOTDIR
+const posixNonInteractiveScriptNoHook = `set -eux
+# test that ghjk_hook doesn't run by default on non-interactive shells
+[ $(set +e; dummy) ] && exit 1021
+# [ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1011
+
+# test that ghjk_hook is avail because BASH_ENV exposed by the suite
+ghjk_hook
+` + posixNonInteractiveScript;
+
 const fishNonInteractiveScript = `
 set fish_trace 1
-# test that ghjk_hook doesn't run by default on non-interactive shells
-test $DUMMY_ENV = "dummy"; and exit 1011
 
-set DUMMY_ENV old_dummy
-
-# test that ghjk_hook is avail because config.fish exposed by the suite
-ghjk_hook
+# items should be avail on new shell
+# either due to auto hook or custom code down below
 which dummy; or exit 101
 test $DUMMY_ENV = "dummy"; or exit 102
 
@@ -145,12 +144,25 @@ test "$GHJK_ENV" = "main"; or exit 111
 GHJK_ENV=test ghjk_hook
 test "$GHJK_ENV" = "test"; or exit 112`;
 
+const fishNonInteractiveScriptNoHook = `
+set fish_trace 1
+
+# test that ghjk_hook doesn't run by default on non-interactive shells
+which dummy; and exit 1030
+test $DUMMY_ENV = "dummy"; and exit 1011
+
+# test that ghjk_hook is avail because config.fish exposed by the suite
+# simulate auto hook so that we can re-use test
+ghjk_hook
+` + fishNonInteractiveScript;
+
 // simulate interactive mode by emitting postexec after each line
 // after each line. postexec isn't emitted by default on interactive
 // fish shells
 const fishInteractiveScript = `
 set fish_trace 1
 which dummy; or exit 101
+env
 test $DUMMY_ENV = "dummy"; or exit 102
 
 # it should be avail in subshells
@@ -181,9 +193,9 @@ GHJK_ENV=test ghjk_hook
 test "$GHJK_ENV" = "test"; or exit 112
 `
   .split("\n")
-  .map((line) => [
+  .flatMap((line) => [
     line,
-    `emit fish_preexec`,
+    `emit fish_preexec;`,
   ])
   .join("\n");
 
@@ -202,78 +214,83 @@ const bashInteractiveEpoint = Deno.env.get("GHJK_TEST_E2E_TYPE") == "local"
 
 const cases: CustomE2eTestCase[] = [
   {
-    name: "bash_interactive_with_auto_hook",
-    ePoint: bashInteractiveEpoint,
-    stdin: posixInteractiveScript,
-  },
-  {
     name: "bash_interactive",
     ePoint: bashInteractiveEpoint,
-    stdin: `
-[ $(dummy) ] && exit 1020
-[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1030
-ghjk_hook` + posixInteractiveScript,
+    stdin: posixInteractiveScript,
     envVars: {
-      GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
     },
   },
   {
     name: "bash_scripting",
     ePoint: `bash -s`,
-    stdin: posixNonInteractiveScript,
+    stdin: posixNonInteractiveScriptNoHook,
     envVars: {
       GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
     },
   },
   {
-    name: "zsh_interactive_with_auto_hook",
-    ePoint: `zsh -sli`,
-    stdin: posixInteractiveScript
-      .split("\n").filter((line) => !/^#/.test(line)).join("\n"),
+    // assumes BASH_ENV or ZDOTDIR are set
+    // for ghjk with GHJK_AUTO_HOOK set to 1
+    name: "bash_scripting_with_auto_hook",
+    ePoint: `bash -s`,
+    stdin: posixNonInteractiveScript,
+    envVars: {
+      DUMMY_ENV: "old_dummy",
+    },
   },
   {
     name: "zsh_interactive",
     ePoint: `zsh -sli`,
-    stdin: `
-[ $(dummy) ] && exit 1020
-[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1030
-ghjk_hook` + posixInteractiveScript,
+    stdin: posixInteractiveScript
+      .split("\n").filter((line) => !/^#/.test(line)).join("\n"),
     envVars: {
-      GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
     },
   },
   {
     name: "zsh_scripting",
     ePoint: `zsh -s`,
-    stdin: posixNonInteractiveScript,
+    stdin: posixNonInteractiveScriptNoHook,
     envVars: {
       GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
     },
   },
   {
-    name: "fish_interactive_with_auto_hook",
-    ePoint: `fish -il`,
-    stdin: `set DUMMY_ENV old_dummy\n` +
-      fishInteractiveScript,
+    // assumes BASH_ENV or ZDOTDIR are set
+    // for ghjk with GHJK_AUTO_HOOK set to 1
+    name: "zsh_scripting_with_auto_hook",
+    ePoint: `zsh -s`,
+    stdin: posixNonInteractiveScript,
+    envVars: {
+      DUMMY_ENV: "old_dummy",
+    },
   },
   {
     name: "fish_interactive",
     ePoint: `fish -il`,
-    stdin: `set DUMMY_ENV old_dummy
-which dummy; and exit 1030
-test $DUMMY_ENV = "old_dummy"; or exit 1040
-ghjk_hook
-` + fishInteractiveScript,
+    stdin: fishInteractiveScript,
     envVars: {
-      GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
     },
   },
   {
     name: "fish_scripting",
     ePoint: `fish`,
-    stdin: fishNonInteractiveScript,
+    stdin: fishNonInteractiveScriptNoHook,
     envVars: {
       GHJK_AUTO_HOOK: "0",
+      DUMMY_ENV: "old_dummy",
+    },
+  },
+  {
+    name: "fish_scripting_with_auto_hook",
+    ePoint: `fish`,
+    stdin: fishNonInteractiveScript,
+    envVars: {
+      DUMMY_ENV: "old_dummy",
     },
   },
 ];

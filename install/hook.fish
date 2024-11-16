@@ -114,11 +114,11 @@ function __ghjk_preexec --on-event fish_preexec
     end
 end
 
-if status is-interactive; or begin;
-    set --query GHJK_AUTO_HOOK; 
-    and test $GHJK_AUTO_HOOK != "0"; 
+
+if set --query GHJK_AUTO_HOOK; and begin;
+    test $GHJK_AUTO_HOOK != "0"; 
     and test $GHJK_AUTO_HOOK != "false"; 
-    and test $GHJK_AUTO_HOOK != "0" 
-end;
+    and test $GHJK_AUTO_HOOK != "" 
+end; or status is-interactive;
     ghjk_hook
 end
