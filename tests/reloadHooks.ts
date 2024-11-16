@@ -38,9 +38,12 @@ echo "test" > $GHJK_NEXTFILE
 const posixNonInteractiveScript = `
 set -eux
 
-# FIXME: make decision about this
 # test that ghjk_reload doesn't run by default on non-interactive shells
 # [ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1011
+
+# prepare DUMMY_ENV for restore check
+
+DUMMY_ENV=old_dummy
 
 # test that ghjk_reload is avail because BASH_ENV exposed by the suite
 ghjk_reload
@@ -58,14 +61,14 @@ ghjk_reload
 
 # it shouldn't be avail now
 [ $(set +e; dummy) ] && exit 102
-[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 103
+[ "\${DUMMY_ENV:-}" = "old_dummy" ] || exit 103
 
 # cd back in
 popd
 
 # not avail yet
 [ $(set +e; dummy) ] && exit 104
-[ "\${DUMMY_ENV:-}" = "dummy" ] && exit 105
+[ "\${DUMMY_ENV:-}" = "old_dummy" ] || exit 105
 
 ghjk_reload
 # now it should be avail
@@ -96,7 +99,7 @@ sh -c "dummy"
 pushd ../
 # it shouldn't be avail here
 which dummy; and exit 103
-test $DUMMY_ENV = "dummy"; and exit 104
+test $DUMMY_ENV = "old_dummy"; or exit 104
 
 # cd back in
 popd
@@ -105,10 +108,12 @@ dummy; or exit 123
 test $DUMMY_ENV = "dummy"; or exit 105
 `;
 
-const fishNoninteractiveScript = `
+const fishNonInteractiveScript = `
 set fish_trace 1
 # test that ghjk_reload doesn't run by default on non-interactive shells
-# test $DUMMY_ENV = "dummy"; and exit 1011
+test $DUMMY_ENV = "dummy"; and exit 1011
+
+set DUMMY_ENV old_dummy
 
 # test that ghjk_reload is avail because config.fish exposed by the suite
 ghjk_reload
@@ -137,6 +142,7 @@ GHJK_ENV=test ghjk_reload
 test "$GHJK_ENV" = "test"; or exit 112`;
 
 const fishInteractiveScript = [
+  "set DUMMY_ENV old_dummy",
   fishScript,
   // simulate interactive mode by emitting postexec after each line
   // after each line
@@ -203,7 +209,7 @@ const cases: CustomE2eTestCase[] = [
     // the fish implementation triggers changes
     // on any pwd changes so it's identical to
     // interactive usage
-    stdin: fishNoninteractiveScript,
+    stdin: fishNonInteractiveScript,
   },
 ];
 

@@ -109,12 +109,16 @@ export async function sedLock(
   );
 
   // we prefer all settled for the destructive operation
-  await Promise.allSettled(
+  (await Promise.allSettled(
     workSet.map(async ([path, newText]) => {
       await path.writeText(newText);
       $.logStep(`Updated ${workingDir.relative(path)}`);
     }),
-  );
+  )).forEach((res) => {
+    if (res.status == "rejected") {
+      throw res.reason;
+    }
+  });
 
   return dirty;
 }

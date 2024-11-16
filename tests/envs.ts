@@ -80,6 +80,7 @@ ghjk envs cook yuki
 `;
 const envVarTestsFish = `
 set fish_trace 1
+ghjk_reload
 # by default, we should be in main
 test "$SONG" = "ditto"; or exit 101;
 test "$GHJK_ENV" = "main"; or exit 1010;
@@ -142,6 +143,8 @@ ghjk envs cook foo
 
 const installTestsFish = `
 set fish_trace 1
+ghjk_reload
+
 # by default, we should be in main
 test (dummy) = "main"; or exit 101;
 
@@ -197,6 +200,8 @@ const cases: CustomE2eTestCase[] = [
     secureConfig: { defaultEnv: "yuki" },
     stdin: `
 set fish_trace 1
+ghjk_reload
+
 # env base is false for "yuki" and thus no vars from "main"
 test "$GHJK_ENV" = "yuki"; or exit 106
 test "$SONG" = "ditto"; and exit 107
@@ -219,6 +224,7 @@ test "$HUMM" = "Soul Lady"; or exit 108
     },
     stdin: `
 set fish_trace 1
+ghjk_reload
 test "$GHJK_ENV" = "e1"; or exit 101
 test "$HEY" = "hello"; or exit 102
 `,
@@ -233,6 +239,7 @@ test "$HEY" = "hello"; or exit 102
     },
     stdin: `
 set fish_trace 1
+ghjk_reload
 test (ghjk x t1) = "hello"; or exit 102
 `,
   },
@@ -247,6 +254,7 @@ test (ghjk x t1) = "hello"; or exit 102
     },
     stdin: `
 set fish_trace 1
+ghjk_reload
 test "$GHJK_ENV" = "e1"; or exit 101
 test "$HEY" = "hello"; or exit 102
 `,
@@ -266,6 +274,7 @@ test "$HEY" = "hello"; or exit 102
     },
     stdin: `
 set fish_trace 1
+ghjk_reload
 test (ghjk x t2) = "hello"; or exit 102
 `,
   },

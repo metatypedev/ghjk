@@ -25,7 +25,7 @@ This makes it especially convenient for mono-repos and long-lived projects. See 
   - [npm](./ports/npmi.ts)
   - [pypi](./ports/pipi.ts)
   - [crates.io](./ports/cargobi.ts)
-  - [ ] [Github releases](https://github.com/metatypedev/ghjk/issues/79)
+  - [TBD] [Github releases](https://github.com/metatypedev/ghjk/issues/79)
 - Tasks written in typescript
   - Ergonomically powered by [`dax`](https://github.com/dsherret/dax).
   - Built on Deno, most dependencies are [an import away](https://docs.deno.com/runtime/fundamentals/modules/#importing-third-party-modules-and-libraries).

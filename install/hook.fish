@@ -107,4 +107,6 @@ function __ghjk_preexec --on-event fish_preexec
     end
 end
 
-ghjk_reload
+if status is-interactive
+    ghjk_reload
+end

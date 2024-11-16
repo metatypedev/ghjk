@@ -30,10 +30,6 @@ const aaPorts: PortManifest[] = [
 const denoPorts: PortManifest[] = [
   man_rustup_rustlang,
   man_cbin_ghrel,
-  // man_asdf_plugin_git,
-  // man_rust_rustup,
-  // man_cpy_bs_ghrel,
-  // man_node_org,
 ];
 
 /**

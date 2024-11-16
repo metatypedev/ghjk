@@ -174,7 +174,7 @@ $ ghjk tasks
 $ ghjk x
 
 # invoke the greet task
-# ghjk x greet ghjk
+$ ghjk x greet ghjk
 ```
 
 The `$` object is a enhanced version of the one from the [dax](https://jsr.io/david/jsr) library.
@@ -429,7 +429,9 @@ In such scenarios, one can directly `source` the activation script for the targe
 # cooking must be done to make the activations scripts available
 ghjk cook my-env
 # there are scripts for POSIX and fish shells
-source .ghjk/envs/my-env/activate.sh
+# dot command is the preferred alias of source since it's the 
+# only one supported by POSIX sh
+. .ghjk/envs/my-env/activate.sh
 echo $GHJK_ENV
 # my-env
 echo $MY_VAR
@@ -448,7 +450,7 @@ RUN ghjk envs cook
 
 # each RUN command is a separate shell session
 # and requires explicit activation
-RUN source "$GHJK_ACTIVATE" \
+RUN . "$GHJK_ACTIVATE" \
     && echo $MY_VAR
 ```
 
@@ -456,7 +458,7 @@ This extra boilerplate can be avoided by using the SHELL command available in so
 
 ```dockerfile
 # contraption to make sh load the activate script at startup
-SHELL ["/bin/sh", "-c", "source .ghjk/envs/my-env/activate.sh; sh -c $*", "sh"]
+SHELL ["/bin/sh", "-c", ". .ghjk/envs/my-env/activate.sh; sh -c \"$*\"", "sh"]
 RUN echo $MY_VAR
 ```
 

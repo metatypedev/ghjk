@@ -6,7 +6,7 @@ export DENO_NO_UPDATE_CHECK=1
 GHJK_MAIN_URL="${GHJK_MAIN_URL:-__MAIN_TS_URL__}" 
 
 # NOTE: avoid putting too much in here as this is only one 
-# method of getting the ghjk bin which is all utlimately optional
+# method of getting the ghjk bin which is all ultimately optional
 # anyways.
 
 # NOTE: keep this in sync with impls in install/exec.ts

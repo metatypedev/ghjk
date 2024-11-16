@@ -254,6 +254,7 @@ async function writeActivators(
       `${ghjkDirVar}="${gcx.ghjkDir.toString()}"`,
       `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
       ``,
+      `export GHJK_CLEANUP_POSIX="";`,
       `# env vars`,
       `# we keep track of old values before this script is run`,
       `# so that we can restore them on cleanup`,
@@ -282,7 +283,7 @@ async function writeActivators(
           // i.e. export KEY='OLD $VALUE OF KEY'
           // but $VALUE won't be expanded when the cleanup actually runs
           // we also unset the key if it wasn't previously set
-          `$([ -z "$\{${key}+x}" ] && echo 'export ${key}='\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
+          `$([ -z "$\{${key}+x}" ] && echo 'unset ${key};' || echo 'export ${key}='\\'"$\{${key}:-unreachable}""';");`,
           `export ${key}='${safeVal}';`,
           ``,
         ];

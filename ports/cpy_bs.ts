@@ -71,7 +71,7 @@ export class Port extends PortBase {
     };
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 

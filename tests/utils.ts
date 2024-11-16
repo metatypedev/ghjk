@@ -154,7 +154,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   ]));
   */
   {
-    const confHome = await ghjkShareDir.join(".config").ensureDir();
+    const confHome = await tmpDir.join(".config").ensureDir();
     const fishConfDir = await confHome.join("fish").ensureDir();
     await fishConfDir.join("config.fish").symlinkTo(
       ghjkShareDir.join("env.fish").toString(),

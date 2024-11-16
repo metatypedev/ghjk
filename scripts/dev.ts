@@ -58,10 +58,15 @@ await install({
 //   .clearEnv()
 //   .env(env);
 let cmd;
-if (Deno.args.length == 1 && Deno.args[0] == "bash") {
-  cmd = $`bash --rcfile ${env.BASH_ENV}`;
+if (Deno.args.length) {
+  if (Deno.args[0] == "bash") {
+    cmd = $`bash --rcfile ${env.BASH_ENV}`;
+  } else {
+    cmd = $`${Deno.args}`;
+  }
 } else {
-  cmd = $`${Deno.args}`;
+  throw new Error("shell program arg expected");
 }
+
 await cmd.env(env).noThrow()
   .cwd(Deno.env.get("CWD") ?? Deno.cwd());

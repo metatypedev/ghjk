@@ -18,7 +18,7 @@ const tasks: Record<string, DenoTaskDefArgs> = {
           await findEntryRecursive($.workingDir, ".ghjk");
         if (ghjkdir) {
           throw new Error(
-            "already in a ghjkdir context located at: ${ghjkdir}",
+            `already in a ghjkdir context located at: ${ghjkdir}`,
           );
         }
       }
@@ -116,7 +116,9 @@ async function handleVscodeSettings(
 
   const originalConfig = await vscodeSettings.readJson()
     .catch((err) => {
-      throw new Error(`error parsing JSON at ${vscodeSettings}`, err);
+      throw new Error(`error parsing JSON at ${vscodeSettings}`, {
+        cause: err,
+      });
     });
   const parsedConfig = unwrapZodRes(schema.safeParse(originalConfig), {
     originalConfig,
@@ -170,6 +172,7 @@ async function handleVscodeSettings(
     }
   } else {
     parsedConfig["deno.enablePaths"] = [ghjkfile];
+    writeOut = true;
     $.logger.info(
       `Adding ${ghjkfile} to "deno.enablePaths"`,
     );
