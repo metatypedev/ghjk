@@ -26,7 +26,7 @@ const cases: CustomE2eTestCase[] = [
     name: "update_all",
     installConf: [
       ports.jq_ghrel({ version: "jq-1.7" }),
-      ports.protoc({ version: "v24.0" }),
+      ports.protoc({ version: "v28.2" }),
     ],
     ePoint: `ghjk p outdated --update-all`,
     secureConf: {
