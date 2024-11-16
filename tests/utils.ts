@@ -117,12 +117,13 @@ export async function localE2eTest(testCase: E2eTestCase) {
     ),
   );
   const env: Record<string, string> = {
-    ...testEnvs,
+    GHJK_AUTO_HOOK: "true",
     BASH_ENV: `${ghjkShareDir.toString()}/env.bash`,
     ZDOTDIR: ghjkShareDir.toString(),
     GHJK_SHARE_DIR: ghjkShareDir.toString(),
     PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
     HOME: tmpDir.toString(),
+    ...testEnvs,
   };
   // install ghjk
   await install({

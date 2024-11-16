@@ -299,7 +299,7 @@ async function writeActivators(
           //  FIXME: we're allowing expansion in the value to allow
           //  readable $ghjkDirVar usage
           // (for now safe since all paths are created within ghjk)
-          `export ${key}="${safeVal}:$${key}";`,
+          `export ${key}="${safeVal}:$\{${key}-}";`,
           ``,
         ];
       }),

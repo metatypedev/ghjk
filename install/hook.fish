@@ -9,7 +9,14 @@ function __ghjk_get_mtime_ts
     end
 end
 
-function ghjk_hook --on-variable PWD --on-event ghjk_env_dir_change
+function ghjk_hook --on-variable PWD
+    # to be consistent with the posix shells
+    # we avoid reloading the env on PWD changes
+    # if not in an interactive shell
+    if not status is-interactive; and test "$argv" = "VARIABLE SET PWD"; 
+        return
+    end
+
     # precedence is gven to argv over GHJK_ENV
     set --local next_env $argv[1]
     test -z $next_env; and set next_env "$GHJK_ENV"
@@ -107,6 +114,11 @@ function __ghjk_preexec --on-event fish_preexec
     end
 end
 
-if status is-interactive
+if status is-interactive; or begin;
+    set --query GHJK_AUTO_HOOK; 
+    and test $GHJK_AUTO_HOOK != "0"; 
+    and test $GHJK_AUTO_HOOK != "false"; 
+    and test $GHJK_AUTO_HOOK != "0" 
+end;
     ghjk_hook
 end

@@ -116,4 +116,19 @@ precmd() {
     fi
 }
 
-ghjk_hook
+case "$-" in
+    *i*) # if the shell variables contain "i"
+        # only run the hook in interactive mode
+        # and GHJK_AUTO_HOOK is unset/false
+        if [ -z "$GHJK_AUTO_HOOK" ] || [ "$GHJK_AUTO_HOOK" != "0" ] && [ "$GHJK_AUTO_HOOK" != "false" ]; then
+            ghjk_hook
+        fi
+    ;;
+    *)
+        # also run the hook if GHJK_AUTO_HOOK is set
+        if [ -n "${GHJK_AUTO_HOOK+x}" ] && [ "$GHJK_AUTO_HOOK" != "0" ] && [ "$GHJK_AUTO_HOOK" != "false" ]; then
+            ghjk_hook
+        fi
+        :
+    ;;
+esac
