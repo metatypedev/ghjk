@@ -9,7 +9,7 @@ function __ghjk_get_mtime_ts
     end
 end
 
-function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
+function ghjk_hook --on-variable PWD --on-event ghjk_env_dir_change
     # precedence is gven to argv over GHJK_ENV
     set --local next_env $argv[1]
     test -z $next_env; and set next_env "$GHJK_ENV"
@@ -97,16 +97,16 @@ function __ghjk_preexec --on-event fish_preexec
     # exists
     if set --query GHJK_NEXTFILE; and test -f "$GHJK_NEXTFILE";
 
-        ghjk_reload (cat $GHJK_NEXTFILE)
+        ghjk_hook (cat $GHJK_NEXTFILE)
         rm "$GHJK_NEXTFILE"
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
         and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_MTIME;
-        ghjk_reload
+        ghjk_hook
     end
 end
 
 if status is-interactive
-    ghjk_reload
+    ghjk_hook
 end

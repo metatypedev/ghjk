@@ -38,15 +38,15 @@ echo "test" > $GHJK_NEXTFILE
 const posixNonInteractiveScript = `
 set -eux
 
-# test that ghjk_reload doesn't run by default on non-interactive shells
+# test that ghjk_hook doesn't run by default on non-interactive shells
 # [ "\${DUMMY_ENV:-}" = "dummy" ] && exit 1011
 
 # prepare DUMMY_ENV for restore check
 
 DUMMY_ENV=old_dummy
 
-# test that ghjk_reload is avail because BASH_ENV exposed by the suite
-ghjk_reload
+# test that ghjk_hook is avail because BASH_ENV exposed by the suite
+ghjk_hook
 [ "\${DUMMY_ENV:-}" = "dummy" ] || exit 101
 dummy
 
@@ -57,7 +57,7 @@ sh -c "dummy"
 pushd ../
 # no reload so it's stil avail
 dummy
-ghjk_reload
+ghjk_hook
 
 # it shouldn't be avail now
 [ $(set +e; dummy) ] && exit 102
@@ -70,7 +70,7 @@ popd
 [ $(set +e; dummy) ] && exit 104
 [ "\${DUMMY_ENV:-}" = "old_dummy" ] || exit 105
 
-ghjk_reload
+ghjk_hook
 # now it should be avail
 dummy
 [ "\${DUMMY_ENV:-}" = "dummy" ] || exit 106
@@ -78,12 +78,12 @@ dummy
 [ "\${GHJK_ENV}" = "main" ] || exit 107
 ghjk e cook test
 
-ghjk_reload test
+ghjk_hook test
 [ "\${GHJK_ENV:-}" = "test" ] || exit 110
-ghjk_reload
+ghjk_hook
 [ "\${GHJK_ENV:-}" = "test" ] || exit 111
 
-GHJK_ENV=test ghjk_reload
+GHJK_ENV=test ghjk_hook
 [ "\${GHJK_ENV:-}" = "test" ] || exit 112
 `;
 
@@ -110,13 +110,13 @@ test $DUMMY_ENV = "dummy"; or exit 105
 
 const fishNonInteractiveScript = `
 set fish_trace 1
-# test that ghjk_reload doesn't run by default on non-interactive shells
+# test that ghjk_hook doesn't run by default on non-interactive shells
 test $DUMMY_ENV = "dummy"; and exit 1011
 
 set DUMMY_ENV old_dummy
 
-# test that ghjk_reload is avail because config.fish exposed by the suite
-ghjk_reload
+# test that ghjk_hook is avail because config.fish exposed by the suite
+ghjk_hook
 
 ${fishScript}
 
@@ -126,19 +126,19 @@ ghjk envs cook test
 test $GHJK_ENV = "main"; or exit 107
 
 # manually switch to test
-ghjk_reload test
+ghjk_hook test
 test "$GHJK_ENV" = "test"; or exit 108
 
 # re-invoking reload won't go back to main
-ghjk_reload
+ghjk_hook
 test "$GHJK_ENV" = "test"; or exit 109
 
 # go back to main
-ghjk_reload main
+ghjk_hook main
 test "$GHJK_ENV" = "main"; or exit 111
 
 # changing GHJK_ENV manually gets respected
-GHJK_ENV=test ghjk_reload
+GHJK_ENV=test ghjk_hook
 test "$GHJK_ENV" = "test"; or exit 112`;
 
 const fishInteractiveScript = [
@@ -153,10 +153,10 @@ test $GHJK_ENV = "main"; or exit 107
 echo "test" > $GHJK_NEXTFILE
 test "$GHJK_ENV" = "test"; or exit 108
 
-ghjk_reload main
+ghjk_hook main
 test "$GHJK_ENV" = "main"; or exit 111
 
-GHJK_ENV=test ghjk_reload
+GHJK_ENV=test ghjk_hook
 test "$GHJK_ENV" = "test"; or exit 112
 `
     .split("\n").flatMap((line) => [

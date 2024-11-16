@@ -46,7 +46,7 @@ Before anything, make sure the following programs are available on the system.
 Install the ghjk cli using the installer scripts like so:
 
 ```bash
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.2.1/install.sh | bash
+curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh | bash
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:
@@ -61,9 +61,9 @@ Ghjk is primarily configured through constructs called "environments" or "envs" 
 They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
-import { file } from "https://raw.github.com/metatypedev/ghjk/v0.2.1/mod.ts";
+import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0/mod.ts";
 // ports are small programs that install sowtware to your envs
-import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.2.1/ports/mod.ts";
+import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0/ports/mod.ts";
 
 const ghjk = file({});
 

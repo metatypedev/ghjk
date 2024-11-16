@@ -15,7 +15,7 @@ __ghjk_get_mtime_ts () {
     esac
 }
 
-ghjk_reload() {
+ghjk_hook() {
 
     # precedence is given to argv over GHJK_ENV
     # which's usually the current active env
@@ -99,21 +99,21 @@ precmd() {
         # we ignore previously loaded GHJK_ENV when switching 
         # directories
         unset GHJK_ENV
-        ghjk_reload
+        ghjk_hook
         export GHJK_LAST_PWD="$PWD"
 
     # -nextfile exists
     elif [ -f "$GHJK_NEXTFILE" ]; then 
 
-        ghjk_reload "$(cat "$GHJK_NEXTFILE")"
+        ghjk_hook "$(cat "$GHJK_NEXTFILE")"
         rm "$GHJK_NEXTFILE"
 
     #  - the env dir loader mtime changes
     elif [ -n "${GHJK_LAST_ENV_DIR+x}" ] && [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
 
-        ghjk_reload
+        ghjk_hook
 
     fi
 }
 
-ghjk_reload
+ghjk_hook

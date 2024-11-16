@@ -32,7 +32,7 @@ type HostCtx = {
   lockedFlagSet: boolean;
 };
 
-const GHJK_VERSION = "0.2.1";
+const GHJK_VERSION = "0.3.0";
 
 export async function cli(args: CliArgs) {
   logger().debug(`ghjk CLI`, GHJK_VERSION);

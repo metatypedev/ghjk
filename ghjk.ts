@@ -27,7 +27,7 @@ install(
 task(
   "lock-sed",
   async ($) => {
-    const GHJK_VERSION = "0.2.1";
+    const GHJK_VERSION = "0.3.0";
     await sedLock(
       $.path(import.meta.dirname!),
       {
