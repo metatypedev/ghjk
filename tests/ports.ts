@@ -71,6 +71,19 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.rustup(),
     ePoint: `rustup-init --version`,
   },
+  // 15 megs
+  {
+    name: "fx_ghrel",
+    installConf: ports.fx_ghrel(),
+    ePoint: `fx --version`,
+  },
+  // 22 megs
+  {
+    name: "livekit_cli_ghrel",
+    installConf: ports.livekit_cli_ghrel(),
+    ePoint: `lk --version`,
+    ignore: Deno.build.os == "darwin",
+  },
   // 23 megs
   {
     name: "temporal",
