@@ -53,6 +53,7 @@ async function rpc(moduleUri: string, req: DriverRequests) {
         write: false,
         run: false,
         ffi: false,
+        import: true,
       } as Deno.PermissionOptions,
     },
   } as WorkerOptions);

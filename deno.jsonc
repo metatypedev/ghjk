@@ -14,7 +14,8 @@
       "**/*.md",
       ".ghjk/**",
       ".deno-dir/**",
-      "vendor/**"
+      "vendor/**",
+      "./target/"
     ]
   },
   "lint": {
@@ -24,7 +25,8 @@
       ".deno-dir/**",
       "ghjk.ts",
       "play.ts",
-      "vendor/**"
+      "vendor/**",
+      "./target/"
     ],
     "rules": {
       "include": [

@@ -232,10 +232,17 @@
               "ty": "denoFile@v1",
               "key": "lock-sed",
               "envKey": "bciqa3gn6bjbmgjf7mvk7cv6wfjo23wj3vyppgtpqt4ovvxkpzjrcvua"
+            },
+            "cache-v8": {
+              "ty": "denoFile@v1",
+              "key": "cache-v8",
+              "desc": "Install the V8 builds to a local cache.",
+              "envKey": "bciqjzvefargmop4vyqujvr7igrjunekxn5dmfqezjd2rgrdji5xpdai"
             }
           },
           "tasksNamed": [
-            "lock-sed"
+            "lock-sed",
+            "cache-v8"
           ]
         }
       },

@@ -107,7 +107,7 @@ export class TestConsoleErrHandler extends ConsoleErrHandler {
     super(levelName, options);
   }
 
-  handle(lr: std_log.LogRecord): void {
+  override handle(lr: std_log.LogRecord): void {
     if (lr.level >= this.throwLevel) {
       throw new Error(`detected ${lr.levelName} log record:`, { cause: lr });
     }

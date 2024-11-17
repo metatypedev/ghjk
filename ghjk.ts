@@ -4,6 +4,7 @@ export { sophon } from "./hack.ts";
 import { config, env, install, task } from "./hack.ts";
 import * as ports from "./ports/mod.ts";
 import { sedLock } from "./std.ts";
+import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 
 config({
   defaultEnv: "dev",
@@ -19,7 +20,7 @@ env("_rust")
     ports.rust({
       version: "1.82.0",
       profile: "default",
-      components: ["rustfmt", "clippy",],
+      components: ["rustfmt", "clippy"],
     }),
   );
 
@@ -42,6 +43,33 @@ install(
   ports.pipi({ packageName: "pre-commit" })[0],
   ports.pipi({ packageName: "vale" })[0],
   ports.deno_ghrel({ version: DENO_VERSION }),
+);
+
+task(
+  "cache-v8",
+  {
+    desc: "Install the V8 builds to a local cache.",
+    inherit: "_rust",
+    fn: async ($) => {
+      const v8Version = (await $`cargo tree -p v8 --depth 0 --locked`
+        .text())
+        .match(/^v8 (v[\d.]*)/)![1];
+      await $.co(
+        [v8Version]
+          .flatMap(
+            (rel) =>
+              [
+                "librusty_v8_release_x86_64-unknown-linux-gnu.a",
+              ].map((file) => ({
+                url:
+                  `https://github.com/denoland/rusty_v8/releases/download/${rel}/${file}`,
+                downloadPath: $.path(RUSTY_V8_MIRROR),
+              } satisfies DownloadFileArgs)),
+          )
+          .map((args) => downloadFile(args)),
+      );
+    },
+  },
 );
 
 task(

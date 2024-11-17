@@ -13,6 +13,7 @@ const files = (await Array.fromAsync(
       ".deno-dir/**",
       "vendor/**",
       ".git/**", // was throwing an error without this
+      "./target",
     ],
   }),
 )).map((ref) => ref.path.toString());

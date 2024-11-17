@@ -53,7 +53,7 @@ jobs:
         uses: actions-hub/docker/cli@master
         env:
           SKIP_LOGIN: true
-      
+
       - run: deno task test
 
   test-action:
@@ -63,7 +63,7 @@ jobs:
       - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
         with:
           installer-url: ./install.ts
-        env: 
+        env:
           GHJKFILE: ./examples/protoc/ghjk.ts
       - run: |
           cd examples/tasks
