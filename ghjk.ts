@@ -1,20 +1,40 @@
 // @ts-nocheck: Ghjkfile based on Deno
 
 export { sophon } from "./hack.ts";
-import { config, install, task } from "./hack.ts";
+import { config, env, install, task } from "./hack.ts";
 import * as ports from "./ports/mod.ts";
 import { sedLock } from "./std.ts";
 
 config({
-  defaultBaseEnv: "test",
+  defaultEnv: "dev",
   enableRuntimes: true,
   allowedBuildDeps: [ports.cpy_bs({ version: "3.12.7" })],
 });
 
-// these are just for quick testing
+env("_rust")
+  .install(
+    ports.protoc(),
+    ports.pipi({ packageName: "cmake" })[0],
+    // keep in sync with deno's reqs
+    ports.rust({
+      version: "1.82.0",
+      profile: "default",
+      components: ["rustfmt", "clippy",],
+    }),
+  );
+
+const RUSTY_V8_MIRROR = "~/.cache/rusty_v8";
+
+env("dev")
+  .inherit("_rust")
+  .vars({
+    RUSTY_V8_MIRROR,
+  });
+
+// these  are just for quick testing
 install();
 
-const DENO_VERSION = "1.44.2";
+const DENO_VERSION = "2.0.6";
 
 // these are used for developing ghjk
 install(
@@ -32,6 +52,9 @@ task(
       $.path(import.meta.dirname!),
       {
         lines: {
+          "./Cargo.toml": [
+            [/(version = ").*(")/, GHJK_VERSION],
+          ],
           "./.github/workflows/*.yml": [
             [/(DENO_VERSION: ").*(")/, DENO_VERSION],
           ],

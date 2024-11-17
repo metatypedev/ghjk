@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "xtask"
+path = "main.rs"
+
+[dependencies]
+denort.workspace = true
+
+tracing-unwrap.workspace = true
+
+color-eyre.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+# version must match on clap in `deno`
+clap = { version = "=4.5", features = ["derive", "env"] }

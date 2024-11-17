@@ -1,0 +1,19 @@
+[workspace]
+members = ["src/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+edition = "2021"
+
+[workspace.dependencies]
+denort = { path = "src/denort" }
+
+color-eyre = "0.6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+  "env-filter",
+  "parking_lot",
+  "tracing-log"
+] }
+tracing-unwrap = "1.0"
