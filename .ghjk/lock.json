@@ -184,6 +184,46 @@
           },
           "portRef": "rustup_rustlang@0.1.0",
           "specifiedVersion": false
+        },
+        "bciqkv7foyoio4wpti4yf2qrw5nphkgk2din6ba7mjv2w7hmgrv725ja": {
+          "version": "v2.4.0",
+          "buildDepConfigs": {
+            "tar_aa": {
+              "version": "1.35",
+              "buildDepConfigs": {},
+              "portRef": "tar_aa@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "mold_ghrel@0.1.0",
+          "replaceLd": true,
+          "specifiedVersion": true
+        },
+        "bciqftx76ntu7mbgpvp3btywb7ivtdpbaqi4f43ljbilgdgc6ziljlhq": {
+          "version": "1.82.0",
+          "buildDepConfigs": {
+            "rustup_rustlang": {
+              "version": "1.27.1",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.0",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "rustup_rustlang@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "rust_rustup@0.1.0",
+          "profile": "default",
+          "components": [
+            "rustfmt",
+            "clippy",
+            "rust-src"
+          ],
+          "specifiedVersion": true
         }
       }
     },
@@ -213,7 +253,20 @@
               "installs": [
                 "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
                 "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
-                "bciqp4n2ahd6nxzsytkoip53ruob4xohbjnmejx4cyux7nvp3usd56bq",
+                "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza",
+                "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
+                "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
+                "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
+                "bciqpy7sxlin5fqcbsl7vildckib5p65mei4qxya2fsbgvi2pqt3jimq"
+              ],
+              "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
+            },
+            "ghjkEnvProvInstSet___dev": {
+              "installs": [
+                "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q",
+                "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
+                "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
+                "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza",
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
@@ -275,16 +328,16 @@
                 }
               ]
             },
-            "bciqjgrh5crhxhhnalukxrijysquvykpejx4ldj7jsu3cdzfdynuo3cq": {
+            "bciqjiedgfyl4fsp2j64t4xk2sc7ei4eri75x2wqyczcmnthtgupg33a": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
-                  "val": "~/.cache/rusty_v8"
+                  "val": "/home/asdf/repos/ecma/ghjk/.dev/rusty_v8"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet____rust"
+                  "setId": "ghjkEnvProvInstSet___dev"
                 }
               ]
             }
@@ -293,7 +346,7 @@
           "envsNamed": {
             "main": "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya",
             "_rust": "bciqjzvefargmop4vyqujvr7igrjunekxn5dmfqezjd2rgrdji5xpdai",
-            "dev": "bciqjgrh5crhxhhnalukxrijysquvykpejx4ldj7jsu3cdzfdynuo3cq"
+            "dev": "bciqjiedgfyl4fsp2j64t4xk2sc7ei4eri75x2wqyczcmnthtgupg33a"
           }
         }
       }
@@ -757,7 +810,7 @@
         },
         "packageName": "cmake"
       },
-      "bciqp4n2ahd6nxzsytkoip53ruob4xohbjnmejx4cyux7nvp3usd56bq": {
+      "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza": {
         "version": "1.82.0",
         "port": {
           "ty": "denoWorker@v1",
@@ -793,8 +846,28 @@
         "profile": "default",
         "components": [
           "rustfmt",
-          "clippy"
+          "clippy",
+          "rust-src"
         ]
+      },
+      "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q": {
+        "version": "v2.4.0",
+        "port": {
+          "ty": "denoWorker@v1",
+          "name": "mold_ghrel",
+          "platforms": [
+            "aarch64-linux",
+            "x86_64-linux"
+          ],
+          "version": "0.1.0",
+          "buildDeps": [
+            {
+              "name": "tar_aa"
+            }
+          ],
+          "moduleSpecifier": "file:///ports/mold.ts"
+        },
+        "replaceLd": true
       }
     }
   }

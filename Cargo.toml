@@ -10,6 +10,7 @@ edition = "2021"
 denort = { path = "src/denort" }
 
 color-eyre = "0.6"
+anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
@@ -17,3 +18,4 @@ tracing-subscriber = { version = "0.3", features = [
   "tracing-log"
 ] }
 tracing-unwrap = "1.0"
+once_cell = "1"

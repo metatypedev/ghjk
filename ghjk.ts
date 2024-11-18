@@ -2,9 +2,11 @@
 
 export { sophon } from "./hack.ts";
 import { config, env, install, task } from "./hack.ts";
+import { switchMap } from "./port.ts";
 import * as ports from "./ports/mod.ts";
 import { sedLock } from "./std.ts";
-import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
+import { dbg, downloadFile, DownloadFileArgs } from "./utils/mod.ts";
+import { unarchive } from "./utils/unarchive.ts";
 
 config({
   defaultEnv: "dev",
@@ -20,17 +22,25 @@ env("_rust")
     ports.rust({
       version: "1.82.0",
       profile: "default",
-      components: ["rustfmt", "clippy"],
+      components: ["rustfmt", "clippy", "rust-src"],
     }),
   );
 
-const RUSTY_V8_MIRROR = "~/.cache/rusty_v8";
+const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
 env("dev")
   .inherit("_rust")
   .vars({
     RUSTY_V8_MIRROR,
   });
+
+if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
+  const mold = ports.mold({
+    version: "v2.4.0",
+    replaceLd: true,
+  });
+  env("dev").install(mold);
+}
 
 // these  are just for quick testing
 install();
@@ -51,23 +61,34 @@ task(
     desc: "Install the V8 builds to a local cache.",
     inherit: "_rust",
     fn: async ($) => {
-      const v8Version = (await $`cargo tree -p v8 --depth 0 --locked`
+      const tmpDirPath = await Deno.makeTempDir({});
+      const v8Versions = (await $`cargo tree -p v8 --depth 0 --locked`
         .text())
-        .match(/^v8 (v[\d.]*)/)![1];
-      await $.co(
-        [v8Version]
-          .flatMap(
-            (rel) =>
-              [
-                "librusty_v8_release_x86_64-unknown-linux-gnu.a",
-              ].map((file) => ({
+        .matchAll(/^v8 (v[\d.]*)/)
+        .map((match) => match[1]);
+
+      $.co(
+        v8Versions.map(
+          async (version) => {
+            const archiveName = `librusty_v8_release_${Deno.build.arch}-${
+              switchMap(Deno.build.os, {
+                linux: "unknown-linux-gnu",
+                darwin: "apple-darwin",
+              }) ?? "NOT_SUPPORTED"
+            }.a.gz`;
+            const archivePath = await downloadFile(
+              {
                 url:
-                  `https://github.com/denoland/rusty_v8/releases/download/${rel}/${file}`,
-                downloadPath: $.path(RUSTY_V8_MIRROR),
-              } satisfies DownloadFileArgs)),
-          )
-          .map((args) => downloadFile(args)),
+                  `https://github.com/denoland/rusty_v8/releases/download/${version}/${archiveName}`,
+                downloadPath: $.path(RUSTY_V8_MIRROR).join(version)
+                  .toString(),
+                tmpDirPath,
+              } satisfies DownloadFileArgs,
+            );
+          },
+        ),
       );
+      await $.path(tmpDirPath).remove({ recursive: true });
     },
   },
 );
@@ -81,7 +102,7 @@ task(
       {
         lines: {
           "./Cargo.toml": [
-            [/(version = ").*(")/, GHJK_VERSION],
+            [/^(version = ").*(")/, GHJK_VERSION],
           ],
           "./.github/workflows/*.yml": [
             [/(DENO_VERSION: ").*(")/, DENO_VERSION],

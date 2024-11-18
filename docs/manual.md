@@ -414,8 +414,8 @@ Namely, it's good practice to:
 # sample of how one would install ghjk for use in a Dockerfile
 ARG GHJK_VERSION=v0.3.0
 # /usr/bin is available in $PATH by default making ghjk immediately avail
-RUN GHJK_INSTALL_EXE_DIR=/usr/bin \
-    curl -fsSL https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh | bash
+RUN curl -fsSL https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh \
+    | GHJK_INSTALL_EXE_DIR=/usr/bin sh
 ```
 
 ### Activation

@@ -409,6 +409,7 @@ export type DownloadFileArgs = {
 export async function downloadFile(
   args: DownloadFileArgs,
 ) {
+  logger().debug("downloading", args);
   const { name, mode, url, downloadPath, tmpDirPath, headers } = {
     name: $.path(args.url).basename(),
     mode: 0o666,
@@ -542,32 +543,36 @@ export function thinInstallConfig(fat: InstallConfigFat) {
 
 export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
 
+/**
+ * This tries to emulate a rust `match` statement but in a typesafe
+ * way. This is a WIP function.
+ * ```ts
+ * const pick: 2 = switchMap(
+ *   "hello",
+ *   {
+ *     hey: () => 1,
+ *     hello: () => 2,
+ *     hi: 3,
+ *     holla: 4,
+ *   },
+ * );
+ * ```
+ */
 export function switchMap<
   K extends string | number | symbol,
   All extends {
-    [Key in K]: All[K];
+    [Key in K]?: All[K];
   },
->(
+> // D = undefined,
+(
   val: K,
   branches: All,
-  // def?: D,
+  // def?: (val: K) => D,
 ): K extends keyof All ? OrRetOf<All[K]>
-  : /* All[keyof All] | */ undefined {
-  // return branches[val];
+  : OrRetOf<All[keyof All]> | undefined {
   const branch = branches[val];
   return typeof branch == "function" ? branch() : branch;
 }
-
-switchMap(
-  "holla" as string,
-  {
-    hey: () => 1,
-    hello: () => 2,
-    hi: 3,
-    holla: 4,
-  } as const,
-  // () =>5
-);
 
 export async function expandGlobsAndAbsolutize(
   path: string,

@@ -1,3 +1,4 @@
+#[allow(unused)]
 mod interlude {
     pub use std::future::Future;
     pub use std::path::{Path, PathBuf};
@@ -10,32 +11,38 @@ mod interlude {
 }
 use crate::interlude::*;
 
+mod utils;
+
 fn main() -> Res<()> {
+    utils::setup_tracing()?;
+
     use clap::Parser;
     let args = Args::parse();
     match args.command {
-        Commands::Test { files } => {
+        Commands::Test { files, filter } => {
             use denort::deno::deno_config;
-            use denort::deno::deno_runtime;
+            let cwd = std::process::working_dir();
             denort::test_sync(
                 deno_config::glob::FilePatterns {
-                    base: std::env::current_dir()?,
                     include: files.map(|vec| {
                         deno_config::glob::PathOrPatternSet::new(
                             vec.into_iter()
-                                .map(deno_config::glob::PathOrPattern::Path)
-                                .collect(),
+                                .map(|path| {
+                                    deno_config::glob::PathOrPattern::from_relative(&cwd, path)
+                                })
+                                .collect::<Result<_>>()?,
                         )
                     }),
                     exclude: deno_config::glob::PathOrPatternSet::new(vec![]),
                 },
-                deno_runtime::permissions::PermissionsOptions {
+                "deno.jsonc".into(),
+                denort::deno::args::PermissionFlags {
                     allow_all: true,
                     ..Default::default()
                 },
-                Arc::new(|| None),
                 None,
-                None,
+                filter,
+                Arc::new(|| vec![]),
                 vec![],
             )
         }
@@ -56,5 +63,8 @@ enum Commands {
     Test {
         /// Files to test
         files: Option<Vec<PathBuf>>,
+        /// Tests to include
+        #[arg(long)]
+        filter: Option<String>,
     },
 }

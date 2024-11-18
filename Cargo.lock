@@ -2308,6 +2308,7 @@ dependencies = [
 name = "denort"
 version = "0.3.0"
 dependencies = [
+ "anyhow",
  "color-eyre",
  "deno",
  "derive_more",
@@ -8281,6 +8282,7 @@ dependencies = [
  "clap",
  "color-eyre",
  "denort",
+ "once_cell",
  "tracing",
  "tracing-subscriber",
  "tracing-unwrap",

@@ -10,6 +10,7 @@ path = "lib.rs"
 tracing-unwrap.workspace = true
 
 color-eyre.workspace = true
+anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
