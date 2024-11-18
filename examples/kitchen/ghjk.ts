@@ -1,6 +1,7 @@
 import { stdDeps } from "../../files/mod.ts";
 import { file } from "../../mod.ts";
 import * as ports from "../../ports/mod.ts";
+import { pyEnv } from "../../std/py.ts";
 
 const ghjk = file({
   // configre an empty env so that no ports are avail by default in our workdir
@@ -106,7 +107,8 @@ env("python")
     ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),
     ports.tar(),
     ports.zstd(),
-  );
+  )
+  .mixin(pyEnv());
 
 env("dev")
   // we can inherit from many envs
@@ -120,3 +122,6 @@ env("dev")
     workingDir: "..",
     fn: ($) => $`ls`,
   }));
+
+env("venv")
+  .inherit(["python"]);

@@ -12,16 +12,21 @@ import getLogger from "../../utils/logger.ts";
 
 const logger = getLogger(import.meta);
 
-export async function cookPosixEnv(
-  { gcx, recipe, envKey, envDir, createShellLoaders = false }: {
-    gcx: GhjkCtx;
-    recipe: EnvRecipeX;
-    envKey: string;
-    envDir: string;
-    createShellLoaders?: boolean;
-  },
-) {
+export async function cookPosixEnv({
+  gcx,
+  recipe,
+  envKey,
+  envDir,
+  createShellLoaders = false,
+}: {
+  gcx: GhjkCtx;
+  recipe: EnvRecipeX;
+  envKey: string;
+  envDir: string;
+  createShellLoaders?: boolean;
+}) {
   logger.debug("cooking env", envKey, { envDir });
+  // logger.debug("recipe", recipe);
   const reducedRecipe = await reduceStrangeProvisions(gcx, recipe);
   await $.removeIfExists(envDir);
   // create the shims for the user's environment
@@ -38,6 +43,9 @@ export async function cookPosixEnv(
   const binPaths = [] as string[];
   const libPaths = [] as string[];
   const includePaths = [] as string[];
+  const execDirs = [] as string[];
+  const sharedLibDirs = [] as string[];
+  const headerDirs = [] as string[];
   const vars = {
     GHJK_ENV: envKey,
   } as Record<string, string>;
@@ -46,67 +54,69 @@ export async function cookPosixEnv(
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
-  await Promise.all(reducedRecipe.provides.map((item) => {
-    if (!wellKnownProvisionTypes.includes(item.ty)) {
-      return Promise.resolve();
-    }
+  await Promise.all(
+    reducedRecipe.provides.map((item) => {
+      if (!wellKnownProvisionTypes.includes(item.ty)) {
+        return Promise.resolve();
+      }
 
-    const wellKnownProv = item as WellKnownProvision;
-    switch (wellKnownProv.ty) {
-      case "posix.exec":
-        binPaths.push(wellKnownProv.absolutePath);
-        break;
-      case "posix.sharedLib":
-        libPaths.push(wellKnownProv.absolutePath);
-        break;
-      case "posix.headerFile":
-        includePaths.push(wellKnownProv.absolutePath);
-        break;
-      // case "posix.envVarDyn":
-      case "posix.envVar":
-        if (vars[wellKnownProv.key]) {
-          throw new Error(
-            `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
-              vars[wellKnownProv.key]
-            }" and "${wellKnownProv.val}"`,
+      const wellKnownProv = item as WellKnownProvision;
+      switch (wellKnownProv.ty) {
+        case "posix.exec":
+          binPaths.push(wellKnownProv.absolutePath);
+          break;
+        case "posix.sharedLib":
+          libPaths.push(wellKnownProv.absolutePath);
+          break;
+        case "posix.headerFile":
+          includePaths.push(wellKnownProv.absolutePath);
+          break;
+        // case "posix.envVarDyn":
+        case "posix.envVar":
+          if (vars[wellKnownProv.key]) {
+            throw new Error(
+              `env var conflict cooking unix env: key "${wellKnownProv.key}" has entries "${
+                vars[wellKnownProv.key]
+              }" and "${wellKnownProv.val}"`,
+            );
+          }
+          vars[wellKnownProv.key] = wellKnownProv.val;
+          // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
+          break;
+        case "posix.execDir":
+          execDirs.push(wellKnownProv.path);
+          break;
+        case "posix.sharedLibDir":
+          sharedLibDirs.push(wellKnownProv.path);
+          break;
+        case "posix.headerDir":
+          headerDirs.push(wellKnownProv.path);
+          break;
+        case "hook.onEnter.posixExec":
+          onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
+          break;
+        case "hook.onExit.posixExec":
+          onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
+          break;
+        case "ghjk.ports.Install":
+          // do nothing
+          break;
+        default:
+          throw Error(
+            `unsupported provision type: ${(wellKnownProv as any).ty}`,
           );
-        }
-        vars[wellKnownProv.key] = wellKnownProv.val;
-        // installSetIds.push(wellKnownProv.installSetIdProvision!.id);
-        break;
-      case "hook.onEnter.posixExec":
-        onEnterHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
-        break;
-      case "hook.onExit.posixExec":
-        onExitHooks.push([wellKnownProv.program, wellKnownProv.arguments]);
-        break;
-      case "ghjk.ports.Install":
-        // do nothing
-        break;
-      default:
-        throw Error(
-          `unsupported provision type: ${(wellKnownProv as any).ty}`,
-        );
-    }
-  }));
-  void await Promise.all([
+      }
+    }),
+  );
+  void (await Promise.all([
     // bin shims
-    await shimLinkPaths(
-      binPaths,
-      binShimDir,
-    ),
+    await shimLinkPaths(binPaths, binShimDir),
     // lib shims
-    await shimLinkPaths(
-      libPaths,
-      libShimDir,
-    ),
+    await shimLinkPaths(libPaths, libShimDir),
     // include shims
-    await shimLinkPaths(
-      includePaths,
-      includeShimDir,
-    ),
+    await shimLinkPaths(includePaths, includeShimDir),
     $.path(envDir).join("recipe.json").writeJsonPretty(reducedRecipe),
-  ]);
+  ]));
   // FIXME: prevent malicious env manipulations
   let LD_LIBRARY_ENV: string;
   switch (Deno.build.os) {
@@ -119,12 +129,15 @@ export async function cookPosixEnv(
     default:
       throw new Error(`unsupported os ${Deno.build.os}`);
   }
+  execDirs.push(`${envDir}/shims/bin`);
+  sharedLibDirs.push(`${envDir}/shims/lib`);
+  headerDirs.push(`${envDir}/shims/include`);
   const pathVars = {
-    PATH: `${envDir}/shims/bin`,
-    LIBRARY_PATH: `${envDir}/shims/lib`,
-    [LD_LIBRARY_ENV]: `${envDir}/shims/lib`,
-    C_INCLUDE_PATH: `${envDir}/shims/include`,
-    CPLUS_INCLUDE_PATH: `${envDir}/shims/include`,
+    PATH: execDirs.join(":"),
+    LIBRARY_PATH: sharedLibDirs.join(":"),
+    [LD_LIBRARY_ENV]: sharedLibDirs.join(":"),
+    C_INCLUDE_PATH: headerDirs.join(":"),
+    CPLUS_INCLUDE_PATH: headerDirs.join(":"),
   };
   if (createShellLoaders) {
     // write loader for the env vars mandated by the installs
@@ -146,10 +159,7 @@ export async function cookPosixEnv(
 }
 
 /// This expands globs found in the targetPaths
-async function shimLinkPaths(
-  targetPaths: string[],
-  shimDir: Path,
-) {
+async function shimLinkPaths(targetPaths: string[], shimDir: Path) {
   // map of filename to shimPath
   const shims: Record<string, string> = {};
   // a work sack to append to incase there are globs expanded
@@ -158,8 +168,9 @@ async function shimLinkPaths(
     const file = foundTargetPaths.pop()!;
     if (std_path.isGlob(file)) {
       foundTargetPaths.push(
-        ...(await Array.fromAsync(std_fs.expandGlob(file)))
-          .map((entry) => entry.path),
+        ...(await Array.fromAsync(std_fs.expandGlob(file))).map(
+          (entry) => entry.path,
+        ),
       );
       continue;
     }
@@ -205,9 +216,7 @@ async function writeActivators(
   const shareDirVar = "_ghjk_share_dir";
   pathVars = {
     ...Object.fromEntries(
-      Object.entries(pathVars).map((
-        [key, val],
-      ) => [
+      Object.entries(pathVars).map(([key, val]) => [
         key,
         val
           .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
@@ -224,7 +233,8 @@ async function writeActivators(
   );
   const onExitHooksEscaped = onExitHooks.map(([cmd, args]) =>
     [cmd == "ghjk" ? ghjkShimName : cmd, ...args]
-      .join(" ").replaceAll("'", "'\\''")
+      .join(" ")
+      .replaceAll("'", "'\\''")
   );
 
   // ghjk.sh sets the DENO_DIR so we can usually
@@ -255,7 +265,9 @@ async function writeActivators(
         // be differeint than `key`
         // TODO: avoid invalid key values elsewhere
         const safeComparisionKey = `$\{${key}:-_${
-          val.replace(/['"]/g, "").slice(0, 2)
+          val
+            .replace(/['"]/g, "")
+            .slice(0, 2)
         }}`;
         return [
           // we only restore the old $KEY value at cleanup if value of $KEY
@@ -368,8 +380,8 @@ async function writeActivators(
       ,
       ``,
       `    # on exit hooks`,
-      ...onExitHooksEscaped.map((cmd) =>
-        `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`
+      ...onExitHooksEscaped.map(
+        (cmd) => `    set --global --append GHJK_CLEANUP_FISH '${cmd};';`,
       ),
       `end`,
     ],
