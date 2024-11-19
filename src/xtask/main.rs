@@ -15,25 +15,28 @@ mod utils;
 
 fn main() -> Res<()> {
     utils::setup_tracing()?;
+    let cwd = std::env::current_dir()?;
 
     use clap::Parser;
     let args = Args::parse();
     match args.command {
         Commands::Test { files, filter } => {
             use denort::deno::deno_config;
-            let cwd = std::process::working_dir();
             denort::test_sync(
                 deno_config::glob::FilePatterns {
-                    include: files.map(|vec| {
-                        deno_config::glob::PathOrPatternSet::new(
+                    include: if let Some(vec) = files {
+                        Some(deno_config::glob::PathOrPatternSet::new(
                             vec.into_iter()
                                 .map(|path| {
-                                    deno_config::glob::PathOrPattern::from_relative(&cwd, path)
+                                    deno_config::glob::PathOrPattern::from_relative(&cwd, &path)
                                 })
-                                .collect::<Result<_>>()?,
-                        )
-                    }),
+                                .collect::<Result<Vec<_>, _>>()?,
+                        ))
+                    } else {
+                        None
+                    },
                     exclude: deno_config::glob::PathOrPatternSet::new(vec![]),
+                    base: cwd,
                 },
                 "deno.jsonc".into(),
                 denort::deno::args::PermissionFlags {
@@ -42,7 +45,7 @@ fn main() -> Res<()> {
                 },
                 None,
                 filter,
-                Arc::new(|| vec![]),
+                Arc::new(std::vec::Vec::new),
                 vec![],
             )
         }
@@ -59,10 +62,15 @@ struct Args {
 
 #[derive(Debug, clap::Subcommand)]
 enum Commands {
+    /* #[clap(visible_alias = "r")]
+    Run {
+        /// Script arg
+        argv: Vec<String>,
+    }, */
     #[clap(visible_alias = "t")]
     Test {
         /// Files to test
-        files: Option<Vec<PathBuf>>,
+        files: Option<Vec<String>>,
         /// Tests to include
         #[arg(long)]
         filter: Option<String>,

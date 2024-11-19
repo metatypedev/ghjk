@@ -224,6 +224,30 @@
             "rust-src"
           ],
           "specifiedVersion": true
+        },
+        "bciqar6zz2xgxmu5i2jp5nuj4wsogcl7pxsqs3w55mibcsbks5iimsyy": {
+          "version": "1.82.0",
+          "buildDepConfigs": {
+            "rustup_rustlang": {
+              "version": "1.27.1",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.0",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "rustup_rustlang@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "rust_rustup@0.1.0",
+          "profile": "default",
+          "components": [
+            "rust-src"
+          ],
+          "specifiedVersion": true
         }
       }
     },
@@ -253,7 +277,7 @@
               "installs": [
                 "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
                 "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
-                "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza",
+                "bciqgkc6fegmxehj4whmusfuurxyp4ayeysn6qa2t6q64baac5is7uui",
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
@@ -266,7 +290,7 @@
                 "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q",
                 "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
                 "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
-                "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza",
+                "bciqgkc6fegmxehj4whmusfuurxyp4ayeysn6qa2t6q64baac5is7uui",
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
@@ -810,7 +834,7 @@
         },
         "packageName": "cmake"
       },
-      "bciqlfevxqitow2d3l3bbsvpy2p42aqcwhyhbavt2pvp4v3n2z22xzza": {
+      "bciqgkc6fegmxehj4whmusfuurxyp4ayeysn6qa2t6q64baac5is7uui": {
         "version": "1.82.0",
         "port": {
           "ty": "denoWorker@v1",
@@ -845,8 +869,6 @@
         },
         "profile": "default",
         "components": [
-          "rustfmt",
-          "clippy",
           "rust-src"
         ]
       },

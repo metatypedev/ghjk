@@ -5,7 +5,7 @@ import { config, env, install, task } from "./hack.ts";
 import { switchMap } from "./port.ts";
 import * as ports from "./ports/mod.ts";
 import { sedLock } from "./std.ts";
-import { dbg, downloadFile, DownloadFileArgs } from "./utils/mod.ts";
+import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 
 config({
@@ -22,7 +22,7 @@ env("_rust")
     ports.rust({
       version: "1.82.0",
       profile: "default",
-      components: ["rustfmt", "clippy", "rust-src"],
+      components: ["rust-src"],
     }),
   );
 
@@ -31,6 +31,7 @@ const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 env("dev")
   .inherit("_rust")
   .vars({
+    // V8_FORCE_DEBUG: "true",
     RUSTY_V8_MIRROR,
   });
 
@@ -62,31 +63,38 @@ task(
     inherit: "_rust",
     fn: async ($) => {
       const tmpDirPath = await Deno.makeTempDir({});
-      const v8Versions = (await $`cargo tree -p v8 --depth 0 --locked`
-        .text())
-        .matchAll(/^v8 (v[\d.]*)/)
-        .map((match) => match[1]);
+      const v8Versions = [
+        ...(await $`cargo tree -p v8 --depth 0 --locked`
+          .text())
+          .matchAll(/^v8 (v[\d.]*)/g)
+          .map((match) => match[1]),
+      ];
 
-      $.co(
-        v8Versions.map(
-          async (version) => {
-            const archiveName = `librusty_v8_release_${Deno.build.arch}-${
-              switchMap(Deno.build.os, {
+      await $.co(
+        v8Versions
+          .flatMap(
+            (version) => {
+              const os = switchMap(Deno.build.os, {
                 linux: "unknown-linux-gnu",
                 darwin: "apple-darwin",
-              }) ?? "NOT_SUPPORTED"
-            }.a.gz`;
-            const archivePath = await downloadFile(
-              {
+              }) ?? "NOT_SUPPORTED";
+              const arch = Deno.build.arch;
+              return [
+                `librusty_v8_release_${arch}-${os}.a.gz`,
+                `librusty_v8_debug_${arch}-${os}.a.gz`,
+              ].map((archiveName) => ({
+                archiveName,
                 url:
                   `https://github.com/denoland/rusty_v8/releases/download/${version}/${archiveName}`,
-                downloadPath: $.path(RUSTY_V8_MIRROR).join(version)
-                  .toString(),
+                downloadPath: $.path(RUSTY_V8_MIRROR).join(version).toString(),
                 tmpDirPath,
-              } satisfies DownloadFileArgs,
-            );
-          },
-        ),
+              } satisfies DownloadFileArgs));
+            },
+          )
+          .filter((args) =>
+            !$.path(args.downloadPath).join(args.archiveName).existsSync()
+          )
+          .map((args) => downloadFile(args)),
       );
       await $.path(tmpDirPath).remove({ recursive: true });
     },

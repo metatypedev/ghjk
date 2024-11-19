@@ -30,7 +30,7 @@ fn main() -> Res<()> {
             allow_all: true,
             ..default()
         },
-        Arc::new(|| vec![]),
+        Arc::new(std::vec::Vec::new),
     );
 
     Ok(())

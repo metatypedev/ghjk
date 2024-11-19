@@ -49,6 +49,7 @@ pub fn run_sync(
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) {
+    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
     new_thread_builder()
         .spawn(|| {
             create_and_run_current_thread_with_maybe_metrics(async move {
@@ -72,8 +73,6 @@ pub async fn run(
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) -> anyhow::Result<()> {
-    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
-
     deno_permissions::set_prompt_callbacks(
         Box::new(util::draw_thread::DrawThread::hide),
         Box::new(util::draw_thread::DrawThread::show),
@@ -125,6 +124,7 @@ pub fn test_sync(
     custom_extensions: Arc<worker::CustomExtensionsCb>,
     argv: Vec<String>,
 ) {
+    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
     new_thread_builder()
         .spawn(|| {
             create_and_run_current_thread_with_maybe_metrics(async move {
@@ -161,8 +161,6 @@ pub async fn test(
 ) -> anyhow::Result<()> {
     use deno::tools::test::*;
 
-    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
-
     deno_permissions::set_prompt_callbacks(
         Box::new(util::draw_thread::DrawThread::hide),
         Box::new(util::draw_thread::DrawThread::show),
@@ -174,7 +172,7 @@ pub async fn test(
         deno_config::glob::PathOrPattern::NegatedPath(path) => path.to_string_lossy().to_string(),
     };
 
-    let test_flags = dbg!(args::TestFlags {
+    let test_flags = args::TestFlags {
         files: args::FileFlags {
             include: files
                 .include
@@ -197,7 +195,7 @@ pub async fn test(
         filter,
         concurrent_jobs: std::thread::available_parallelism().ok(),
         ..Default::default()
-    });
+    };
     let flags = args::Flags {
         permissions,
         unstable_config: args::UnstableConfig {

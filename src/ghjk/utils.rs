@@ -2,7 +2,7 @@ use crate::interlude::*;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
 // isn't required in cargo-nextest since each test runs in a new process
-pub fn setup_tracing_once() {
+pub fn _setup_tracing_once() {
     use once_cell::sync::Lazy;
     static TRACING: Lazy<()> = Lazy::new(|| {
         setup_tracing().expect("failed to init tracing");
@@ -101,7 +101,7 @@ mod cheapstr {
 
     impl PartialOrd for CHeapStr {
         fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            self.string.partial_cmp(&other.string)
+            Some(self.cmp(other))
         }
     }
 
@@ -127,8 +127,8 @@ mod cheapstr {
         }
     }
 
-    impl Into<String> for CHeapStr {
-        fn into(self) -> String {
+    impl From<CHeapStr> for String {
+        fn from(value: CHeapStr) -> String {
             // FIXME: optmize this
             /* let string = if let Some(s) = Arc::get_mut(&mut self.0) {
                 unsafe {
@@ -143,7 +143,7 @@ mod cheapstr {
             };
             std::mem::forget(self.0);
             string */
-            self.string.into_owned()
+            value.string.into_owned()
         }
     }
 

@@ -66,3 +66,16 @@ repos:
         pass_filenames: false
         types:
           - ts
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        exclude: tests/metagen/typegraphs/sample/rs/client.rs
+      - id: clippy
+        args:
+          - "--locked"
+          - "--all-features"
+          - "--all-targets"
+          - "--"
+          - "--deny"
+          - "warnings"

@@ -134,6 +134,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
     ghjkDenoCacheDir: Deno.env.get("DENO_DIR") ??
       $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
     ghjkShareDir: ghjkShareDir.toString(),
+    ghjkExecDenoExec: "deno",
     // don't modify system shell configs
     shellsToHook: [],
   });

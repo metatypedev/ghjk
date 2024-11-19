@@ -281,6 +281,7 @@ export const $ = dax.build$(
         }
         return pathRef;
       },
+      dbg,
     },
   },
 );
