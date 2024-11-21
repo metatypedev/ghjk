@@ -27,12 +27,6 @@ use deno::{
 use deno_runtime::deno_core as deno_core; // necessary for re-exported macros to work
 
 const DEFAULT_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv" /* "net", "http" */];
-const CACHE_BLOCKLIST: &[&str] = &[
-    "npm:/@typegraph/sdk",
-    "npm:/@typegraph/sdk/",
-    "npm:@typegraph/sdk",
-    "npm:@typegraph/sdk/",
-];
 
 /// Ensure that the subcommand runs in a task, rather than being directly executed. Since some of these
 /// futures are very large, this prevents the stack from getting blown out from passing them by value up
@@ -43,13 +37,26 @@ fn spawn_subcommand<F: Future<Output = ()> + 'static>(f: F) -> JoinHandle<()> {
     deno_core::unsync::spawn(f.boxed_local())
 }
 
+/// This must be called on the main thread as early as possible
+/// or one will encounter stack overflows and segmentation faults
+pub fn init() {
+    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
+    // The stack will blow on debug builds unless we increase the size
+    if cfg!(debug_assertions) {
+        // We must do this early before any new threads are started
+        // since std::thread might cache RUST_MIN_STACK once it's read this env
+        if std::env::var("RUST_MIN_STACK").is_err() {
+            std::env::set_var("RUST_MIN_STACK", "8388608");
+        }
+    };
+}
+
 pub fn run_sync(
     main_mod: ModuleSpecifier,
     import_map_url: Option<String>,
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) {
-    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
     new_thread_builder()
         .spawn(|| {
             create_and_run_current_thread_with_maybe_metrics(async move {
@@ -67,17 +74,122 @@ pub fn run_sync(
         .unwrap();
 }
 
+pub struct Context {
+    pub cli_factory: deno::factory::CliFactory,
+    worker_factory: deno::worker::CliMainWorkerFactory,
+    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+    graph: Arc<graph_container::MainModuleGraphContainer>,
+}
+
+impl Context {
+    pub async fn from_config(
+        flags: deno::args::Flags,
+        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+    ) -> Res<Self> {
+        deno_permissions::set_prompt_callbacks(
+            Box::new(util::draw_thread::DrawThread::hide),
+            Box::new(util::draw_thread::DrawThread::show),
+        );
+
+        let flags = args::Flags { ..flags };
+        let flags = Arc::new(flags);
+        let cli_factory = factory::CliFactory::from_flags(flags);
+        let cli_factory = if let Some(custom_extensions_cb) = &custom_extensions_cb {
+            cli_factory.with_custom_ext_cb(custom_extensions_cb.clone())
+        } else {
+            cli_factory
+        };
+        let worker_factory = cli_factory
+            .create_cli_main_worker_factory()
+            .await
+            .map_err(|err| ferr!(Box::new(err)))?;
+
+        let graph = cli_factory
+            .main_module_graph_container()
+            .await
+            .map_err(|err| ferr!(Box::new(err)))?
+            .clone();
+        Ok(Self {
+            cli_factory,
+            worker_factory,
+            custom_extensions_cb,
+            graph,
+        })
+    }
+
+    pub async fn run_module(
+        &self,
+        main_module: ModuleSpecifier,
+        permissions: &deno_permissions::PermissionsOptions,
+        mode: deno_runtime::WorkerExecutionMode,
+        stdio: deno_runtime::deno_io::Stdio,
+    ) -> Res<ModuleWorker> {
+        let desc_parser = self
+            .cli_factory
+            .permission_desc_parser()
+            .map_err(|err| ferr!(Box::new(err)))?
+            .clone();
+        let permissions =
+            deno_permissions::Permissions::from_options(desc_parser.as_ref(), permissions)?;
+        let permissions = deno_permissions::PermissionsContainer::new(desc_parser, permissions);
+        let worker = self
+            .worker_factory
+            .create_custom_worker(
+                mode,
+                main_module.clone(),
+                permissions,
+                self.custom_extensions_cb
+                    .as_ref()
+                    .map(|cb| cb())
+                    .unwrap_or_default(),
+                stdio,
+            )
+            .await
+            .map_err(|err| ferr!(Box::new(err)))?;
+        Ok(ModuleWorker {
+            main_module,
+            worker,
+            graph: self.graph.clone(),
+        })
+    }
+}
+
+pub struct ModuleWorker {
+    main_module: deno_core::ModuleSpecifier,
+    worker: deno::worker::CliMainWorker,
+    graph: Arc<graph_container::MainModuleGraphContainer>,
+}
+
+impl ModuleWorker {
+    pub fn visted_files(&self) -> Vec<ModuleSpecifier> {
+        use deno::graph_container::*;
+        self.graph
+            .graph()
+            .walk(
+                [&self.main_module].into_iter(),
+                deno::deno_graph::WalkOptions {
+                    kind: deno::deno_graph::GraphKind::CodeOnly,
+                    check_js: false,
+                    follow_dynamic: true,
+                    prefer_fast_check_graph: false,
+                },
+            )
+            .filter(|(url, _)| url.scheme() == "file")
+            .map(|(url, _)| url.clone())
+            .collect()
+    }
+
+    pub async fn run(&mut self) -> Res<i32> {
+        self.worker.run().await.map_err(|err| ferr!(Box::new(err)))
+    }
+}
+
 pub async fn run(
     main_module: ModuleSpecifier,
     import_map_url: Option<String>,
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) -> anyhow::Result<()> {
-    deno_permissions::set_prompt_callbacks(
-        Box::new(util::draw_thread::DrawThread::hide),
-        Box::new(util::draw_thread::DrawThread::show),
-    );
-
     // NOTE: avoid using the Run subcommand
     // as it breaks our custom_extensions patch for some reason
     let flags = args::Flags {
@@ -91,12 +203,6 @@ pub async fn run(
                 .collect(),
             ..Default::default()
         },
-        #[cfg(debug_assertions)]
-        cache_blocklist: CACHE_BLOCKLIST
-            .iter()
-            .cloned()
-            .map(str::to_string)
-            .collect(),
         ..Default::default()
     };
 
@@ -112,6 +218,7 @@ pub async fn run(
     tracing::info!("running worker");
     let exit_code = worker.run().await?;
     println!("exit_code: {exit_code}");
+
     Ok(())
 }
 
@@ -124,7 +231,6 @@ pub fn test_sync(
     custom_extensions: Arc<worker::CustomExtensionsCb>,
     argv: Vec<String>,
 ) {
-    deno::util::v8::init_v8_flags(&[], &[], deno::util::v8::get_v8_flags_from_env());
     new_thread_builder()
         .spawn(|| {
             create_and_run_current_thread_with_maybe_metrics(async move {
@@ -210,11 +316,6 @@ pub async fn test(
         config_flag: args::ConfigFlag::Path(config_file.to_string_lossy().into()),
         argv,
         subcommand: args::DenoSubcommand::Test(test_flags.clone()),
-        cache_blocklist: CACHE_BLOCKLIST
-            .iter()
-            .cloned()
-            .map(str::to_string)
-            .collect(),
         ..Default::default()
     };
 
@@ -311,14 +412,6 @@ pub async fn test(
 pub fn new_thread_builder() -> std::thread::Builder {
     let builder = std::thread::Builder::new();
     let builder = if cfg!(debug_assertions) {
-        // this is only relevant for WebWorkers
-        // FIXME: find a better location for this as tihs won't work
-        // if a second thread has already launched by this point
-        if std::env::var("RUST_MIN_STACK").is_err() {
-            unsafe {
-                std::env::set_var("RUST_MIN_STACK", "8388608");
-            }
-        }
         // deno & swc need 8 MiB with dev profile (release is ok)
         // https://github.com/swc-project/swc/blob/main/CONTRIBUTING.md
         builder.stack_size(8 * 1024 * 1024)
