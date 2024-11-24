@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use crate::interlude::*;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
@@ -150,6 +152,88 @@ mod cheapstr {
     impl std::fmt::Display for CHeapStr {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             self.string.fmt(f)
+        }
+    }
+}
+
+const SHA2_256: u64 = 0x12;
+
+pub fn hash_obj<T: serde::Serialize>(obj: &T) -> String {
+    use sha2::Digest;
+    let mut hash = sha2::Sha256::new();
+    json_canon::to_writer(&mut hash, obj).expect("error serializing manifest");
+    let hash = hash.finalize();
+
+    let hash = multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect("error multihashing");
+    encode_base32_multibase(hash.digest())
+}
+
+pub fn hash_str(string: &str) -> String {
+    use sha2::Digest;
+    let mut hash = sha2::Sha256::new();
+    hash.write(string.as_bytes())
+        .expect_or_log("error writing to hasher");
+    let hash = hash.finalize();
+
+    let hash = multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect("error multihashing");
+    encode_base32_multibase(hash.digest())
+}
+
+pub fn encode_base32_multibase<T: AsRef<[u8]>>(source: T) -> String {
+    format!("b{}", data_encoding::BASE32_NOPAD.encode(source.as_ref()))
+}
+
+// Consider z-base32 https://en.wikipedia.org/wiki/Base32#z-base-32
+pub fn decode_base32_multibase(source: &str) -> eyre::Result<Vec<u8>> {
+    match (
+        &source[0..1],
+        data_encoding::BASE32_NOPAD.decode(source[1..].as_bytes()),
+    ) {
+        ("b", Ok(bytes)) => Ok(bytes),
+        (prefix, Ok(_)) => Err(eyre::format_err!(
+            "unexpected multibase prefix for base32 multibase: {prefix}"
+        )),
+        (_, Err(err)) => Err(eyre::format_err!("error decoding base32: {err}")),
+    }
+}
+
+pub fn encode_hex_multibase<T: AsRef<[u8]>>(source: T) -> String {
+    format!(
+        "f{}",
+        data_encoding::HEXLOWER_PERMISSIVE.encode(source.as_ref())
+    )
+}
+
+pub fn decode_hex_multibase(source: &str) -> eyre::Result<Vec<u8>> {
+    match (
+        &source[0..1],
+        data_encoding::HEXLOWER_PERMISSIVE.decode(source[1..].as_bytes()),
+    ) {
+        ("f", Ok(bytes)) => Ok(bytes),
+        (prefix, Ok(_)) => Err(eyre::format_err!(
+            "unexpected multibase prefix for hex multibase: {prefix}"
+        )),
+        (_, Err(err)) => Err(eyre::format_err!("error decoding hex: {err}")),
+    }
+}
+
+pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf>> {
+    let mut cur = from;
+    loop {
+        let location = cur.join(name);
+        match tokio::fs::try_exists(&location).await {
+            Ok(_) => {
+                return Ok(Some(location));
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                let Some(next_cur) = cur.parent() else {
+                    return Ok(None);
+                };
+                cur = next_cur;
+            }
+            Err(err) => {
+                return Err(err).wrap_err("error on file stat");
+            }
         }
     }
 }

@@ -9,13 +9,15 @@ path = "lib.rs"
 [dependencies]
 tracing-unwrap.workspace = true
 
+educe.workspace = true
+
 color-eyre.workspace = true
 anyhow.workspace = true
+
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
 deno = { git = "https://github.com/metatypedev/deno", branch = "v2.0.6-embeddable" }
+
+tokio.workspace = true
 # deno_core = "=0.291.0"
-# breaking changes to .18 
-# https://github.com/JelteF/derive_more/issues/373
-derive_more = "=0.99.17"

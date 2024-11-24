@@ -6,8 +6,8 @@
 // all imports in here should be dynamic imports as we want to
 // modify the Deno namespace before anyone touches it
 
-// NOTE: only import types
 import { shimDenoNamespace } from "../../utils/worker.ts";
+// NOTE: only import types
 import type { DriverRequests, DriverResponse } from "./mod.ts";
 
 self.onmessage = onMsg;

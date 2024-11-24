@@ -28,15 +28,6 @@ use deno_runtime::deno_core as deno_core; // necessary for re-exported macros to
 
 const DEFAULT_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv" /* "net", "http" */];
 
-/// Ensure that the subcommand runs in a task, rather than being directly executed. Since some of these
-/// futures are very large, this prevents the stack from getting blown out from passing them by value up
-/// the callchain (especially in debug mode when Rust doesn't have a chance to elide copies!).
-#[inline(always)]
-fn spawn_subcommand<F: Future<Output = ()> + 'static>(f: F) -> JoinHandle<()> {
-    // the boxed_local() is important in order to get windows to not blow the stack in debug
-    deno_core::unsync::spawn(f.boxed_local())
-}
-
 /// This must be called on the main thread as early as possible
 /// or one will encounter stack overflows and segmentation faults
 pub fn init() {
@@ -51,38 +42,88 @@ pub fn init() {
     };
 }
 
-pub fn run_sync(
-    main_mod: ModuleSpecifier,
-    import_map_url: Option<String>,
-    permissions: args::PermissionFlags,
-    custom_extensions: Arc<worker::CustomExtensionsCb>,
-) {
-    new_thread_builder()
-        .spawn(|| {
-            create_and_run_current_thread_with_maybe_metrics(async move {
-                spawn_subcommand(async move {
-                    run(main_mod, import_map_url, permissions, custom_extensions)
-                        .await
-                        .unwrap()
-                })
-                .await
-                .unwrap()
-            })
-        })
-        .unwrap()
-        .join()
-        .unwrap();
+/// This starts a new thread and uses it to run  all the tasks
+/// that'll need to touch deno internals. Deno is single threaded.
+///
+/// Returned handles will use channels internally to communicate to this worker.
+pub async fn worker(
+    flags: deno::args::Flags,
+    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+) -> Res<DenoWorkerHandle> {
+    let cx = WorkerContext::from_config(flags, custom_extensions_cb).await?;
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerReq>();
+    let rt = tokio::runtime::Handle::current();
+    std::thread::spawn(move || {
+        let local = tokio::task::LocalSet::new();
+
+        local.spawn_local(async move {
+            while let Some(req) = rx.recv().await {
+                match req {
+                    DenoWorkerReq::PrepareModule {
+                        response_channel,
+                        main_module,
+                        permissions,
+                        mode,
+                        stdio,
+                    } => {
+                        let mut module_cx = match cx
+                            .prepare_module(main_module, &permissions, mode, stdio)
+                            .await
+                        {
+                            Ok(val) => val,
+                            Err(err) => {
+                                response_channel
+                                    .send(Err(err))
+                                    .expect_or_log("channel error");
+                                continue;
+                            }
+                        };
+
+                        let (module_tx, mut module_rx) =
+                            tokio::sync::mpsc::unbounded_channel::<ModuleWorkerReq>();
+                        tokio::task::spawn_local(async move {
+                            while let Some(req) = module_rx.recv().await {
+                                match req {
+                                    ModuleWorkerReq::Run { response_channel } => response_channel
+                                        .send(module_cx.run().await)
+                                        .expect_or_log("channel error"),
+                                    ModuleWorkerReq::GetVisitedFiles { response_channel } => {
+                                        response_channel
+                                            .send(module_cx.get_visited_files())
+                                            .expect_or_log("channel error")
+                                    }
+                                }
+                            }
+                        });
+
+                        response_channel
+                            .send(Ok(ModuleWorkerHandle { sender: module_tx }))
+                            .expect_or_log("channel error");
+                    }
+                }
+            }
+        });
+        rt.block_on(local);
+    });
+    Ok(DenoWorkerHandle { sender: tx })
 }
 
-pub struct Context {
-    pub cli_factory: deno::factory::CliFactory,
+#[derive(educe::Educe)]
+#[educe(Debug)]
+struct WorkerContext {
+    #[educe(Debug(ignore))]
+    cli_factory: deno::factory::CliFactory,
+    #[educe(Debug(ignore))]
     worker_factory: deno::worker::CliMainWorkerFactory,
+    #[educe(Debug(ignore))]
     custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+    #[educe(Debug(ignore))]
     graph: Arc<graph_container::MainModuleGraphContainer>,
 }
 
-impl Context {
-    pub async fn from_config(
+impl WorkerContext {
+    async fn from_config(
         flags: deno::args::Flags,
         custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
     ) -> Res<Self> {
@@ -117,13 +158,13 @@ impl Context {
         })
     }
 
-    pub async fn run_module(
+    async fn prepare_module(
         &self,
         main_module: ModuleSpecifier,
         permissions: &deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
-    ) -> Res<ModuleWorker> {
+    ) -> Res<ModuleWorkerContext> {
         let desc_parser = self
             .cli_factory
             .permission_desc_parser()
@@ -146,7 +187,8 @@ impl Context {
             )
             .await
             .map_err(|err| ferr!(Box::new(err)))?;
-        Ok(ModuleWorker {
+
+        Ok(ModuleWorkerContext {
             main_module,
             worker,
             graph: self.graph.clone(),
@@ -154,14 +196,55 @@ impl Context {
     }
 }
 
-pub struct ModuleWorker {
+enum DenoWorkerReq {
+    PrepareModule {
+        response_channel: tokio::sync::oneshot::Sender<Res<ModuleWorkerHandle>>,
+        main_module: ModuleSpecifier,
+        permissions: deno_permissions::PermissionsOptions,
+        mode: deno_runtime::WorkerExecutionMode,
+        stdio: deno_runtime::deno_io::Stdio,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct DenoWorkerHandle {
+    sender: tokio::sync::mpsc::UnboundedSender<DenoWorkerReq>,
+}
+
+impl DenoWorkerHandle {
+    pub async fn prepare_module(
+        &self,
+        main_module: ModuleSpecifier,
+        permissions: deno_permissions::PermissionsOptions,
+        mode: deno_runtime::WorkerExecutionMode,
+        stdio: deno_runtime::deno_io::Stdio,
+    ) -> Res<ModuleWorkerHandle> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(DenoWorkerReq::PrepareModule {
+                response_channel: tx,
+                main_module,
+                permissions,
+                mode,
+                stdio,
+            })
+            .expect_or_log("channel error");
+        rx.await.expect_or_log("channel error")
+    }
+}
+
+#[derive(educe::Educe)]
+#[educe(Debug)]
+struct ModuleWorkerContext {
     main_module: deno_core::ModuleSpecifier,
+    #[educe(Debug(ignore))]
     worker: deno::worker::CliMainWorker,
+    #[educe(Debug(ignore))]
     graph: Arc<graph_container::MainModuleGraphContainer>,
 }
 
-impl ModuleWorker {
-    pub fn visted_files(&self) -> Vec<ModuleSpecifier> {
+impl ModuleWorkerContext {
+    fn get_visited_files(&self) -> Vec<ModuleSpecifier> {
         use deno::graph_container::*;
         self.graph
             .graph()
@@ -179,9 +262,76 @@ impl ModuleWorker {
             .collect()
     }
 
-    pub async fn run(&mut self) -> Res<i32> {
+    async fn run(&mut self) -> Res<i32> {
         self.worker.run().await.map_err(|err| ferr!(Box::new(err)))
     }
+}
+
+enum ModuleWorkerReq {
+    Run {
+        response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
+    },
+    GetVisitedFiles {
+        response_channel: tokio::sync::oneshot::Sender<Vec<ModuleSpecifier>>,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct ModuleWorkerHandle {
+    sender: tokio::sync::mpsc::UnboundedSender<ModuleWorkerReq>,
+}
+impl ModuleWorkerHandle {
+    pub async fn get_visited_files(&mut self) -> Vec<ModuleSpecifier> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(ModuleWorkerReq::GetVisitedFiles {
+                response_channel: tx,
+            })
+            .expect_or_log("channel error");
+        // FIXME: can use sync oneshot here
+        rx.await.expect_or_log("channel error")
+    }
+
+    pub async fn run(&mut self) -> Res<i32> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(ModuleWorkerReq::Run {
+                response_channel: tx,
+            })
+            .expect_or_log("channel error");
+        rx.await.expect_or_log("channel error")
+    }
+}
+
+/// Ensure that the subcommand runs in a task, rather than being directly executed. Since some of these
+/// futures are very large, this prevents the stack from getting blown out from passing them by value up
+/// the callchain (especially in debug mode when Rust doesn't have a chance to elide copies!).
+#[inline(always)]
+fn spawn_subcommand<F: Future<Output = ()> + 'static>(f: F) -> JoinHandle<()> {
+    // the boxed_local() is important in order to get windows to not blow the stack in debug
+    deno_core::unsync::spawn(f.boxed_local())
+}
+pub fn run_sync(
+    main_mod: ModuleSpecifier,
+    import_map_url: Option<String>,
+    permissions: args::PermissionFlags,
+    custom_extensions: Arc<worker::CustomExtensionsCb>,
+) {
+    new_thread_builder()
+        .spawn(|| {
+            create_and_run_current_thread_with_maybe_metrics(async move {
+                spawn_subcommand(async move {
+                    run(main_mod, import_map_url, permissions, custom_extensions)
+                        .await
+                        .unwrap()
+                })
+                .await
+                .unwrap()
+            })
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }
 
 pub async fn run(
