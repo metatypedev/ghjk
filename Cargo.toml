@@ -8,6 +8,10 @@ edition = "2021"
 
 [workspace.dependencies]
 denort = { path = "src/denort" }
+deno = { git = "https://github.com/metatypedev/deno", branch = "v2.0.6-embeddable" }
+# needed to get deno_core::op2 working
+# must track version used by deno
+deno_core = "=0.318.0"
 
 educe = "0.6"
 

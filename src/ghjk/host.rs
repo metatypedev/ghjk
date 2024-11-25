@@ -1,4 +1,8 @@
-use crate::{interlude::*, utils};
+use crate::interlude::*;
+
+mod deno;
+mod hashfile;
+use hashfile::*;
 
 #[derive(educe::Educe)]
 #[educe(Debug)]
@@ -237,7 +241,7 @@ pub async fn modules_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileModu
 
 pub struct GhjkfileModules {
     hcx: Arc<HostCtx>,
-    config: Arc<SerializedConfig>,
+    pub config: Arc<SerializedConfig>,
     hash_obj: HashObj,
     mod_instances: IndexMap<CHeapStr, (ModuleInstance, ModuleContext)>,
     old_lock_obj: Option<LockObj>,
@@ -248,7 +252,7 @@ pub struct GhjkfileModules {
 }
 
 impl GhjkfileModules {
-    async fn write_lockfile(&mut self) -> Res<()> {
+    pub async fn write_lockfile(&mut self) -> Res<()> {
         let mut lock_obj = LockObj {
             version: "0".into(),
             config: self.config.clone(),
@@ -307,7 +311,7 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
     let ext = path.extension();
     let res = if ext.map(|ext| ext == "ts" || ext == "js") == Some(true) {
         debug!("serializing deno ghjkfile");
-        serialize_deno_ghjkfile(hcx, path).await?
+        deno::serialize_deno_ghjkfile(hcx, path).await?
     } else {
         eyre::bail!("unrecognized ghjkfile extension: {path:?}")
     };
@@ -337,50 +341,12 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
     ))
 }
 
-async fn serialize_deno_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<SerializationResult> {
-    use denort::deno::deno_runtime;
-    let main_module = deno_runtime::deno_core::resolve_path(
-        hcx.gcx.repo_root.join("./files/deno/mod2.ts"),
-        &hcx.config.cwd,
-    )
-    .wrap_err("error resolving main module")?;
-
-    // let (stdout_r, stdout_w) = deno_runtime::deno_io::pipe()?;
-    // let (stderr_r, stderr_w) = deno_runtime::deno_io::pipe()?;
-    let mut worker = hcx
-        .gcx
-        .deno
-        .prepare_module(
-            main_module.clone(),
-            deno_runtime::deno_permissions::PermissionsOptions {
-                allow_env: Some(vec![]),
-                allow_import: Some(vec![]),
-                allow_read: Some(vec![]),
-                allow_net: Some(vec![]),
-                ..default()
-            },
-            deno_runtime::WorkerExecutionMode::Run,
-            deno_runtime::deno_io::Stdio {
-                // stdout: deno_runtime::deno_io::StdioPipe::file(stdout_w),
-                // stderr: deno_runtime::deno_io::StdioPipe::file(stderr_w),
-                ..default()
-            },
-        )
-        .await?;
-
-    let exit_code = worker.run().await?;
-    info!(%exit_code, %main_module, "module done");
-    for url in worker.get_visited_files().await {
-        info!(%url, %main_module, "visited files");
-    }
-    Ok(todo!())
-}
-
 struct SerializationResult {
     config: SerializedConfig,
     accessed_env_keys: Vec<String>,
     read_file_paths: Vec<PathBuf>,
     listed_file_paths: Vec<PathBuf>,
+    loaded_modules: Vec<url::Url>,
 }
 
 type ModuleId = CHeapStr;
@@ -394,7 +360,7 @@ struct ModuleConfig {
 type ConfigBlackboard = serde_json::Map<String, serde_json::Value>;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct SerializedConfig {
+pub struct SerializedConfig {
     modules: Vec<ModuleConfig>,
     blackboard: ConfigBlackboard,
 }
@@ -415,186 +381,5 @@ impl LockObj {
             .await
             .wrap_err("error reading hash.json")?;
         serde_json::from_slice(&raw).wrap_err("error parsing lock.json")
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HashObj {
-    pub version: String,
-    /// Hash of the ghjkfile contents.
-    pub ghjkfile_hash: String,
-    /// Hashes of all env vars that were read.
-    pub env_var_hashes: indexmap::IndexMap<String, Option<String>>,
-    /// Hashes of all files that were read.
-    pub read_file_hashes: indexmap::IndexMap<PathBuf, Option<String>>,
-    /// File paths that were observed from the fs but not necessarily
-    /// read.
-    pub listed_files: Vec<PathBuf>,
-}
-
-impl HashObj {
-    /// The hash.json file stores the digests of all external accesses
-    /// of a ghjkfile during serialization. The primary purpose is to
-    /// do "cache invalidation" on ghjkfiles, re-serializing them if
-    /// any of the digests change.
-    pub async fn from_file(path: &Path) -> Res<HashObj> {
-        let raw = tokio::fs::read(path)
-            .await
-            .wrap_err("error reading hash.json")?;
-        serde_json::from_slice(&raw).wrap_err("error parsing hash.json")
-    }
-
-    pub async fn is_stale(&self, hcx: &HostCtx, ghjkfile_hash: &str) -> Res<bool> {
-        if self.ghjkfile_hash != ghjkfile_hash {
-            return Ok(true);
-        }
-        {
-            let new_digest = env_var_digests(
-                &hcx.config.env_vars,
-                self.env_var_hashes.keys().map(|key| &key[..]),
-            );
-            if self.env_var_hashes != new_digest {
-                return Ok(true);
-            }
-        }
-        {
-            for path in &self.listed_files {
-                if !matches!(tokio::fs::try_exists(path).await, Ok(true)) {
-                    return Ok(true);
-                }
-            }
-        }
-        {
-            if self.read_file_hashes
-                != file_digests(
-                    &hcx,
-                    self.read_file_hashes
-                        .keys()
-                        .map(|path| path.as_ref())
-                        .collect(),
-                )
-                .await?
-            {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-}
-
-fn env_var_digests<'a>(
-    all: &IndexMap<String, String>,
-    accessed: impl Iterator<Item = &'a str>,
-) -> IndexMap<String, Option<String>> {
-    accessed
-        .map(|key| {
-            (
-                key.to_owned(),
-                match all.get(key) {
-                    Some(val) => Some(utils::hash_str(val)),
-                    None => None,
-                },
-            )
-        })
-        .collect()
-}
-
-async fn file_digests(
-    hcx: &HostCtx,
-    read_files: Vec<&Path>,
-) -> Res<IndexMap<PathBuf, Option<String>>> {
-    let out = read_files
-        .into_co_stream()
-        .map(|path| async move {
-            let path = tokio::fs::canonicalize(path).await?;
-            let hash = file_digest_hash(hcx, &path).await?;
-            let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
-            Ok((relative_path, hash))
-        })
-        .collect::<Res<Vec<_>>>()
-        .await?;
-    Ok(out.into_iter().collect())
-}
-
-async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
-    match tokio::fs::metadata(&path).await {
-        Ok(stat) => {
-            let content_hash = if stat.file_type().is_file() || stat.file_type().is_symlink() {
-                Some(file_content_digest_hash(hcx, &path).await?)
-            } else {
-                None
-            };
-
-            Ok(Some(crate::utils::hash_obj(&serde_json::json!({
-                "content_hash": content_hash,
-                "stat": StatMeta::from(stat)
-            }))))
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(err) => Err(err).wrap_err("error on file stat"),
-    }
-}
-
-async fn file_content_digest_hash(hcx: &HostCtx, path: &Path) -> Res<CHeapStr> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
-    use dashmap::mapref::entry::*;
-    match hcx.file_hash_memo.entry(path.clone()) {
-        Entry::Occupied(occupied_entry) => Ok(occupied_entry.get().clone()),
-        Entry::Vacant(vacant_entry) => {
-            // FIXME: optimize by stream hashing, this reads whole file into memory
-            let file = tokio::fs::read(path)
-                .await
-                .wrap_err("error reading file for")?;
-            let hash: CHeapStr = crate::utils::encode_base32_multibase(file).into();
-            vacant_entry.insert(hash.clone());
-            Ok(hash)
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct StatMeta {
-    accessed: Option<u64>,
-    created: Option<u64>,
-    modified: Option<u64>,
-    is_file: bool,
-    is_dir: bool,
-    is_symlink: bool,
-    size: u64,
-    #[cfg(unix)]
-    mode: u32,
-}
-
-impl From<std::fs::Metadata> for StatMeta {
-    fn from(value: std::fs::Metadata) -> Self {
-        fn unwrap_opt_sys_time(inp: std::io::Result<std::time::SystemTime>) -> Option<u64> {
-            inp.map_err(|_| ())
-                .and_then(|ts| {
-                    ts.duration_since(std::time::SystemTime::UNIX_EPOCH)
-                        .map_err(|_| ())
-                })
-                .and_then(|dur| Ok(dur.as_secs()))
-                .ok()
-        }
-        #[cfg(unix)]
-        use std::os::unix::fs::PermissionsExt;
-
-        Self {
-            // file_type: match value.file_type() {},
-            accessed: unwrap_opt_sys_time(value.accessed()),
-            created: unwrap_opt_sys_time(value.created()),
-            modified: unwrap_opt_sys_time(value.modified()),
-            is_file: value.is_file(),
-            is_symlink: value.is_symlink(),
-            is_dir: value.is_dir(),
-            size: value.len(),
-            #[cfg(unix)]
-            mode: value.permissions().mode(),
-        }
     }
 }

@@ -121,6 +121,12 @@ mod cheapstr {
         }
     }
 
+    impl std::borrow::Borrow<str> for CHeapStr {
+        fn borrow(&self) -> &str {
+            &self[..]
+        }
+    }
+
     impl From<String> for CHeapStr {
         fn from(string: String) -> Self {
             /* let byte_arc: Arc<[u8]> = string.into_bytes().into();

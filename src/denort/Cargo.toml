@@ -17,7 +17,6 @@ anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
-deno = { git = "https://github.com/metatypedev/deno", branch = "v2.0.6-embeddable" }
+deno.workspace = true
 
 tokio.workspace = true
-# deno_core = "=0.291.0"

@@ -54,59 +54,75 @@ pub async fn worker(
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerReq>();
     let rt = tokio::runtime::Handle::current();
-    std::thread::spawn(move || {
-        let local = tokio::task::LocalSet::new();
 
-        local.spawn_local(async move {
-            while let Some(req) = rx.recv().await {
-                match req {
-                    DenoWorkerReq::PrepareModule {
-                        response_channel,
-                        main_module,
-                        permissions,
-                        mode,
-                        stdio,
-                    } => {
-                        let mut module_cx = match cx
-                            .prepare_module(main_module, &permissions, mode, stdio)
-                            .await
-                        {
-                            Ok(val) => val,
-                            Err(err) => {
-                                response_channel
-                                    .send(Err(err))
-                                    .expect_or_log("channel error");
-                                continue;
-                            }
-                        };
+    let join_handle = new_thread_builder()
+        .spawn(move || {
+            let local = tokio::task::LocalSet::new();
 
-                        let (module_tx, mut module_rx) =
-                            tokio::sync::mpsc::unbounded_channel::<ModuleWorkerReq>();
-                        tokio::task::spawn_local(async move {
-                            while let Some(req) = module_rx.recv().await {
-                                match req {
-                                    ModuleWorkerReq::Run { response_channel } => response_channel
-                                        .send(module_cx.run().await)
-                                        .expect_or_log("channel error"),
-                                    ModuleWorkerReq::GetVisitedFiles { response_channel } => {
-                                        response_channel
-                                            .send(module_cx.get_visited_files())
-                                            .expect_or_log("channel error")
+            local.spawn_local(async move {
+                while let Some(req) = rx.recv().await {
+                    match req {
+                        DenoWorkerReq::PrepareModule {
+                            response_channel,
+                            main_module,
+                            permissions,
+                            mode,
+                            stdio,
+                            custom_extensions_cb,
+                        } => {
+                            let mut module_cx = match cx
+                                .prepare_module(
+                                    main_module,
+                                    &permissions,
+                                    mode,
+                                    stdio,
+                                    custom_extensions_cb,
+                                )
+                                .await
+                            {
+                                Ok(val) => val,
+                                Err(err) => {
+                                    response_channel
+                                        .send(Err(err))
+                                        .expect_or_log("channel error");
+                                    continue;
+                                }
+                            };
+
+                            let (module_tx, mut module_rx) =
+                                tokio::sync::mpsc::unbounded_channel::<ModuleWorkerReq>();
+                            tokio::task::spawn_local(async move {
+                                while let Some(req) = module_rx.recv().await {
+                                    match req {
+                                        ModuleWorkerReq::Run { response_channel } => {
+                                            response_channel
+                                                .send(module_cx.run().await)
+                                                .expect_or_log("channel error")
+                                        }
+                                        ModuleWorkerReq::GetLoadedModules { response_channel } => {
+                                            response_channel
+                                                .send(module_cx.get_loaded_modules())
+                                                .expect_or_log("channel error")
+                                        }
                                     }
                                 }
-                            }
-                        });
+                            });
 
-                        response_channel
-                            .send(Ok(ModuleWorkerHandle { sender: module_tx }))
-                            .expect_or_log("channel error");
+                            response_channel
+                                .send(Ok(ModuleWorkerHandle { sender: module_tx }))
+                                .expect_or_log("channel error");
+                        }
                     }
                 }
-            }
-        });
-        rt.block_on(local);
-    });
-    Ok(DenoWorkerHandle { sender: tx })
+            });
+            rt.block_on(local);
+        })
+        .unwrap();
+    let join_handle = Arc::new(join_handle);
+    Ok(DenoWorkerHandle {
+        sender: tx,
+        join_handle,
+    })
 }
 
 #[derive(educe::Educe)]
@@ -117,15 +133,13 @@ struct WorkerContext {
     #[educe(Debug(ignore))]
     worker_factory: deno::worker::CliMainWorkerFactory,
     #[educe(Debug(ignore))]
-    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
-    #[educe(Debug(ignore))]
     graph: Arc<graph_container::MainModuleGraphContainer>,
 }
 
 impl WorkerContext {
     async fn from_config(
         flags: deno::args::Flags,
-        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+        root_custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
     ) -> Res<Self> {
         deno_permissions::set_prompt_callbacks(
             Box::new(util::draw_thread::DrawThread::hide),
@@ -135,7 +149,7 @@ impl WorkerContext {
         let flags = args::Flags { ..flags };
         let flags = Arc::new(flags);
         let cli_factory = factory::CliFactory::from_flags(flags);
-        let cli_factory = if let Some(custom_extensions_cb) = &custom_extensions_cb {
+        let cli_factory = if let Some(custom_extensions_cb) = &root_custom_extensions_cb {
             cli_factory.with_custom_ext_cb(custom_extensions_cb.clone())
         } else {
             cli_factory
@@ -153,7 +167,6 @@ impl WorkerContext {
         Ok(Self {
             cli_factory,
             worker_factory,
-            custom_extensions_cb,
             graph,
         })
     }
@@ -164,6 +177,7 @@ impl WorkerContext {
         permissions: &deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
+        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
     ) -> Res<ModuleWorkerContext> {
         let desc_parser = self
             .cli_factory
@@ -179,10 +193,7 @@ impl WorkerContext {
                 mode,
                 main_module.clone(),
                 permissions,
-                self.custom_extensions_cb
-                    .as_ref()
-                    .map(|cb| cb())
-                    .unwrap_or_default(),
+                custom_extensions_cb,
                 stdio,
             )
             .await
@@ -203,12 +214,14 @@ enum DenoWorkerReq {
         permissions: deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
+        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct DenoWorkerHandle {
     sender: tokio::sync::mpsc::UnboundedSender<DenoWorkerReq>,
+    join_handle: Arc<std::thread::JoinHandle<()>>,
 }
 
 impl DenoWorkerHandle {
@@ -218,6 +231,7 @@ impl DenoWorkerHandle {
         permissions: deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
+        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
     ) -> Res<ModuleWorkerHandle> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
@@ -227,6 +241,7 @@ impl DenoWorkerHandle {
                 permissions,
                 mode,
                 stdio,
+                custom_extensions_cb,
             })
             .expect_or_log("channel error");
         rx.await.expect_or_log("channel error")
@@ -244,7 +259,7 @@ struct ModuleWorkerContext {
 }
 
 impl ModuleWorkerContext {
-    fn get_visited_files(&self) -> Vec<ModuleSpecifier> {
+    fn get_loaded_modules(&self) -> Vec<ModuleSpecifier> {
         use deno::graph_container::*;
         self.graph
             .graph()
@@ -257,7 +272,6 @@ impl ModuleWorkerContext {
                     prefer_fast_check_graph: false,
                 },
             )
-            .filter(|(url, _)| url.scheme() == "file")
             .map(|(url, _)| url.clone())
             .collect()
     }
@@ -271,7 +285,7 @@ enum ModuleWorkerReq {
     Run {
         response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
     },
-    GetVisitedFiles {
+    GetLoadedModules {
         response_channel: tokio::sync::oneshot::Sender<Vec<ModuleSpecifier>>,
     },
 }
@@ -281,10 +295,10 @@ pub struct ModuleWorkerHandle {
     sender: tokio::sync::mpsc::UnboundedSender<ModuleWorkerReq>,
 }
 impl ModuleWorkerHandle {
-    pub async fn get_visited_files(&mut self) -> Vec<ModuleSpecifier> {
+    pub async fn get_loaded_modules(&mut self) -> Vec<ModuleSpecifier> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
-            .send(ModuleWorkerReq::GetVisitedFiles {
+            .send(ModuleWorkerReq::GetLoadedModules {
                 response_channel: tx,
             })
             .expect_or_log("channel error");

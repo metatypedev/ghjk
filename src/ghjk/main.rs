@@ -10,6 +10,13 @@ mod interlude {
     pub use crate::GhjkCtx;
 
     pub use color_eyre::eyre;
+    pub use denort::deno::{
+        self,
+        deno_runtime::{
+            self,
+            deno_core::{self, url},
+        },
+    };
     pub use eyre::{format_err as ferr, Context, Result as Res, WrapErr};
     pub use futures::{future::BoxFuture, FutureExt};
     pub use futures_concurrency::{future::Join, prelude::*};
@@ -25,6 +32,7 @@ mod interlude {
 mod host;
 
 mod cli {}
+mod deno;
 mod utils;
 
 use crate::interlude::*;
@@ -138,6 +146,8 @@ async fn cli() -> Res<()> {
         let hcx = Arc::new(hcx);
 
         if let Some(modules) = host::modules_from_ghjkfile(hcx).await? {
+            let conf_json = serde_json::to_string_pretty(&modules.config)?;
+            info!(%conf_json);
         } else {
             warn!("no ghjkfile found");
         }

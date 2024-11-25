@@ -9,6 +9,7 @@ path = "main.rs"
 
 [dependencies]
 denort.workspace = true
+deno_core.workspace = true
 
 serde = "1"
 serde_json = "1"
