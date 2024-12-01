@@ -9,6 +9,7 @@
 // NOTE: only import types
 import { shimDenoNamespace } from "../../utils/worker.ts";
 import { zod } from "../../deps/common.ts";
+import { Ghjk } from "../../src/ghjk/js/runtime.js";
 
 const serializeArgs = zod.object({
   uri: zod.string(),

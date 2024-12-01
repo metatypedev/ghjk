@@ -21,14 +21,23 @@ function getOp(name) {
   return op;
 }
 
+const op_callbacks_set = getOp("op_callbacks_set");
+
 /**
  * @type {import('./runtime.d.ts').GhjkNs}
  */
 const Ghjk = {
   blackboard: {
-    get: getOp("op_get_blackboard"),
-    set: getOp("op_set_blackboard"),
+    get: getOp("op_blackboard_get"),
+    set: getOp("op_blackboard_set"),
   },
+  callbacks: {
+    set: (key, fn) => {
+      op_callbacks_set(key, fn);
+      return key;
+    },
+  },
+  hostcall: getOp("op_hostcall"),
 };
 
 globalThis.Ghjk = Ghjk;

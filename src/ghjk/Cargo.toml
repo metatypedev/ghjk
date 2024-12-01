@@ -39,6 +39,8 @@ tracing-error = "0.2"
 tracing-unwrap.workspace = true
 
 color-eyre.workspace = true
+anyhow.workspace = true
+
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-appender = "0.2"
@@ -61,6 +63,7 @@ data-encoding = "2.6.0"
 sha2 = "0.10.8"
 pathdiff = "0.2.2"
 directories = "5.0.1"
+async-trait = "0.1.83"
 
 [build-dependencies]
 shadow-rs.workspace = true

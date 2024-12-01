@@ -33,9 +33,8 @@ const lockValidator = zod.object({
 
 type EnvsLockEnt = zod.infer<typeof lockValidator>;
 
-export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
-  processManifest(
-    gcx: GhjkCtx,
+export class EnvsModule extends ModuleBase<EnvsLockEnt> {
+  loadConfig(
     manifest: ModuleManifest,
     _bb: Blackboard,
     _lockEnt: EnvsLockEnt | undefined,
@@ -52,20 +51,18 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const setEnv = Deno.env.get("GHJK_ENV");
     const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
-    const envsCtx = getEnvsCtx(gcx);
-    envsCtx.activeEnv = activeEnv;
-    envsCtx.config = config;
+    const ecx = getEnvsCtx(this.gcx);
+    ecx.activeEnv = activeEnv;
+    ecx.config = config;
     for (const [name, key] of Object.entries(config.envsNamed)) {
-      envsCtx.keyToName[key] = [name, ...(envsCtx.keyToName[key] ?? [])];
+      ecx.keyToName[key] = [name, ...(ecx.keyToName[key] ?? [])];
     }
-
-    return Promise.resolve(envsCtx);
   }
 
-  commands(
-    gcx: GhjkCtx,
-    ecx: EnvsCtx,
-  ) {
+  commands() {
+    const gcx = this.gcx;
+    const ecx = getEnvsCtx(this.gcx);
+
     function envKeyArgs(
       args: {
         taskKeyMaybe?: string;
@@ -215,10 +212,7 @@ Cooks and activates an environment.
     };
   }
 
-  loadLockEntry(
-    _gcx: GhjkCtx,
-    raw: Json,
-  ) {
+  loadLockEntry(raw: Json) {
     const entry = lockValidator.parse(raw);
 
     if (entry.version != "0") {
@@ -227,10 +221,7 @@ Cooks and activates an environment.
 
     return entry;
   }
-  genLockEntry(
-    _gcx: GhjkCtx,
-    _tcx: EnvsCtx,
-  ) {
+  genLockEntry() {
     return {
       version: "0",
     };

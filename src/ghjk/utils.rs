@@ -1,33 +1,6 @@
-use std::io::Write;
-
 use crate::interlude::*;
 
-// Ensure that the `tracing` stack is only initialised once using `once_cell`
-// isn't required in cargo-nextest since each test runs in a new process
-pub fn _setup_tracing_once() {
-    use once_cell::sync::Lazy;
-    static TRACING: Lazy<()> = Lazy::new(|| {
-        setup_tracing().expect("failed to init tracing");
-    });
-    Lazy::force(&TRACING);
-}
-
-pub fn setup_tracing() -> eyre::Result<()> {
-    color_eyre::install()?;
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info");
-    }
-
-    // tracing_log::LogTracer::init()?;
-    tracing_subscriber::fmt()
-        .compact()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_timer(tracing_subscriber::fmt::time::uptime())
-        .try_init()
-        .map_err(|err| eyre::eyre!(err))?;
-
-    Ok(())
-}
+use std::io::Write;
 
 #[inline]
 pub fn default<T: Default>() -> T {
@@ -75,10 +48,13 @@ mod cheapstr {
         }
     }
 
-    impl From<&str> for CHeapStr {
+    impl<T> From<T> for CHeapStr
+    where
+        T: Into<Cow<'static, str>>,
+    {
         #[inline(always)]
-        fn from(string: &str) -> Self {
-            Self::new(string.to_owned())
+        fn from(string: T) -> Self {
+            Self::new(string)
         }
     }
 
@@ -127,14 +103,6 @@ mod cheapstr {
         }
     }
 
-    impl From<String> for CHeapStr {
-        fn from(string: String) -> Self {
-            /* let byte_arc: Arc<[u8]> = string.into_bytes().into();
-            let str_arc = unsafe { Arc::from_raw(Arc::into_raw(byte_arc) as *const str) }; */
-            Self::new(string)
-        }
-    }
-
     impl From<CHeapStr> for String {
         fn from(value: CHeapStr) -> String {
             // FIXME: optmize this
@@ -167,10 +135,11 @@ const SHA2_256: u64 = 0x12;
 pub fn hash_obj<T: serde::Serialize>(obj: &T) -> String {
     use sha2::Digest;
     let mut hash = sha2::Sha256::new();
-    json_canon::to_writer(&mut hash, obj).expect("error serializing manifest");
+    json_canon::to_writer(&mut hash, obj).expect_or_log("error serializing manifest");
     let hash = hash.finalize();
 
-    let hash = multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect("error multihashing");
+    let hash =
+        multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
     encode_base32_multibase(hash.digest())
 }
 
@@ -181,14 +150,21 @@ pub fn hash_str(string: &str) -> String {
         .expect_or_log("error writing to hasher");
     let hash = hash.finalize();
 
-    let hash = multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect("error multihashing");
+    let hash =
+        multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
     encode_base32_multibase(hash.digest())
 }
 
 pub fn encode_base32_multibase<T: AsRef<[u8]>>(source: T) -> String {
-    format!("b{}", data_encoding::BASE32_NOPAD.encode(source.as_ref()))
+    format!(
+        "b{}",
+        data_encoding::BASE32_NOPAD
+            .encode(source.as_ref())
+            .to_lowercase()
+    )
 }
 
+#[allow(unused)]
 // Consider z-base32 https://en.wikipedia.org/wiki/Base32#z-base-32
 pub fn decode_base32_multibase(source: &str) -> eyre::Result<Vec<u8>> {
     match (
@@ -203,6 +179,7 @@ pub fn decode_base32_multibase(source: &str) -> eyre::Result<Vec<u8>> {
     }
 }
 
+#[allow(unused)]
 pub fn encode_hex_multibase<T: AsRef<[u8]>>(source: T) -> String {
     format!(
         "f{}",
@@ -210,6 +187,7 @@ pub fn encode_hex_multibase<T: AsRef<[u8]>>(source: T) -> String {
     )
 }
 
+#[allow(unused)]
 pub fn decode_hex_multibase(source: &str) -> eyre::Result<Vec<u8>> {
     match (
         &source[0..1],

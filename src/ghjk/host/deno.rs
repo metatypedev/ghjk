@@ -11,17 +11,20 @@ struct InternalSerializationResult {
     listed_file_paths: Vec<PathBuf>,
 }
 
+#[tracing::instrument(skip(hcx))]
 pub async fn serialize_deno_ghjkfile(
     hcx: &super::HostCtx,
     path: &Path,
 ) -> Res<super::SerializationResult> {
-    let main_module = deno_runtime::deno_core::resolve_path(
-        hcx.gcx.repo_root.join("./files/deno/mod2.ts"),
-        &hcx.config.cwd,
-    )
-    .wrap_err("error resolving main module")?;
+    let main_module = hcx
+        .gcx
+        .repo_root
+        .join("files/deno/bindings.ts")
+        .wrap_err("repo url error")?;
 
-    let blackboard = [
+    let mut ext_conf = crate::ext::ExtConfig::new();
+
+    ext_conf.blackboard = [
         // blackboard is used as communication means
         // with the deno side of the code
         (
@@ -32,11 +35,12 @@ pub async fn serialize_deno_ghjkfile(
         ),
     ]
     .into_iter()
-    .collect::<DHashMap<CHeapStr, _>>();
+    .collect::<DHashMap<_, _>>()
+    .into();
 
-    let blackboard = Arc::new(blackboard);
+    let bb = ext_conf.blackboard.clone();
 
-    let mut worker = hcx
+    let worker = hcx
         .gcx
         .deno
         .prepare_module(
@@ -50,27 +54,38 @@ pub async fn serialize_deno_ghjkfile(
             },
             deno_runtime::WorkerExecutionMode::Run,
             default(),
-            Some(crate::deno::extensions(crate::deno::ExtConfig {
-                blackboard: blackboard.clone(),
-            })),
+            Some(crate::ext::extensions(ext_conf)),
         )
         .await?;
 
-    let exit_code = worker.run().await?;
+    let (exit_code, mut worker) = worker.run().await?;
     if exit_code != 0 {
         eyre::bail!("non-zero exit code running deno module");
     }
     let loaded_modules = worker.get_loaded_modules().await;
 
-    let (_, resp) = blackboard.remove("resp").expect_or_log("resp missing");
+    let (_, resp) = bb.remove("resp").expect_or_log("resp missing");
     let resp: InternalSerializationResult =
         serde_json::from_value(resp).expect_or_log("error deserializing resp");
+
+    let mut loaded_modules = loaded_modules
+        .into_iter()
+        .filter(|url| url.scheme() == "file")
+        .map(|url| {
+            url.to_file_path()
+                .map_err(|()| ferr!("url to path error: {url}"))
+        })
+        .collect::<Res<Vec<PathBuf>>>()?;
+
+    let mut read_file_paths = resp.read_file_paths;
+    read_file_paths.append(&mut loaded_modules);
+
+    debug!("ghjk.ts serialized");
 
     Ok(super::SerializationResult {
         config: resp.config,
         accessed_env_keys: resp.accessed_env_keys,
         listed_file_paths: resp.listed_file_paths,
-        read_file_paths: resp.read_file_paths,
-        loaded_modules,
+        read_file_paths,
     })
 }

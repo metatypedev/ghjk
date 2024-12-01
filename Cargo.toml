@@ -1,5 +1,6 @@
 [workspace]
 members = ["src/*"]
+exclude = ["src/deno_systems"]
 resolver = "2"
 
 [workspace.package]

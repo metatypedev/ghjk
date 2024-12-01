@@ -1,6 +1,8 @@
-#![allow(dead_code, clippy::let_and_return)]
+#![allow(clippy::let_and_return)]
 
 pub use deno;
+
+pub mod promises;
 
 #[allow(unused)]
 mod interlude {
@@ -9,11 +11,16 @@ mod interlude {
     pub use std::sync::Arc;
 
     pub use color_eyre::eyre;
+    pub use deno::deno_runtime::{
+        self,
+        deno_core::{self, v8},
+    };
     pub use eyre::{format_err as ferr, Context, Result as Res, WrapErr};
-    pub use tracing::{debug, error, info, trace, warn};
+    pub use tracing::{debug, error, info, trace, warn, Instrument};
     pub use tracing_unwrap::*;
 }
 use crate::interlude::*;
+
 use deno::{
     deno_runtime::{
         deno_core::{futures::FutureExt, unsync::JoinHandle, ModuleSpecifier},
@@ -22,6 +29,7 @@ use deno::{
     },
     *,
 };
+use std::sync::atomic::AtomicBool;
 
 #[rustfmt::skip]
 use deno_runtime::deno_core as deno_core; // necessary for re-exported macros to work
@@ -42,6 +50,9 @@ pub fn init() {
     };
 }
 
+// thread tag used for basic sanity checks
+pub const WORKER_THREAD_NAME: &str = "denort-worker-thread";
+
 /// This starts a new thread and uses it to run  all the tasks
 /// that'll need to touch deno internals. Deno is single threaded.
 ///
@@ -52,77 +63,110 @@ pub async fn worker(
 ) -> Res<DenoWorkerHandle> {
     let cx = WorkerContext::from_config(flags, custom_extensions_cb).await?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerReq>();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerMsg>();
     let rt = tokio::runtime::Handle::current();
 
+    let term_signal = AtomicBool::new(false);
+    let term_signal = Arc::new(term_signal);
+
+    let global_term_signal = term_signal.clone();
     let join_handle = new_thread_builder()
+        .name(WORKER_THREAD_NAME.into())
         .spawn(move || {
             let local = tokio::task::LocalSet::new();
 
-            local.spawn_local(async move {
-                while let Some(req) = rx.recv().await {
-                    match req {
-                        DenoWorkerReq::PrepareModule {
-                            response_channel,
-                            main_module,
-                            permissions,
-                            mode,
-                            stdio,
-                            custom_extensions_cb,
-                        } => {
-                            let mut module_cx = match cx
-                                .prepare_module(
-                                    main_module,
-                                    &permissions,
-                                    mode,
-                                    stdio,
-                                    custom_extensions_cb,
-                                )
-                                .await
-                            {
-                                Ok(val) => val,
-                                Err(err) => {
-                                    response_channel
-                                        .send(Err(err))
-                                        .expect_or_log("channel error");
-                                    continue;
-                                }
-                            };
-
-                            let (module_tx, mut module_rx) =
-                                tokio::sync::mpsc::unbounded_channel::<ModuleWorkerReq>();
-                            tokio::task::spawn_local(async move {
-                                while let Some(req) = module_rx.recv().await {
-                                    match req {
-                                        ModuleWorkerReq::Run { response_channel } => {
-                                            response_channel
-                                                .send(module_cx.run().await)
-                                                .expect_or_log("channel error")
-                                        }
-                                        ModuleWorkerReq::GetLoadedModules { response_channel } => {
-                                            response_channel
-                                                .send(module_cx.get_loaded_modules())
-                                                .expect_or_log("channel error")
-                                        }
-                                    }
-                                }
-                            });
-
-                            response_channel
-                                .send(Ok(ModuleWorkerHandle { sender: module_tx }))
-                                .expect_or_log("channel error");
+            local.spawn_local(
+                async move {
+                    debug!("starting deno worker");
+                    while let Some(msg) = rx.recv().await {
+                        debug!(?msg, "deno worker msg");
+                        match msg {
+                            DenoWorkerMsg::PrepareModule {
+                                response_channel,
+                                inner,
+                            } => {
+                                response_channel
+                                    .send(
+                                        module_worker(&cx, global_term_signal.clone(), inner).await,
+                                    )
+                                    .expect_or_log("channel error");
+                            }
                         }
                     }
+                    debug!("deno worker done");
                 }
-            });
+                .instrument(tracing::debug_span!("deno-worker")),
+            );
             rt.block_on(local);
         })
         .unwrap();
-    let join_handle = Arc::new(join_handle);
+    let join_handle = Arc::new(std::sync::Mutex::new(Some(join_handle)));
     Ok(DenoWorkerHandle {
         sender: tx,
+        term_signal,
         join_handle,
     })
+}
+
+async fn module_worker(
+    cx: &WorkerContext,
+    global_term_signal: Arc<AtomicBool>,
+    msg: PrepareModuleMsg,
+) -> Res<ModuleWorkerHandle> {
+    let mut module_cx = cx
+        .prepare_module(
+            msg.main_module,
+            &msg.permissions,
+            msg.mode,
+            msg.stdio,
+            msg.custom_extensions_cb,
+        )
+        .await?;
+
+    let (module_tx, mut module_rx) = tokio::sync::mpsc::channel::<ModuleWorkerReq>(1);
+    tokio::task::spawn_local(
+        async move {
+            debug!("starting module worker");
+            while let Some(msg) = module_rx.recv().await {
+                debug!(?msg, "module worker msg");
+                match msg {
+                    ModuleWorkerReq::Run { response_channel } => response_channel
+                        .send(
+                            module_cx
+                                .run(&global_term_signal)
+                                .await
+                                .map_err(|err| ferr!(Box::new(err))),
+                        )
+                        .expect_or_log("channel error"),
+                    ModuleWorkerReq::DriveTillExit {
+                        term_signal,
+                        response_channel,
+                    } => response_channel
+                        .send(
+                            module_cx
+                                .drive_till_exit(&global_term_signal, &term_signal)
+                                .await
+                                .map_err(|err| ferr!(Box::new(err))),
+                        )
+                        .expect_or_log("channel error"),
+                    ModuleWorkerReq::Execute { response_channel } => response_channel
+                        .send(
+                            module_cx
+                                .execute_main_module()
+                                .await
+                                .map_err(|err| ferr!(Box::new(err))),
+                        )
+                        .expect_or_log("channel error"),
+                    ModuleWorkerReq::GetLoadedModules { response_channel } => response_channel
+                        .send(module_cx.get_loaded_modules())
+                        .expect_or_log("channel error"),
+                }
+            }
+            debug!("module worker done");
+        }
+        .instrument(tracing::debug_span!("deno-module-worker")),
+    );
+    Ok(ModuleWorkerHandle { sender: module_tx })
 }
 
 #[derive(educe::Educe)]
@@ -187,7 +231,7 @@ impl WorkerContext {
         let permissions =
             deno_permissions::Permissions::from_options(desc_parser.as_ref(), permissions)?;
         let permissions = deno_permissions::PermissionsContainer::new(desc_parser, permissions);
-        let worker = self
+        let mut worker = self
             .worker_factory
             .create_custom_worker(
                 mode,
@@ -198,30 +242,72 @@ impl WorkerContext {
             )
             .await
             .map_err(|err| ferr!(Box::new(err)))?;
+        let maybe_coverage_collector = worker
+            .maybe_setup_coverage_collector()
+            .await
+            .map_err(|err| ferr!(Box::new(err)))?;
+
+        // TODO: hot module support, expose shared worker contet from deno/cli/worker
+        // let maybe_hmr_runner = worker
+        //     .maybe_setup_hmr_runner()
+        //     .await
+        //     .map_err(|err| ferr!(Box::new(err)))?;
+
+        let worker = worker.into_main_worker();
 
         Ok(ModuleWorkerContext {
             main_module,
             worker,
             graph: self.graph.clone(),
+            maybe_coverage_collector,
+            // maybe_hmr_runner,
         })
     }
 }
 
-enum DenoWorkerReq {
+#[derive(educe::Educe)]
+#[educe(Debug)]
+struct PrepareModuleMsg {
+    main_module: ModuleSpecifier,
+    permissions: deno_permissions::PermissionsOptions,
+    #[educe(Debug(ignore))]
+    mode: deno_runtime::WorkerExecutionMode,
+    #[educe(Debug(ignore))]
+    stdio: deno_runtime::deno_io::Stdio,
+    #[educe(Debug(ignore))]
+    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+}
+
+#[derive(educe::Educe)]
+#[educe(Debug)]
+enum DenoWorkerMsg {
     PrepareModule {
+        #[educe(Debug(ignore))]
         response_channel: tokio::sync::oneshot::Sender<Res<ModuleWorkerHandle>>,
-        main_module: ModuleSpecifier,
-        permissions: deno_permissions::PermissionsOptions,
-        mode: deno_runtime::WorkerExecutionMode,
-        stdio: deno_runtime::deno_io::Stdio,
-        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+        inner: PrepareModuleMsg,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct DenoWorkerHandle {
-    sender: tokio::sync::mpsc::UnboundedSender<DenoWorkerReq>,
-    join_handle: Arc<std::thread::JoinHandle<()>>,
+    sender: tokio::sync::mpsc::UnboundedSender<DenoWorkerMsg>,
+    join_handle: Arc<std::sync::Mutex<Option<std::thread::JoinHandle<()>>>>,
+    term_signal: Arc<AtomicBool>,
+}
+
+impl DenoWorkerHandle {
+    pub fn terminate(self) {
+        self.term_signal
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        let join_handle = {
+            let mut opt = self.join_handle.lock().expect_or_log("mutex error");
+            opt.take()
+        };
+        let Some(join_handle) = join_handle else {
+            return;
+        };
+        join_handle.join().expect_or_log("join error")
+    }
 }
 
 impl DenoWorkerHandle {
@@ -235,13 +321,15 @@ impl DenoWorkerHandle {
     ) -> Res<ModuleWorkerHandle> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
-            .send(DenoWorkerReq::PrepareModule {
+            .send(DenoWorkerMsg::PrepareModule {
                 response_channel: tx,
-                main_module,
-                permissions,
-                mode,
-                stdio,
-                custom_extensions_cb,
+                inner: PrepareModuleMsg {
+                    main_module,
+                    permissions,
+                    mode,
+                    stdio,
+                    custom_extensions_cb,
+                },
             })
             .expect_or_log("channel error");
         rx.await.expect_or_log("channel error")
@@ -253,9 +341,12 @@ impl DenoWorkerHandle {
 struct ModuleWorkerContext {
     main_module: deno_core::ModuleSpecifier,
     #[educe(Debug(ignore))]
-    worker: deno::worker::CliMainWorker,
+    worker: deno_runtime::worker::MainWorker,
     #[educe(Debug(ignore))]
     graph: Arc<graph_container::MainModuleGraphContainer>,
+    #[educe(Debug(ignore))]
+    maybe_coverage_collector: Option<Box<dyn worker::CoverageCollector>>,
+    // maybe_hmr_runner: Option<Box<dyn worker::HmrRunner>>,
 }
 
 impl ModuleWorkerContext {
@@ -276,43 +367,205 @@ impl ModuleWorkerContext {
             .collect()
     }
 
-    async fn run(&mut self) -> Res<i32> {
-        self.worker.run().await.map_err(|err| ferr!(Box::new(err)))
+    async fn run(&mut self, global_term_signal: &AtomicBool) -> anyhow::Result<i32> {
+        debug!("main_module {}", self.main_module);
+        self.execute_main_module().await?;
+        self.drive_till_exit(global_term_signal, &AtomicBool::new(false))
+            .await
+    }
+
+    async fn drive_till_exit(
+        &mut self,
+        global_term_signal: &AtomicBool,
+        term_signal: &AtomicBool,
+    ) -> anyhow::Result<i32> {
+        self.worker.dispatch_load_event()?;
+        loop {
+            /* if let Some(hmr_runner) = self.maybe_hmr_runner.as_mut() {
+                let watcher_communicator =
+                    self.shared.maybe_file_watcher_communicator.clone().unwrap();
+
+                let hmr_future = hmr_runner.run().boxed_local();
+                let event_loop_future = self.worker.run_event_loop(false).boxed_local();
+
+                let result;
+                tokio::select! {
+                  hmr_result = hmr_future => {
+                    result = hmr_result;
+                  },
+                  event_loop_result = event_loop_future => {
+                    result = event_loop_result;
+                  }
+                }
+                if let Err(e) = result {
+                    watcher_communicator.change_restart_mode(WatcherRestartMode::Automatic);
+                    return Err(e);
+                }
+            } else {
+            self.worker
+                .run_event_loop(self.maybe_coverage_collector.is_none())
+                .await?;
+            } */
+            self.worker
+                .run_event_loop(self.maybe_coverage_collector.is_none())
+                .await?;
+
+            if term_signal.load(std::sync::atomic::Ordering::Relaxed) {
+                trace!("worker term signal lit, shutting down event loop");
+                break;
+            }
+
+            if global_term_signal.load(std::sync::atomic::Ordering::Relaxed) {
+                trace!("globalterm signal lit, shutting down event loop");
+                break;
+            }
+
+            let web_continue = self.worker.dispatch_beforeunload_event()?;
+            if !web_continue {
+                let node_continue = self.worker.dispatch_process_beforeexit_event()?;
+                if !node_continue {
+                    trace!("beforeunload and beforeexit success, shutting down loop");
+                    break;
+                }
+            }
+        }
+        self.worker.dispatch_unload_event()?;
+        self.worker.dispatch_process_exit_event()?;
+        if let Some(coverage_collector) = self.maybe_coverage_collector.as_mut() {
+            self.worker
+                .js_runtime
+                .with_event_loop_future(
+                    coverage_collector.stop_collecting().boxed_local(),
+                    deno_core::PollEventLoopOptions::default(),
+                )
+                .await?;
+        }
+        /* if let Some(hmr_runner) = self.maybe_hmr_runner.as_mut() {
+            self.worker
+                .js_runtime
+                .with_event_loop_future(
+                    hmr_runner.stop().boxed_local(),
+                    deno_core::PollEventLoopOptions::default(),
+                )
+                .await?;
+        } */
+        Ok(self.worker.exit_code())
+        //.map_err(|err| ferr!(Box::new(err)))
+    }
+
+    async fn execute_main_module(&mut self) -> anyhow::Result<()> {
+        let id = self.worker.preload_main_module(&self.main_module).await?;
+        self.worker.evaluate_module(id).await
     }
 }
 
+#[derive(educe::Educe)]
+#[educe(Debug)]
 enum ModuleWorkerReq {
     Run {
+        #[educe(Debug(ignore))]
         response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
     },
+    DriveTillExit {
+        #[educe(Debug(ignore))]
+        term_signal: Arc<AtomicBool>,
+        #[educe(Debug(ignore))]
+        response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
+    },
+    Execute {
+        #[educe(Debug(ignore))]
+        response_channel: tokio::sync::oneshot::Sender<Res<()>>,
+    },
     GetLoadedModules {
+        #[educe(Debug(ignore))]
         response_channel: tokio::sync::oneshot::Sender<Vec<ModuleSpecifier>>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct ModuleWorkerHandle {
-    sender: tokio::sync::mpsc::UnboundedSender<ModuleWorkerReq>,
+    sender: tokio::sync::mpsc::Sender<ModuleWorkerReq>,
 }
+
+#[derive(Clone, Debug)]
+pub struct FinishedWorkerHandle {
+    sender: tokio::sync::mpsc::Sender<ModuleWorkerReq>,
+}
+
 impl ModuleWorkerHandle {
+    /// Load and execute the main module
+    /// and drive the main loop until the program
+    /// exits.
+    pub async fn run(self) -> Res<(i32, FinishedWorkerHandle)> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(ModuleWorkerReq::Run {
+                response_channel: tx,
+            })
+            .await
+            .expect_or_log("channel error");
+        Ok((
+            rx.await.expect_or_log("channel error")?,
+            FinishedWorkerHandle {
+                sender: self.sender,
+            },
+        ))
+    }
+
+    /// Load and execute the main module
+    /// but doesn't progress the main event
+    /// loop.
+    pub async fn execute(&mut self) -> Res<()> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(ModuleWorkerReq::Execute {
+                response_channel: tx,
+            })
+            .await
+            .expect_or_log("channel error");
+        rx.await.expect_or_log("channel error")
+    }
+
+    /// Drive the event loop until exit and return
+    /// result in returned channel.
+    /// Expects that [`execute`] was called first on the worker.
+    pub async fn drive_till_exit(
+        self,
+    ) -> Res<(
+        tokio::sync::oneshot::Receiver<Res<i32>>,
+        Arc<AtomicBool>,
+        FinishedWorkerHandle,
+    )> {
+        let term_signal = AtomicBool::new(false);
+        let term_signal = Arc::new(term_signal);
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.sender
+            .send(ModuleWorkerReq::DriveTillExit {
+                term_signal: term_signal.clone(),
+                response_channel: tx,
+            })
+            .await
+            .expect_or_log("channel error");
+        Ok((
+            rx,
+            term_signal,
+            FinishedWorkerHandle {
+                sender: self.sender,
+            },
+        ))
+    }
+}
+
+impl FinishedWorkerHandle {
     pub async fn get_loaded_modules(&mut self) -> Vec<ModuleSpecifier> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
             .send(ModuleWorkerReq::GetLoadedModules {
                 response_channel: tx,
             })
+            .await
             .expect_or_log("channel error");
-        // FIXME: can use sync oneshot here
-        rx.await.expect_or_log("channel error")
-    }
-
-    pub async fn run(&mut self) -> Res<i32> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        self.sender
-            .send(ModuleWorkerReq::Run {
-                response_channel: tx,
-            })
-            .expect_or_log("channel error");
+        // FIXME: can use sync oneshot here?
         rx.await.expect_or_log("channel error")
     }
 }

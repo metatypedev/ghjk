@@ -268,9 +268,8 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
           `no lock entry found for module specified by lockfile config: ${man.id}`,
         );
       }
-      const instance: ModuleBase<unknown, unknown> = new mod.ctor();
+      const instance: ModuleBase<unknown> = new mod.ctor(gcx);
       lockEntries[man.id] = await instance.loadLockEntry(
-        gcx,
         entry as Json,
       );
     }
@@ -313,22 +312,21 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   };
   // command name to [cmd, source module id]
   const subCommands = {} as Record<string, [cliffy_cmd.Command, string]>;
-  const instances = [] as [string, ModuleBase<unknown, unknown>, unknown][];
+  const instances = [] as [string, ModuleBase<unknown>][];
 
   for (const man of configExt.config.modules) {
     const mod = std_modules.map[man.id];
     if (!mod) {
       throw new Error(`unrecognized module specified by ghjk.ts: ${man.id}`);
     }
-    const instance: ModuleBase<unknown, unknown> = new mod.ctor();
-    const pMan = await instance.processManifest(
-      gcx,
+    const instance: ModuleBase<unknown> = new mod.ctor(gcx);
+    await instance.loadConfig(
       man,
       configExt.config.blackboard,
       lockEntries[man.id],
     );
-    instances.push([man.id, instance, pMan] as const);
-    for (const [cmdName, cmd] of Object.entries(instance.commands(gcx, pMan))) {
+    instances.push([man.id, instance] as const);
+    for (const [cmdName, cmd] of Object.entries(instance.commands())) {
       const conflict = subCommands[cmdName];
       if (conflict) {
         throw new Error(
@@ -368,8 +366,8 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
         await Array.fromAsync(
           instances.map(
             async (
-              [id, instance, pMan],
-            ) => [id, await instance.genLockEntry(gcx, pMan)],
+              [id, instance],
+            ) => [id, await instance.genLockEntry()],
           ),
         ),
       );

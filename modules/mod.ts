@@ -3,27 +3,20 @@ import { Blackboard } from "../host/types.ts";
 import type { Json } from "../utils/mod.ts";
 import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
-export abstract class ModuleBase<Ctx, LockEnt> {
+export abstract class ModuleBase<LockEnt> {
+  constructor(protected gcx: GhjkCtx) {}
   /* init(
     _gcx: GhjkCtx,
   ): Promise<void> | void {} */
-  abstract processManifest(
-    gcx: GhjkCtx,
+  abstract loadConfig(
     manifest: ModuleManifest,
     bb: Blackboard,
     lockEnt: LockEnt | undefined,
-  ): Promise<Ctx> | Ctx;
+  ): Promise<void> | void;
   // returns undefined if previous lock entry is no longer valid
   abstract loadLockEntry(
-    gcx: GhjkCtx,
     raw: Json,
   ): Promise<LockEnt | undefined> | LockEnt | undefined;
-  abstract genLockEntry(
-    gcx: GhjkCtx,
-    mcx: Ctx,
-  ): Promise<Json> | Json;
-  abstract commands(
-    gcx: GhjkCtx,
-    mcx: Ctx,
-  ): Record<string, cliffy_cmd.Command<any>>;
+  abstract genLockEntry(): Promise<Json> | Json;
+  abstract commands(): Record<string, cliffy_cmd.Command<any>>;
 }

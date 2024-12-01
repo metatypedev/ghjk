@@ -1,0 +1,112 @@
+//! Systems (formerly modules) are units of implementation that bundle together
+//! related functionality.
+
+use std::any::Any;
+
+use crate::interlude::*;
+
+pub mod deno;
+
+pub enum SystemManifest {
+    Deno(deno::DenoSystemManifest),
+}
+
+impl SystemManifest {
+    pub async fn init(&self) -> Res<ErasedSystemInstance> {
+        match self {
+            SystemManifest::Deno(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+pub trait SystemInstance {
+    type LockState;
+
+    async fn load_config(
+        &self,
+        config: serde_json::Value,
+        bb: ConfigBlackboard,
+        state: Option<Self::LockState>,
+    ) -> Res<()>;
+
+    async fn load_lock_entry(&self, raw: serde_json::Value) -> Res<Self::LockState>;
+
+    async fn gen_lock_entry(&self) -> Res<serde_json::Value>;
+}
+
+type BoxAny = Box<dyn Any + Send + Sync>;
+
+#[allow(clippy::type_complexity)]
+pub struct ErasedSystemInstance {
+    load_lock_entry_fn: Box<dyn Fn(serde_json::Value) -> BoxFuture<'static, Res<BoxAny>>>,
+    gen_lock_entry_fn: Box<dyn Fn() -> BoxFuture<'static, Res<serde_json::Value>>>,
+    load_config_fn: Box<
+        dyn Fn(serde_json::Value, ConfigBlackboard, Option<BoxAny>) -> BoxFuture<'static, Res<()>>,
+    >,
+}
+
+impl ErasedSystemInstance {
+    pub fn new<S, L>(instance: Arc<S>) -> Self
+    where
+        S: SystemInstance<LockState = L> + Send + Sync + 'static,
+        L: std::any::Any + Send + Sync,
+    {
+        Self {
+            load_lock_entry_fn: {
+                let instance = instance.clone();
+                Box::new(move |raw| {
+                    let instance = instance.clone();
+                    async move {
+                        let res: BoxAny = Box::new(instance.load_lock_entry(raw).await?);
+                        Ok(res)
+                    }
+                    .boxed()
+                })
+            },
+            gen_lock_entry_fn: {
+                let instance = instance.clone();
+                Box::new(move || {
+                    let instance = instance.clone();
+                    async move { instance.gen_lock_entry().await }.boxed()
+                })
+            },
+            load_config_fn: Box::new(move |config, bb, state| {
+                let instance = instance.clone();
+                async move {
+                    let state: Option<Box<L>> =
+                        state.map(|st| st.downcast().expect_or_log("downcast error"));
+                    instance.load_config(config, bb, state.map(|bx| *bx)).await
+                }
+                .boxed()
+            }),
+        }
+    }
+
+    pub async fn load_config(
+        &self,
+        config: serde_json::Value,
+        bb: ConfigBlackboard,
+        state: Option<BoxAny>,
+    ) -> Res<()> {
+        (self.load_config_fn)(config, bb, state).await
+    }
+
+    pub async fn load_lock_entry(&self, raw: serde_json::Value) -> Res<BoxAny> {
+        (self.load_lock_entry_fn)(raw).await
+    }
+
+    pub async fn gen_lock_entry(&self) -> Res<serde_json::Value> {
+        (self.gen_lock_entry_fn)().await
+    }
+}
+
+pub type SystemId = CHeapStr;
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct SystemConfig {
+    pub id: SystemId,
+    pub config: serde_json::Value,
+}
+
+pub type ConfigBlackboard = Arc<serde_json::Map<String, serde_json::Value>>;

@@ -49,9 +49,8 @@ const lockValidator = zod.object({
 });
 type PortsLockEnt = zod.infer<typeof lockValidator>;
 
-export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
-  processManifest(
-    gcx: GhjkCtx,
+export class PortsModule extends ModuleBase<PortsLockEnt> {
+  loadConfig(
     manifest: ModuleManifest,
     bb: Blackboard,
     _lockEnt: PortsLockEnt | undefined,
@@ -67,7 +66,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       validators.portsModuleConfigHashed.safeParse(manifest.config),
     );
 
-    const pcx: PortsCtx = getPortsCtx(gcx);
+    const gcx = this.gcx;
+    const pcx = getPortsCtx(gcx);
 
     // pre-process the install sets found in the config
     for (const [id, hashedSet] of Object.entries(hashedModConf.sets)) {
@@ -108,13 +108,12 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
       installSetProvisionTy,
       installSetReducer(gcx) as ProvisionReducer<Provision, Provision>,
     );
-    return pcx;
   }
 
-  commands(
-    gcx: GhjkCtx,
-    pcx: PortsCtx,
-  ) {
+  commands() {
+    const gcx = this.gcx;
+    const pcx = getPortsCtx(gcx);
+
     return {
       ports: new cliffy_cmd.Command()
         .alias("p")
@@ -268,16 +267,13 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
         ),
     };
   }
-  loadLockEntry(
-    gcx: GhjkCtx,
-    raw: Json,
-  ) {
+  loadLockEntry(raw: Json) {
     const entry = lockValidator.parse(raw);
 
     if (entry.version != "0") {
       throw new Error(`unexepected version tag deserializing lockEntry`);
     }
-    const memoStore = getResolutionMemo(gcx);
+    const memoStore = getResolutionMemo(this.gcx);
     for (const [hash, config] of Object.entries(entry.configResolutions)) {
       logger().debug(
         "restoring resolution from lockfile",
@@ -290,11 +286,8 @@ export class PortsModule extends ModuleBase<PortsCtx, PortsLockEnt> {
     return entry;
   }
 
-  async genLockEntry(
-    gcx: GhjkCtx,
-    _pcx: PortsCtx,
-  ) {
-    const memo = getResolutionMemo(gcx);
+  async genLockEntry() {
+    const memo = getResolutionMemo(this.gcx);
     const configResolutions = Object.fromEntries(
       await Array.fromAsync(
         [...memo.entries()].map(async ([key, prom]) => [key, await prom]),

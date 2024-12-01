@@ -603,13 +603,12 @@ export function unwrapZodRes<In, Out>(
     const zodErr = zod_val_err.fromZodError(res.error, {
       includePath: true,
       maxIssuesInMessage: 3,
+      prefix: errMessage,
     });
-    throw new Error(`${errMessage}: ${zodErr}`, {
-      cause: {
-        issues: res.error.issues,
-        ...cause,
-      },
-    });
+    zodErr.cause = {
+      ...cause,
+    };
+    throw zodErr;
   }
   return res.data;
 }

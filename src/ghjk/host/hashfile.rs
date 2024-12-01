@@ -51,7 +51,7 @@ impl HashObj {
         {
             if self.read_file_hashes
                 != file_digests(
-                    &hcx,
+                    hcx,
                     self.read_file_hashes
                         .keys()
                         .map(|path| path.as_ref())
@@ -74,10 +74,7 @@ pub fn env_var_digests<'a>(
         .map(|key| {
             (
                 key.to_owned(),
-                match all.get(key) {
-                    Some(val) => Some(crate::utils::hash_str(val)),
-                    None => None,
-                },
+                all.get(key).map(|val| crate::utils::hash_str(val)),
             )
         })
         .collect()
@@ -162,7 +159,7 @@ impl From<std::fs::Metadata> for StatMeta {
                     ts.duration_since(std::time::SystemTime::UNIX_EPOCH)
                         .map_err(|_| ())
                 })
-                .and_then(|dur| Ok(dur.as_secs()))
+                .map(|dur| dur.as_secs())
                 .ok()
         }
         #[cfg(unix)]

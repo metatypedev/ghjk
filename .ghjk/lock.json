@@ -308,13 +308,13 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqa3gn6bjbmgjf7mvk7cv6wfjo23wj3vyppgtpqt4ovvxkpzjrcvua"
+              "envKey": "bciqlneazfye2nq2cb4jsgigjqisrzm25gdkyitmotyl3qmq5nf3nb7y"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
               "key": "cache-v8",
               "desc": "Install the V8 builds to a local cache.",
-              "envKey": "bciqjzvefargmop4vyqujvr7igrjunekxn5dmfqezjd2rgrdji5xpdai"
+              "envKey": "bciqe5yq32fnpsioc326yny37wl3jszc6sgq3imo6544ez7iswpu3yny"
             }
           },
           "tasksNamed": [
@@ -327,33 +327,53 @@
         "id": "envs",
         "config": {
           "envs": {
-            "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya": {
+            "bciqazjf2gsxfy4wt2gd6qsou4pciedy7dyhdch5l7gsmoq62boo2s7a": {
               "desc": "the default default environment.",
               "provides": [
                 {
-                  "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet___main"
-                }
-              ]
-            },
-            "bciqa3gn6bjbmgjf7mvk7cv6wfjo23wj3vyppgtpqt4ovvxkpzjrcvua": {
-              "provides": [
+                  "ty": "posix.envVar",
+                  "key": "RUST_LOG",
+                  "val": "trace,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
                 }
               ]
             },
-            "bciqjzvefargmop4vyqujvr7igrjunekxn5dmfqezjd2rgrdji5xpdai": {
+            "bciqlneazfye2nq2cb4jsgigjqisrzm25gdkyitmotyl3qmq5nf3nb7y": {
               "provides": [
+                {
+                  "ty": "posix.envVar",
+                  "key": "RUST_LOG",
+                  "val": "trace,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                },
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet___main"
+                }
+              ]
+            },
+            "bciqe5yq32fnpsioc326yny37wl3jszc6sgq3imo6544ez7iswpu3yny": {
+              "provides": [
+                {
+                  "ty": "posix.envVar",
+                  "key": "RUST_LOG",
+                  "val": "trace,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet____rust"
                 }
               ]
             },
-            "bciqjiedgfyl4fsp2j64t4xk2sc7ei4eri75x2wqyczcmnthtgupg33a": {
+            "bciqe26fbb6fkfbou7w3rf3t2uqw4neldvakclhcecktgtpcuxwnzgja": {
               "provides": [
+                {
+                  "ty": "posix.envVar",
+                  "key": "RUST_LOG",
+                  "val": "trace,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                },
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
@@ -368,9 +388,9 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqfzekhtsrjd72noxifmici3ssck4jgvbjwhxwhhwtirzm7yomhxya",
-            "_rust": "bciqjzvefargmop4vyqujvr7igrjunekxn5dmfqezjd2rgrdji5xpdai",
-            "dev": "bciqjiedgfyl4fsp2j64t4xk2sc7ei4eri75x2wqyczcmnthtgupg33a"
+            "main": "bciqazjf2gsxfy4wt2gd6qsou4pciedy7dyhdch5l7gsmoq62boo2s7a",
+            "_rust": "bciqe5yq32fnpsioc326yny37wl3jszc6sgq3imo6544ez7iswpu3yny",
+            "dev": "bciqe26fbb6fkfbou7w3rf3t2uqw4neldvakclhcecktgtpcuxwnzgja"
           }
         }
       }

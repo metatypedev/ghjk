@@ -5,7 +5,7 @@ import { Json, unwrapZodRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
-import { type GhjkCtx, type ModuleManifest } from "../types.ts";
+import { type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
@@ -21,9 +21,8 @@ const lockValidator = zod.object({
 });
 type TasksLockEnt = zod.infer<typeof lockValidator>;
 
-export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
-  processManifest(
-    gcx: GhjkCtx,
+export class TasksModule extends ModuleBase<TasksLockEnt> {
+  loadConfig(
     manifest: ModuleManifest,
     bb: Blackboard,
     _lockEnt: TasksLockEnt | undefined,
@@ -40,19 +39,17 @@ export class TasksModule extends ModuleBase<TasksCtx, TasksLockEnt> {
       validators.tasksModuleConfig.safeParse(manifest.config),
     );
 
-    const taskGraph = buildTaskGraph(gcx, config);
+    const taskGraph = buildTaskGraph(this.gcx, config);
 
-    const tasksCtx = getTasksCtx(gcx);
-    tasksCtx.config = config;
-    tasksCtx.taskGraph = taskGraph;
-
-    return tasksCtx;
+    const tcx = getTasksCtx(this.gcx);
+    tcx.config = config;
+    tcx.taskGraph = taskGraph;
   }
 
-  commands(
-    gcx: GhjkCtx,
-    tcx: TasksCtx,
-  ) {
+  commands() {
+    const gcx = this.gcx;
+    const tcx = getTasksCtx(this.gcx);
+
     const namedSet = new Set(tcx.config.tasksNamed);
     const commands = Object.keys(tcx.config.tasks)
       .sort()
@@ -96,10 +93,7 @@ The named tasks in your ghjkfile will be listed here.`);
     };
   }
 
-  loadLockEntry(
-    _gcx: GhjkCtx,
-    raw: Json,
-  ) {
+  loadLockEntry(raw: Json) {
     const entry = lockValidator.parse(raw);
 
     if (entry.version != "0") {
@@ -108,10 +102,7 @@ The named tasks in your ghjkfile will be listed here.`);
 
     return entry;
   }
-  genLockEntry(
-    _gcx: GhjkCtx,
-    _tcx: TasksCtx,
-  ) {
+  genLockEntry() {
     return {
       version: "0",
     };

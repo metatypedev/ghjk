@@ -1,59 +1,17 @@
 use crate::interlude::*;
 
+use crate::systems::*;
+
 mod deno;
 mod hashfile;
 use hashfile::*;
-
-#[derive(educe::Educe)]
-#[educe(Debug)]
-enum ModuleManifest {
-    Todo,
-}
-
-impl ModuleManifest {
-    pub fn init(&self) -> ModuleInstance {
-        ModuleInstance::Todo
-    }
-}
-enum ModuleInstance {
-    Todo,
-}
-
-type ModuleLockEntry = Box<dyn std::any::Any + Send + Sync + 'static>;
-type ModuleContext = Box<dyn std::any::Any + Send + Sync + 'static>;
-
-impl ModuleInstance {
-    pub async fn load_lock_entry(
-        &mut self,
-        gcx: &GhjkCtx,
-        raw: serde_json::Value,
-    ) -> Res<ModuleLockEntry> {
-        Ok(Box::new("todo"))
-    }
-
-    pub async fn gen_lock_entry(
-        &mut self,
-        gcx: &GhjkCtx,
-        mcx: &ModuleContext,
-    ) -> Res<serde_json::Value> {
-        Ok(serde_json::json!("todo"))
-    }
-
-    pub async fn load_config(
-        &mut self,
-        gcx: &GhjkCtx,
-        bb: &ConfigBlackboard,
-        lock_entry: Option<ModuleLockEntry>,
-    ) -> Res<ModuleContext> {
-        Ok(Box::new("todo"))
-    }
-}
 
 #[derive(Debug)]
 pub struct Config {
     /// Discard serialization cache.
     pub re_serialize: bool,
     /// Discard any resolved values in lockfile.
+    #[allow(unused)]
     pub re_resolve: bool,
     /// Force use serialization cache.
     pub locked: bool,
@@ -61,32 +19,33 @@ pub struct Config {
     pub cwd: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(educe::Educe)]
+#[educe(Debug)]
 pub struct HostCtx {
     pub gcx: Arc<crate::GhjkCtx>,
-    config: Config,
-    pub modules: HashMap<ModuleId, ModuleManifest>,
+    pub config: Config,
+    #[educe(Debug(ignore))]
+    pub systems: HashMap<SystemId, SystemManifest>,
     pub file_hash_memo: DHashMap<PathBuf, CHeapStr>,
 }
 
 impl HostCtx {
-    pub fn new(gcx: Arc<crate::GhjkCtx>, config: Config) -> Self {
+    pub fn new(
+        gcx: Arc<crate::GhjkCtx>,
+        config: Config,
+        systems: HashMap<SystemId, SystemManifest>,
+    ) -> Self {
         Self {
             gcx,
             config,
-            modules: [
-                ("envs".into(), ModuleManifest::Todo),
-                ("ports".into(), ModuleManifest::Todo),
-                ("tasks".into(), ModuleManifest::Todo),
-            ]
-            .into_iter()
-            .collect(),
+            systems,
             file_hash_memo: default(),
         }
     }
 }
 
-pub async fn modules_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileModules>> {
+#[tracing::instrument(skip(hcx))]
+pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSystems>> {
     let (hashfile_path, lockfile_path) = (
         hcx.gcx.ghjk_dir_path.join("hash.json"),
         hcx.gcx.ghjk_dir_path.join("lock.json"),
@@ -155,23 +114,23 @@ pub async fn modules_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileModu
 
     if let Some(lock_obj) = &mut lock_obj {
         debug!(?lockfile_path, "loading lockfile");
-        for mod_conf in &lock_obj.config.modules {
-            let Some(mod_man) = hcx.modules.get(&mod_conf.id) else {
+        for sys_conf in &lock_obj.config.modules {
+            let Some(sys_man) = hcx.systems.get(&sys_conf.id) else {
                 eyre::bail!(
-                    "unrecognized module found in lockfile config: {:?}",
-                    mod_conf.id
+                    "unrecognized system found in lockfile config: {:?}",
+                    sys_conf.id
                 );
             };
-            let Some(mod_lock) = lock_obj.module_entries.swap_remove(&mod_conf.id) else {
+            let Some(sys_lock) = lock_obj.sys_entries.swap_remove(&sys_conf.id) else {
                 eyre::bail!(
-                    "no lock entry found for module specified by lockfile config: {:?}",
-                    mod_conf.id
+                    "no lock entry found for system specified by lockfile config: {:?}",
+                    sys_conf.id
                 );
             };
-            let mut mod_inst = mod_man.init();
+            let sys_inst = sys_man.init().await?;
             lock_entries.insert(
-                mod_conf.id.clone(),
-                mod_inst.load_lock_entry(&hcx.gcx, mod_lock).await?,
+                sys_conf.id.clone(),
+                sys_inst.load_lock_entry(sys_lock).await?,
             );
         }
     }
@@ -203,33 +162,33 @@ pub async fn modules_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileModu
         return Ok(None);
     };
 
-    let mod_instances = {
-        let mut mod_instances = IndexMap::new();
-        for mod_conf in &config.modules {
-            let Some(mod_man) = hcx.modules.get(&mod_conf.id) else {
+    let sys_instances = {
+        let mut sys_instances = IndexMap::new();
+        for sys_conf in &config.modules {
+            let Some(sys_man) = hcx.systems.get(&sys_conf.id) else {
                 eyre::bail!(
-                    "unrecognized module specified by ghjkfile: {:?}",
-                    mod_conf.id
+                    "unrecognized system specified by ghjkfile: {:?}",
+                    sys_conf.id
                 );
             };
-            let mut mod_inst = mod_man.init();
-            let mod_cx = mod_inst
+            let sys_inst = sys_man.init().await?;
+            sys_inst
                 .load_config(
-                    &hcx.gcx,
-                    &config.blackboard,
-                    lock_entries.remove(&mod_conf.id),
+                    sys_conf.config.clone(),
+                    config.blackboard.clone(),
+                    lock_entries.remove(&sys_conf.id),
                 )
                 .await
-                .wrap_err_with(|| format!("error loading module config: {:?}", mod_conf.id))?;
-            mod_instances.insert(mod_conf.id.clone(), (mod_inst, mod_cx));
+                .wrap_err_with(|| format!("error loading system config: {:?}", sys_conf.id))?;
+            sys_instances.insert(sys_conf.id.clone(), sys_inst);
         }
-        mod_instances
+        sys_instances
     };
 
-    Ok(Some(GhjkfileModules {
+    Ok(Some(GhjkfileSystems {
         hcx,
         config,
-        mod_instances,
+        sys_instances,
         hash_obj,
         old_lock_obj: lock_obj,
         lockfile_path,
@@ -239,11 +198,11 @@ pub async fn modules_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileModu
     }))
 }
 
-pub struct GhjkfileModules {
+pub struct GhjkfileSystems {
     hcx: Arc<HostCtx>,
     pub config: Arc<SerializedConfig>,
     hash_obj: HashObj,
-    mod_instances: IndexMap<CHeapStr, (ModuleInstance, ModuleContext)>,
+    sys_instances: IndexMap<CHeapStr, ErasedSystemInstance>,
     old_lock_obj: Option<LockObj>,
     lockfile_path: PathBuf,
     hashfile_path: PathBuf,
@@ -251,25 +210,23 @@ pub struct GhjkfileModules {
     hashfile_written: bool,
 }
 
-impl GhjkfileModules {
+impl GhjkfileSystems {
+    #[tracing::instrument(skip(self))]
     pub async fn write_lockfile(&mut self) -> Res<()> {
         let mut lock_obj = LockObj {
             version: "0".into(),
             config: self.config.clone(),
-            module_entries: default(),
+            sys_entries: default(),
         };
-        // generate the lock entries after *all* the modules
+        // generate the lock entries after *all* the systems
         // are done processing their config to allow
         // any shared stores to be properly populated
         // e.g. the resolution memo store
-        for (mod_id, (mod_inst, mcx)) in &mut self.mod_instances {
-            let lock_entry = mod_inst
-                .gen_lock_entry(&self.hcx.gcx, mcx)
-                .await
-                .wrap_err_with(|| {
-                    format!("error generating lock entry for module: {:?}", mod_id)
-                })?;
-            lock_obj.module_entries.insert(mod_id.clone(), lock_entry);
+        for (sys_id, sys_inst) in &mut self.sys_instances {
+            let lock_entry = sys_inst.gen_lock_entry().await.wrap_err_with(|| {
+                format!("error generating lock entry for system: {:?}", sys_id)
+            })?;
+            lock_obj.sys_entries.insert(sys_id.clone(), lock_entry);
         }
 
         if self.old_lock_obj.is_none()
@@ -278,12 +235,13 @@ impl GhjkfileModules {
             if self.hcx.config.locked {
                 warn!("locked flag set, changes to lockfile discarded");
             } else {
-                tokio::fs::write(
+                debug!(lockfile_path = ?self.lockfile_path, ?lock_obj, "writing lock.json");
+                /* tokio::fs::write(
                     &self.lockfile_path,
                     serde_json::to_vec_pretty(&lock_obj).expect_or_log("error jsonifying lockfile"),
                 )
                 .await
-                .wrap_err("error writing to lockfile")?;
+                .wrap_err("error writing to lockfile")?; */
                 self.old_lock_obj.replace(lock_obj);
             }
         }
@@ -294,13 +252,14 @@ impl GhjkfileModules {
             if self.hcx.config.locked {
                 unreachable!("code should have early exited");
             }
-            tokio::fs::write(
-                &self.lockfile_path,
+            debug!(hashfile_path = ?self.hashfile_path, hash_obj= ?self.hash_obj, "writing hash.json");
+            /* tokio::fs::write(
+                &self.hashfile_path,
                 serde_json::to_vec_pretty(&self.hash_obj)
                     .expect_or_log("error jsonifying hashfile"),
             )
             .await
-            .wrap_err("error writing to lockfile")?;
+            .wrap_err("error writing to lockfile")?; */
             self.hashfile_written = true;
         }
         Ok(())
@@ -310,7 +269,6 @@ impl GhjkfileModules {
 async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedConfig>, HashObj)> {
     let ext = path.extension();
     let res = if ext.map(|ext| ext == "ts" || ext == "js") == Some(true) {
-        debug!("serializing deno ghjkfile");
         deno::serialize_deno_ghjkfile(hcx, path).await?
     } else {
         eyre::bail!("unrecognized ghjkfile extension: {path:?}")
@@ -323,7 +281,9 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
                 &hcx.config.env_vars,
                 res.accessed_env_keys.iter().map(|key| key.as_ref()),
             ),
-            ghjkfile_hash: file_digest_hash(hcx, path).await?.unwrap(),
+            ghjkfile_hash: file_digest_hash(hcx, path)
+                .await?
+                .expect_or_log("ghjkfile is gone"),
             listed_files: res
                 .listed_file_paths
                 .into_iter()
@@ -341,40 +301,30 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
     ))
 }
 
+#[derive(Debug)]
 struct SerializationResult {
     config: SerializedConfig,
     accessed_env_keys: Vec<String>,
     read_file_paths: Vec<PathBuf>,
     listed_file_paths: Vec<PathBuf>,
-    loaded_modules: Vec<url::Url>,
 }
-
-type ModuleId = CHeapStr;
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct ModuleConfig {
-    pub id: ModuleId,
-    pub config: serde_json::Value,
-}
-
-type ConfigBlackboard = serde_json::Map<String, serde_json::Value>;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct SerializedConfig {
-    modules: Vec<ModuleConfig>,
+    modules: Vec<SystemConfig>,
     blackboard: ConfigBlackboard,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct LockObj {
     pub version: String,
-    pub module_entries: indexmap::IndexMap<CHeapStr, serde_json::Value>,
+    pub sys_entries: indexmap::IndexMap<CHeapStr, serde_json::Value>,
     pub config: Arc<SerializedConfig>,
 }
 
 impl LockObj {
     /// The lock.json file stores the serialized config and some entries
-    /// from modules. It's primary purpose is as a memo store to avoid
+    /// from systems. It's primary purpose is as a memo store to avoid
     /// re-serialization on each CLI invocation.
     pub async fn from_file(path: &Path) -> Res<Self> {
         let raw = tokio::fs::read(path)
