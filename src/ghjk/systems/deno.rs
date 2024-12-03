@@ -3,13 +3,15 @@
 
 use crate::interlude::*;
 
-use super::{SystemId, SystemInstance, SystemManifest};
+use super::{SystemCliCommand, SystemId, SystemInstance, SystemManifest};
+
+mod cli;
 
 #[derive(Clone)]
 pub struct DenoSystemsContext {
     callbacks: crate::ext::CallbacksHandle,
     exit_code_channel: Arc<std::sync::Mutex<Option<tokio::task::JoinHandle<i32>>>>,
-    term_signal: Arc<std::sync::atomic::AtomicBool>,
+    term_signal: tokio::sync::watch::Sender<bool>,
     #[allow(unused)]
     hostcalls: crate::ext::Hostcalls,
 }
@@ -24,8 +26,7 @@ impl DenoSystemsContext {
         let Some(channel) = channel else {
             eyre::bail!("already terminated")
         };
-        self.term_signal
-            .store(true, std::sync::atomic::Ordering::Relaxed);
+        self.term_signal.send(true).expect_or_log("channel error");
         Ok(channel.await.expect_or_log("channel error"))
     }
 }
@@ -124,8 +125,6 @@ pub async fn systems_from_deno(
         if exit_code != 0 {
             // TODO: exit signals
             error!(%exit_code, "deno systems died with non-zero exit code");
-        } else {
-            info!(%exit_code, "deno systems exit")
         }
         exit_code
     });
@@ -137,7 +136,6 @@ pub async fn systems_from_deno(
         term_signal,
         exit_code_channel,
     };
-    let scx = Arc::new(scx);
 
     let manifests = manifests_rx.recv().await.expect_or_log("channel error");
     let manifests: Vec<ManifestDesc> =
@@ -169,12 +167,13 @@ struct ManifestDesc {
 pub struct DenoSystemManifest {
     desc: ManifestDesc,
     #[educe(Debug(ignore))]
-    scx: Arc<DenoSystemsContext>,
+    scx: DenoSystemsContext,
 }
 
 impl DenoSystemManifest {
+    #[tracing::instrument]
     pub async fn ctor(&self) -> Res<DenoSystemInstance> {
-        debug!(id = %self.desc.id, "initializing deno system");
+        trace!("initializing deno system");
         let desc = self
             .scx
             .callbacks
@@ -183,7 +182,7 @@ impl DenoSystemManifest {
 
         let desc = serde_json::from_value(desc).wrap_err("protocol error")?;
 
-        debug!(id = %self.desc.id, "deno system initialized");
+        trace!("deno system initialized");
 
         Ok(DenoSystemInstance {
             desc,
@@ -198,11 +197,12 @@ struct InstanceDesc {
     load_lock_entry_cb_key: CHeapStr,
     gen_lock_entry_cb_key: CHeapStr,
     load_config_cb_key: CHeapStr,
+    cli_commands_cb_key: CHeapStr,
 }
 
 pub struct DenoSystemInstance {
     desc: InstanceDesc,
-    scx: Arc<DenoSystemsContext>,
+    scx: DenoSystemsContext,
 }
 
 #[async_trait::async_trait]
@@ -252,5 +252,24 @@ impl SystemInstance for DenoSystemInstance {
             )
             .await
             .wrap_err("callback error")
+    }
+
+    async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
+        let cmds = self
+            .scx
+            .callbacks
+            .exec(self.desc.cli_commands_cb_key.clone(), serde_json::json!({}))
+            .await
+            .wrap_err("callback error")?;
+
+        let cmds: Vec<cli::CliCommandDesc> =
+            serde_json::from_value(cmds).wrap_err("protocol error")?;
+
+        let cmds = cmds
+            .into_iter()
+            .map(|cmd| cmd.into_clap(self.scx.clone()))
+            .collect();
+
+        Ok(cmds)
     }
 }

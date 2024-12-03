@@ -26,7 +26,7 @@ const op_callbacks_set = getOp("op_callbacks_set");
 /**
  * @type {import('./runtime.d.ts').GhjkNs}
  */
-const Ghjk = {
+const ____GhjkHost = {
   blackboard: {
     get: getOp("op_blackboard_get"),
     set: getOp("op_blackboard_set"),
@@ -40,4 +40,4 @@ const Ghjk = {
   hostcall: getOp("op_hostcall"),
 };
 
-globalThis.Ghjk = Ghjk;
+globalThis.____GhjkHost = ____GhjkHost;

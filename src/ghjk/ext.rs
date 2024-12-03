@@ -42,11 +42,11 @@ impl ExtConfig {
     }
 
     fn inject(self, state: &mut deno_core::OpState) {
+        let callbacks = callbacks::worker(&self);
         let ctx = ExtContext {
             config: self,
-            callbacks: default(),
+            callbacks,
         };
-        callbacks::worker(ctx.clone());
         state.put(ctx);
     }
 }
@@ -74,7 +74,7 @@ fn customizer(ext: &mut deno_core::Extension) {
 
 #[derive(Clone)]
 struct ExtContext {
-    callbacks: callbacks::Callbacks,
+    callbacks: Option<callbacks::Callbacks>,
     config: ExtConfig,
 }
 

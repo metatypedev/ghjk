@@ -110,7 +110,11 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
     );
   }
 
-  commands() {
+  override commands() {
+    return [];
+  }
+
+  commands2() {
     const gcx = this.gcx;
     const pcx = getPortsCtx(gcx);
 

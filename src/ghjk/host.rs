@@ -4,7 +4,8 @@ use crate::systems::*;
 
 mod deno;
 mod hashfile;
-use hashfile::*;
+
+use hashfile::HashObj;
 
 #[derive(Debug)]
 pub struct Config {
@@ -26,7 +27,7 @@ pub struct HostCtx {
     pub config: Config,
     #[educe(Debug(ignore))]
     pub systems: HashMap<SystemId, SystemManifest>,
-    pub file_hash_memo: DHashMap<PathBuf, CHeapStr>,
+    pub file_hash_memo: DHashMap<PathBuf, hashfile::SharedFileContentDigestFuture>,
 }
 
 impl HostCtx {
@@ -75,7 +76,12 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
     let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.ghjkfile_path {
         (
             matches!(tokio::fs::try_exists(path).await, Ok(true)),
-            Some(file_content_digest_hash(hcx.as_ref(), path).await?),
+            Some(
+                hashfile::file_content_digest_hash(hcx.as_ref(), path)
+                    .await?
+                    .await
+                    .map_err(|err| ferr!(err))?,
+            ),
         )
     } else {
         (false, None)
@@ -152,6 +158,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         }
         info!(?ghjkfile_path, "serializing ghjkfile");
         fresh_serialized = true;
+        // TODO: configurable timeout on serialization
         serialize_ghjkfile(hcx.as_ref(), ghjkfile_path)
             .await
             .wrap_err("error serializing ghjkfile")?
@@ -162,6 +169,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         return Ok(None);
     };
 
+    debug!("initializing ghjkfile systems");
     let sys_instances = {
         let mut sys_instances = IndexMap::new();
         for sys_conf in &config.modules {
@@ -202,7 +210,7 @@ pub struct GhjkfileSystems {
     hcx: Arc<HostCtx>,
     pub config: Arc<SerializedConfig>,
     hash_obj: HashObj,
-    sys_instances: IndexMap<CHeapStr, ErasedSystemInstance>,
+    pub sys_instances: IndexMap<CHeapStr, ErasedSystemInstance>,
     old_lock_obj: Option<LockObj>,
     lockfile_path: PathBuf,
     hashfile_path: PathBuf,
@@ -211,6 +219,12 @@ pub struct GhjkfileSystems {
 }
 
 impl GhjkfileSystems {
+    pub async fn write_lockfile_or_log(&mut self) {
+        if let Err(err) = self.write_lockfile().await {
+            error!("error writing lockfile: {err}");
+        }
+    }
+
     #[tracing::instrument(skip(self))]
     pub async fn write_lockfile(&mut self) -> Res<()> {
         let mut lock_obj = LockObj {
@@ -235,7 +249,7 @@ impl GhjkfileSystems {
             if self.hcx.config.locked {
                 warn!("locked flag set, changes to lockfile discarded");
             } else {
-                debug!(lockfile_path = ?self.lockfile_path, ?lock_obj, "writing lock.json");
+                trace!(lockfile_path = ?self.lockfile_path, /* ?lock_obj, */ "writing lock.json");
                 /* tokio::fs::write(
                     &self.lockfile_path,
                     serde_json::to_vec_pretty(&lock_obj).expect_or_log("error jsonifying lockfile"),
@@ -252,7 +266,7 @@ impl GhjkfileSystems {
             if self.hcx.config.locked {
                 unreachable!("code should have early exited");
             }
-            debug!(hashfile_path = ?self.hashfile_path, hash_obj= ?self.hash_obj, "writing hash.json");
+            trace!(hashfile_path = ?self.hashfile_path, /* hash_obj= ?self.hash_obj, */ "writing hash.json");
             /* tokio::fs::write(
                 &self.hashfile_path,
                 serde_json::to_vec_pretty(&self.hash_obj)
@@ -273,32 +287,11 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
     } else {
         eyre::bail!("unrecognized ghjkfile extension: {path:?}")
     };
-    Ok((
-        Arc::new(res.config),
-        HashObj {
-            version: "0".into(),
-            env_var_hashes: env_var_digests(
-                &hcx.config.env_vars,
-                res.accessed_env_keys.iter().map(|key| key.as_ref()),
-            ),
-            ghjkfile_hash: file_digest_hash(hcx, path)
-                .await?
-                .expect_or_log("ghjkfile is gone"),
-            listed_files: res
-                .listed_file_paths
-                .into_iter()
-                .map(|path| pathdiff::diff_paths(path, &hcx.config.cwd).unwrap_or_log())
-                .collect(),
-            read_file_hashes: file_digests(
-                hcx,
-                res.read_file_paths
-                    .iter()
-                    .map(|path| path.as_ref())
-                    .collect(),
-            )
-            .await?,
-        },
-    ))
+    debug!("ghjkfile serialized");
+    let hash_obj = HashObj::from_result(hcx, path, &res)
+        .await
+        .wrap_err("error building hash obj")?;
+    Ok((Arc::new(res.config), hash_obj))
 }
 
 #[derive(Debug)]

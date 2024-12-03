@@ -49,6 +49,15 @@ fn main() -> Res<()> {
                 vec![],
             )
         }
+        /* Commands::Run { argv } => denort::run_sync(
+            denort::deno::deno_runtime::deno_core::resolve_url_or_path("ghjk.ts", &cwd).unwrap(),
+            Some("deno.jsonc".into()),
+            denort::deno::args::PermissionFlags {
+                allow_all: true,
+                ..Default::default()
+            },
+            Arc::new(std::vec::Vec::new),
+        ), */
     }
     Ok(())
 }

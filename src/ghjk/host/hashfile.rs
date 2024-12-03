@@ -17,6 +17,37 @@ pub struct HashObj {
 }
 
 impl HashObj {
+    #[tracing::instrument(skip(hcx, res))]
+    pub async fn from_result(
+        hcx: &super::HostCtx,
+        ghjkfile_path: &Path,
+        res: &super::SerializationResult,
+    ) -> Res<Self> {
+        Ok(HashObj {
+            version: "0".into(),
+            env_var_hashes: env_var_digests(
+                &hcx.config.env_vars,
+                res.accessed_env_keys.iter().map(|key| key.as_ref()),
+            ),
+            ghjkfile_hash: file_digest_hash(hcx, ghjkfile_path)
+                .await?
+                .expect_or_log("ghjkfile is gone"),
+            listed_files: res
+                .listed_file_paths
+                .iter()
+                .map(|path| pathdiff::diff_paths(path, &hcx.config.cwd).unwrap_or_log())
+                .collect(),
+            read_file_hashes: file_digests(
+                hcx,
+                res.read_file_paths
+                    .iter()
+                    .map(|path| path.as_ref())
+                    .collect(),
+            )
+            .await?,
+        })
+    }
+
     /// The hash.json file stores the digests of all external accesses
     /// of a ghjkfile during serialization. The primary purpose is to
     /// do "cache invalidation" on ghjkfiles, re-serializing them if
@@ -66,7 +97,7 @@ impl HashObj {
     }
 }
 
-pub fn env_var_digests<'a>(
+fn env_var_digests<'a>(
     all: &IndexMap<String, String>,
     accessed: impl Iterator<Item = &'a str>,
 ) -> IndexMap<String, Option<String>> {
@@ -80,7 +111,7 @@ pub fn env_var_digests<'a>(
         .collect()
 }
 
-pub async fn file_digests(
+async fn file_digests(
     hcx: &HostCtx,
     read_files: Vec<&Path>,
 ) -> Res<IndexMap<PathBuf, Option<String>>> {
@@ -97,14 +128,19 @@ pub async fn file_digests(
     Ok(out.into_iter().collect())
 }
 
-pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
+async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
     let path = tokio::fs::canonicalize(path)
         .await
         .wrap_err("error resolving realpath")?;
     match tokio::fs::metadata(&path).await {
         Ok(stat) => {
             let content_hash = if stat.file_type().is_file() || stat.file_type().is_symlink() {
-                Some(file_content_digest_hash(hcx, &path).await?)
+                Some(
+                    file_content_digest_hash(hcx, &path)
+                        .await?
+                        .await
+                        .map_err(|err| ferr!(err))?,
+                )
             } else {
                 None
             };
@@ -119,7 +155,13 @@ pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>>
     }
 }
 
-pub async fn file_content_digest_hash(hcx: &HostCtx, path: &Path) -> Res<CHeapStr> {
+pub type SharedFileContentDigestFuture =
+    futures::future::Shared<BoxFuture<'static, Result<CHeapStr, String>>>;
+
+pub async fn file_content_digest_hash(
+    hcx: &HostCtx,
+    path: &Path,
+) -> Res<SharedFileContentDigestFuture> {
     let path = tokio::fs::canonicalize(path)
         .await
         .wrap_err("error resolving realpath")?;
@@ -127,13 +169,24 @@ pub async fn file_content_digest_hash(hcx: &HostCtx, path: &Path) -> Res<CHeapSt
     match hcx.file_hash_memo.entry(path.clone()) {
         Entry::Occupied(occupied_entry) => Ok(occupied_entry.get().clone()),
         Entry::Vacant(vacant_entry) => {
-            // FIXME: optimize by stream hashing, this reads whole file into memory
-            let file = tokio::fs::read(path)
-                .await
-                .wrap_err("error reading file for")?;
-            let hash: CHeapStr = crate::utils::encode_base32_multibase(file).into();
-            vacant_entry.insert(hash.clone());
-            Ok(hash)
+            let shared = vacant_entry
+                .insert(
+                    async {
+                        let file = tokio::fs::File::open(path)
+                            .await
+                            .map_err(|err| format!("error opening file: {err}"))?;
+                        let hash: CHeapStr = crate::utils::hash_reader(file)
+                            .await
+                            .map_err(|err| format!("error hashing file reader {err}"))?
+                            .into();
+                        Ok(hash)
+                    }
+                    .boxed()
+                    .shared(),
+                )
+                .value()
+                .clone();
+            Ok(shared)
         }
     }
 }

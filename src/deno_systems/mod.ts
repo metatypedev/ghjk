@@ -1,5 +1,5 @@
 import { map } from "../../modules/std.ts";
-import type { DenoSystemsRoot } from "./bindings.ts";
+import type { DenoSystemsRoot } from "./types.ts";
 
 export default {
   systems: Object.fromEntries(

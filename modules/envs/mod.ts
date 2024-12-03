@@ -20,6 +20,7 @@ import type {
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 import { getEnvsCtx } from "./inter.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
+import { CliCommand } from "../../src/deno_systems/types.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -34,7 +35,7 @@ const lockValidator = zod.object({
 type EnvsLockEnt = zod.infer<typeof lockValidator>;
 
 export class EnvsModule extends ModuleBase<EnvsLockEnt> {
-  loadConfig(
+  override loadConfig(
     manifest: ModuleManifest,
     _bb: Blackboard,
     _lockEnt: EnvsLockEnt | undefined,
@@ -59,7 +60,177 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
     }
   }
 
-  commands() {
+  override commands(): CliCommand[] {
+    const gcx = this.gcx;
+    const ecx = getEnvsCtx(this.gcx);
+
+    function envKeyArgs(
+      args: {
+        taskKeyMaybe?: string;
+        envKeyMaybe?: string;
+      },
+    ) {
+      const { envKeyMaybe, taskKeyMaybe } = args;
+      if (taskKeyMaybe && envKeyMaybe) {
+        throw new Error(
+          "--task-env option can not be combined with [envName] argument",
+        );
+      }
+      if (taskKeyMaybe) {
+        const tasksCx = getTasksCtx(gcx);
+        const taskDef = tasksCx.config.tasks[taskKeyMaybe];
+        if (!taskDef) {
+          throw new Error(`no task found under key "${taskKeyMaybe}"`);
+        }
+        return { envKey: taskDef.envKey };
+      }
+      const actualKey = ecx.config.envsNamed[envKeyMaybe ?? ecx.activeEnv];
+      return actualKey
+        ? { envKey: actualKey, envName: envKeyMaybe ?? ecx.activeEnv }
+        : { envKey: envKeyMaybe ?? ecx.activeEnv };
+    }
+
+    const commonFlags = {
+      taskEnv: {
+        value_name: "taskName",
+        help: "Activate the environment used by the named task",
+        exclusive: true,
+      },
+    };
+
+    const commonArgs = {
+      envKey: {
+        value_name: "envKey",
+      },
+    };
+
+    return [
+      {
+        name: "envs",
+        aliases: ["e"],
+        about: "Envs module, reproducable posix shells environments.",
+        sub_commands: [
+          {
+            name: "ls",
+            about: "List environments defined in the ghjkfile.",
+            action: () => {
+              // deno-lint-ignore no-console
+              console.log(
+                Object.entries(ecx.config.envsNamed)
+                  // envs that have names which start with underscors
+                  // don't show up in the cli list
+                  .filter(([key]) => !key.startsWith("_"))
+                  .map(([name, hash]) => {
+                    const { desc } = ecx.config.envs[hash];
+                    return `${name}${desc ? ": " + desc : ""}`;
+                  })
+                  .join("\n"),
+              );
+            },
+          },
+          {
+            name: "activate",
+            about: `Activate an environment.`,
+            before_long_help:
+              `- If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              { flags: { taskEnv }, args: { envName: envKeyMaybe } },
+            ) {
+              const { envKey } = envKeyArgs({
+                taskKeyMaybe: taskEnv,
+                envKeyMaybe,
+              });
+              await activateEnv(envKey);
+            },
+          },
+          {
+            name: "cook",
+            about: `Cooks the environment to a posix shell.`,
+            before_long_help:
+              `- If no [envName] is specified, this will cook the active env [${ecx.activeEnv}]`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              { flags: { taskEnv }, args: { envName: envKeyMaybe } },
+            ) {
+              const { envKey, envName } = envKeyArgs({
+                taskKeyMaybe: taskEnv,
+                envKeyMaybe,
+              });
+              await reduceAndCookEnv(gcx, ecx, envKey, envName ?? envKey);
+            },
+          },
+          {
+            name: "show",
+            about: `Cooks the environment to a posix shell.`,
+            before_long_help: `Show details about an environment.
+
+- If no [envName] is specified, this shows details of the active env [${ecx.activeEnv}].
+- If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              { flags: { taskEnv }, args: { envName: envKeyMaybe } },
+            ) {
+              const { envKey } = envKeyArgs({
+                taskKeyMaybe: taskEnv,
+                envKeyMaybe,
+              });
+              const env = ecx.config.envs[envKey];
+              if (!env) {
+                throw new Error(`no env found under "${envKey}"`);
+              }
+              // deno-lint-ignore no-console
+              console.log($.inspect(await showableEnv(gcx, env, envKey)));
+            },
+          },
+        ],
+      },
+      {
+        name: "sync",
+        about: "Synchronize your shell to what's in your config.",
+        before_long_help: `Cooks and activates an environment.
+- If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
+- If the environment is already active, this doesn't launch a new shell.`,
+        flags: {
+          ...commonFlags,
+        },
+        args: {
+          ...commonArgs,
+        },
+        action: async function (
+          { flags: { taskEnv }, args: { envName: envKeyMaybe } },
+        ) {
+          const { envKey, envName } = envKeyArgs({
+            taskKeyMaybe: taskEnv,
+            envKeyMaybe,
+          });
+          await reduceAndCookEnv(
+            gcx,
+            ecx,
+            envKey,
+            envName ?? envKey,
+          );
+          await activateEnv(envKey);
+        },
+      },
+    ];
+  }
+  commands2() {
     const gcx = this.gcx;
     const ecx = getEnvsCtx(this.gcx);
 

@@ -157,7 +157,9 @@ export async function cli(args: CliArgs) {
         .command(
           "ghjkdir-path",
           new cliffy_cmd.Command()
-            .description("Print the path where ghjk is installed in.")
+            .description(
+              "Print the path to the dir of the currently active ghjk context.",
+            )
             .action(function () {
               if (!gcx) {
                 throw new Error("no ghjkfile found.");

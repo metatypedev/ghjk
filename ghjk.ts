@@ -15,7 +15,7 @@ config({
 });
 
 env("main").vars({
-  RUST_LOG: "trace,deno=info,denort=trace,swc_ecma_transforms_base=info",
+  RUST_LOG: "debug,deno=info,denort=trace,swc_ecma_transforms_base=info",
 });
 
 env("_rust")

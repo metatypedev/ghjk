@@ -25,9 +25,9 @@ Platform: {platform}
 Version: {version}
 Args: {args:?}
 "#,
-            platform = crate::build::BUILD_TARGET,
+            platform = crate::shadow::BUILD_TARGET,
             // TODO: include commit sha
-            version = crate::build::PKG_VERSION,
+            version = crate::shadow::PKG_VERSION,
             args = std::env::args().collect::<Vec<_>>()
         ));
 
@@ -52,13 +52,13 @@ Args: {args:?}
             // std::process::exit(1);
         }));
 
-        // FIXME: for some reason, the tests already have
-        // an eyre_hook
-        #[cfg(not(test))]
+        // // FIXME: for some reason, the tests already have
+        // // an eyre_hook
+        // #[cfg(not(test))]
         _eyre_hook.install().unwrap();
 
         if std::env::var("RUST_LOG").is_err() {
-            std::env::set_var("RUST_LOG", "info,actix_server=warn");
+            std::env::set_var("RUST_LOG", "info");
         }
         #[cfg(not(debug_assertions))]
         if std::env::var("RUST_SPANTRACE").is_err() {

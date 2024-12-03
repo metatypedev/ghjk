@@ -46,7 +46,11 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
     tcx.taskGraph = taskGraph;
   }
 
-  commands() {
+  override commands() {
+    return [];
+  }
+
+  commands2() {
     const gcx = this.gcx;
     const tcx = getTasksCtx(this.gcx);
 

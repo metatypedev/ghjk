@@ -9,6 +9,7 @@ use deno_core::OpState;
 use deno_core as deno_core; // necessary for re-exported macros to work
 use tokio::sync::{mpsc, oneshot};
 
+use super::ExtConfig;
 use super::ExtContext;
 
 #[derive(Debug, thiserror::Error)]
@@ -45,13 +46,14 @@ impl CallbackLine {
 
     fn take(&mut self) -> Option<tokio::sync::mpsc::Receiver<CallbacksMsg>> {
         if !self.was_set {
-            warn!("callback line was not set");
+            debug!("callback line was not set, worker callbacks will noop");
             return None;
         }
         match self.line.take() {
             Some(val) => Some(val),
             None => {
-                panic!("extensions were injected twice")
+                debug!("realm with callbacks just had a child, it won't inherit callback feature");
+                None
             }
         }
     }
@@ -104,48 +106,42 @@ pub struct Callbacks {
 ///
 /// Stored callbacks are not Sync so this expects to be started
 /// on the same thread as deno.
-pub fn worker(ctx: ExtContext) {
-    let mut line = {
-        let mut line = ctx.config.callbacks_rx.lock().expect_or_log("mutex err");
-        let Some(line) = line.take() else {
-            return;
-        };
-        line
-    };
-    assert_eq!(
-        std::thread::current().name(),
-        Some(denort::WORKER_THREAD_NAME),
-        "callback worker must be launched on deno worker started with a LocalSet"
-    );
-    // assumes local set
-    tokio::task::spawn_local(
+pub fn worker(config: &ExtConfig) -> Option<Callbacks> {
+    let mut line = config.callbacks_rx.lock().expect_or_log("mutex err");
+    let mut line = line.take()?;
+
+    let callbacks = Callbacks::default();
+    let callbacks_2go = callbacks.clone();
+    deno_core::unsync::spawn(
         async move {
-            debug!("callback worker starting");
+            trace!("callback worker starting");
             while let Some(msg) = line.recv().await {
-                debug!(?msg, "callback worker msg");
+                trace!(?msg, "callback worker msg");
                 match msg {
                     CallbacksMsg::Exec {
                         key: name,
                         args,
                         response_channel,
                     } => response_channel
-                        .send(ctx.exec_callback(name, args).await)
+                        .send(callbacks_2go.exec_callback(name, args).await)
                         .expect_or_log("channel error"),
                 }
             }
-            debug!("callback worker done");
+            trace!("callback worker done");
         }
-        .instrument(tracing::debug_span!("callback-worker")),
+        .instrument(tracing::trace_span!("callback-worker")),
     );
+    Some(callbacks)
 }
 
-impl ExtContext {
+impl Callbacks {
+    #[tracing::instrument(skip(self, args))]
     pub async fn exec_callback(
         &self,
         key: CHeapStr,
         args: serde_json::Value,
     ) -> Result<serde_json::Value, CallbackError> {
-        let Some(cb) = self.callbacks.store.get(&key[..]).map(|cb| cb.clone()) else {
+        let Some(cb) = self.store.get(&key[..]).map(|cb| cb.clone()) else {
             return Err(CallbackError::NotFound {
                 key: key.to_string(),
             });
@@ -231,7 +227,7 @@ impl ExtContext {
         let res = match join_handle.await.expect_or_log("tokio error")? {
             Some(res) => res,
             None => {
-                debug!("waiting for callback proimse");
+                trace!("waiting for callback proimse");
                 rx.await.expect_or_log("channel error")?
             }
         };
@@ -269,6 +265,7 @@ unsafe impl<T> Send for SendPtr<T> {}
     }
 } */
 
+#[tracing::instrument(skip(state, cb))]
 #[deno_core::op2]
 pub fn op_callbacks_set(
     state: Rc<RefCell<OpState>>,
@@ -282,7 +279,11 @@ pub fn op_callbacks_set(
 
         (ctx.clone(), sender.clone())
     };
-    ctx.callbacks.store.insert(
+    let Some(callbacks) = ctx.callbacks else {
+        warn!("callback set but callback feature is not enabled");
+        anyhow::bail!("callbacks feature is not enabled");
+    };
+    callbacks.store.insert(
         name.into(),
         Callback {
             js_fn: SendPtr(cb.into_raw()),

@@ -29,7 +29,6 @@ use deno::{
     },
     *,
 };
-use std::sync::atomic::AtomicBool;
 
 #[rustfmt::skip]
 use deno_runtime::deno_core as deno_core; // necessary for re-exported macros to work
@@ -63,59 +62,57 @@ pub async fn worker(
 ) -> Res<DenoWorkerHandle> {
     let cx = WorkerContext::from_config(flags, custom_extensions_cb).await?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerMsg>();
-    let rt = tokio::runtime::Handle::current();
+    let (msg_tx, mut msg_rx) = tokio::sync::mpsc::unbounded_channel::<DenoWorkerMsg>();
 
-    let term_signal = AtomicBool::new(false);
-    let term_signal = Arc::new(term_signal);
+    let (term_signal_tx, mut term_signal_rx) = tokio::sync::watch::channel(false);
 
-    let global_term_signal = term_signal.clone();
-    let join_handle = new_thread_builder()
-        .name(WORKER_THREAD_NAME.into())
-        .spawn(move || {
-            let local = tokio::task::LocalSet::new();
-
-            local.spawn_local(
-                async move {
-                    debug!("starting deno worker");
-                    while let Some(msg) = rx.recv().await {
-                        debug!(?msg, "deno worker msg");
-                        match msg {
-                            DenoWorkerMsg::PrepareModule {
-                                response_channel,
-                                inner,
-                            } => {
-                                response_channel
-                                    .send(
-                                        module_worker(&cx, global_term_signal.clone(), inner).await,
-                                    )
-                                    .expect_or_log("channel error");
-                            }
-                        }
+    let join_handle = deno_core::unsync::spawn(
+        async move {
+            trace!("starting deno worker");
+            loop {
+                let msg = tokio::select! {
+                  Some(msg) = msg_rx.recv() => {
+                      msg
+                  }
+                  _ = term_signal_rx.changed() => break,
+                  else => break
+                };
+                trace!(?msg, "deno worker msg");
+                match msg {
+                    DenoWorkerMsg::PrepareModule {
+                        response_channel,
+                        inner,
+                    } => {
+                        response_channel
+                            .send(module_worker(&cx, term_signal_rx.clone(), inner).await)
+                            .expect_or_log("channel error");
                     }
-                    debug!("deno worker done");
                 }
-                .instrument(tracing::debug_span!("deno-worker")),
-            );
-            rt.block_on(local);
-        })
-        .unwrap();
+            }
+            std::mem::forget(cx);
+            trace!("deno worker done");
+        }
+        .instrument(tracing::trace_span!("deno-worker")),
+    );
+    // let term_signal_tx = Arc::new(term_signal_tx);
     let join_handle = Arc::new(std::sync::Mutex::new(Some(join_handle)));
     Ok(DenoWorkerHandle {
-        sender: tx,
-        term_signal,
+        sender: msg_tx,
+        term_signal: term_signal_tx,
         join_handle,
     })
 }
 
+type TermSignal = tokio::sync::watch::Receiver<bool>;
+
 async fn module_worker(
     cx: &WorkerContext,
-    global_term_signal: Arc<AtomicBool>,
+    global_term_signal: TermSignal,
     msg: PrepareModuleMsg,
 ) -> Res<ModuleWorkerHandle> {
     let mut module_cx = cx
         .prepare_module(
-            msg.main_module,
+            msg.main_module.clone(),
             &msg.permissions,
             msg.mode,
             msg.stdio,
@@ -124,16 +121,16 @@ async fn module_worker(
         .await?;
 
     let (module_tx, mut module_rx) = tokio::sync::mpsc::channel::<ModuleWorkerReq>(1);
-    tokio::task::spawn_local(
+    deno_core::unsync::spawn(
         async move {
-            debug!("starting module worker");
+            trace!("starting module worker");
             while let Some(msg) = module_rx.recv().await {
-                debug!(?msg, "module worker msg");
+                trace!(?msg, "module worker msg");
                 match msg {
                     ModuleWorkerReq::Run { response_channel } => response_channel
                         .send(
                             module_cx
-                                .run(&global_term_signal)
+                                .run(global_term_signal.clone())
                                 .await
                                 .map_err(|err| ferr!(Box::new(err))),
                         )
@@ -144,7 +141,7 @@ async fn module_worker(
                     } => response_channel
                         .send(
                             module_cx
-                                .drive_till_exit(&global_term_signal, &term_signal)
+                                .drive_till_exit(global_term_signal.clone(), term_signal)
                                 .await
                                 .map_err(|err| ferr!(Box::new(err))),
                         )
@@ -162,9 +159,13 @@ async fn module_worker(
                         .expect_or_log("channel error"),
                 }
             }
-            debug!("module worker done");
+            std::mem::forget(module_cx);
+            trace!("module worker done");
         }
-        .instrument(tracing::debug_span!("deno-module-worker")),
+        .instrument(tracing::trace_span!(
+            "deno-module-worker",
+            main_module = %msg.main_module
+        )),
     );
     Ok(ModuleWorkerHandle { sender: module_tx })
 }
@@ -288,25 +289,26 @@ enum DenoWorkerMsg {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, educe::Educe)]
+#[educe(Debug)]
 pub struct DenoWorkerHandle {
     sender: tokio::sync::mpsc::UnboundedSender<DenoWorkerMsg>,
-    join_handle: Arc<std::sync::Mutex<Option<std::thread::JoinHandle<()>>>>,
-    term_signal: Arc<AtomicBool>,
+    term_signal: tokio::sync::watch::Sender<bool>,
+    #[educe(Debug(ignore))]
+    join_handle: Arc<std::sync::Mutex<Option<JoinHandle<()>>>>,
 }
 
 impl DenoWorkerHandle {
-    pub fn terminate(self) {
-        self.term_signal
-            .store(true, std::sync::atomic::Ordering::Relaxed);
+    pub async fn terminate(self) -> Res<()> {
+        self.term_signal.send(true)?;
         let join_handle = {
             let mut opt = self.join_handle.lock().expect_or_log("mutex error");
             opt.take()
         };
         let Some(join_handle) = join_handle else {
-            return;
+            return Ok(());
         };
-        join_handle.join().expect_or_log("join error")
+        join_handle.await.wrap_err("tokio error")
     }
 }
 
@@ -367,17 +369,19 @@ impl ModuleWorkerContext {
             .collect()
     }
 
-    async fn run(&mut self, global_term_signal: &AtomicBool) -> anyhow::Result<i32> {
+    async fn run(&mut self, global_term_signal: TermSignal) -> anyhow::Result<i32> {
         debug!("main_module {}", self.main_module);
         self.execute_main_module().await?;
-        self.drive_till_exit(global_term_signal, &AtomicBool::new(false))
+
+        let (_local_signal_tx, local_signal_rx) = tokio::sync::watch::channel(false);
+        self.drive_till_exit(global_term_signal, local_signal_rx)
             .await
     }
 
     async fn drive_till_exit(
         &mut self,
-        global_term_signal: &AtomicBool,
-        term_signal: &AtomicBool,
+        mut global_term_signal: TermSignal,
+        mut term_signal: TermSignal,
     ) -> anyhow::Result<i32> {
         self.worker.dispatch_load_event()?;
         loop {
@@ -406,19 +410,25 @@ impl ModuleWorkerContext {
                 .run_event_loop(self.maybe_coverage_collector.is_none())
                 .await?;
             } */
+
+            let event_loop_future = self.worker.run_event_loop(false).boxed_local();
+
+            tokio::select! {
+              _ = global_term_signal.changed() => {
+                    trace!("global term signal lit, shutting down event loop");
+                  break
+              },
+              _ = term_signal.changed() => {
+                  trace!("worker term signal lit, shutting down event loop");
+                  break
+              },
+              event_loop_result = event_loop_future => {
+                 event_loop_result?
+              }
+            };
             self.worker
                 .run_event_loop(self.maybe_coverage_collector.is_none())
                 .await?;
-
-            if term_signal.load(std::sync::atomic::Ordering::Relaxed) {
-                trace!("worker term signal lit, shutting down event loop");
-                break;
-            }
-
-            if global_term_signal.load(std::sync::atomic::Ordering::Relaxed) {
-                trace!("globalterm signal lit, shutting down event loop");
-                break;
-            }
 
             let web_continue = self.worker.dispatch_beforeunload_event()?;
             if !web_continue {
@@ -467,8 +477,7 @@ enum ModuleWorkerReq {
         response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
     },
     DriveTillExit {
-        #[educe(Debug(ignore))]
-        term_signal: Arc<AtomicBool>,
+        term_signal: TermSignal,
         #[educe(Debug(ignore))]
         response_channel: tokio::sync::oneshot::Sender<Res<i32>>,
     },
@@ -527,28 +536,28 @@ impl ModuleWorkerHandle {
     }
 
     /// Drive the event loop until exit and return
-    /// result in returned channel.
+    /// result in returned channel or the term signal
+    /// is lit.
     /// Expects that [`execute`] was called first on the worker.
     pub async fn drive_till_exit(
         self,
     ) -> Res<(
         tokio::sync::oneshot::Receiver<Res<i32>>,
-        Arc<AtomicBool>,
+        tokio::sync::watch::Sender<bool>,
         FinishedWorkerHandle,
     )> {
-        let term_signal = AtomicBool::new(false);
-        let term_signal = Arc::new(term_signal);
+        let (term_signal_tx, term_signal_rx) = tokio::sync::watch::channel(false);
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
             .send(ModuleWorkerReq::DriveTillExit {
-                term_signal: term_signal.clone(),
+                term_signal: term_signal_rx,
                 response_channel: tx,
             })
             .await
             .expect_or_log("channel error");
         Ok((
             rx,
-            term_signal,
+            term_signal_tx,
             FinishedWorkerHandle {
                 sender: self.sender,
             },
@@ -580,7 +589,7 @@ fn spawn_subcommand<F: Future<Output = ()> + 'static>(f: F) -> JoinHandle<()> {
 }
 pub fn run_sync(
     main_mod: ModuleSpecifier,
-    import_map_url: Option<String>,
+    config_file: Option<String>,
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) {
@@ -588,7 +597,7 @@ pub fn run_sync(
         .spawn(|| {
             create_and_run_current_thread_with_maybe_metrics(async move {
                 spawn_subcommand(async move {
-                    run(main_mod, import_map_url, permissions, custom_extensions)
+                    run(main_mod, config_file, permissions, custom_extensions)
                         .await
                         .unwrap()
                 })
@@ -603,7 +612,7 @@ pub fn run_sync(
 
 pub async fn run(
     main_module: ModuleSpecifier,
-    import_map_url: Option<String>,
+    config_file: Option<String>,
     permissions: args::PermissionFlags,
     custom_extensions: Arc<worker::CustomExtensionsCb>,
 ) -> anyhow::Result<()> {
@@ -611,7 +620,6 @@ pub async fn run(
     // as it breaks our custom_extensions patch for some reason
     let flags = args::Flags {
         permissions,
-        import_map_path: import_map_url,
         unstable_config: args::UnstableConfig {
             features: DEFAULT_UNSTABLE_FLAGS
                 .iter()
@@ -619,6 +627,11 @@ pub async fn run(
                 .map(String::from)
                 .collect(),
             ..Default::default()
+        },
+        config_flag: if let Some(config_file) = config_file {
+            args::ConfigFlag::Path(config_file)
+        } else {
+            Default::default()
         },
         ..Default::default()
     };

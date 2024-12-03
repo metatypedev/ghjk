@@ -5458,6 +5458,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
+name = "play"
+version = "0.3.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "data-encoding",
+ "futures-concurrency",
+ "once_cell",
+ "sha2",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-unwrap",
+]
+
+[[package]]
 name = "png"
 version = "0.17.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"

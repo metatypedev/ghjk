@@ -144,15 +144,47 @@ pub fn hash_obj<T: serde::Serialize>(obj: &T) -> String {
 }
 
 pub fn hash_str(string: &str) -> String {
+    hash_bytes(string.as_bytes())
+}
+
+pub fn hash_bytes(bytes: &[u8]) -> String {
     use sha2::Digest;
     let mut hash = sha2::Sha256::new();
-    hash.write(string.as_bytes())
-        .expect_or_log("error writing to hasher");
+    hash.write(bytes).expect_or_log("error writing to hasher");
     let hash = hash.finalize();
 
     let hash =
         multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
     encode_base32_multibase(hash.digest())
+}
+
+pub async fn hash_reader<T: tokio::io::AsyncRead>(reader: T) -> Res<String> {
+    use sha2::Digest;
+    use tokio::io::*;
+    let mut hash = sha2::Sha256::new();
+    let mut buf = vec![0u8; 4096];
+
+    let reader = tokio::io::BufReader::new(reader);
+
+    let mut reader = std::pin::pin!(reader);
+
+    loop {
+        // Read a chunk of data
+        let bytes_read = reader.read(&mut buf).await?;
+
+        // Break the loop if we reached EOF
+        if bytes_read == 0 {
+            break;
+        }
+        hash.write(&buf[..bytes_read])
+            .expect_or_log("error writing to hasher");
+    }
+    let hash = hash.finalize();
+
+    let hash =
+        multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
+    let hash = encode_base32_multibase(hash.digest());
+    Ok(hash)
 }
 
 pub fn encode_base32_multibase<T: AsRef<[u8]>>(source: T) -> String {
