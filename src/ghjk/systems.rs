@@ -136,4 +136,14 @@ pub struct SystemCliCommand {
     pub action: Option<CliCommandAction>,
 }
 
+impl std::fmt::Debug for SystemCliCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SystemCliCommand")
+            .field("name", &self.name)
+            .field("sub_commands", &self.sub_commands)
+            .field("actions", &self.action.is_some())
+            .finish()
+    }
+}
+
 pub type ConfigBlackboard = Arc<serde_json::Map<String, serde_json::Value>>;

@@ -1,6 +1,6 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, Table, zod } from "../../deps/cli.ts";
+import { Table, zod } from "../../deps/cli.ts";
 import { $, Json, unwrapZodRes } from "../../utils/mod.ts";
 import logger from "../../utils/logger.ts";
 import validators, {
@@ -35,6 +35,7 @@ import type { Provision, ProvisionReducer } from "../envs/types.ts";
 import { getPortsCtx } from "./inter.ts";
 import { updateInstall } from "./utils.ts";
 import { getEnvsCtx } from "../envs/inter.ts";
+import { CliCommand } from "../../src/deno_systems/types.ts";
 
 export type PortsCtx = {
   config: PortsModuleConfigX;
@@ -111,166 +112,60 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
   }
 
   override commands() {
-    return [];
-  }
-
-  commands2() {
     const gcx = this.gcx;
     const pcx = getPortsCtx(gcx);
 
-    return {
-      ports: new cliffy_cmd.Command()
-        .alias("p")
-        .action(function () {
-          this.showHelp();
-        })
-        .description("Ports module, install programs into your env.")
-        .command(
-          "resolve",
-          new cliffy_cmd.Command()
-            .description(`Resolve all installs declared in config.
-
-- Useful to pre-resolve and add all install configs to the lockfile.`)
-            .action(async function () {
-              // scx contains a reference counted db connection
-              // somewhere deep in there
-              // so we need to use `using`
-              await using scx = await syncCtxFromGhjk(gcx);
-              for (const [_id, set] of Object.entries(pcx.config.sets)) {
-                void await buildInstallGraph(scx, set);
-              }
-            }),
-        )
-        .command(
-          "outdated",
-          new cliffy_cmd.Command()
-            .description("Show a version table for installs.")
-            .option(
-              "-u, --update-install <installName>",
-              "Update specific install",
-            )
-            .option("-n, --update-all", "Update all installs")
-            .action(async (opts) => {
-              const envsCtx = getEnvsCtx(gcx);
-              const envName = envsCtx.activeEnv;
-
-              const installSets = pcx.config.sets;
-
-              let currInstallSetId;
-              {
-                const activeEnvName = envsCtx.activeEnv;
-                const activeEnv = envsCtx.config
-                  .envs[
-                    envsCtx.config.envsNamed[activeEnvName] ?? activeEnvName
-                  ];
-                if (!activeEnv) {
-                  throw new Error(
-                    `No env found under given name "${activeEnvName}"`,
-                  );
-                }
-
-                const instSetRef = activeEnv.provides.filter((prov) =>
-                  prov.ty === installSetRefProvisionTy
-                )[0] as InstallSetRefProvision;
-
-                currInstallSetId = instSetRef.setId;
-              }
-              const currInstallSet = installSets[currInstallSetId];
-              const allowedDeps = currInstallSet.allowedBuildDeps;
-
-              const rows = [];
-              const {
-                installedPortsVersions: installed,
-                latestPortsVersions: latest,
-                installConfigs,
-              } = await getOldNewVersionComparison(
-                gcx,
-                envName,
-                allowedDeps,
-              );
-              for (let [installId, installedVersion] of installed.entries()) {
-                let latestVersion = latest.get(installId);
-                if (!latestVersion) {
-                  throw new Error(
-                    `Couldn't find the latest version for install id: ${installId}`,
-                  );
-                }
-
-                if (latestVersion[0] === "v") {
-                  latestVersion = latestVersion.slice(1);
-                }
-                if (installedVersion[0] === "v") {
-                  installedVersion = installedVersion.slice(1);
-                }
-
-                const config = installConfigs.get(installId);
-
-                if (!config) {
-                  throw new Error(
-                    `Config not found for install id: ${installId}`,
-                  );
-                }
-
-                if (config["specifiedVersion"]) {
-                  latestVersion = "=" + latestVersion;
-                }
-
-                const presentableConfig = { ...config };
-                ["buildDepConfigs", "version", "specifiedVersion"].map(
-                  (key) => {
-                    delete presentableConfig[key];
-                  },
-                );
-                const row = [
-                  $.inspect(presentableConfig),
-                  installedVersion,
-                  latestVersion,
-                ];
-                rows.push(row);
-              }
-
-              if (opts.updateInstall) {
-                const installName = opts.updateInstall;
-                // TODO: convert from install name to install id, after port module refactor
-                let installId!: string;
-                const newVersion = latest.get(installId);
-                if (!newVersion) {
-                  logger().info(
-                    `Error while fetching the latest version for: ${installName}`,
-                  );
-                  return;
-                }
-                await updateInstall(gcx, installId, newVersion, allowedDeps);
-                return;
-              }
-
-              if (opts.updateAll) {
-                for (const [installId, newVersion] of latest.entries()) {
-                  await updateInstall(gcx, installId, newVersion, allowedDeps);
-                }
-                return;
-              }
-
-              const _versionTable = new Table()
-                .header(["Install Config", "Old Version", "New Version"])
-                .body(rows)
-                .border()
-                .padding(1)
-                .indent(2)
-                .maxColWidth(30)
-                .render();
-            }),
-        )
-        .command(
-          "cleanup",
-          new cliffy_cmd.Command()
-            .description("TODO")
-            .action(function () {
-              throw new Error("TODO");
-            }),
-        ),
-    };
+    const out: CliCommand[] = [{
+      name: "ports",
+      visible_aliases: ["p"],
+      about: "Ports module, install programs into your env.",
+      sub_commands: [
+        {
+          name: "resolve",
+          about: "Resolve all installs declared in config.",
+          before_long_help:
+            `- Useful to pre-resolve and add all install configs to the lockfile.`,
+          action: async function () {
+            // scx contains a reference counted db connection
+            // somewhere deep in there
+            // so we need to use `using`
+            await using scx = await syncCtxFromGhjk(gcx);
+            for (const [_id, set] of Object.entries(pcx.config.sets)) {
+              void await buildInstallGraph(scx, set);
+            }
+          },
+        },
+        {
+          name: "outdated",
+          about: "Show a version table for installs.",
+          flags: {
+            updateInstall: {
+              short: "u",
+              long: "update-install",
+              value_name: "INSTALL_ID",
+            },
+            updateAll: {
+              short: "a",
+              long: "update-all",
+              action: "SetTrue",
+            },
+          },
+          action: async function (
+            { flags: { updateInstall, updateAll } },
+          ) {
+            await outdatedCommand(
+              gcx,
+              pcx,
+              updateInstall as string | undefined,
+              updateAll as string | undefined,
+            );
+          },
+        },
+      ],
+    }];
+    return out;
   }
+
   loadLockEntry(raw: Json) {
     const entry = lockValidator.parse(raw);
 
@@ -302,6 +197,122 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
       configResolutions: JSON.parse(JSON.stringify(configResolutions)),
     };
   }
+}
+
+async function outdatedCommand(
+  gcx: GhjkCtx,
+  pcx: PortsCtx,
+  updateInstallFlag?: string,
+  updateAllFlag?: string,
+) {
+  const envsCtx = getEnvsCtx(gcx);
+  const envName = envsCtx.activeEnv;
+
+  const installSets = pcx.config.sets;
+
+  let currInstallSetId;
+  {
+    const activeEnvName = envsCtx.activeEnv;
+    const activeEnv = envsCtx.config
+      .envs[
+        envsCtx.config.envsNamed[activeEnvName] ?? activeEnvName
+      ];
+    if (!activeEnv) {
+      throw new Error(
+        `No env found under given name "${activeEnvName}"`,
+      );
+    }
+
+    const instSetRef = activeEnv.provides.filter((prov) =>
+      prov.ty === installSetRefProvisionTy
+    )[0] as InstallSetRefProvision;
+
+    currInstallSetId = instSetRef.setId;
+  }
+  const currInstallSet = installSets[currInstallSetId];
+  const allowedDeps = currInstallSet.allowedBuildDeps;
+
+  const rows = [];
+  const {
+    installedPortsVersions: installed,
+    latestPortsVersions: latest,
+    installConfigs,
+  } = await getOldNewVersionComparison(
+    gcx,
+    envName,
+    allowedDeps,
+  );
+  for (let [installId, installedVersion] of installed.entries()) {
+    let latestVersion = latest.get(installId);
+    if (!latestVersion) {
+      throw new Error(
+        `Couldn't find the latest version for install id: ${installId}`,
+      );
+    }
+
+    if (latestVersion[0] === "v") {
+      latestVersion = latestVersion.slice(1);
+    }
+    if (installedVersion[0] === "v") {
+      installedVersion = installedVersion.slice(1);
+    }
+
+    const config = installConfigs.get(installId);
+
+    if (!config) {
+      throw new Error(
+        `Config not found for install id: ${installId}`,
+      );
+    }
+
+    if (config["specifiedVersion"]) {
+      latestVersion = "=" + latestVersion;
+    }
+
+    const presentableConfig = { ...config };
+    ["buildDepConfigs", "version", "specifiedVersion"].map(
+      (key) => {
+        delete presentableConfig[key];
+      },
+    );
+    const row = [
+      $.inspect(presentableConfig),
+      installedVersion,
+      latestVersion,
+    ];
+    rows.push(row);
+  }
+
+  if (updateInstallFlag) {
+    const installName = updateInstallFlag;
+    // TODO: convert from install name to install id, after port module refactor
+    let installId!: string;
+    const newVersion = latest.get(installId);
+    if (!newVersion) {
+      logger().info(
+        `Error while fetching the latest version for: ${installName}`,
+      );
+      return;
+    }
+    await updateInstall(gcx, installId, newVersion, allowedDeps);
+    return;
+  }
+
+  if (updateAllFlag) {
+    for (const [installId, newVersion] of latest.entries()) {
+      await updateInstall(gcx, installId, newVersion, allowedDeps);
+    }
+    return;
+  }
+
+  const _versionTable = new Table()
+    .header(["Install Config", "Old Version", "New Version"])
+    .body(rows)
+    .border()
+    .padding(1)
+    .indent(2)
+    .maxColWidth(30)
+    .render();
 }
 
 async function getOldNewVersionComparison(

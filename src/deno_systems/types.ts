@@ -26,10 +26,23 @@ const cliArg = zod.object({
     "EmailAddress",
   ]).optional(),
 
+  action: zod.enum([
+    "Set",
+    "Append",
+    "SetTrue",
+    "SetFalse",
+    "Count",
+    "Help",
+    "HelpShort",
+    "HelpLong",
+    "Version",
+  ]).optional(),
+
   required: zod.boolean().optional(),
   global: zod.boolean().optional(),
   hide: zod.boolean().optional(),
   exclusive: zod.boolean().optional(),
+  trailing_var_arg: zod.boolean().optional(),
 
   env: zod.string().optional(),
 
@@ -50,7 +63,6 @@ const cliFlag = cliArg.extend({
 const cliCommandBase = zod.object({
   name: zod.string(),
 
-  short_flag: charSchema.optional(),
   aliases: zod.string().array().optional(),
   visible_aliases: zod.string().array().optional(),
 
@@ -64,9 +76,17 @@ const cliCommandBase = zod.object({
   flags: zod.record(cliFlag).optional().optional(),
 });
 
+const flagsAndArgs = zod.record(
+  zod.union([
+    zod.string(),
+    zod.string().array(),
+    zod.string().array().array(),
+  ]).optional(),
+);
+
 const cliActionArgs = zod.object({
-  flags: zod.record(zod.string().optional()),
-  args: zod.record(zod.string().optional()),
+  flags: flagsAndArgs,
+  args: flagsAndArgs,
 });
 
 const cliCommandActionBase = cliCommandBase.extend({

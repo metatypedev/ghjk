@@ -89,7 +89,7 @@ pub async fn worker(
                     }
                 }
             }
-            std::mem::forget(cx);
+            // std::mem::forget(cx);
             trace!("deno worker done");
         }
         .instrument(tracing::trace_span!("deno-worker")),
@@ -159,7 +159,7 @@ async fn module_worker(
                         .expect_or_log("channel error"),
                 }
             }
-            std::mem::forget(module_cx);
+            // std::mem::forget(module_cx);
             trace!("module worker done");
         }
         .instrument(tracing::trace_span!(

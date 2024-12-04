@@ -9,6 +9,8 @@ mod interlude {
     pub use tracing::{debug, error, info, trace, warn};
     pub use tracing_unwrap::*;
 }
+use clap::builder::styling::AnsiColor;
+
 use crate::interlude::*;
 
 mod utils;
@@ -48,22 +50,32 @@ fn main() -> Res<()> {
                 Arc::new(std::vec::Vec::new),
                 vec![],
             )
-        }
-        /* Commands::Run { argv } => denort::run_sync(
-            denort::deno::deno_runtime::deno_core::resolve_url_or_path("ghjk.ts", &cwd).unwrap(),
-            Some("deno.jsonc".into()),
-            denort::deno::args::PermissionFlags {
-                allow_all: true,
-                ..Default::default()
-            },
-            Arc::new(std::vec::Vec::new),
-        ), */
+        } /* Commands::Run { argv } => denort::run_sync(
+              denort::deno::deno_runtime::deno_core::resolve_url_or_path("ghjk.ts", &cwd).unwrap(),
+              Some("deno.jsonc".into()),
+              denort::deno::args::PermissionFlags {
+                  allow_all: true,
+                  ..Default::default()
+              },
+              Arc::new(std::vec::Vec::new),
+          ), */
     }
+
     Ok(())
 }
 
+const CLAP_STYLE: clap::builder::Styles = clap::builder::Styles::styled()
+    .header(AnsiColor::Yellow.on_default())
+    .usage(AnsiColor::Green.on_default())
+    .literal(AnsiColor::Green.on_default())
+    .placeholder(AnsiColor::Green.on_default());
+
 #[derive(Debug, clap::Parser)]
-#[clap(version, about)]
+#[clap(
+    version,
+    about,
+    styles = CLAP_STYLE
+)]
 struct Args {
     #[clap(subcommand)]
     command: Commands,

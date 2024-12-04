@@ -1,3 +1,7 @@
+use std::process::ExitCode;
+
+use clap::builder::styling::AnsiColor;
+
 use crate::interlude::*;
 
 use crate::systems::{CliCommandAction, SystemCliCommand};
@@ -5,7 +9,7 @@ use crate::{host, systems, utils, Config};
 
 const DENO_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv"];
 
-pub async fn cli() -> Res<()> {
+pub async fn cli() -> Res<std::process::ExitCode> {
     let cwd = std::env::current_dir()?;
 
     let config = {
@@ -64,7 +68,7 @@ pub async fn cli() -> Res<()> {
     };
 
     let Some(quick_err) = try_quick_cli(&config).await? else {
-        return Ok(());
+        return Ok(ExitCode::SUCCESS);
     };
 
     let Some(ghjk_dir_path) = config.ghjkdir_path.clone() else {
@@ -146,7 +150,9 @@ pub async fn cli() -> Res<()> {
     };
 
     for cmd in sys_cmds {
-        root_cmd = root_cmd.subcommand(cmd);
+        // apply styles again here due to propagation
+        // breaking for these dynamic subcommands for some reason
+        root_cmd = root_cmd.subcommand(cmd.styles(CLAP_STYLE));
     }
 
     let matches = match root_cmd.try_get_matches() {
@@ -160,7 +166,7 @@ pub async fn cli() -> Res<()> {
     match QuickComands::from_arg_matches(&matches) {
         Ok(QuickComands::Print { commands }) => {
             _ = commands.action(&config, Some(&systems.config))?;
-            return Ok(());
+            return Ok(ExitCode::SUCCESS);
         }
         Err(err) => {
             let kind = err.kind();
@@ -186,9 +192,9 @@ pub async fn cli() -> Res<()> {
     };
 
     let Some(action) = action.action else {
-        action.clap.print_long_help()?;
         systems.write_lockfile_or_log().await;
-        return Ok(());
+        action.clap.print_long_help()?;
+        return Ok(std::process::ExitCode::FAILURE);
     };
 
     let res = action(action_matches.clone())
@@ -199,7 +205,7 @@ pub async fn cli() -> Res<()> {
 
     deno_cx.terminate().await?;
 
-    res
+    res.map(|()| ExitCode::SUCCESS)
 }
 
 /// Sections of the CLI do not require loading a ghjkfile.
@@ -235,8 +241,18 @@ pub async fn try_quick_cli(config: &Config) -> Res<Option<clap::Error>> {
     Ok(None)
 }
 
-#[derive(clap::Parser, Debug)]
-#[command(version, about)]
+const CLAP_STYLE: clap::builder::Styles = clap::builder::Styles::styled()
+    .header(AnsiColor::Yellow.on_default())
+    .usage(AnsiColor::BrightBlue.on_default())
+    .literal(AnsiColor::BrightBlue.on_default())
+    .placeholder(AnsiColor::BrightBlue.on_default());
+
+#[derive(Debug, clap::Parser)]
+#[clap(
+    version,
+    about,
+    styles = CLAP_STYLE
+)]
 struct Cli {
     #[command(subcommand)]
     quick_commands: QuickComands,
@@ -341,6 +357,7 @@ async fn commands_from_systems(
         )
     }
     let mut commands = vec![];
+    let mut conflict_tracker = HashMap::new();
     let mut actions = SysCmdActions::new();
     for (id, sys_inst) in &systems.sys_instances {
         let cmds = sys_inst
@@ -349,6 +366,13 @@ async fn commands_from_systems(
             .wrap_err_with(|| format!("error getting commands for system: {id}"))?;
         for cmd in cmds {
             let (sys_cmd, clap_cmd) = inner(cmd);
+
+            if let Some(conflict) = conflict_tracker.insert(sys_cmd.name.clone(), id) {
+                eyre::bail!(
+                    "system commannd conflict under name {:?} for modules {conflict:?} and {id:?}",
+                    sys_cmd.name.clone(),
+                );
+            }
             actions.insert(sys_cmd.name.clone(), sys_cmd);
             commands.push(clap_cmd);
         }

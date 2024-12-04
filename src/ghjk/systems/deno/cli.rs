@@ -7,8 +7,8 @@ pub struct CliCommandDesc {
 
     pub hide: Option<bool>,
 
-    pub short_flag: Option<char>,
     pub aliases: Option<Vec<String>>,
+    pub visible_aliases: Option<Vec<String>>,
 
     pub about: Option<String>,
     pub before_help: Option<String>,
@@ -30,17 +30,17 @@ impl CliCommandDesc {
         if let Some(val) = self.hide {
             cmd = cmd.hide(val)
         }
-        if let Some(val) = self.short_flag {
-            cmd = cmd.short_flag(val)
-        }
         if let Some(val) = self.aliases {
             cmd = cmd.aliases(val)
+        }
+        if let Some(val) = self.visible_aliases {
+            cmd = cmd.visible_aliases(val)
         }
         if let Some(val) = &self.about {
             cmd = cmd.about(val)
         }
         if let Some(val) = self.before_help {
-            cmd = cmd.before_long_help(val)
+            cmd = cmd.before_help(val)
         }
         if let Some(val) = self.before_long_help {
             cmd = cmd.before_long_help(val)
@@ -68,7 +68,6 @@ impl CliCommandDesc {
             for desc in val {
                 let id = desc.name.clone();
                 let scmd = desc.into_clap(scx.clone());
-                // cmd = cmd.subcommand(scmd.clap.take().unwrap());
                 subcommands.insert(id.into(), scmd);
             }
             subcommands
@@ -92,7 +91,6 @@ impl CliCommandDesc {
             None
         };
 
-        
         crate::systems::SystemCliCommand {
             name: name.into(),
             clap: cmd,
@@ -160,6 +158,10 @@ pub struct CliArgDesc {
     pub global: Option<bool>,
     pub hide: Option<bool>,
     pub exclusive: Option<bool>,
+    pub trailing_var_arg: Option<bool>,
+    pub allow_hyphen_values: Option<bool>,
+
+    pub action: Option<ArgActionSerde>,
 
     pub value_name: Option<String>,
     pub value_hint: Option<ValueHintSerde>,
@@ -193,6 +195,16 @@ impl CliArgDesc {
         }
         if let Some(val) = self.exclusive {
             arg = arg.exclusive(val)
+        }
+        if let Some(val) = self.trailing_var_arg {
+            arg = arg.num_args(..).trailing_var_arg(val)
+        }
+        if let Some(val) = self.allow_hyphen_values {
+            arg = arg.allow_hyphen_values(val)
+        }
+
+        if let Some(val) = self.action {
+            arg = arg.action(clap::ArgAction::from(val))
         }
 
         if let Some(val) = self.value_name {
@@ -316,6 +328,36 @@ impl From<ValueHintSerde> for clap::ValueHint {
             Hostname => clap::ValueHint::Unknown,
             Url => clap::ValueHint::Unknown,
             EmailAddress => clap::ValueHint::Unknown,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub enum ArgActionSerde {
+    Set,
+    Append,
+    SetTrue,
+    SetFalse,
+    Count,
+    Help,
+    HelpShort,
+    HelpLong,
+    Version,
+}
+
+impl From<ArgActionSerde> for clap::ArgAction {
+    fn from(val: ArgActionSerde) -> Self {
+        use ArgActionSerde::*;
+        match val {
+            Set => clap::ArgAction::Set,
+            Append => clap::ArgAction::Append,
+            SetTrue => clap::ArgAction::SetTrue,
+            SetFalse => clap::ArgAction::SetFalse,
+            Count => clap::ArgAction::Count,
+            Help => clap::ArgAction::Help,
+            HelpShort => clap::ArgAction::HelpShort,
+            HelpLong => clap::ArgAction::HelpLong,
+            Version => clap::ArgAction::Version,
         }
     }
 }

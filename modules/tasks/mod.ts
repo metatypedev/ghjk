@@ -1,6 +1,6 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, zod } from "../../deps/cli.ts";
+import { zod } from "../../deps/cli.ts";
 import { Json, unwrapZodRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
@@ -11,6 +11,7 @@ import { ModuleBase } from "../mod.ts";
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
 import { Blackboard } from "../../host/types.ts";
 import { getTasksCtx } from "./inter.ts";
+import { CliCommand } from "../../src/deno_systems/types.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfigX;
@@ -47,54 +48,47 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
   }
 
   override commands() {
-    return [];
-  }
-
-  commands2() {
     const gcx = this.gcx;
     const tcx = getTasksCtx(this.gcx);
 
     const namedSet = new Set(tcx.config.tasksNamed);
-    const commands = Object.keys(tcx.config.tasks)
-      .sort()
-      .map(
-        (key) => {
-          const def = tcx.config.tasks[key];
-          const cmd = new cliffy_cmd.Command()
-            .name(key)
-            .useRawArgs()
-            .action(async (_, ...args) => {
-              await execTask(
-                gcx,
-                tcx.config,
-                tcx.taskGraph,
-                key,
-                args,
-              );
-            });
-          if (def.desc) {
-            cmd.description(def.desc);
-          }
-          if (!namedSet.has(key)) {
-            cmd.hidden();
-          }
-          return cmd;
-        },
-      );
-    const root = new cliffy_cmd.Command()
-      .alias("x")
-      .action(function () {
-        this.showHelp();
-      })
-      .description(`Tasks module.
-
-The named tasks in your ghjkfile will be listed here.`);
-    for (const cmd of commands) {
-      root.command(cmd.getName(), cmd);
-    }
-    return {
-      tasks: root,
-    };
+    const out: CliCommand[] = [{
+      name: "tasks",
+      visible_aliases: ["x"],
+      about: "Tasks module, execute your task programs.",
+      before_long_help: "The named tasks in your ghjkfile will be listed here.",
+      sub_commands: [
+        ...Object.keys(tcx.config.tasks)
+          .sort()
+          .map(
+            (key) => {
+              const def = tcx.config.tasks[key];
+              return {
+                name: key,
+                about: def.desc,
+                hide: !namedSet.has(key),
+                args: {
+                  raw: {
+                    value_name: "TASK ARGS",
+                    trailing_var_arg: true,
+                    allow_hyphen_values: true,
+                  },
+                },
+                action: async ({ args: { raw } }) => {
+                  await execTask(
+                    gcx,
+                    tcx.config,
+                    tcx.taskGraph,
+                    key,
+                    (raw as string[]) ?? [],
+                  );
+                },
+              } as CliCommand;
+            },
+          ),
+      ],
+    }];
+    return out;
   }
 
   loadLockEntry(raw: Json) {

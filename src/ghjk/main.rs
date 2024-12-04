@@ -39,7 +39,7 @@ mod utils;
 
 use crate::interlude::*;
 
-fn main() -> Res<()> {
+fn main() -> Res<std::process::ExitCode> {
     // FIXME: change signal handler for children
     // FIXME: use unix_sigpipe once https://github.com/rust-lang/rust/issues/97889 lands
     unsafe {
@@ -54,8 +54,7 @@ fn main() -> Res<()> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
-        .block_on(cli::cli())?;
-    Ok(())
+        .block_on(cli::cli())
 }
 
 use shadow_rs::shadow;

@@ -43,7 +43,7 @@ export const jsonSchema: zod.ZodType<Json> = zod.lazy(() =>
 );
 
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug(() => val, ...more, "DBG");
+  logger().debug("DBG", val, ...more);
   return val;
 }
 

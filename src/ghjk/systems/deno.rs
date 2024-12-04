@@ -10,7 +10,7 @@ mod cli;
 #[derive(Clone)]
 pub struct DenoSystemsContext {
     callbacks: crate::ext::CallbacksHandle,
-    exit_code_channel: Arc<std::sync::Mutex<Option<tokio::task::JoinHandle<i32>>>>,
+    exit_code_channel: Arc<std::sync::Mutex<Option<tokio::task::JoinHandle<Res<()>>>>>,
     term_signal: tokio::sync::watch::Sender<bool>,
     #[allow(unused)]
     hostcalls: crate::ext::Hostcalls,
@@ -18,7 +18,7 @@ pub struct DenoSystemsContext {
 
 impl DenoSystemsContext {
     #[allow(unused)]
-    pub async fn terminate(&mut self) -> Res<i32> {
+    pub async fn terminate(&mut self) -> Res<()> {
         let channel = {
             let mut opt = self.exit_code_channel.lock().expect_or_log("mutex error");
             opt.take()
@@ -27,7 +27,7 @@ impl DenoSystemsContext {
             eyre::bail!("already terminated")
         };
         self.term_signal.send(true).expect_or_log("channel error");
-        Ok(channel.await.expect_or_log("channel error"))
+        channel.await.expect_or_log("channel error")
     }
 }
 
@@ -114,20 +114,41 @@ pub async fn systems_from_deno(
         )
         .await?;
     worker.execute().await?;
-    let (exit_code_channel, term_signal, _) = worker.drive_till_exit().await?;
+    let (mut exit_code_channel, term_signal, _) = worker.drive_till_exit().await?;
 
-    let join_exit_code_watcher = tokio::spawn(async {
-        let exit_code = exit_code_channel
-            .await
-            .expect_or_log("channel error")
-            .wrap_err("error on event loop for deno systems")
-            .unwrap_or_log();
-        if exit_code != 0 {
-            // TODO: exit signals
-            error!(%exit_code, "deno systems died with non-zero exit code");
+    let manifests = tokio::select! {
+        res = &mut exit_code_channel => {
+            let exit_code = res
+                .expect_or_log("channel error")
+                .wrap_err("deno systems error building manifests")?;
+            eyre::bail!("premature exit of deno systems before manifests were sent: exit code = {exit_code}");
+        },
+        manifests = manifests_rx.recv() => {
+            manifests.expect_or_log("channel error")
         }
-        exit_code
+    };
+
+    let manifests: Vec<ManifestDesc> =
+        serde_json::from_value(manifests).wrap_err("protocol error")?;
+
+    let dcx = gcx.deno.clone();
+    let join_exit_code_watcher = tokio::spawn(async {
+        let err = match exit_code_channel.await.expect_or_log("channel error") {
+            Ok(0) => return Ok(()),
+            Ok(exit_code) => {
+                error!(%exit_code, "deno systems died with non-zero exit code");
+                let err = ferr!("deno systems died with non-zero exit code: {exit_code}");
+                error!("{err}");
+                err
+            }
+            Err(err) => err.wrap_err("error on event loop for deno systems"),
+        };
+        // TODO: better exit signals
+        debug!("killing whole deno context");
+        dcx.terminate().await.unwrap();
+        Err(err)
     });
+
     let exit_code_channel = Arc::new(std::sync::Mutex::new(Some(join_exit_code_watcher)));
 
     let scx = DenoSystemsContext {
@@ -137,9 +158,6 @@ pub async fn systems_from_deno(
         exit_code_channel,
     };
 
-    let manifests = manifests_rx.recv().await.expect_or_log("channel error");
-    let manifests: Vec<ManifestDesc> =
-        serde_json::from_value(manifests).wrap_err("protocol error")?;
     let manifests = manifests
         .into_iter()
         .map(|desc| {
