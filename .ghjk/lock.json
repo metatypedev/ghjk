@@ -269,7 +269,7 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqpy7sxlin5fqcbsl7vildckib5p65mei4qxya2fsbgvi2pqt3jimq"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
             },
@@ -281,7 +281,7 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqpy7sxlin5fqcbsl7vildckib5p65mei4qxya2fsbgvi2pqt3jimq"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
             },
@@ -294,9 +294,13 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqpy7sxlin5fqcbsl7vildckib5p65mei4qxya2fsbgvi2pqt3jimq"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
+            },
+            "ghjkEnvProvInstSet_______task_env_cache-v8": {
+              "installs": [],
+              "allowedBuildDeps": "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq"
             }
           }
         }
@@ -308,13 +312,13 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqpstuhgkq5ne5uv4wobyf2houlb2leq5uvhevfmkr7rqudwro2f6i"
+              "envKey": "bciqcjjccn4eivzzybioty5p5tde6gnafea43rypzxci54tqjfglxyyy"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
               "key": "cache-v8",
               "desc": "Install the V8 builds to a local cache.",
-              "envKey": "bciqksijm3dibc72cqwbp7e6chayqnuhvpzj24ev6zzsjhn3bmt6copq"
+              "envKey": "bciqngtgh6vxbmug3jgfhtc6t2o7d4375gzfwxca2hmq2mhwbe4tajvq"
             }
           },
           "tasksNamed": [
@@ -327,13 +331,21 @@
         "id": "envs",
         "config": {
           "envs": {
-            "bciqjpw6xgc3ajnko2ymjuapnthfzgifz4yacuw62zjx4t6w2ya55mda": {
+            "bciqngtgh6vxbmug3jgfhtc6t2o7d4375gzfwxca2hmq2mhwbe4tajvq": {
+              "provides": [
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet_______task_env_cache-v8"
+                }
+              ]
+            },
+            "bciqkjh3l5pvnydjxc3gp6autcaurxvw2euj7uz472qureg3p4y5nfuq": {
               "desc": "the default default environment.",
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "debug,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -341,12 +353,12 @@
                 }
               ]
             },
-            "bciqpstuhgkq5ne5uv4wobyf2houlb2leq5uvhevfmkr7rqudwro2f6i": {
+            "bciqcjjccn4eivzzybioty5p5tde6gnafea43rypzxci54tqjfglxyyy": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "debug,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -354,12 +366,12 @@
                 }
               ]
             },
-            "bciqksijm3dibc72cqwbp7e6chayqnuhvpzj24ev6zzsjhn3bmt6copq": {
+            "bciqothoegu7lnencjdk6pjtassehqlzaldan6l67lmtd2slhmvnq5la": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "debug,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -367,12 +379,12 @@
                 }
               ]
             },
-            "bciqh3i5r22rdn63dpluzbp7buhz5ko2jsyarp3nlet2kqzypdfpmlqi": {
+            "bciqdlbved4xvo27dss37motxje63ai3mwc4g5otjre5heqto2g7zbhi": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "debug,deno=info,denort=trace,swc_ecma_transforms_base=info"
+                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info"
                 },
                 {
                   "ty": "posix.envVar",
@@ -388,9 +400,9 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqjpw6xgc3ajnko2ymjuapnthfzgifz4yacuw62zjx4t6w2ya55mda",
-            "_rust": "bciqksijm3dibc72cqwbp7e6chayqnuhvpzj24ev6zzsjhn3bmt6copq",
-            "dev": "bciqh3i5r22rdn63dpluzbp7buhz5ko2jsyarp3nlet2kqzypdfpmlqi"
+            "main": "bciqkjh3l5pvnydjxc3gp6autcaurxvw2euj7uz472qureg3p4y5nfuq",
+            "_rust": "bciqothoegu7lnencjdk6pjtassehqlzaldan6l67lmtd2slhmvnq5la",
+            "dev": "bciqdlbved4xvo27dss37motxje63ai3mwc4g5otjre5heqto2g7zbhi"
           }
         }
       }
@@ -480,8 +492,8 @@
         },
         "packageName": "vale"
       },
-      "bciqpy7sxlin5fqcbsl7vildckib5p65mei4qxya2fsbgvi2pqt3jimq": {
-        "version": "2.0.6",
+      "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji": {
+        "version": "2.1.2",
         "port": {
           "ty": "denoWorker@v1",
           "name": "deno_ghrel",
@@ -910,7 +922,8 @@
           "moduleSpecifier": "file:///ports/mold.ts"
         },
         "replaceLd": true
-      }
+      },
+      "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq": {}
     }
   }
 }

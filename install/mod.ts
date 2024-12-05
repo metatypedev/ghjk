@@ -39,7 +39,7 @@ const getHooksVfs = async () => ({
   "env.bash": [
     "# importing bash-preexec, see the ghjk hook at then end\n\n",
     await importRaw(
-      "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
+      import.meta.resolve("./bash-preexec.sh"),
     ),
     await importRaw(import.meta.resolve("./hook.sh")),
   ].join("\n"),
@@ -105,33 +105,16 @@ async function filterAddContent(
 interface InstallArgs {
   homeDir: string;
   ghjkShareDir: string;
+  ghjkConfigDir: string;
   shellsToHook?: string[];
   /** The mark used when adding the hook to the user's shell rcs.
    * Override to allow multiple hooks in your rc.
    */
   shellHookMarker: string;
   /**
-   * The ghjk bin is optional, one can always invoke it
-   * using `deno run --flags uri/to/ghjk/main.ts`;
-   */
-  skipExecInstall: boolean;
-  /** The directory in which to install the ghjk exec
-   * Preferrably, one that's in PATH
-   */
-  ghjkExecInstallDir: string;
-  /**
-   * The deno exec to be used by the ghjk executable
-   * by default will be "deno" i.e. whatever in $PATH that resolves that to.
-   */
-  ghjkExecDenoExec: string;
-  /**
    * The cache dir to use by the ghjk deno installation.
    */
   ghjkDenoCacheDir?: string;
-  /**
-   * Disable using a lockfile for the ghjk command
-   */
-  noLockfile: boolean;
 }
 
 export const defaultInstallArgs: InstallArgs = {
@@ -139,16 +122,7 @@ export const defaultInstallArgs: InstallArgs = {
   homeDir: dirs().homeDir,
   shellsToHook: [],
   shellHookMarker: "ghjk-hook-default",
-  skipExecInstall: true,
-  // TODO: respect xdg dirs
-  ghjkExecInstallDir: $.path(dirs().homeDir).resolve(".local", "bin")
-    .toString(),
-  ghjkExecDenoExec: Deno.execPath(),
-  /**
-   * the default behvaior kicks in with ghjkDenoCacheDir is falsy
-   * ghjkDenoCacheDir: undefined,
-   */
-  noLockfile: false,
+  ghjkConfigDir: $.path(dirs().configDir).toString(),
 };
 
 const shellConfig: Record<string, string> = {

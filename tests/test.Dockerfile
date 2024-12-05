@@ -1,6 +1,6 @@
-ARG DENO_VERSION=1.44.2
+ARG DENO_VERSION=2.1.2
 
-FROM denoland/deno:bin-$DENO_VERSION AS deno
+FROM docker.io/denoland/deno:bin-$DENO_VERSION AS deno
 
 FROM docker.io/library/debian:12-slim
 

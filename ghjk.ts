@@ -15,7 +15,7 @@ config({
 });
 
 env("main").vars({
-  RUST_LOG: "debug,deno=info,denort=trace,swc_ecma_transforms_base=info",
+  RUST_LOG: "info,deno=info,denort=trace,swc_ecma_transforms_base=info",
 });
 
 env("_rust")
@@ -50,7 +50,7 @@ if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
 // these  are just for quick testing
 install();
 
-const DENO_VERSION = "2.0.6";
+const DENO_VERSION = "2.1.2";
 
 // these are used for developing ghjk
 install(
@@ -126,6 +126,12 @@ task(
             [/(GHJK_VERSION="\$\{GHJK_VERSION:-v).*(\}")/, GHJK_VERSION],
             [/(DENO_VERSION="\$\{DENO_VERSION:-v).*(\}")/, DENO_VERSION],
           ],
+          "./tests/test.Dockerfile": [
+            [/(ARG DENO_VERSION=).*()/, DENO_VERSION],
+          ],
+          "./tests/test-alpine.Dockerfile": [
+            [/(ARG DENO_VERSION=).*()/, DENO_VERSION],
+          ],
           "./docs/*.md": [
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
@@ -140,6 +146,13 @@ task(
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
               GHJK_VERSION,
+            ],
+          ],
+          "**/Cargo.toml": [
+            [/^(version = ").+(")/, GHJK_VERSION],
+            [
+              /(deno\s*=\s*\{\s*git\s*=\s*"https:\/\/github\.com\/metatypedev\/deno"\s*,\s*branch\s*=\s*"v).+(-embeddable"\s*\})/,
+              DENO_VERSION,
             ],
           ],
         },
@@ -162,4 +175,5 @@ task(
       },
     );
   },
+  { inherits:false }
 );

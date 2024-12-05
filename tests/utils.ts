@@ -68,12 +68,21 @@ export async function dockerE2eTest(testCase: E2eTestCase) {
         .replaceAll("$", "$$$$"),
     ));
 
-  await $
-    .raw`${dockerCmd} buildx build ${dockerPlatform} ${
-    Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
-  } --tag '${tag}' --network=host --output type=docker -f- .`
-    .env(env)
-    .stdinText(dFile);
+  if (dockerCmd[0] == "podman") {
+    await $
+      .raw`${dockerCmd} buildah build ${dockerPlatform} ${
+      Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
+    } --tag '${tag}' --network=host -- -f- .`
+      .env(env)
+      .stdinText(dFile);
+  } else {
+    await $
+      .raw`${dockerCmd} buildx build ${dockerPlatform} ${
+      Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
+    } --tag '${tag}' --network=host --output type=docker -f- .`
+      .env(env)
+      .stdinText(dFile);
+  }
 
   for (const ePoint of ePoints) {
     let cmd = $.raw`${dockerCmd} run ${dockerPlatform} --rm ${[

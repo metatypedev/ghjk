@@ -325,7 +325,9 @@ export function dirs() {
   }
   return {
     homeDir: home,
+    // FIXME: use proper xdg dirs
     shareDir: $.path(home).resolve(".local", "share"),
+    configDir: $.path(home).resolve(".config", "ghjk"),
   };
 }
 

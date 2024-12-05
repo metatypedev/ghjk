@@ -1,6 +1,6 @@
-ARG DENO_V=1.42.1
+ARG DENO_VERSION=2.1.2
 
-FROM docker.io/denoland/deno:alpine-${DENO_V}
+FROM docker.io/denoland/deno:alpine-${DENO_VERSION}
 
 ARG BASH_V=5.2.21-r0
 ARG FISH_V=3.6.3-r0

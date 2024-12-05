@@ -32,6 +32,7 @@ mod interlude {
 mod host;
 
 mod cli;
+mod config;
 mod ext;
 mod log;
 mod systems;
@@ -40,12 +41,18 @@ mod utils;
 use crate::interlude::*;
 
 fn main() -> Res<std::process::ExitCode> {
+    let None = cli::deno_quick_cli() else {
+        unreachable!();
+    };
+
     // FIXME: change signal handler for children
     // FIXME: use unix_sigpipe once https://github.com/rust-lang/rust/issues/97889 lands
     unsafe {
         use nix::sys::signal::*;
         signal(Signal::SIGPIPE, SigHandler::SigDfl)?;
     }
+    std::env::set_var("DENO_NO_UPDATE_CHECK", "1");
+
     log::init();
     denort::init();
 
@@ -66,12 +73,5 @@ pub struct GhjkCtx {
     repo_root: url::Url,
     ghjkfile_path: Option<PathBuf>,
     ghjk_dir_path: PathBuf,
-    share_dir_path: PathBuf,
-}
-
-#[derive(Debug)]
-struct Config {
-    ghjkfile_path: Option<PathBuf>,
-    ghjkdir_path: Option<PathBuf>,
     share_dir_path: PathBuf,
 }
