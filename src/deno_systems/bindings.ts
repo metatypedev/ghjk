@@ -24,10 +24,13 @@ setInterval(() => {/* beat */}, 1000);
 
 const prepareArgs = zod.object({
   uri: zod.string(),
-  gcx: zod.object({
-    ghjkfile_path: zod.string().optional(),
-    ghjk_dir_path: zod.string(),
-    share_dir_path: zod.string(),
+  config: zod.object({
+    ghjkfile: zod.string().optional(),
+    ghjkdir: zod.string(),
+    data_dir: zod.string(),
+    deno_lockfile: zod.string().optional(),
+    repo_root: zod.string(),
+    deno_dir: zod.string(),
   }),
 });
 
@@ -36,10 +39,10 @@ await prepareSystems(args);
 
 async function prepareSystems(args: zod.infer<typeof prepareArgs>) {
   const gcx = {
-    ghjkDir: $.path(args.gcx.ghjk_dir_path),
-    ghjkShareDir: $.path(args.gcx.share_dir_path),
-    ghjkfilePath: args.gcx.ghjkfile_path
-      ? $.path(args.gcx.ghjkfile_path)
+    ghjkDir: $.path(args.config.ghjkdir),
+    ghjkShareDir: $.path(args.config.data_dir),
+    ghjkfilePath: args.config.ghjkfile
+      ? $.path(args.config.ghjkfile)
       : undefined,
     blackboard: new Map(),
   } satisfies GhjkCtx;

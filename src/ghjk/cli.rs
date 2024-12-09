@@ -2,110 +2,30 @@ use std::process::ExitCode;
 
 use clap::builder::styling::AnsiColor;
 
+use crate::config::Config;
 use crate::interlude::*;
 
 use crate::systems::{CliCommandAction, SystemCliCommand};
-use crate::{host, systems, utils};
-
-#[derive(Debug)]
-pub struct Config {
-    pub ghjkfile_path: Option<PathBuf>,
-    pub ghjkdir_path: Option<PathBuf>,
-    pub share_dir_path: PathBuf,
-}
+use crate::{host, systems};
 
 const DENO_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv"];
 
 pub async fn cli() -> Res<std::process::ExitCode> {
     let cwd = std::env::current_dir()?;
 
-    let (config, deno_lockfile_path) = {
-        let ghjk_dir_path = match std::env::var("GHJK_DIR") {
-            Ok(path) => Some(PathBuf::from(path)),
-            Err(std::env::VarError::NotUnicode(os_str)) => Some(PathBuf::from(os_str)),
-            Err(std::env::VarError::NotPresent) => {
-                utils::find_entry_recursive(&cwd, ".ghjk").await?
-            }
-        };
-
-        let ghjk_dir_path = if let Some(path) = ghjk_dir_path {
-            Some(tokio::fs::canonicalize(path).await?)
-        } else {
-            None
-        };
-
-        let ghjkfile_path = match &ghjk_dir_path {
-            Some(ghjkfile_path) => {
-                utils::find_entry_recursive(
-                    ghjkfile_path
-                        .parent()
-                        .expect_or_log("invalid GHJK_DIR path"),
-                    "ghjk.ts",
-                )
-                .await?
-            }
-            None => utils::find_entry_recursive(&cwd, "ghjk.ts").await?,
-        };
-
-        let (ghjkfile_path, ghjk_dir_path) = if let Some(path) = ghjkfile_path {
-            let file_path = tokio::fs::canonicalize(path).await?;
-            // if ghjkfile var is set, set the GHJK_DIR overriding
-            // any set by the user
-            let dir_path = file_path.parent().unwrap().join(".ghjk");
-            (Some(file_path), Some(dir_path))
-        } else {
-            (None, ghjk_dir_path)
-        };
-
-        if ghjk_dir_path.is_none() && ghjkfile_path.is_none() {
-            warn!(
-                "ghjk could not find any ghjkfiles or ghjkdirs, try creating a `ghjk.ts` script.",
-            );
-        }
-
-        let share_dir_path = match std::env::var("GHJK_SHARE_DIR") {
-            Ok(path) => PathBuf::from(path),
-            Err(std::env::VarError::NotUnicode(os_str)) => PathBuf::from(os_str),
-            Err(std::env::VarError::NotPresent) => directories::BaseDirs::new()
-                .expect_or_log("unable to resolve home dir")
-                .data_local_dir()
-                .join("ghjk"),
-        };
-
-        let deno_lockfile_path = match std::env::var("GHJK_DENO_LOCKFILE") {
-            Ok(str) if str == "off" => None,
-            Ok(path) => Some(PathBuf::from(path)),
-            Err(std::env::VarError::NotUnicode(os_str)) => Some(PathBuf::from(os_str)),
-            Err(std::env::VarError::NotPresent) => match &ghjk_dir_path {
-                Some(path) => Some(path.join("deno.lock")),
-                None => None,
-            },
-        };
-
-        (
-            Config {
-                ghjkfile_path,
-                ghjkdir_path: ghjk_dir_path,
-                share_dir_path,
-            },
-            deno_lockfile_path,
-        )
-    };
+    let config = Config::source().await?;
 
     let Some(quick_err) = try_quick_cli(&config).await? else {
         return Ok(ExitCode::SUCCESS);
     };
 
-    let Some(ghjk_dir_path) = config.ghjkdir_path.clone() else {
+    let Some(ghjkdir_path) = config.ghjkdir.clone() else {
         quick_err.exit();
     };
 
-    // TODO: create ghjk_dir_path if it doens't exist
-    // TODO: create .gitignore file as well
-
-    let deno_cx = denort::worker(
+    let deno_cx = {
         // TODO: DENO_FLAGS param simlar to V8_FLAGS
-        denort::deno::args::Flags {
+        let flags = denort::deno::args::Flags {
             unstable_config: denort::deno::args::UnstableConfig {
                 features: DENO_UNSTABLE_FLAGS
                     .iter()
@@ -114,38 +34,34 @@ pub async fn cli() -> Res<std::process::ExitCode> {
                     .collect(),
                 ..default()
             },
-            no_lock: deno_lockfile_path.is_none(),
-            lock: deno_lockfile_path.map(|path| path.to_string_lossy().into()),
+            no_lock: config.deno_lockfile.is_none(),
+            lock: config
+                .deno_lockfile
+                .as_ref()
+                .map(|path| path.to_string_lossy().into()),
             ..default()
-        },
-        Some(Arc::new(Vec::new)),
-    )
-    .await?;
+        };
+        denort::worker(flags, Some(Arc::new(Vec::new))).await?
+    };
 
     let gcx = GhjkCtx {
-        ghjk_dir_path,
-        ghjkfile_path: config.ghjkfile_path.clone(),
-        share_dir_path: config.share_dir_path.clone(),
-        repo_root: url::Url::from_file_path(&cwd)
-            .expect_or_log("cwd error")
-            // repo root url must end in slash due to
-            // how Url::join works
-            .join(&format!("{}/", cwd.file_name().unwrap().to_string_lossy()))
-            .wrap_err("repo url error")?,
+        config,
         deno: deno_cx.clone(),
     };
     let gcx = Arc::new(gcx);
 
     let systems_deno = systems::deno::systems_from_deno(
         &gcx,
-        &gcx.repo_root
+        &gcx.config
+            .repo_root
             .join("src/deno_systems/mod.ts")
             .wrap_err("repo url error")?,
+        &ghjkdir_path,
     )
     .await?;
 
     let hcx = host::HostCtx::new(
-        gcx,
+        gcx.clone(),
         host::Config {
             re_resolve: false,
             locked: false,
@@ -158,7 +74,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     let hcx = Arc::new(hcx);
 
-    let Some(mut systems) = host::systems_from_ghjkfile(hcx).await? else {
+    let Some(mut systems) = host::systems_from_ghjkfile(hcx, &ghjkdir_path).await? else {
         warn!("no ghjkfile found");
         quick_err.exit()
     };
@@ -196,7 +112,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     match QuickComands::from_arg_matches(&matches) {
         Ok(QuickComands::Print { commands }) => {
-            _ = commands.action(&config, Some(&systems.config))?;
+            _ = commands.action(&gcx.config, Some(&systems.config))?;
             return Ok(ExitCode::SUCCESS);
         }
         Ok(QuickComands::Deno { .. }) => {
@@ -309,8 +225,8 @@ enum QuickComands {
 
 #[derive(clap::Subcommand, Debug)]
 enum PrintCommands {
-    /// Print the path where ghjk is installed in.
-    ShareDirPath,
+    /// Print the path to the data dir used by ghjk.
+    DataDirPath,
     /// Print the path to the dir of the currently active ghjk context.
     GhjkdirPath,
     /// Print the path of the ghjkfile used.
@@ -333,13 +249,13 @@ impl PrintCommands {
         serialized_config: Option<&host::SerializedConfig>,
     ) -> Res<bool> {
         Ok(match self {
-            PrintCommands::ShareDirPath => {
-                println!("{}", cli_config.share_dir_path.display());
+            PrintCommands::DataDirPath => {
+                println!("{}", cli_config.data_dir.display());
                 true
             }
             // TODO: rename GHJK_DIR to GHJKDIR
             PrintCommands::GhjkdirPath => {
-                if let Some(path) = &cli_config.ghjkdir_path {
+                if let Some(path) = &cli_config.ghjkdir {
                     // TODO: graceful termination on SIGPIPE
                     println!("{}", path.display());
                     true
@@ -348,7 +264,7 @@ impl PrintCommands {
                 }
             }
             PrintCommands::GhjkfilePath => {
-                if let Some(path) = &cli_config.ghjkdir_path {
+                if let Some(path) = &cli_config.ghjkdir {
                     println!("{}", path.display());
                     true
                 } else {
@@ -457,9 +373,7 @@ async fn action_for_match(
 /// TODO: keep more of this in deno next time it's updated
 pub fn deno_quick_cli() -> Option<()> {
     let argv = std::env::args_os().skip(1).collect::<Vec<_>>();
-    let Some(first) = argv.get(0) else {
-        return None;
-    };
+    let first = argv.first()?;
     if first != "deno" {
         return None;
     }

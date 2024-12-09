@@ -35,8 +35,10 @@ impl DenoSystemsContext {
 pub async fn systems_from_deno(
     gcx: &GhjkCtx,
     source_uri: &url::Url,
+    ghjkdir_path: &Path,
 ) -> Res<HashMap<SystemId, SystemManifest>> {
     let main_module = gcx
+        .config
         .repo_root
         .join("src/deno_systems/bindings.ts")
         .wrap_err("repo url error")?;
@@ -46,32 +48,38 @@ pub async fn systems_from_deno(
     let bb = ext_conf.blackboard.clone();
     bb.insert("args".into(), {
         #[derive(Serialize)]
-        struct GhjkCtxBean<'a> {
-            ghjkfile_path: Option<&'a Path>,
-            ghjk_dir_path: &'a Path,
-            share_dir_path: &'a Path,
+        struct ConfigRef<'a> {
+            pub ghjkfile: Option<&'a Path>,
+            pub ghjkdir: &'a Path,
+            pub data_dir: &'a Path,
+            pub deno_dir: &'a Path,
+            pub deno_lockfile: Option<&'a Path>,
+            pub repo_root: &'a url::Url,
         }
 
         #[derive(Serialize)]
         struct BindingArgs<'a> {
             uri: url::Url,
-            gcx: GhjkCtxBean<'a>,
+            config: ConfigRef<'a>,
         }
-        let GhjkCtx {
-            deno,
+        let crate::config::Config {
             repo_root,
-            ghjkfile_path,
-            ghjk_dir_path,
-            share_dir_path,
-        } = gcx;
-        _ = (deno, repo_root);
+            ghjkdir: _,
+            data_dir,
+            deno_lockfile,
+            ghjkfile,
+            deno_dir,
+        } = &gcx.config;
 
         serde_json::json!(BindingArgs {
             uri: source_uri.clone(),
-            gcx: GhjkCtxBean {
-                ghjkfile_path: ghjkfile_path.as_ref().map(|path| path.as_path()),
-                ghjk_dir_path,
-                share_dir_path,
+            config: ConfigRef {
+                ghjkfile: ghjkfile.as_ref().map(|path| path.as_path()),
+                ghjkdir: ghjkdir_path,
+                data_dir,
+                deno_lockfile: deno_lockfile.as_ref().map(|path| path.as_path()),
+                deno_dir,
+                repo_root
             },
         })
     });

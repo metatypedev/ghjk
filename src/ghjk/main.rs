@@ -70,8 +70,5 @@ shadow!(shadow);
 #[derive(Debug)]
 pub struct GhjkCtx {
     deno: denort::DenoWorkerHandle,
-    repo_root: url::Url,
-    ghjkfile_path: Option<PathBuf>,
-    ghjk_dir_path: PathBuf,
-    share_dir_path: PathBuf,
+    config: config::Config,
 }

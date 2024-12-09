@@ -46,10 +46,13 @@ impl HostCtx {
 }
 
 #[tracing::instrument(skip(hcx))]
-pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSystems>> {
+pub async fn systems_from_ghjkfile(
+    hcx: Arc<HostCtx>,
+    ghjkdir_path: &Path,
+) -> Res<Option<GhjkfileSystems>> {
     let (hashfile_path, lockfile_path) = (
-        hcx.gcx.ghjk_dir_path.join("hash.json"),
-        hcx.gcx.ghjk_dir_path.join("lock.json"),
+        ghjkdir_path.join("hash.json"),
+        ghjkdir_path.join("lock.json"),
     );
 
     let (hash_obj, lock_obj) = (
@@ -73,7 +76,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         }
     }
 
-    let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.ghjkfile_path {
+    let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.config.ghjkfile {
         (
             matches!(tokio::fs::try_exists(path).await, Ok(true)),
             Some(
@@ -149,7 +152,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         // Assumes that a hashfile tags the specific serialized version of the ghjkfile
         // and it's context put in the lockfile
         (lock_obj.config.clone(), hash_obj)
-    } else if let Some(ghjkfile_path) = &hcx.gcx.ghjkfile_path {
+    } else if let Some(ghjkfile_path) = &hcx.gcx.config.ghjkfile {
         if !ghjkfile_exists {
             eyre::bail!("no file found at ghjkfile path {ghjkfile_path:?}");
         }

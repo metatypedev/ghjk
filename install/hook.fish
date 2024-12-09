@@ -109,6 +109,7 @@ function __ghjk_preexec --on-event fish_preexec
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
+        and test -e $next_env_dir/activate.fish;
         and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_MTIME;
         ghjk_hook
     end
