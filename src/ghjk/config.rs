@@ -101,14 +101,21 @@ impl Config {
                 }
             },
         };
+
+        let global_config_path = match path_from_env(&cwd, "GHJK_CONFIG_DIR").await? {
+            Some(val) => val,
+            None => xdg_dirs.config_dir().join("config"),
+        };
+
         // we use builtin config-rs File implementation
         // which relies on sync std
         let config = tokio::task::spawn_blocking(move || {
             {
-                let file_path = xdg_dirs.config_dir().join("conf.json");
                 config
-                    .source_global_config(&file_path)
-                    .wrap_err_with(|| format!("error sourcing global config from {file_path:?}"))?;
+                    .source_global_config(&global_config_path)
+                    .wrap_err_with(|| {
+                        format!("error sourcing global config from {global_config_path:?}")
+                    })?;
             }
 
             if let Some(ghjkdir_path) = &ghjkdir_path {

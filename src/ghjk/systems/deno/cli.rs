@@ -85,9 +85,9 @@ impl CliCommandDesc {
                 deno_cb_action(matches, scx.clone(), cb_key, flag_ids).boxed()
             }))
         } else {
-            if sub_commands.is_empty() {
+            /* if sub_commands.is_empty() {
                 error!("a system command has no action or subcommands attached");
-            }
+            } */
             None
         };
 

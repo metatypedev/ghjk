@@ -117,7 +117,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
       prefix: "ghjk_le2e_",
     }),
   );
-  const ghjkShareDir = await tmpDir.join("ghjk").ensureDir();
+  const ghjkDataDir = await tmpDir.join("ghjk").ensureDir();
 
   await tmpDir.join("ghjk.ts").writeText(
     tsGhjkfileStr.replaceAll(
@@ -125,41 +125,42 @@ export async function localE2eTest(testCase: E2eTestCase) {
       std_url.dirname(import.meta.resolve("../mod.ts")).href,
     ),
   );
+
+  const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
+
   const env: Record<string, string> = {
     GHJK_AUTO_HOOK: "true",
-    BASH_ENV: `${ghjkShareDir.toString()}/env.bash`,
-    ZDOTDIR: ghjkShareDir.toString(),
-    GHJK_SHARE_DIR: ghjkShareDir.toString(),
-    PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
+    BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
+    ZDOTDIR: ghjkDataDir.toString(),
+    GHJK_DATA_DIR: ghjkDataDir.toString(),
+    PATH: `${ghjkExePath.parentOrThrow().toString()}:${Deno.env.get("PATH")}`,
     HOME: tmpDir.toString(),
+    GHJK_REPO_ROOT: import.meta.resolve("../"),
+    // share the system's deno cache
+    GHJK_DENO_DIR: Deno.env.get("DENO_DIR") ??
+      $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
     ...testEnvs,
   };
   // install ghjk
   await install({
     ...defaultInstallArgs,
-    skipExecInstall: false,
-    ghjkExecInstallDir: ghjkShareDir.toString(),
-    // share the system's deno cache
-    ghjkDenoCacheDir: Deno.env.get("DENO_DIR") ??
-      $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
-    ghjkShareDir: ghjkShareDir.toString(),
-    ghjkExecDenoExec: "deno",
+    ghjkDataDir: ghjkDataDir.toString(),
     // don't modify system shell configs
     shellsToHook: [],
   });
 
-  await $`${ghjkShareDir.join("ghjk").toString()} print config`
+  await $`${ghjkExePath} print config`
     .cwd(tmpDir.toString())
     .clearEnv()
     .env(env);
-  await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
+  await $`${ghjkExePath} envs cook`
     .cwd(tmpDir.toString())
     .clearEnv()
     .env(env);
   /*
   // print the contents of the ghjk dir for debugging purposes
   const ghjkDirLen = ghjkDir.toString().length;
-  dbg((await Array.fromAsync(ghjkShareDir.walk())).map((entry) => [
+  dbg((await Array.fromAsync(ghjkDataDir.walk())).map((entry) => [
     entry.isDirectory ? "dir " : entry.isSymlink ? "ln  " : "file",
     entry.path.toString().slice(ghjkDirLen),
   ]));
@@ -168,7 +169,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
     const confHome = await tmpDir.join(".config").ensureDir();
     const fishConfDir = await confHome.join("fish").ensureDir();
     await fishConfDir.join("config.fish").symlinkTo(
-      ghjkShareDir.join("env.fish").toString(),
+      ghjkDataDir.join("env.fish").toString(),
     );
     env["XDG_CONFIG_HOME"] = confHome.toString();
   }
