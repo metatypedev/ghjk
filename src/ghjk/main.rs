@@ -69,6 +69,6 @@ shadow!(shadow);
 
 #[derive(Debug)]
 pub struct GhjkCtx {
-    deno: denort::DenoWorkerHandle,
+    deno: denort::worker::DenoWorkerHandle,
     config: config::Config,
 }

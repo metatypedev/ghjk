@@ -34,8 +34,11 @@ impl ExtConfig {
         Self::default()
     }
 
-    pub fn callbacks_handle(&mut self) -> callbacks::CallbacksHandle {
-        let (line, handle) = callbacks::CallbackLine::new();
+    pub fn callbacks_handle(
+        &mut self,
+        dworker: &denort::worker::DenoWorkerHandle,
+    ) -> callbacks::CallbacksHandle {
+        let (line, handle) = callbacks::CallbackLine::new(dworker);
         self.callbacks_rx = Arc::new(std::sync::Mutex::new(line));
 
         handle

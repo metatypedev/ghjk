@@ -16,6 +16,14 @@ pub struct HashObj {
     pub listed_files: Vec<PathBuf>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum HashfileError {
+    #[error("error parsing hashfile: {0}")]
+    Serialization(serde_json::Error),
+    #[error("{0}")]
+    Other(eyre::Report),
+}
+
 impl HashObj {
     #[tracing::instrument(skip(hcx, res))]
     pub async fn from_result(
@@ -52,15 +60,19 @@ impl HashObj {
     /// of a ghjkfile during serialization. The primary purpose is to
     /// do "cache invalidation" on ghjkfiles, re-serializing them if
     /// any of the digests change.
-    pub async fn from_file(path: &Path) -> Res<HashObj> {
-        let raw = tokio::fs::read(path)
-            .await
-            .wrap_err("error reading hash.json")?;
-        serde_json::from_slice(&raw).wrap_err("error parsing hash.json")
+    pub async fn from_file(path: &Path) -> Result<Option<HashObj>, HashfileError> {
+        let raw = match tokio::fs::read(path).await {
+            Ok(val) => val,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(HashfileError::Other(ferr!("error reading hashfile: {err}"))),
+        };
+        serde_json::from_slice(&raw).map_err(HashfileError::Serialization)
     }
 
+    #[tracing::instrument(skip(hcx))]
     pub async fn is_stale(&self, hcx: &HostCtx, ghjkfile_hash: &str) -> Res<bool> {
         if self.ghjkfile_hash != ghjkfile_hash {
+            trace!("stale ghjkfile hash");
             return Ok(true);
         }
         {
@@ -69,12 +81,14 @@ impl HashObj {
                 self.env_var_hashes.keys().map(|key| &key[..]),
             );
             if self.env_var_hashes != new_digest {
+                trace!("stale env var digests");
                 return Ok(true);
             }
         }
         {
             for path in &self.listed_files {
                 if !matches!(tokio::fs::try_exists(path).await, Ok(true)) {
+                    trace!("stale listed files");
                     return Ok(true);
                 }
             }
@@ -90,6 +104,7 @@ impl HashObj {
                 )
                 .await?
             {
+                trace!("stale read files digest");
                 return Ok(true);
             }
         }
@@ -128,7 +143,7 @@ async fn file_digests(
     Ok(out.into_iter().collect())
 }
 
-async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
+pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
     let path = tokio::fs::canonicalize(path)
         .await
         .wrap_err("error resolving realpath")?;
@@ -158,7 +173,7 @@ async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
 pub type SharedFileContentDigestFuture =
     futures::future::Shared<BoxFuture<'static, Result<CHeapStr, String>>>;
 
-pub async fn file_content_digest_hash(
+async fn file_content_digest_hash(
     hcx: &HostCtx,
     path: &Path,
 ) -> Res<SharedFileContentDigestFuture> {

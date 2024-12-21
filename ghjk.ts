@@ -16,7 +16,7 @@ config({
 
 env("main").vars({
   RUST_LOG:
-    "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info",
+    "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info",
 });
 
 env("_rust")
@@ -35,6 +35,7 @@ const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
 env("dev")
   .inherit("_rust")
+  .install(ports.cargobi({ crateName: "tokio-console" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
     RUSTY_V8_MIRROR,
@@ -65,7 +66,7 @@ task(
   "cache-v8",
   {
     desc: "Install the V8 builds to a local cache.",
-    inherit: "_rust",
+    inherit: false,
     fn: async ($) => {
       const tmpDirPath = await Deno.makeTempDir({});
       const v8Versions = [

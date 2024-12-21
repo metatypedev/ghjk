@@ -128,7 +128,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
 
   const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
 
-  const env: Record<string, string> = {
+  const env: Record<string, string | undefined> = {
     GHJK_AUTO_HOOK: "true",
     BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
     ZDOTDIR: ghjkDataDir.toString(),
@@ -139,6 +139,8 @@ export async function localE2eTest(testCase: E2eTestCase) {
     // share the system's deno cache
     GHJK_DENO_DIR: Deno.env.get("DENO_DIR") ??
       $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
+    RUST_LOG: $.dbg(Deno.env.get("RUST_LOG"), "RUST_LOG"),
+    GHJK_LOG: Deno.env.get("GHJK_LOG"),
     ...testEnvs,
   };
   // install ghjk

@@ -1,3 +1,5 @@
+use std::io::IsTerminal;
+
 use crate::interlude::*;
 
 use crate::systems::*;
@@ -55,6 +57,7 @@ pub async fn systems_from_ghjkfile(
         ghjkdir_path.join("lock.json"),
     );
 
+    // read both files concurrently
     let (hash_obj, lock_obj) = (
         HashObj::from_file(&hashfile_path),
         LockObj::from_file(&lockfile_path),
@@ -62,9 +65,38 @@ pub async fn systems_from_ghjkfile(
         .join()
         .await;
 
+    // discard corrupt files if needed
     let (mut hash_obj, mut lock_obj) = (
-        hash_obj.inspect_err(|err| warn!("{err}")).ok(),
-        lock_obj.inspect_err(|err| warn!("{err}")).ok(),
+        match hash_obj {
+            Ok(val) => val,
+            Err(hashfile::HashfileError::Serialization(_)) => {
+                error!("hashfile is corrupt, discarding");
+                None
+            }
+            Err(hashfile::HashfileError::Other(err)) => return Err(err),
+        },
+        match lock_obj {
+            Ok(val) => val,
+            Err(LockfileError::Serialization(err)) => {
+                // interactive discard of lockfile if in an interactive shell
+                if std::io::stderr().is_terminal()
+                    && tokio::task::spawn_blocking(|| {
+                        dialoguer::Confirm::new()
+                            .with_prompt("lockfile is corrupt, discard?")
+                            .default(false)
+                            .interact()
+                    })
+                    .await
+                    .expect_or_log("tokio error")
+                    .wrap_err("prompt error")?
+                {
+                    None
+                } else {
+                    return Err(ferr!(err).wrap_err("corrupt lockfile"));
+                }
+            }
+            Err(LockfileError::Other(err)) => return Err(err),
+        },
     );
 
     if hcx.config.locked {
@@ -80,10 +112,9 @@ pub async fn systems_from_ghjkfile(
         (
             matches!(tokio::fs::try_exists(path).await, Ok(true)),
             Some(
-                hashfile::file_content_digest_hash(hcx.as_ref(), path)
+                hashfile::file_digest_hash(hcx.as_ref(), path)
                     .await?
-                    .await
-                    .map_err(|err| ferr!(err))?,
+                    .unwrap(),
             ),
         )
     } else {
@@ -98,10 +129,17 @@ pub async fn systems_from_ghjkfile(
         }
         if !hcx.config.locked
             && (hcx.config.re_serialize
+                // no need for expensive staleness checks if the ghjkfile
+                // no longer exists
                 || ghjkfile_hash.is_none()
                 || obj
                     .is_stale(hcx.as_ref(), ghjkfile_hash.as_ref().unwrap())
-                    .await?)
+                    .await
+                    .inspect(|is_stale| {
+                        if *is_stale {
+                            debug!("stale hashfile, discarding")
+                        }
+                    })?)
         {
             hash_obj = None;
         }
@@ -253,12 +291,12 @@ impl GhjkfileSystems {
                 warn!("locked flag set, changes to lockfile discarded");
             } else {
                 trace!(lockfile_path = ?self.lockfile_path, /* ?lock_obj, */ "writing lock.json");
-                /* tokio::fs::write(
+                tokio::fs::write(
                     &self.lockfile_path,
                     serde_json::to_vec_pretty(&lock_obj).expect_or_log("error jsonifying lockfile"),
                 )
                 .await
-                .wrap_err("error writing to lockfile")?; */
+                .wrap_err("error writing to lockfile")?;
                 self.old_lock_obj.replace(lock_obj);
             }
         }
@@ -270,13 +308,13 @@ impl GhjkfileSystems {
                 unreachable!("code should have early exited");
             }
             trace!(hashfile_path = ?self.hashfile_path, /* hash_obj= ?self.hash_obj, */ "writing hash.json");
-            /* tokio::fs::write(
+            tokio::fs::write(
                 &self.hashfile_path,
                 serde_json::to_vec_pretty(&self.hash_obj)
                     .expect_or_log("error jsonifying hashfile"),
             )
             .await
-            .wrap_err("error writing to lockfile")?; */
+            .wrap_err("error writing to lockfile")?;
             self.hashfile_written = true;
         }
         Ok(())
@@ -318,14 +356,24 @@ pub struct LockObj {
     pub config: Arc<SerializedConfig>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum LockfileError {
+    #[error("error parsing lockfile:{0}")]
+    Serialization(serde_json::Error),
+    #[error("{0}")]
+    Other(eyre::Report),
+}
+
 impl LockObj {
     /// The lock.json file stores the serialized config and some entries
     /// from systems. It's primary purpose is as a memo store to avoid
     /// re-serialization on each CLI invocation.
-    pub async fn from_file(path: &Path) -> Res<Self> {
-        let raw = tokio::fs::read(path)
-            .await
-            .wrap_err("error reading hash.json")?;
-        serde_json::from_slice(&raw).wrap_err("error parsing lock.json")
+    pub async fn from_file(path: &Path) -> Result<Option<Self>, LockfileError> {
+        let raw = match tokio::fs::read(path).await {
+            Ok(val) => val,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(LockfileError::Other(ferr!("error reading hashfile: {err}"))),
+        };
+        serde_json::from_slice(&raw).map_err(LockfileError::Serialization)
     }
 }

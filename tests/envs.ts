@@ -47,6 +47,7 @@ const envVarTestEnvs: EnvDefArgs[] = [
 ];
 const envVarTestsPosix = `
 set -ex
+env
 # by default, we should be in main
 [ "$SONG" = "ditto" ] || exit 1010
 [ "$GHJK_ENV" = "main" ] || exit 1011

@@ -5,6 +5,12 @@
 import "./setup_logger.ts";
 import { defaultInstallArgs, install } from "./install/mod.ts";
 
+// import the main entry points so that they get cached into the deno
+// store during install
+import "./modules/std.ts";
+import "./port.ts";
+import "./ports/mod.ts";
+
 if (import.meta.main) {
   const shellsToHook = Deno.env.get("GHJK_INSTALL_HOOK_SHELLS")
     ?.split(",")

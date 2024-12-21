@@ -64,7 +64,9 @@ impl Config {
         // if ghjkfile var is set, set the GHJK_DIR overriding
         // any set by the user
         let (ghjkfile_path, ghjkdir_path) = if let Some(path) = ghjkfile_path {
-            let file_path = tokio::fs::canonicalize(path).await?;
+            let file_path = tokio::fs::canonicalize(&path)
+                .await
+                .wrap_err_with(|| format!("error canonicalizing ghjkfile path at {path:?}"))?;
             let dir_path = file_path.parent().unwrap().join(".ghjk");
             (Some(file_path), Some(dir_path))
         } else {

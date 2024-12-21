@@ -15,6 +15,8 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     let config = Config::source().await?;
 
+    debug!("config sourced: {config:?}");
+
     let Some(quick_err) = try_quick_cli(&config).await? else {
         return Ok(ExitCode::SUCCESS);
     };
@@ -39,9 +41,13 @@ pub async fn cli() -> Res<std::process::ExitCode> {
                 .deno_lockfile
                 .as_ref()
                 .map(|path| path.to_string_lossy().into()),
+            internal: deno::args::InternalFlags {
+                cache_path: Some(config.deno_dir.clone()),
+                ..default()
+            },
             ..default()
         };
-        denort::worker(flags, Some(Arc::new(Vec::new))).await?
+        denort::worker::worker(flags, Some(Arc::new(Vec::new))).await?
     };
 
     let gcx = GhjkCtx {

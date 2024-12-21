@@ -19,7 +19,7 @@ mod cheapstr {
     };
     // lifted from github.com/bevyengine/bevy 's bevy_core/Name struct
     // MIT/APACHE2 licence
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Clone, Serialize, Deserialize)]
     #[serde(crate = "serde", from = "String", into = "String")]
     pub struct CHeapStr {
         hash: u64,
@@ -124,6 +124,12 @@ mod cheapstr {
     }
 
     impl std::fmt::Display for CHeapStr {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.string.fmt(f)
+        }
+    }
+
+    impl std::fmt::Debug for CHeapStr {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             self.string.fmt(f)
         }
@@ -238,17 +244,17 @@ pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf
     loop {
         let location = cur.join(name);
         match tokio::fs::try_exists(&location).await {
-            Ok(_) => {
+            Ok(true) => {
                 return Ok(Some(location));
             }
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => {
+                return Err(err).wrap_err("error on file stat");
+            }
+            _ => {
                 let Some(next_cur) = cur.parent() else {
                     return Ok(None);
                 };
                 cur = next_cur;
-            }
-            Err(err) => {
-                return Err(err).wrap_err("error on file stat");
             }
         }
     }

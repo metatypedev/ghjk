@@ -97,7 +97,7 @@ pub async fn systems_from_deno(
             .boxed()
         }),
     );
-    let cb_line = ext_conf.callbacks_handle();
+    let cb_line = ext_conf.callbacks_handle(&gcx.deno);
 
     let mut worker = gcx
         .deno
@@ -144,16 +144,12 @@ pub async fn systems_from_deno(
         let err = match exit_code_channel.await.expect_or_log("channel error") {
             Ok(0) => return Ok(()),
             Ok(exit_code) => {
-                error!(%exit_code, "deno systems died with non-zero exit code");
-                let err = ferr!("deno systems died with non-zero exit code: {exit_code}");
-                error!("{err}");
-                err
+                ferr!("deno systems died with non-zero exit code: {exit_code}")
             }
             Err(err) => err.wrap_err("error on event loop for deno systems"),
         };
-        // TODO: better exit signals
-        debug!("killing whole deno context");
-        dcx.terminate().await.unwrap();
+        error!("deno systems error: {err:?}");
+        dcx.terminate().await.expect_or_log("error terminating deno worker");
         Err(err)
     });
 

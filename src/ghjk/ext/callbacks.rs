@@ -24,35 +24,43 @@ pub enum CallbackError {
     V8Error(eyre::Report),
 }
 
+struct CallbackCtx {
+    rx: tokio::sync::mpsc::Receiver<CallbacksMsg>,
+    term_signal: tokio::sync::watch::Receiver<bool>,
+}
+
 /// Line used by the callback_worker to receive
 /// invocations.
 #[derive(Default)]
 pub struct CallbackLine {
-    line: Option<tokio::sync::mpsc::Receiver<CallbacksMsg>>,
+    cx: Option<CallbackCtx>,
     was_set: bool,
 }
 
 impl CallbackLine {
-    pub fn new() -> (Self, CallbacksHandle) {
+    pub fn new(dworker: &denort::worker::DenoWorkerHandle) -> (Self, CallbacksHandle) {
         let (tx, rx) = tokio::sync::mpsc::channel(1);
         (
             Self {
                 was_set: true,
-                line: Some(rx),
+                cx: Some(CallbackCtx {
+                    rx,
+                    term_signal: dworker.term_signal_watcher(),
+                }),
             },
             CallbacksHandle { sender: tx },
         )
     }
 
-    fn take(&mut self) -> Option<tokio::sync::mpsc::Receiver<CallbacksMsg>> {
+    fn take(&mut self) -> Option<CallbackCtx> {
         if !self.was_set {
-            debug!("callback line was not set, worker callbacks will noop");
+            // debug!("callback line was not set, worker callbacks will noop");
             return None;
         }
-        match self.line.take() {
+        match self.cx.take() {
             Some(val) => Some(val),
             None => {
-                debug!("realm with callbacks just had a child, it won't inherit callback feature");
+                // debug!("realm with callbacks just had a child, it won't inherit callback feature");
                 None
             }
         }
@@ -107,23 +115,33 @@ pub struct Callbacks {
 /// Stored callbacks are not Sync so this expects to be started
 /// on the same thread as deno.
 pub fn worker(config: &ExtConfig) -> Option<Callbacks> {
-    let mut line = config.callbacks_rx.lock().expect_or_log("mutex err");
-    let mut line = line.take()?;
+    let CallbackCtx {
+        mut rx,
+        term_signal,
+    } = {
+        let mut mutex = config.callbacks_rx.lock().expect_or_log("mutex err");
+        mutex.take()?
+    };
 
     let callbacks = Callbacks::default();
     let callbacks_2go = callbacks.clone();
-    deno_core::unsync::spawn(
+    denort::unsync::spawn(
+        "callback-worker",
         async move {
             trace!("callback worker starting");
-            while let Some(msg) = line.recv().await {
-                trace!(?msg, "callback worker msg");
+            while let Some(msg) = rx.recv().await {
+                trace!(?msg, "msg");
                 match msg {
                     CallbacksMsg::Exec {
                         key: name,
                         args,
                         response_channel,
                     } => response_channel
-                        .send(callbacks_2go.exec_callback(name, args).await)
+                        .send(
+                            callbacks_2go
+                                .exec_callback(name, args, term_signal.clone())
+                                .await,
+                        )
                         .expect_or_log("channel error"),
                 }
             }
@@ -140,12 +158,18 @@ impl Callbacks {
         &self,
         key: CHeapStr,
         args: serde_json::Value,
+        mut term_signal: tokio::sync::watch::Receiver<bool>,
     ) -> Result<serde_json::Value, CallbackError> {
         let Some(cb) = self.store.get(&key[..]).map(|cb| cb.clone()) else {
             return Err(CallbackError::NotFound {
                 key: key.to_string(),
             });
         };
+
+        if *term_signal.borrow_and_update() {
+            trace!("callback invoked on terminated runtime");
+            return Err(CallbackError::V8Error(ferr!("deno is shutting down")));
+        }
 
         let (tx, rx) = oneshot::channel::<Result<serde_json::Value, CallbackError>>();
 
@@ -164,6 +188,7 @@ impl Callbacks {
                     // and yet we're transmuting it to a Local here.
                     // This is observed from the deno codebase
                     // and I can't explain it
+                    // SAFETY: cargo culted from deno codebase
                     let func = unsafe {
                         std::mem::transmute::<SendPtr<v8::Function>, v8::Local<v8::Function>>(
                             cb.js_fn,
@@ -191,27 +216,31 @@ impl Callbacks {
                 if res.is_promise() {
                     let promise = v8::Local::<v8::Promise>::try_from(res).unwrap();
 
-                    denort::promises::watch_promise(scope, promise, move |scope, _rf, res| {
-                        let res = match res {
-                            Ok(val) => serde_v8::from_v8(scope, val).map_err(|err| {
-                                CallbackError::ProtocolError(
-                                    ferr!(err)
-                                        .wrap_err("error deserializaing promise result from v8"),
-                                )
-                            }),
-                            Err(err) => Err(CallbackError::JsError(ferr!(
-                                "callback promise rejection: {}",
-                                err.to_rust_string_lossy(scope)
-                            ))), /* Err(err) => match serde_v8::from_v8(scope, err) {
-                                     Ok(json) => Err(CallbackError::JsError(json)),
-                                     Err(err) => Err(CallbackError::ProtocolError(
-                                         ferr!(err)
-                                             .wrap_err("error deserializaing promise rejection from v8"),
-                                     )),
-                                 }, */
-                        };
-                        tx.send(res).expect_or_log("channel error")
-                    });
+                    if let None =
+                        denort::promises::watch_promise(scope, promise, move |scope, _rf, res| {
+                            let res =
+                                match res {
+                                    Ok(val) => serde_v8::from_v8(scope, val).map_err(|err| {
+                                        CallbackError::ProtocolError(ferr!(err).wrap_err(
+                                            "error deserializaing promise result from v8",
+                                        ))
+                                    }),
+                                    Err(err) => Err(CallbackError::JsError(ferr!(
+                                        "callback promise rejection: {}",
+                                        err.to_rust_string_lossy(scope)
+                                    ))), /* Err(err) => match serde_v8::from_v8(scope, err) {
+                                             Ok(json) => Err(CallbackError::JsError(json)),
+                                             Err(err) => Err(CallbackError::ProtocolError(
+                                                 ferr!(err)
+                                                     .wrap_err("error deserializaing promise rejection from v8"),
+                                             )),
+                                         }, */
+                                };
+                            tx.send(res).expect_or_log("channel error")
+                        })
+                    {
+                        return Err(CallbackError::V8Error(ferr!("js runtime is shutting down")));
+                    };
                     Ok(None)
                 } else {
                     let res = serde_v8::from_v8(scope, res).map_err(|err| {
@@ -224,11 +253,18 @@ impl Callbacks {
             })
         });
 
-        let res = match join_handle.await.expect_or_log("tokio error")? {
-            Some(res) => res,
-            None => {
-                trace!("waiting for callback proimse");
-                rx.await.expect_or_log("channel error")?
+        // if the callback is not async, we recieve the value right away
+        if let Some(res) = join_handle.await.expect_or_log("tokio error")? {
+            return Ok(res);
+        };
+
+        let res = tokio::select! {
+            _ = term_signal.wait_for(|signal| *signal) => {
+                trace!("callback worker recieved term signal");
+                return Err(CallbackError::V8Error(ferr!("deno terminated waiting on callback")));
+            },
+            res = rx => {
+                res.expect_or_log("channel error")?
             }
         };
 

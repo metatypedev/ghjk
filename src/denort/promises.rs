@@ -36,24 +36,25 @@ where
             .take()
             .unwrap()
     }
-    let on_fulfilled = v8::Function::builder(
+    let on_fulfilled =
         |scope: &mut v8::HandleScope, args: v8::FunctionCallbackArguments, rv: v8::ReturnValue| {
             let data = v8::Local::<v8::External>::try_from(args.data()).unwrap();
             let f = get_handler::<F>(data);
             f(scope, rv, Ok(args.get(0)));
-        },
-    )
-    .data(external.into())
-    .build(scope);
-    let on_rejected = v8::Function::builder(
+        };
+    let on_fulfilled = v8::Function::builder(on_fulfilled)
+        .data(external.into())
+        .build(scope);
+
+    let on_rejected =
         |scope: &mut v8::HandleScope, args: v8::FunctionCallbackArguments, rv: v8::ReturnValue| {
             let data = v8::Local::<v8::External>::try_from(args.data()).unwrap();
             let f = get_handler::<F>(data);
             f(scope, rv, Err(args.get(0)));
-        },
-    )
-    .data(external.into())
-    .build(scope);
+        };
+    let on_rejected = v8::Function::builder(on_rejected)
+        .data(external.into())
+        .build(scope);
     // function builders will return None if the runtime is shutting down
     let (Some(on_fulfilled), Some(on_rejected)) = (on_fulfilled, on_rejected) else {
         _ = get_handler::<F>(external);

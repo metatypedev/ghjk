@@ -55,7 +55,7 @@ tracing-futures = "0.2"
 async-trait = "0.1.83"
 futures-concurrency = "7.6.2"
 futures = { version = "=0.3.30", default-features = false, features = ["std", "async-await"] }
-tokio = { workspace = true, features = ["full", "parking_lot"] }
+tokio = { workspace = true, features = ["full", "parking_lot", "tracing"] }
 tokio-stream = "0.1"
 
 dashmap = { version = "5.5", features = ["serde"]}
@@ -73,6 +73,9 @@ sha2 = "0.10.8"
 
 pathdiff = "0.2.2"
 directories = "5.0.1"
+dialoguer = "0.11.0"
+console = "0.15.8"
+console-subscriber = "0.4.1"
 
 [build-dependencies]
 shadow-rs.workspace = true
