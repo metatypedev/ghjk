@@ -127,13 +127,20 @@ export async function localE2eTest(testCase: E2eTestCase) {
   );
 
   const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
+  const ghjkShimPath = await ghjkDataDir
+    .join("ghjk")
+    .writeText(
+      `!#/bin/sh
+exec ${ghjkExePath.resolve().toString()} "$@"`,
+      { mode: 0o700 },
+    );
 
   const env: Record<string, string | undefined> = {
     GHJK_AUTO_HOOK: "true",
     BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
     ZDOTDIR: ghjkDataDir.toString(),
     GHJK_DATA_DIR: ghjkDataDir.toString(),
-    PATH: `${ghjkExePath.parentOrThrow().toString()}:${Deno.env.get("PATH")}`,
+    PATH: `${ghjkShimPath.parentOrThrow().toString()}:${Deno.env.get("PATH")}`,
     HOME: tmpDir.toString(),
     GHJK_REPO_ROOT: import.meta.resolve("../"),
     // share the system's deno cache
@@ -151,11 +158,11 @@ export async function localE2eTest(testCase: E2eTestCase) {
     shellsToHook: [],
   });
 
-  await $`${ghjkExePath} print config`
+  await $`ghjk print config`
     .cwd(tmpDir.toString())
     .clearEnv()
     .env(env);
-  await $`${ghjkExePath} envs cook`
+  await $`ghjk envs cook`
     .cwd(tmpDir.toString())
     .clearEnv()
     .env(env);

@@ -14,7 +14,7 @@
           "version": "4.0.1",
           "buildDepConfigs": {
             "cpy_bs_ghrel": {
-              "version": "3.12.7",
+              "version": "3.13.1",
               "buildDepConfigs": {
                 "tar_aa": {
                   "version": "1.35",
@@ -38,7 +38,7 @@
           "specifiedVersion": false
         },
         "bciqh4dfyevkzzvmnhuz7lcfqttkg5neg4ewhoxzofyuicavgk6pb7ia": {
-          "version": "3.12.7",
+          "version": "3.13.1",
           "buildDepConfigs": {
             "tar_aa": {
               "version": "1.35",
@@ -72,7 +72,7 @@
           "version": "3.9.0.0",
           "buildDepConfigs": {
             "cpy_bs_ghrel": {
-              "version": "3.12.7",
+              "version": "3.13.1",
               "buildDepConfigs": {
                 "tar_aa": {
                   "version": "1.35",
@@ -117,7 +117,7 @@
           "version": "3.31.0.1",
           "buildDepConfigs": {
             "cpy_bs_ghrel": {
-              "version": "3.12.7",
+              "version": "3.13.1",
               "buildDepConfigs": {
                 "tar_aa": {
                   "version": "1.35",
@@ -247,6 +247,74 @@
             "rust-src"
           ],
           "specifiedVersion": true
+        },
+        "bciqeosxosr6ur7pu7gny33gy7dqubmxbcs4775xazb4zvaxavkd5rha": {
+          "version": "0.1.13",
+          "buildDepConfigs": {
+            "cargo_binstall_ghrel": {
+              "version": "v1.10.17",
+              "buildDepConfigs": {},
+              "portRef": "cargo_binstall_ghrel@0.1.0",
+              "specifiedVersion": false
+            },
+            "rust_rustup": {
+              "version": "1.83.0",
+              "buildDepConfigs": {
+                "rustup_rustlang": {
+                  "version": "1.27.1",
+                  "buildDepConfigs": {
+                    "git_aa": {
+                      "version": "2.47.0",
+                      "buildDepConfigs": {},
+                      "portRef": "git_aa@0.1.0",
+                      "specifiedVersion": false
+                    }
+                  },
+                  "portRef": "rustup_rustlang@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "rust_rustup@0.1.0",
+              "profile": "minimal",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "cargobi_cratesio@0.1.0",
+          "crateName": "tokio-console",
+          "specifiedVersion": false
+        },
+        "bciqeal5okt5zj763vhgsmf3afr5thrkqaitv6pb3wwegcwyb74gdyjq": {
+          "version": "v1.10.17",
+          "buildDepConfigs": {},
+          "portRef": "cargo_binstall_ghrel@0.1.0",
+          "specifiedVersion": false
+        },
+        "bciqeub366wrduva4y3rxegdjkhlebwsud56e5orgcpbkdrbhuxmvuxa": {
+          "version": "1.83.0",
+          "buildDepConfigs": {
+            "rustup_rustlang": {
+              "version": "1.27.1",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.0",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "rustup_rustlang@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "rust_rustup@0.1.0",
+          "profile": "minimal",
+          "specifiedVersion": false
+        },
+        "bciqe7g5m4v5jkg3ubqhogjjntsduyrwxcirqcp6tc3jmjr5af7ojq6a": {
+          "version": "v2.1.2",
+          "buildDepConfigs": {},
+          "portRef": "deno_ghrel@0.1.0",
+          "specifiedVersion": true
         }
       }
     },
@@ -270,7 +338,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
+              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
             },
             "ghjkEnvProvInstSet____rust": {
               "installs": [
@@ -282,7 +350,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
+              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
             },
             "ghjkEnvProvInstSet___dev": {
               "installs": [
@@ -296,7 +364,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq"
+              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
             },
             "ghjkEnvProvInstSet_______task_env_cache-v8": {
               "installs": [],
@@ -509,7 +577,7 @@
           "moduleSpecifier": "file:///ports/deno_ghrel.ts"
         }
       },
-      "bciqakxf4wsx3mtku4x5exrl44k4r4kyq6gaw4va5hsb3v26cipmmekq": {
+      "bciqdfarczmlu3r5dkvcdoultfbnuvn6saao55h4fbb3jg72kv6mkr3y": {
         "manifest": {
           "ty": "denoWorker@v1",
           "name": "cpy_bs_ghrel",
@@ -533,7 +601,7 @@
           "moduleSpecifier": "file:///ports/cpy_bs.ts"
         },
         "defaultInst": {
-          "version": "3.12.7",
+          "version": "3.13.1",
           "portRef": "cpy_bs_ghrel@0.1.0"
         }
       },
@@ -805,8 +873,8 @@
           "portRef": "asdf_plugin_git@0.1.0"
         }
       },
-      "bciqoo3t36t4pphdox5wa5ugn34wkar7rwkqgb5l55lwnxbuabcc3nyq": {
-        "cpy_bs_ghrel": "bciqakxf4wsx3mtku4x5exrl44k4r4kyq6gaw4va5hsb3v26cipmmekq",
+      "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi": {
+        "cpy_bs_ghrel": "bciqdfarczmlu3r5dkvcdoultfbnuvn6saao55h4fbb3jg72kv6mkr3y",
         "tar_aa": "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia",
         "git_aa": "bciqfl5s36w335ducrb6f6gwb3vuwup7vzqwwg67pq42xtkngsnxqobi",
         "curl_aa": "bciqcfe7qyxmokpn6pgtaj35r5qg74jkehuu6cvyrtcsnegvwlm64oqy",

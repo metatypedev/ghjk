@@ -84,14 +84,14 @@ Args: {args:?}
         let filter = tracing_subscriber::EnvFilter::from_default_env();
 
         tracing_subscriber::registry()
-        .with(console_subscriber::spawn())
-        // filter on values from RUST_LOG
-        .with(filter)
-        // subscriber that emits to stderr
-        .with(fmt)
-        // instrument errors with SpanTraces, used by color-eyre
-        .with(tracing_error::ErrorLayer::default())
-        .init();
+            .with(console_subscriber::spawn())
+            // filter on values from RUST_LOG
+            .with(filter)
+            // subscriber that emits to stderr
+            .with(fmt)
+            // instrument errors with SpanTraces, used by color-eyre
+            .with(tracing_error::ErrorLayer::default())
+            .init();
         // console_subscriber::init();
     });
 }

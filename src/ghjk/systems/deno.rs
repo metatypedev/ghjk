@@ -141,15 +141,20 @@ pub async fn systems_from_deno(
 
     let dcx = gcx.deno.clone();
     let join_exit_code_watcher = tokio::spawn(async {
-        let err = match exit_code_channel.await.expect_or_log("channel error") {
-            Ok(0) => return Ok(()),
-            Ok(exit_code) => {
+        let err = match exit_code_channel.await {
+            Ok(Ok(0)) => return Ok(()),
+            Ok(Ok(exit_code)) => {
                 ferr!("deno systems died with non-zero exit code: {exit_code}")
             }
-            Err(err) => err.wrap_err("error on event loop for deno systems"),
+            Ok(Err(err)) => err.wrap_err("error on event loop for deno systems"),
+            Err(_) => {
+                ferr!("deno systems unexpected shutdown")
+            }
         };
         error!("deno systems error: {err:?}");
-        dcx.terminate().await.expect_or_log("error terminating deno worker");
+        dcx.terminate()
+            .await
+            .expect_or_log("error terminating deno worker");
         Err(err)
     });
 

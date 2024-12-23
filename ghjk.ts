@@ -11,7 +11,7 @@ import { unarchive } from "./utils/unarchive.ts";
 config({
   defaultEnv: "dev",
   enableRuntimes: true,
-  allowedBuildDeps: [ports.cpy_bs({ version: "3.12.7" })],
+  allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" })],
 });
 
 env("main").vars({

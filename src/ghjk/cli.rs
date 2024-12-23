@@ -92,7 +92,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     let mut root_cmd = Cli::command();
 
-    debug!("colleting system commands");
+    debug!("collecting system commands");
 
     let (sys_cmds, sys_actions) = match commands_from_systems(&systems).await {
         Ok(val) => val,

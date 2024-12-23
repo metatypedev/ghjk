@@ -248,9 +248,14 @@ hash.json",
             };
         }
         if let Some(path) = repo_root {
-            self.repo_root = deno_core::resolve_url_or_path(&path, cwd)
-                .map_err(|err| ferr!(Box::new(err)))
-                .wrap_err("error resolving repo_root")?;
+            self.repo_root = dbg!(
+                deno_core::resolve_url_or_path(&path, cwd)
+                    .map_err(|err| ferr!(Box::new(err)))
+                    .wrap_err("error resolving repo_root")?,
+                &path,
+                cwd
+            )
+            .0;
         }
         Ok(())
     }
