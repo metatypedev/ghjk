@@ -131,13 +131,6 @@ task(
           "./.github/workflows/*.yml": [
             [/(DENO_VERSION: ").*(")/, DENO_VERSION],
           ],
-          "./host/mod.ts": [
-            [/(GHJK_VERSION = ").*(")/, GHJK_VERSION],
-          ],
-          "./tests/test.Dockerfile": [
-            [/(ARG DENO_VERSION=).*()/, DENO_VERSION],
-            [/(ARG RUST_VERSION=).*()/, RUST_VERSION],
-          ],
           "./docs/*.md": [
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,

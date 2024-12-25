@@ -62,7 +62,7 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     // share the system's deno cache
     GHJK_DENO_DIR: Deno.env.get("DENO_DIR") ??
       $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
-    RUST_LOG: $.dbg(Deno.env.get("RUST_LOG"), "RUST_LOG"),
+    RUST_LOG: Deno.env.get("RUST_LOG"),
     GHJK_LOG: Deno.env.get("GHJK_LOG"),
     ...testEnvs,
   };

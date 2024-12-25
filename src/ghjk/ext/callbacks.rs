@@ -57,13 +57,8 @@ impl CallbackLine {
             // debug!("callback line was not set, worker callbacks will noop");
             return None;
         }
-        match self.cx.take() {
-            Some(val) => Some(val),
-            None => {
-                // debug!("realm with callbacks just had a child, it won't inherit callback feature");
-                None
-            }
-        }
+        // debug!("realm with callbacks just had a child, it won't inherit callback feature");
+        self.cx.take()
     }
 }
 
@@ -114,6 +109,10 @@ pub struct Callbacks {
 ///
 /// Stored callbacks are not Sync so this expects to be started
 /// on the same thread as deno.
+/// This will return none if the callback line was set or
+/// the callback line was already taken. This happens
+/// with child WebWorkers for example which don't currently
+/// support callbacks.
 pub fn worker(config: &ExtConfig) -> Option<Callbacks> {
     let CallbackCtx {
         mut rx,
@@ -216,7 +215,7 @@ impl Callbacks {
                 if res.is_promise() {
                     let promise = v8::Local::<v8::Promise>::try_from(res).unwrap();
 
-                    if let None =
+                    let deno_shutting_down =
                         denort::promises::watch_promise(scope, promise, move |scope, _rf, res| {
                             let res =
                                 match res {
@@ -238,7 +237,8 @@ impl Callbacks {
                                 };
                             tx.send(res).expect_or_log("channel error")
                         })
-                    {
+                        .is_none();
+                    if deno_shutting_down {
                         return Err(CallbackError::V8Error(ferr!("js runtime is shutting down")));
                     };
                     Ok(None)

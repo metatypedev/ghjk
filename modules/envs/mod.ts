@@ -179,12 +179,6 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
                   ? envKeyMaybe[0]
                   : envKeyMaybe) as string,
               });
-              $.dbg("activating env", {
-                envKey,
-                envKeyMaybe,
-                taskKeyMaybe,
-                envName,
-              });
               await reduceAndCookEnv(gcx, ecx, envKey, envName ?? envKey);
             },
           },
@@ -336,7 +330,6 @@ async function reduceAndCookEnv(
           const namedDir = $.path(gcx.ghjkDir).join("envs", name);
           await $.removeIfExists(namedDir);
           await namedDir.symlinkTo(envDir, { kind: "relative" });
-          $.dbg(`linking ${name} to ${envKey}`);
         }
         if (name == ecx.config.defaultEnv || key == ecx.config.defaultEnv) {
           const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");
