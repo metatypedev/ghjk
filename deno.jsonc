@@ -1,7 +1,7 @@
 {
   "tasks": {
     "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A tests/*",
-    "self": "deno run -A --unstable-kv --unstable-worker-options main.ts ",
+    "self": "cargo run -p ghjk",
     "cache": "deno cache deps/*",
     "check": "deno run -A ./scripts/check.ts",
     "dev": "deno run -A ./scripts/dev.ts"

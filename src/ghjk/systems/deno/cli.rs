@@ -138,7 +138,8 @@ async fn deno_cb_action(
 
         bucket.insert(id.as_str().to_owned(), value);
     }
-    scx.callbacks
+    let response = scx
+        .callbacks
         .exec(
             cb_key.clone(),
             serde_json::json!({
@@ -148,6 +149,7 @@ async fn deno_cb_action(
         )
         .await
         .wrap_err("callback error")?;
+    debug!(?response, "system command action response");
     Ok(())
 }
 

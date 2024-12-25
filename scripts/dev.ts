@@ -19,6 +19,15 @@ const ghjkDataDir = await devDir.join("ghjk").ensureDir();
 await (await $.removeIfExists(devDir.join("ghjk.ts")))
   .symlinkTo(import.meta.resolve("../ghjk.ts"));
 
+const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
+await ghjkDataDir
+  .join("ghjk")
+  .writeText(
+    `#!/bin/sh
+exec ${ghjkExePath.resolve().toString()} "$@"`,
+    { mode: 0o700 },
+  );
+
 const env: Record<string, string> = {
   BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
   ZDOTDIR: ghjkDataDir.toString(),

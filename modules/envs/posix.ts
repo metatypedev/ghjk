@@ -201,6 +201,7 @@ async function writeActivators(
   onEnterHooks: [string, string[]][],
   onExitHooks: [string, string[]][],
 ) {
+  $.dbg("writing activators", { envVars, pathVars, onEnterHooks, onExitHooks });
   const ghjkDirVar = "_ghjk_dir";
   const shareDirVar = "_ghjk_share_dir";
   pathVars = {

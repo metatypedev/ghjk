@@ -1,22 +1,10 @@
 import { defaultInstallArgs, install } from "../install/mod.ts";
 import { std_url } from "../deps/dev.ts";
 import { std_async } from "../deps/dev.ts";
-import { $, dbg, importRaw } from "../utils/mod.ts";
-import logger from "../utils/logger.ts";
+import { $ } from "../utils/mod.ts";
 import type { DenoTaskDefArgs, FileArgs } from "../mod.ts";
+import { ALL_ARCH, ALL_OS } from "../modules/ports/types/platform.ts";
 export type { EnvDefArgs } from "../mod.ts";
-import { ALL_OS } from "../port.ts";
-import { ALL_ARCH } from "../port.ts";
-
-export type E2eTestCase = {
-  name: string;
-  tsGhjkfileStr: string;
-  envVars?: Record<string, string>;
-  ePoints: { cmd: string | string[]; stdin?: string }[];
-  timeout_ms?: number;
-  ignore?: boolean;
-  only?: boolean;
-};
 
 export const testTargetPlatform = Deno.env.get("DOCKER_PLATFORM") ??
   (Deno.build.os + "/" + Deno.build.arch);
@@ -28,87 +16,15 @@ if (
   throw new Error(`unsupported test platform: ${testTargetPlatform}`);
 }
 
-const dockerPlatform = `--platform=${
-  testTargetPlatform
-    .replace("x86_64", "amd64")
-    .replace("aarch64", "arm64")
-}`;
-
-const dockerCmd = (Deno.env.get("DOCKER_CMD") ?? "docker").split(/\s/);
-
-const dFileTemplate = await importRaw(import.meta.resolve("./test.Dockerfile"));
-const templateStrings = {
-  addConfig: `#{{CMD_ADD_CONFIG}}`,
+export type E2eTestCase = {
+  name: string;
+  tsGhjkfileStr: string;
+  envVars?: Record<string, string>;
+  ePoints: { cmd: string | string[]; stdin?: string }[];
+  timeout_ms?: number;
+  ignore?: boolean;
+  only?: boolean;
 };
-const noRmi = Deno.env.get("DOCKER_NO_RMI");
-
-export async function dockerE2eTest(testCase: E2eTestCase) {
-  const { name, envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
-  const tag = `ghjk_e2e_${name}`.toLowerCase();
-  const env = {
-    ...testEnvs,
-  };
-  if (Deno.env.get("GITHUB_TOKEN")) {
-    env.GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN")!;
-  }
-  const devGhjkPath = import.meta.resolve("../");
-
-  const configFile = tsGhjkfileStr
-    // replace all file urls that point to the ghjk
-    // repo in the host fs to point to the copy of the
-    // repo in the image
-    .replaceAll(devGhjkPath, "file://$ghjk/")
-    .replaceAll("$ghjk", "/ghjk");
-
-  const dFile = dbg(dFileTemplate
-    .replace(
-      templateStrings.addConfig,
-      configFile
-        // escape all dollars
-        .replaceAll("$", "$$$$"),
-    ));
-
-  if (dockerCmd[0] == "podman") {
-    await $
-      .raw`${dockerCmd} buildah build ${dockerPlatform} ${
-      Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
-    } --tag '${tag}' --network=host -- -f- .`
-      .env(env)
-      .stdinText(dFile);
-  } else {
-    await $
-      .raw`${dockerCmd} buildx build ${dockerPlatform} ${
-      Object.entries(env).map(([key, val]) => ["--build-arg", `${key}=${val}`])
-    } --tag '${tag}' --network=host --output type=docker -f- .`
-      .env(env)
-      .stdinText(dFile);
-  }
-
-  for (const ePoint of ePoints) {
-    let cmd = $.raw`${dockerCmd} run ${dockerPlatform} --rm ${[
-      /* we want to enable interactivity when piping in */
-      ePoint.stdin ? "-i " : "",
-      ...Object.entries(env).map(([key, val]) => ["-e", `${key}=${val}`])
-        .flat(),
-      tag,
-    ]} ${ePoint.cmd}`
-      .env(env);
-    if (ePoint.stdin) {
-      cmd = cmd.stdinText(ePoint.stdin!);
-    }
-    try {
-      await cmd;
-    } catch (err) {
-      logger(import.meta).error(err);
-      throw err;
-    }
-  }
-  if (!noRmi) {
-    await $
-      .raw`${dockerCmd} rmi '${tag}'`
-      .env(env);
-  }
-}
 
 export async function localE2eTest(testCase: E2eTestCase) {
   const { envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
@@ -130,7 +46,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   const ghjkShimPath = await ghjkDataDir
     .join("ghjk")
     .writeText(
-      `!#/bin/sh
+      `#!/bin/sh
 exec ${ghjkExePath.resolve().toString()} "$@"`,
       { mode: 0o700 },
     );
@@ -253,17 +169,11 @@ export function harness(
   cases: E2eTestCase[],
 ) {
   const e2eType = Deno.env.get("GHJK_TEST_E2E_TYPE");
-  let runners = [[dockerE2eTest, "e2eDocker" as string] as const];
-  if (e2eType == "both") {
-    runners.push([localE2eTest, "e2eLocal"]);
-  } else if (e2eType == "local") {
-    runners = [[localE2eTest, "e2eLocal"]];
-  } else if (
-    e2eType && e2eType != "docker"
-  ) {
-    throw new Error(
-      `unexpected GHJK_TEST_E2E_TYPE: ${e2eType}`,
-    );
+  const runners = [
+    [localE2eTest, "e2eLocal"] as const,
+  ];
+  if (e2eType && e2eType != "local") {
+    throw new Error("docker test runner has been removed");
   }
   for (const [runner, group] of runners) {
     for (const testCase of cases) {

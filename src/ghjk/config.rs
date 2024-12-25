@@ -89,8 +89,6 @@ impl Config {
                 if cfg!(debug_assertions) {
                     url::Url::from_file_path(&cwd)
                         .expect_or_log("cwd error")
-                        // repo root url must end in slash due to
-                        // how Url::join works
                         .join(&format!("{}/", cwd.file_name().unwrap().to_string_lossy()))
                         .wrap_err("repo url error")?
                 } else {
@@ -130,6 +128,12 @@ impl Config {
             config
                 .source_env_config(&cwd)
                 .wrap_err("error sourcing config from environment variables")?;
+
+            if !config.repo_root.path().ends_with("/") {
+                config
+                    .repo_root
+                    .set_path(&format!("{}/", config.repo_root.path()));
+            }
 
             eyre::Ok(config)
         })
@@ -248,14 +252,9 @@ hash.json",
             };
         }
         if let Some(path) = repo_root {
-            self.repo_root = dbg!(
-                deno_core::resolve_url_or_path(&path, cwd)
-                    .map_err(|err| ferr!(Box::new(err)))
-                    .wrap_err("error resolving repo_root")?,
-                &path,
-                cwd
-            )
-            .0;
+            self.repo_root = deno_core::resolve_url_or_path(&path, cwd)
+                .map_err(|err| ferr!(Box::new(err)))
+                .wrap_err("error resolving repo_root")?;
         }
         Ok(())
     }

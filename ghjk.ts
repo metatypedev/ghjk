@@ -8,10 +8,21 @@ import { sedLock } from "./std.ts";
 import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 
+// keep in sync with deno's reqs
+const RUST_VERSION = "1.82.0";
+
+const installs = {
+  rust: ports.rust({
+    version: RUST_VERSION,
+    profile: "default",
+    components: ["rust-src"],
+  }),
+};
+
 config({
   defaultEnv: "dev",
   enableRuntimes: true,
-  allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" })],
+  allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
 });
 
 env("main").vars({
@@ -21,14 +32,10 @@ env("main").vars({
 
 env("_rust")
   .install(
+    // TODO: cmake
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
-    // keep in sync with deno's reqs
-    ports.rust({
-      version: "1.82.0",
-      profile: "default",
-      components: ["rust-src"],
-    }),
+    installs.rust,
   );
 
 const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
@@ -115,6 +122,9 @@ task(
       $.path(import.meta.dirname!),
       {
         lines: {
+          "./rust-toolchain.toml": [
+            [/^(channel = ").*(")/, RUST_VERSION],
+          ],
           "./Cargo.toml": [
             [/^(version = ").*(")/, GHJK_VERSION],
           ],
@@ -124,15 +134,9 @@ task(
           "./host/mod.ts": [
             [/(GHJK_VERSION = ").*(")/, GHJK_VERSION],
           ],
-          "./install.sh": [
-            [/(GHJK_VERSION="\$\{GHJK_VERSION:-v).*(\}")/, GHJK_VERSION],
-            [/(DENO_VERSION="\$\{DENO_VERSION:-v).*(\}")/, DENO_VERSION],
-          ],
           "./tests/test.Dockerfile": [
             [/(ARG DENO_VERSION=).*()/, DENO_VERSION],
-          ],
-          "./tests/test-alpine.Dockerfile": [
-            [/(ARG DENO_VERSION=).*()/, DENO_VERSION],
+            [/(ARG RUST_VERSION=).*()/, RUST_VERSION],
           ],
           "./docs/*.md": [
             [

@@ -83,8 +83,12 @@ Args: {args:?}
 
         let filter = tracing_subscriber::EnvFilter::from_default_env();
 
-        tracing_subscriber::registry()
-            .with(console_subscriber::spawn())
+        let registry = tracing_subscriber::registry();
+
+        #[cfg(feature = "console-subscriber")]
+        let registry = registry.with(console_subscriber::spawn());
+
+        registry
             // filter on values from RUST_LOG
             .with(filter)
             // subscriber that emits to stderr

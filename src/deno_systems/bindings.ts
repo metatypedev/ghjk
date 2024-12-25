@@ -151,6 +151,7 @@ function commandBinding(commandRaw: CliCommand): CliCommandBindedX {
         `sys_cli_command_action_${command.name}_${actionId}`,
         async (args) => {
           const actionArgs = bindingTypes.cliActionArgs.parse(args);
+          $.dbg("actionArgs", {actionArgs, command});
           await action(actionArgs);
           return {};
         },

@@ -338,7 +338,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
+              "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
             "ghjkEnvProvInstSet____rust": {
               "installs": [
@@ -350,7 +350,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
+              "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
             "ghjkEnvProvInstSet___dev": {
               "installs": [
@@ -364,7 +364,7 @@
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
                 "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
-              "allowedBuildDeps": "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi"
+              "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
             "ghjkEnvProvInstSet_______task_env_cache-v8": {
               "installs": [],
@@ -447,7 +447,7 @@
                 }
               ]
             },
-            "bciqdngvsrwedhravpw6h4lzku6f52ljmexs6sqrtowntcqpguibfgti": {
+            "bciqkyp5qbfd3frv2e5hou4mgrlcodb5eaidc43el63bonty4i3thlya": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -457,7 +457,7 @@
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
-                  "val": "/home/yohe/ghjk/.dev/rusty_v8"
+                  "val": "/var/home/asdf/repos/ecma/ghjk/.dev/rusty_v8"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -470,7 +470,7 @@
           "envsNamed": {
             "main": "bciqonpyvifzte5gf6tl7gtk3ep5q3vst2gqncuznf3kav4mzbuvnpai",
             "_rust": "bciqm4lt7lvjdt3qzudw24qe4brezcej3ilxxhbmgfo2gdbfmh4j3a7i",
-            "dev": "bciqdngvsrwedhravpw6h4lzku6f52ljmexs6sqrtowntcqpguibfgti"
+            "dev": "bciqkyp5qbfd3frv2e5hou4mgrlcodb5eaidc43el63bonty4i3thlya"
           }
         }
       }
@@ -603,6 +603,47 @@
         "defaultInst": {
           "version": "3.13.1",
           "portRef": "cpy_bs_ghrel@0.1.0"
+        }
+      },
+      "bciqgze4knhjfbiypt5axkjslfsduq6tbwszbiuy5zsgpacrm5h6cg4a": {
+        "manifest": {
+          "ty": "denoWorker@v1",
+          "name": "rust_rustup",
+          "platforms": [
+            "x86_64-linux",
+            "aarch64-linux",
+            "x86_64-darwin",
+            "aarch64-darwin",
+            "x86_64-windows",
+            "aarch64-windows",
+            "x86_64-freebsd",
+            "aarch64-freebsd",
+            "x86_64-netbsd",
+            "aarch64-netbsd",
+            "x86_64-aix",
+            "aarch64-aix",
+            "x86_64-solaris",
+            "aarch64-solaris",
+            "x86_64-illumos",
+            "aarch64-illumos",
+            "x86_64-android",
+            "aarch64-android"
+          ],
+          "version": "0.1.0",
+          "buildDeps": [
+            {
+              "name": "rustup_rustlang"
+            }
+          ],
+          "moduleSpecifier": "file:///ports/rust.ts"
+        },
+        "defaultInst": {
+          "version": "1.82.0",
+          "portRef": "rust_rustup@0.1.0",
+          "profile": "default",
+          "components": [
+            "rust-src"
+          ]
         }
       },
       "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia": {
@@ -807,43 +848,6 @@
           "portRef": "node_org@0.1.0"
         }
       },
-      "bciqhjmjvlo4aqvwxjkrmoiledobmhkfe7iovqe3wndxiw2aootwn4lq": {
-        "manifest": {
-          "ty": "denoWorker@v1",
-          "name": "rust_rustup",
-          "platforms": [
-            "x86_64-linux",
-            "aarch64-linux",
-            "x86_64-darwin",
-            "aarch64-darwin",
-            "x86_64-windows",
-            "aarch64-windows",
-            "x86_64-freebsd",
-            "aarch64-freebsd",
-            "x86_64-netbsd",
-            "aarch64-netbsd",
-            "x86_64-aix",
-            "aarch64-aix",
-            "x86_64-solaris",
-            "aarch64-solaris",
-            "x86_64-illumos",
-            "aarch64-illumos",
-            "x86_64-android",
-            "aarch64-android"
-          ],
-          "version": "0.1.0",
-          "buildDeps": [
-            {
-              "name": "rustup_rustlang"
-            }
-          ],
-          "moduleSpecifier": "file:///ports/rust.ts"
-        },
-        "defaultInst": {
-          "portRef": "rust_rustup@0.1.0",
-          "profile": "minimal"
-        }
-      },
       "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli": {
         "manifest": {
           "ty": "denoWorker@v1",
@@ -873,8 +877,9 @@
           "portRef": "asdf_plugin_git@0.1.0"
         }
       },
-      "bciqe3wvwtylh2xeobipylsfxihnx5fhjixmozyxjsn6gnwk5vikvxxi": {
+      "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq": {
         "cpy_bs_ghrel": "bciqdfarczmlu3r5dkvcdoultfbnuvn6saao55h4fbb3jg72kv6mkr3y",
+        "rust_rustup": "bciqgze4knhjfbiypt5axkjslfsduq6tbwszbiuy5zsgpacrm5h6cg4a",
         "tar_aa": "bciqb6ua63xodzwxngnbjq35hfikiwzb3dclbqkc7e6xgjdt5jin4pia",
         "git_aa": "bciqfl5s36w335ducrb6f6gwb3vuwup7vzqwwg67pq42xtkngsnxqobi",
         "curl_aa": "bciqcfe7qyxmokpn6pgtaj35r5qg74jkehuu6cvyrtcsnegvwlm64oqy",
@@ -883,7 +888,6 @@
         "rustup_rustlang": "bciqk4ivbyqvpxwcaj5reufmveqldiizo6xmqiqq7njtaczgappydoka",
         "cargo_binstall_ghrel": "bciqpgt5wsiw4y7qzovqbt2yrdgq5mvhhjpcg6cxzt4w4taudyen44ca",
         "node_org": "bciqboouqnp54fnumgxvl7uay2k6ho4vhlbibvgoyyt5yt3rkwqaohzi",
-        "rust_rustup": "bciqhjmjvlo4aqvwxjkrmoiledobmhkfe7iovqe3wndxiw2aootwn4lq",
         "asdf_plugin_git": "bciqoxx4uhfhw77sux6kzqhy6bvxhxkk4cqigrxdrmggillzkfjgjnli"
       },
       "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa": {

@@ -100,7 +100,7 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
       },
     };
 
-    const commonArgs = {
+    const commonArgs: CliCommand["args"] = {
       envKey: {
         value_name: "ENV KEY",
       },
@@ -134,7 +134,7 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             name: "activate",
             about: `Activate an environment.`,
             before_long_help:
-              `- If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`,
+              `- If no ENV KEY is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`,
             flags: {
               ...commonFlags,
             },
@@ -144,12 +144,14 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             action: async function (
               {
                 flags: { taskEnv: taskKeyMaybe },
-                args: { envName: envKeyMaybe },
+                args: { envKey: envKeyMaybe },
               },
             ) {
               const { envKey } = envKeyArgs({
                 taskKeyMaybe: taskKeyMaybe as string,
-                envKeyMaybe: envKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
               });
               await activateEnv(envKey);
             },
@@ -158,7 +160,7 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             name: "cook",
             about: `Cooks the environment to a posix shell.`,
             before_long_help:
-              `- If no [envName] is specified, this will cook the active env [${ecx.activeEnv}]`,
+              `- If no ENV KEY is specified, this will cook the active env [${ecx.activeEnv}]`,
             flags: {
               ...commonFlags,
             },
@@ -168,12 +170,20 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             action: async function (
               {
                 flags: { taskEnv: taskKeyMaybe },
-                args: { envName: envKeyMaybe },
+                args: { envKey: envKeyMaybe },
               },
             ) {
               const { envKey, envName } = envKeyArgs({
                 taskKeyMaybe: taskKeyMaybe as string,
-                envKeyMaybe: envKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
+              });
+              $.dbg("activating env", {
+                envKey,
+                envKeyMaybe,
+                taskKeyMaybe,
+                envName,
               });
               await reduceAndCookEnv(gcx, ecx, envKey, envName ?? envKey);
             },
@@ -183,8 +193,8 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             about: `Cooks the environment to a posix shell.`,
             before_long_help: `Show details about an environment.
 
-- If no [envName] is specified, this shows details of the active env [${ecx.activeEnv}].
-- If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].`,
+- If no ENV KEY is specified, this shows details of the active env [${ecx.activeEnv}].
+- If no ENV KEY is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].`,
             flags: {
               ...commonFlags,
             },
@@ -194,12 +204,14 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
             action: async function (
               {
                 flags: { taskEnv: taskKeyMaybe },
-                args: { envName: envKeyMaybe },
+                args: { envKey: envKeyMaybe },
               },
             ) {
               const { envKey } = envKeyArgs({
                 taskKeyMaybe: taskKeyMaybe as string,
-                envKeyMaybe: envKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
               });
               const env = ecx.config.envs[envKey];
               if (!env) {
@@ -215,7 +227,7 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
         name: "sync",
         about: "Synchronize your shell to what's in your config.",
         before_long_help: `Cooks and activates an environment.
-- If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
+- If no ENV KEY is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
 - If the environment is already active, this doesn't launch a new shell.`,
         flags: {
           ...commonFlags,
@@ -224,11 +236,13 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
           ...commonArgs,
         },
         action: async function (
-          { flags: { taskEnv: taskKeyMaybe }, args: { envName: envKeyMaybe } },
+          { flags: { taskEnv: taskKeyMaybe }, args: { envKey: envKeyMaybe } },
         ) {
           const { envKey, envName } = envKeyArgs({
             taskKeyMaybe: taskKeyMaybe as string,
-            envKeyMaybe: envKeyMaybe as string,
+            envKeyMaybe: (Array.isArray(envKeyMaybe)
+              ? envKeyMaybe[0]
+              : envKeyMaybe) as string,
           });
           await reduceAndCookEnv(
             gcx,
@@ -322,6 +336,7 @@ async function reduceAndCookEnv(
           const namedDir = $.path(gcx.ghjkDir).join("envs", name);
           await $.removeIfExists(namedDir);
           await namedDir.symlinkTo(envDir, { kind: "relative" });
+          $.dbg(`linking ${name} to ${envKey}`);
         }
         if (name == ecx.config.defaultEnv || key == ecx.config.defaultEnv) {
           const defaultEnvDir = $.path(gcx.ghjkDir).join("envs", "default");

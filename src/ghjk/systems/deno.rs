@@ -18,7 +18,7 @@ pub struct DenoSystemsContext {
 
 impl DenoSystemsContext {
     #[allow(unused)]
-    pub async fn terminate(&mut self) -> Res<()> {
+    pub async fn terminate(mut self) -> Res<()> {
         let channel = {
             let mut opt = self.exit_code_channel.lock().expect_or_log("mutex error");
             opt.take()
@@ -36,7 +36,7 @@ pub async fn systems_from_deno(
     gcx: &GhjkCtx,
     source_uri: &url::Url,
     ghjkdir_path: &Path,
-) -> Res<HashMap<SystemId, SystemManifest>> {
+) -> Res<(HashMap<SystemId, SystemManifest>, DenoSystemsContext)> {
     let main_module = gcx
         .config
         .repo_root
@@ -180,7 +180,7 @@ pub async fn systems_from_deno(
         })
         .collect();
 
-    Ok(manifests)
+    Ok((manifests, scx))
 }
 
 #[derive(Debug, Deserialize)]

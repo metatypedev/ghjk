@@ -56,7 +56,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     };
     let gcx = Arc::new(gcx);
 
-    let systems_deno = systems::deno::systems_from_deno(
+    let (systems_deno, deno_sys_cx) = systems::deno::systems_from_deno(
         &gcx,
         &gcx.config
             .repo_root
@@ -108,6 +108,8 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         root_cmd = root_cmd.subcommand(cmd.styles(CLAP_STYLE));
     }
 
+    debug!("checking argv matches");
+
     let matches = match root_cmd.try_get_matches() {
         Ok(val) => val,
         Err(err) => {
@@ -147,6 +149,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         }
     };
 
+    debug!(?cmd_path, "system command found");
     let Some(action) = action.action else {
         systems.write_lockfile_or_log().await;
         action.clap.print_long_help()?;
@@ -155,10 +158,11 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     let res = action(action_matches.clone())
         .await
-        .wrap_err_with(|| format!("errror on system command at path {cmd_path:?}"));
+        .wrap_err_with(|| format!("error on system command at path {cmd_path:?}"));
 
     systems.write_lockfile_or_log().await;
 
+    deno_sys_cx.terminate().await?;
     deno_cx.terminate().await?;
 
     res.map(|()| ExitCode::SUCCESS)

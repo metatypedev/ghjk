@@ -9,13 +9,10 @@ on:
       - ready_for_review
 
 env:
-  DENO_VERSION: "2.1.2"
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  # removing the images after every test is unncessary
-  DOCKER_NO_RMI: 1
 
 jobs:
   changes:
@@ -29,9 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
       # run ghjk once to avoid trigger file changes when
       # pre commit runs ghjk. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
@@ -49,32 +43,20 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux/x86_64
-            e2eType: "local"
           - os: custom-arm
             platform: linux/aarch64
-            e2eType: "local"
           - os: macos-latest
             platform: darwin/x86_64
-            e2eType: "local"
           - os: macos-14
             platform: darwin/aarch64
-            e2eType: "local"
           # - os: windows-latest
-          #   e2eType: "local"
-    env:
-      GHJK_TEST_E2E_TYPE: ${{ matrix.e2eType }}
     steps:
       - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: ${{ env.DENO_VERSION }}
       - name: Cache deno dir
         uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
           key: deno-${{ hashFiles('**/deno.lock') }}
-      - if: "${{ matrix.e2eType == 'docker' }}"
-        uses: docker/setup-buildx-action@v3
       - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
         run: |
           # we need coreutils on max for the `timeout` command
@@ -83,9 +65,7 @@ jobs:
       - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         # we need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils
-      - env:
-          DOCKER_PLATFORM: ${{ matrix.platform }}
-        run: deno task test
+      - run: deno task test
 
   test-action:
     runs-on: ubuntu-latest
