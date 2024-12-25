@@ -30,14 +30,14 @@ impl Config {
         let xdg_dirs = directories::ProjectDirs::from("", "", "ghjk")
             .expect_or_log("unable to resolve home dir");
 
-        let ghjkdir_path = match path_from_env(&cwd, "GHJK_DIR").await? {
+        let ghjkdir_path = match path_from_env(&cwd, "GHJK_DIR")? {
             Some(val) => Some(val),
             None => crate::utils::find_entry_recursive(&cwd, ".ghjk")
                 .await
                 .wrap_err("error trying to locate a .ghjk dir")?,
         };
 
-        let ghjkfile_path = match path_from_env(&cwd, "GHJKFILE").await? {
+        let ghjkfile_path = match path_from_env(&cwd, "GHJKFILE")? {
             Some(val) => Some(val),
             None => {
                 // NOTE: look for typescript ghjkfile
@@ -102,7 +102,7 @@ impl Config {
             },
         };
 
-        let global_config_path = match path_from_env(&cwd, "GHJK_CONFIG_DIR").await? {
+        let global_config_path = match path_from_env(&cwd, "GHJK_CONFIG_DIR")? {
             Some(val) => val,
             None => xdg_dirs.config_dir().join("config"),
         };
@@ -262,12 +262,12 @@ hash.json",
 
 fn resolve_config_path(path: impl AsRef<Path>, config_path: &Path) -> Res<PathBuf> {
     let path = config_path.join(&path);
-    let path = std::fs::canonicalize(&path)
-        .wrap_err_with(|| format!("error canonicalizing path at {path:?}"))?;
+    let path = std::path::absolute(&path)
+        .wrap_err_with(|| format!("error absolutizing path at {path:?}"))?;
     Ok(path)
 }
 
-async fn path_from_env(cwd: &Path, env_name: &str) -> Res<Option<PathBuf>> {
+fn path_from_env(cwd: &Path, env_name: &str) -> Res<Option<PathBuf>> {
     let path = match std::env::var(env_name) {
         Ok(path) => Some(PathBuf::from(path)),
         Err(std::env::VarError::NotUnicode(os_str)) => Some(PathBuf::from(os_str)),
@@ -276,9 +276,10 @@ async fn path_from_env(cwd: &Path, env_name: &str) -> Res<Option<PathBuf>> {
 
     if let Some(path) = path {
         let path = cwd.join(&path);
-        Ok(Some(tokio::fs::canonicalize(&path).await.wrap_err_with(
-            || format!("error canonicalizing path {path:?} from env ${env_name}"),
-        )?))
+
+        Ok(Some(std::path::absolute(&path).wrap_err_with(|| {
+            format!("error absolutizing path {path:?} from env ${env_name}")
+        })?))
     } else {
         Ok(None)
     }

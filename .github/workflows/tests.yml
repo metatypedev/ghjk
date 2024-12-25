@@ -1,3 +1,5 @@
+name: test suite
+run-name: test suite for ${{ github.event.pull_request.title || github.ref }}
 on:
   push:
     branches:
@@ -7,6 +9,10 @@ on:
       - opened
       - synchronize
       - ready_for_review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   DENO_VERSION: "2.1.2"
@@ -67,13 +73,15 @@ jobs:
           path: ${{ env.DENO_DIR }}
           key: deno-${{ hashFiles('**/deno.lock') }}
       - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+        # need coreutils on max for the `timeout` command
+        # need cmake to build the rust deps
         run: |
-          # we need coreutils on max for the `timeout` command
           sudo apt update
-          sudo apt install -y --no-install-recommends fish zsh
+          sudo apt install -y --no-install-recommends fish zsh cmake
       - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
-        # we need coreutils on max for the `timeout` command
-        run: brew install fish zsh coreutils
+        # need cmake to build the rust deps
+        # need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils cmake
       - run: deno task test
 
   test-action:
