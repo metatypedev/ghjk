@@ -9,6 +9,7 @@ on:
       - ready_for_review
 
 env:
+  DENO_VERSION: "2.1.2"
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
@@ -27,6 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
       # run ghjk once to avoid trigger file changes when
       # pre commit runs ghjk. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
@@ -54,6 +58,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
       - name: Cache deno dir
         uses: actions/cache@v4
         with:
