@@ -86,16 +86,18 @@ Args: {args:?}
         let registry = tracing_subscriber::registry();
 
         #[cfg(feature = "console-subscriber")]
+        // FIXME: this isn't being picked up by tokio-console
         let registry = registry.with(console_subscriber::spawn());
 
-        registry
+        let registry = registry
             // filter on values from RUST_LOG
             .with(filter)
             // subscriber that emits to stderr
             .with(fmt)
             // instrument errors with SpanTraces, used by color-eyre
-            .with(tracing_error::ErrorLayer::default())
-            .init();
+            .with(tracing_error::ErrorLayer::default());
+
+        registry.init();
         // console_subscriber::init();
     });
 }

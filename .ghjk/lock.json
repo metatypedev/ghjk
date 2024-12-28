@@ -380,7 +380,7 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqbs6giotedkicnvrztzwovfr4siq2phoa63wngljmzna6aa4kyciy"
+              "envKey": "bciqocjamyeiuh6llwcdqg4q4ceantuzpbm5bmnlz7pkqz4r2ca7w2eq"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
@@ -407,13 +407,13 @@
                 }
               ]
             },
-            "bciqonpyvifzte5gf6tl7gtk3ep5q3vst2gqncuznf3kav4mzbuvnpai": {
+            "bciqfnku2tswsz4gapwhys5ox5uiyzcb5r7bmuwzljjeziljcu7efroi": {
               "desc": "the default default environment.",
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -421,12 +421,12 @@
                 }
               ]
             },
-            "bciqbs6giotedkicnvrztzwovfr4siq2phoa63wngljmzna6aa4kyciy": {
+            "bciqocjamyeiuh6llwcdqg4q4ceantuzpbm5bmnlz7pkqz4r2ca7w2eq": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -434,12 +434,12 @@
                 }
               ]
             },
-            "bciqm4lt7lvjdt3qzudw24qe4brezcej3ilxxhbmgfo2gdbfmh4j3a7i": {
+            "bciqex5g2cetqvfipwhu6fb3mmyke3y6jvrscjrykf2zl7wfwupiqhca": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -447,17 +447,17 @@
                 }
               ]
             },
-            "bciqkyp5qbfd3frv2e5hou4mgrlcodb5eaidc43el63bonty4i3thlya": {
+            "bciqnerbswitlqt27ado74puxt3faxea6jaxe4wvytnzwjpupig25kky": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
-                  "val": "/var/home/asdf/repos/ecma/ghjk/.dev/rusty_v8"
+                  "val": "/home/yohe/ghjk/.dev/rusty_v8"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -468,9 +468,9 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqonpyvifzte5gf6tl7gtk3ep5q3vst2gqncuznf3kav4mzbuvnpai",
-            "_rust": "bciqm4lt7lvjdt3qzudw24qe4brezcej3ilxxhbmgfo2gdbfmh4j3a7i",
-            "dev": "bciqkyp5qbfd3frv2e5hou4mgrlcodb5eaidc43el63bonty4i3thlya"
+            "main": "bciqfnku2tswsz4gapwhys5ox5uiyzcb5r7bmuwzljjeziljcu7efroi",
+            "_rust": "bciqex5g2cetqvfipwhu6fb3mmyke3y6jvrscjrykf2zl7wfwupiqhca",
+            "dev": "bciqnerbswitlqt27ado74puxt3faxea6jaxe4wvytnzwjpupig25kky"
           }
         }
       }

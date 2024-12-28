@@ -26,8 +26,31 @@ config({
 });
 
 env("main").vars({
-  RUST_LOG:
-    "info,deno=info,denort=trace,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info",
+  RUST_LOG: [
+    "info",
+    Object.entries({
+      "TRACE": [
+        // "denort",
+        // "deno",
+      ],
+      "DEBUG": [
+        // "runtime",
+        // "tokio",
+      ],
+      "INFO": [
+        "deno::npm",
+        "deno::file_fetcher",
+        "swc_ecma_transforms_base",
+        "swc_common",
+        "h2",
+        "rustls",
+        "mio",
+        "hyper_util",
+      ],
+    }).flatMap(([level, modules]) =>
+      modules.map((module) => `${module}=${level.toLowerCase()}`)
+    ),
+  ].join(),
 });
 
 env("_rust")

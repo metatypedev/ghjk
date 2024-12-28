@@ -130,7 +130,24 @@ async fn file_digests(
     hcx: &HostCtx,
     read_files: Vec<&Path>,
 ) -> Res<IndexMap<PathBuf, Option<String>>> {
-    let out = read_files
+    futures::future::join_all(
+        read_files
+            .into_iter()
+            .map(|path| {
+                async move {
+                    let path = tokio::fs::canonicalize(path).await?;
+                    let hash = file_digest_hash(hcx, &path).await?;
+                    let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
+                    Ok((relative_path, hash))
+                }
+                .boxed()
+            })
+            .collect::<Vec<_>>(),
+    )
+    .await
+    .into_iter()
+    .collect()
+    /* let out = read_files
         .into_co_stream()
         .map(|path| async move {
             let path = tokio::fs::canonicalize(path).await?;
@@ -140,7 +157,7 @@ async fn file_digests(
         })
         .collect::<Res<Vec<_>>>()
         .await?;
-    Ok(out.into_iter().collect())
+    Ok(out.into_iter().collect()) */
 }
 
 pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {

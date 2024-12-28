@@ -393,8 +393,12 @@ impl ModuleWorkerContext {
                 .await?;
             } */
 
-            let event_loop_future = self.worker.run_event_loop(false).boxed_local();
+            let event_loop_future = self
+                .worker
+                .run_event_loop(self.maybe_coverage_collector.is_none())
+                .boxed_local();
 
+            trace!("running event loop");
             tokio::select! {
               _ = global_term_signal.wait_for(|sig| *sig) => {
                   trace!("global term signal lit, shutting down event loop");
@@ -408,9 +412,6 @@ impl ModuleWorkerContext {
                  event_loop_result?
               }
             };
-            self.worker
-                .run_event_loop(self.maybe_coverage_collector.is_none())
-                .await?;
 
             let web_continue = self.worker.dispatch_beforeunload_event()?;
             if !web_continue {

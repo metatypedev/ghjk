@@ -11,6 +11,15 @@ use crate::{host, systems};
 const DENO_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv"];
 
 pub async fn cli() -> Res<std::process::ExitCode> {
+    /* tokio::spawn({
+        async {
+            loop {
+                println!("{:?}: thread is not blocked", std::thread::current().id());
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+        }
+    }); */
+
     let cwd = std::env::current_dir()?;
 
     let config = Config::source().await?;
