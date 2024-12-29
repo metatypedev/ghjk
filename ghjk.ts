@@ -140,7 +140,7 @@ task(
 task(
   "lock-sed",
   async ($) => {
-    const GHJK_VERSION = "0.3.0";
+    const GHJK_VERSION = "0.3.0-rc.1";
     await sedLock(
       $.path(import.meta.dirname!),
       {

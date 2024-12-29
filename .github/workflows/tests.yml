@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
 
   test-pre-commit:
-    timeout-minutes: 15
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

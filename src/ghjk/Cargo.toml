@@ -1,6 +1,6 @@
 [package]
 name = "ghjk"
-description = "Programmable runtime manager."
+description = "Program your development environments."
 version.workspace = true
 edition.workspace = true
 

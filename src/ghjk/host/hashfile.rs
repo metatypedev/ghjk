@@ -161,9 +161,13 @@ async fn file_digests(
 }
 
 pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
+    let path = match tokio::fs::canonicalize(path).await {
+        Ok(val) => val,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(None);
+        }
+        Err(err) => return Err(err).wrap_err("error resolving realpath"),
+    };
     match tokio::fs::metadata(&path).await {
         Ok(stat) => {
             let content_hash = if stat.file_type().is_file() || stat.file_type().is_symlink() {
@@ -194,9 +198,8 @@ async fn file_content_digest_hash(
     hcx: &HostCtx,
     path: &Path,
 ) -> Res<SharedFileContentDigestFuture> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
+    let path = path.to_owned();
+
     use dashmap::mapref::entry::*;
     match hcx.file_hash_memo.entry(path.clone()) {
         Entry::Occupied(occupied_entry) => Ok(occupied_entry.get().clone()),

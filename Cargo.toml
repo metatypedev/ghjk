@@ -4,7 +4,7 @@ exclude = ["src/deno_systems"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.0-rc.1"
 edition = "2021"
 
 [workspace.dependencies]
