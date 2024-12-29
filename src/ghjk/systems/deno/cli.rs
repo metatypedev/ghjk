@@ -18,6 +18,8 @@ pub struct CliCommandDesc {
     pub flags: Option<IndexMap<String, CliFlagDesc>>,
     pub sub_commands: Option<Vec<CliCommandDesc>>,
 
+    pub disable_help_subcommand: Option<bool>,
+
     pub action_cb_key: Option<String>,
 }
 
@@ -44,6 +46,9 @@ impl CliCommandDesc {
         }
         if let Some(val) = self.before_long_help {
             cmd = cmd.before_long_help(val)
+        }
+        if let Some(val) = self.disable_help_subcommand {
+            cmd = cmd.disable_help_subcommand(val)
         }
         let flag_ids = if let Some(val) = &self.flags {
             let mut ids = ahash::HashSet::default();

@@ -112,9 +112,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     };
 
     for cmd in sys_cmds {
-        // apply styles again here due to propagation
-        // breaking for these dynamic subcommands for some reason
-        root_cmd = root_cmd.subcommand(cmd.styles(CLAP_STYLE));
+        root_cmd = root_cmd.subcommand(cmd);
     }
 
     debug!("checking argv matches");
@@ -314,7 +312,9 @@ async fn commands_from_systems(
     systems: &host::GhjkfileSystems,
 ) -> Res<(Vec<clap::Command>, SysCmdActions)> {
     fn inner(cmd: SystemCliCommand) -> (SysCmdAction, clap::Command) {
-        let mut clap_cmd = cmd.clap;
+        // apply styles here due to propagation
+        // breaking for these dynamic subcommands for some reason
+        let mut clap_cmd = cmd.clap.styles(CLAP_STYLE);
         let mut sub_commands = IndexMap::new();
         for (id, cmd) in cmd.sub_commands {
             let (sub_sys_cmd, sub_cmd) = inner(cmd);

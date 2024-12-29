@@ -57,6 +57,7 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
       visible_aliases: ["x"],
       about: "Tasks module, execute your task programs.",
       before_long_help: "The named tasks in your ghjkfile will be listed here.",
+      disable_help_subcommand: true,
       sub_commands: [
         ...Object.keys(tcx.config.tasks)
           .sort()
@@ -72,6 +73,7 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
                     value_name: "TASK ARGS",
                     trailing_var_arg: true,
                     allow_hyphen_values: true,
+                    action: "Append",
                   },
                 },
                 action: async ({ args: { raw } }) => {

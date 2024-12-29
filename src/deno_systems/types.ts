@@ -67,6 +67,7 @@ const cliCommandBase = zod.object({
   visible_aliases: zod.string().array().optional(),
 
   hide: zod.boolean().optional(),
+  disable_help_subcommand: zod.boolean().optional(),
 
   about: zod.string().optional(),
   before_help: zod.string().optional(),
