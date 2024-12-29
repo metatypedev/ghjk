@@ -142,7 +142,7 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
             updateInstall: {
               short: "u",
               long: "update-install",
-              value_name: "INSTALL_ID",
+              value_name: "INSTALL ID",
             },
             updateAll: {
               short: "a",
@@ -157,7 +157,7 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
               gcx,
               pcx,
               updateInstall as string | undefined,
-              updateAll as string | undefined,
+              updateAll as boolean | undefined,
             );
           },
         },
@@ -203,7 +203,7 @@ async function outdatedCommand(
   gcx: GhjkCtx,
   pcx: PortsCtx,
   updateInstallFlag?: string,
-  updateAllFlag?: string,
+  updateAllFlag?: boolean,
 ) {
   const envsCtx = getEnvsCtx(gcx);
   const envName = envsCtx.activeEnv;

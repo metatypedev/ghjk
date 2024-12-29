@@ -151,7 +151,6 @@ Run the tests in the repository through the deno task:
 
 ```bash
 $ deno task test
+# this supports filtering
+$ deno task test --filter envHooks
 ```
-
-Most tests are isolated from each other using containers. 
-Set `$GHJK_TEST_E2E_TYPE` to `local` to use the local test runner.

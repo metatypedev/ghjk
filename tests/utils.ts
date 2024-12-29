@@ -74,10 +74,10 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     shellsToHook: [],
   });
 
-  await $`ghjk print config`
+  /* await $`ghjk print config`
     .cwd(tmpDir.toString())
     .clearEnv()
-    .env(env);
+    .env(env); */
   await $`ghjk envs cook`
     .cwd(tmpDir.toString())
     .clearEnv()

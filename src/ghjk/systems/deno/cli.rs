@@ -23,7 +23,7 @@ pub struct CliCommandDesc {
 
 impl CliCommandDesc {
     #[tracing::instrument(skip(scx))]
-    pub fn into_clap(self, scx: super::DenoSystemsContext) -> crate::systems::SystemCliCommand {
+    pub fn convert(self, scx: super::DenoSystemsContext) -> crate::systems::SystemCliCommand {
         let name = self.name;
         let mut cmd = clap::Command::new(name.clone()).name(name.clone());
 
@@ -45,29 +45,32 @@ impl CliCommandDesc {
         if let Some(val) = self.before_long_help {
             cmd = cmd.before_long_help(val)
         }
-
-        if let Some(val) = self.args {
-            for (id, desc) in val {
-                let arg = desc.into_clap(id);
-                cmd = cmd.arg(arg);
-            }
-        }
-        let flag_ids = if let Some(val) = self.flags {
+        let flag_ids = if let Some(val) = &self.flags {
             let mut ids = ahash::HashSet::default();
             for (id, desc) in val {
                 ids.insert(id.clone());
-                let arg = desc.into_clap(id);
+                let arg = desc.convert(id);
                 cmd = cmd.arg(arg);
             }
             ids
         } else {
             default()
         };
+
+        if let Some(val) = &self.args {
+            for (id, desc) in val {
+                if flag_ids.contains(id) {
+                    panic!("flag and arg id clash at {id}");
+                }
+                let arg = desc.convert(id);
+                cmd = cmd.arg(arg);
+            }
+        }
         let sub_commands = if let Some(val) = self.sub_commands {
             let mut subcommands = IndexMap::new();
             for desc in val {
                 let id = desc.name.clone();
-                let scmd = desc.into_clap(scx.clone());
+                let scmd = desc.convert(scx.clone());
                 subcommands.insert(id.into(), scmd);
             }
             subcommands
@@ -76,13 +79,17 @@ impl CliCommandDesc {
         };
 
         let action: Option<CliCommandAction> = if let Some(val) = self.action_cb_key {
-            let flag_ids = Arc::new(flag_ids);
             let cb_key = CHeapStr::from(val);
+            let flags = self.flags.unwrap_or_default();
+            let flags = Arc::new(flags);
+            let args = self.args.unwrap_or_default();
+            let args = Arc::new(args);
             Some(Box::new(move |matches| {
                 let scx = scx.clone();
-                let flag_ids = flag_ids.clone();
                 let cb_key = cb_key.clone();
-                deno_cb_action(matches, scx.clone(), cb_key, flag_ids).boxed()
+                let flags = flags.clone();
+                let args = args.clone();
+                deno_cb_action(matches, scx.clone(), cb_key, flags, args).boxed()
             }))
         } else {
             /* if sub_commands.is_empty() {
@@ -104,7 +111,8 @@ async fn deno_cb_action(
     mut matches: clap::ArgMatches,
     scx: super::DenoSystemsContext,
     cb_key: CHeapStr,
-    flag_ids: Arc<ahash::HashSet<String>>,
+    flag_descs: Arc<IndexMap<String, CliFlagDesc>>,
+    args_descs: Arc<IndexMap<String, CliArgDesc>>,
 ) -> Res<()> {
     let mut flags = IndexMap::new();
     let mut args = IndexMap::new();
@@ -115,22 +123,41 @@ async fn deno_cb_action(
         .collect::<Vec<_>>()
         .into_iter();
     for id in match_ids {
-        let Some(value) = matches
-            .try_remove_occurrences::<String>(id.as_str())
-            .wrap_err_with(|| format!("error extracting match occurunce for {id}"))?
+        let Some(desc) = flag_descs
+            .get(&id)
+            .map(|flag| &flag.arg)
+            .or_else(|| args_descs.get(&id))
         else {
+            unreachable!("unspecified arg id found: {id}");
+        };
+        let value = match desc.action.unwrap_or(ArgActionSerde::Set) {
+            ArgActionSerde::Set => matches
+                .try_remove_one::<String>(id.as_str())
+                .wrap_err_with(|| format!("error extracting match string for {id}"))?
+                .map(|val| serde_json::json!(val)),
+            ArgActionSerde::Append => matches
+                .try_remove_many::<String>(id.as_str())
+                .wrap_err_with(|| format!("error extracting match bool for {id}"))?
+                .map(|vals| vals.collect::<Vec<_>>())
+                .map(|val| serde_json::json!(val)),
+            ArgActionSerde::SetTrue | ArgActionSerde::SetFalse => matches
+                .try_remove_one::<bool>(id.as_str())
+                .wrap_err_with(|| format!("error extracting match bool for {id}"))?
+                .map(|val| serde_json::json!(val)),
+            ArgActionSerde::Count => matches
+                .try_remove_one::<i64>(id.as_str())
+                .wrap_err_with(|| format!("error extracting match count for {id}"))?
+                .map(|val| serde_json::json!(val)),
+            ArgActionSerde::Help
+            | ArgActionSerde::HelpShort
+            | ArgActionSerde::HelpLong
+            | ArgActionSerde::Version => unreachable!(),
+        };
+        let Some(value) = value else {
             continue;
         };
-        let value: Vec<Vec<String>> = value.map(Iterator::collect).collect();
-        let value = if value.len() == 1 && value[0].len() < 2 {
-            serde_json::json!(value.first())
-        } else if value.len() == 1 {
-            serde_json::json!(value[0])
-        } else {
-            serde_json::json!(value)
-        };
 
-        let bucket = if flag_ids.contains(id.as_str()) {
+        let bucket = if flag_descs.contains_key(id.as_str()) {
             &mut flags
         } else {
             &mut args
@@ -183,8 +210,8 @@ pub struct CliArgDesc {
 }
 
 impl CliArgDesc {
-    pub fn into_clap(self, id: String) -> clap::Arg {
-        let mut arg = clap::Arg::new(id);
+    pub fn convert(&self, id: &str) -> clap::Arg {
+        let mut arg = clap::Arg::new(id.to_owned());
 
         if let Some(val) = self.required {
             arg = arg.required(val)
@@ -209,7 +236,7 @@ impl CliArgDesc {
             arg = arg.action(clap::ArgAction::from(val))
         }
 
-        if let Some(val) = self.value_name {
+        if let Some(val) = &self.value_name {
             arg = arg.value_name(val)
         }
 
@@ -217,35 +244,35 @@ impl CliArgDesc {
             arg = arg.value_hint(clap::ValueHint::from(val))
         }
 
-        if let Some(val) = self.long {
+        if let Some(val) = &self.long {
             arg = arg.long(val)
         }
-        if let Some(val) = self.long_aliases {
+        if let Some(val) = &self.long_aliases {
             arg = arg.aliases(val)
         };
-        if let Some(val) = self.visible_long_aliases {
+        if let Some(val) = &self.visible_long_aliases {
             arg = arg.visible_aliases(val)
         };
 
         if let Some(val) = self.short {
             arg = arg.short(val)
         };
-        if let Some(val) = self.short_aliases {
-            arg = arg.short_aliases(val)
+        if let Some(val) = &self.short_aliases {
+            arg = arg.short_aliases(val.clone())
         };
-        if let Some(val) = self.visible_short_aliases {
-            arg = arg.short_aliases(val)
+        if let Some(val) = &self.visible_short_aliases {
+            arg = arg.short_aliases(val.clone())
         };
 
-        if let Some(val) = self.env {
+        if let Some(val) = &self.env {
             arg = arg.env(val)
         };
 
-        if let Some(val) = self.help {
+        if let Some(val) = &self.help {
             arg = arg.help(val)
         };
 
-        if let Some(val) = self.long_help {
+        if let Some(val) = &self.long_help {
             arg = arg.long_help(val)
         };
 
@@ -269,34 +296,34 @@ pub struct CliFlagDesc {
 }
 
 impl CliFlagDesc {
-    pub fn into_clap(self, id: String) -> clap::Arg {
-        let mut arg = self.arg.into_clap(id);
+    pub fn convert(&self, id: &str) -> clap::Arg {
+        let mut arg = self.arg.convert(id);
 
-        if let Some(val) = self.long {
+        if let Some(val) = &self.long {
             arg = arg.long(val)
         }
-        if let Some(val) = self.long_aliases {
+        if let Some(val) = &self.long_aliases {
             arg = arg.aliases(val)
         };
-        if let Some(val) = self.visible_long_aliases {
+        if let Some(val) = &self.visible_long_aliases {
             arg = arg.visible_aliases(val)
         };
 
         if let Some(val) = self.short {
             arg = arg.short(val)
         };
-        if let Some(val) = self.short_aliases {
-            arg = arg.short_aliases(val)
+        if let Some(val) = &self.short_aliases {
+            arg = arg.short_aliases(val.clone())
         };
-        if let Some(val) = self.visible_short_aliases {
-            arg = arg.short_aliases(val)
+        if let Some(val) = &self.visible_short_aliases {
+            arg = arg.short_aliases(val.clone())
         };
 
         arg
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub enum ValueHintSerde {
     Unknown,
     Other,
@@ -334,7 +361,7 @@ impl From<ValueHintSerde> for clap::ValueHint {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub enum ArgActionSerde {
     Set,
     Append,

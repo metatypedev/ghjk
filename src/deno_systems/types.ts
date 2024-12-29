@@ -80,7 +80,8 @@ const flagsAndArgs = zod.record(
   zod.union([
     zod.string(),
     zod.string().array(),
-    zod.string().array().array(),
+    zod.number(),
+    zod.boolean(),
   ]).optional(),
 );
 
@@ -113,13 +114,6 @@ type DenoSystemCtor = (gcx: GhjkCtx) => ModuleBase<unknown>;
 export type DenoSystemsRoot = {
   systems: Record<string, DenoSystemCtor>;
 };
-
-export type CommandAction = (
-  args: {
-    flags: Record<string, string | undefined>;
-    args: Record<string, string | undefined>;
-  },
-) => Promise<void> | void;
 
 export type CliCommand = zod.input<typeof cliCommandActionBase> & {
   sub_commands?: CliCommand[];

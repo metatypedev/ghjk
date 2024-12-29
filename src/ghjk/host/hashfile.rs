@@ -135,7 +135,7 @@ async fn file_digests(
             .into_iter()
             .map(|path| {
                 async move {
-                    let path = tokio::fs::canonicalize(path).await?;
+                    let path = std::path::absolute(path)?;
                     let hash = file_digest_hash(hcx, &path).await?;
                     let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
                     Ok((relative_path, hash))

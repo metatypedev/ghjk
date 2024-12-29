@@ -294,7 +294,7 @@ impl SystemInstance for DenoSystemInstance {
 
         let cmds = cmds
             .into_iter()
-            .map(|cmd| cmd.into_clap(self.scx.clone()))
+            .map(|cmd| cmd.convert(self.scx.clone()))
             .collect();
 
         Ok(cmds)

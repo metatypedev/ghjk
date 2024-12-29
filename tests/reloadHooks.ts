@@ -208,9 +208,8 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
 // -s: read from stdin
 // -l: login mode
 // -i: interactive mode
-const bashInteractiveEpoint = Deno.env.get("GHJK_TEST_E2E_TYPE") == "local"
-  ? `bash --rcfile $BASH_ENV -si` // we don't want to use the system rcfile
-  : `bash -sil`;
+// we don't want to use the system rcfile
+const bashInteractiveEpoint = `bash --rcfile $BASH_ENV -si`;
 
 const cases: CustomE2eTestCase[] = [
   {
