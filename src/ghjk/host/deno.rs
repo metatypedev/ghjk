@@ -18,6 +18,7 @@ pub async fn serialize_deno_ghjkfile(
 ) -> Res<super::SerializationResult> {
     let main_module = hcx
         .gcx
+        .config
         .repo_root
         .join("files/deno/bindings.ts")
         .wrap_err("repo url error")?;

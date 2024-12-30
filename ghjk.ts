@@ -8,32 +8,64 @@ import { sedLock } from "./std.ts";
 import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 
+// keep in sync with the deno repo's ./rust-toolchain.toml
+const RUST_VERSION = "1.82.0";
+
+const installs = {
+  rust: ports.rust({
+    version: RUST_VERSION,
+    profile: "default",
+    components: ["rust-src"],
+  }),
+};
+
 config({
   defaultEnv: "dev",
   enableRuntimes: true,
-  allowedBuildDeps: [ports.cpy_bs({ version: "3.12.7" })],
+  allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
 });
 
 env("main").vars({
-  RUST_LOG: "trace,deno=info,denort=trace,swc_ecma_transforms_base=info",
+  RUST_LOG: [
+    "info",
+    Object.entries({
+      "TRACE": [
+        // "denort",
+        // "deno",
+      ],
+      "DEBUG": [
+        // "runtime",
+        // "tokio",
+      ],
+      "INFO": [
+        "deno::npm",
+        "deno::file_fetcher",
+        "swc_ecma_transforms_base",
+        "swc_common",
+        "h2",
+        "rustls",
+        "mio",
+        "hyper_util",
+      ],
+    }).flatMap(([level, modules]) =>
+      modules.map((module) => `${module}=${level.toLowerCase()}`)
+    ),
+  ].join(),
 });
 
 env("_rust")
   .install(
+    // TODO: cmake
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
-    // keep in sync with deno's reqs
-    ports.rust({
-      version: "1.82.0",
-      profile: "default",
-      components: ["rust-src"],
-    }),
+    installs.rust,
   );
 
 const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
 env("dev")
   .inherit("_rust")
+  .install(ports.cargobi({ crateName: "tokio-console" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
     RUSTY_V8_MIRROR,
@@ -50,7 +82,7 @@ if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
 // these  are just for quick testing
 install();
 
-const DENO_VERSION = "2.0.6";
+const DENO_VERSION = "2.1.2";
 
 // these are used for developing ghjk
 install(
@@ -64,7 +96,7 @@ task(
   "cache-v8",
   {
     desc: "Install the V8 builds to a local cache.",
-    inherit: "_rust",
+    inherit: false,
     fn: async ($) => {
       const tmpDirPath = await Deno.makeTempDir({});
       const v8Versions = [
@@ -108,23 +140,19 @@ task(
 task(
   "lock-sed",
   async ($) => {
-    const GHJK_VERSION = "0.3.0";
+    const GHJK_VERSION = "0.3.0-rc.1";
     await sedLock(
       $.path(import.meta.dirname!),
       {
         lines: {
+          "./rust-toolchain.toml": [
+            [/^(channel = ").*(")/, RUST_VERSION],
+          ],
           "./Cargo.toml": [
             [/^(version = ").*(")/, GHJK_VERSION],
           ],
           "./.github/workflows/*.yml": [
             [/(DENO_VERSION: ").*(")/, DENO_VERSION],
-          ],
-          "./host/mod.ts": [
-            [/(GHJK_VERSION = ").*(")/, GHJK_VERSION],
-          ],
-          "./install.sh": [
-            [/(GHJK_VERSION="\$\{GHJK_VERSION:-v).*(\}")/, GHJK_VERSION],
-            [/(DENO_VERSION="\$\{DENO_VERSION:-v).*(\}")/, DENO_VERSION],
           ],
           "./docs/*.md": [
             [
@@ -140,6 +168,13 @@ task(
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
               GHJK_VERSION,
+            ],
+          ],
+          "**/Cargo.toml": [
+            [/^(version = ").+(")/, GHJK_VERSION],
+            [
+              /(deno\s*=\s*\{\s*git\s*=\s*"https:\/\/github\.com\/metatypedev\/deno"\s*,\s*branch\s*=\s*"v).+(-embeddable"\s*\})/,
+              DENO_VERSION,
             ],
           ],
         },
@@ -162,4 +197,5 @@ task(
       },
     );
   },
+  { inherits: false },
 );

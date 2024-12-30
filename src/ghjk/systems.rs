@@ -33,6 +33,8 @@ pub trait SystemInstance {
     async fn load_lock_entry(&self, raw: serde_json::Value) -> Res<Self::LockState>;
 
     async fn gen_lock_entry(&self) -> Res<serde_json::Value>;
+
+    async fn commands(&self) -> Res<Vec<SystemCliCommand>>;
 }
 
 type BoxAny = Box<dyn Any + Send + Sync>;
@@ -44,6 +46,7 @@ pub struct ErasedSystemInstance {
     load_config_fn: Box<
         dyn Fn(serde_json::Value, ConfigBlackboard, Option<BoxAny>) -> BoxFuture<'static, Res<()>>,
     >,
+    commands_fn: Box<dyn Fn() -> BoxFuture<'static, Res<Vec<SystemCliCommand>>>>,
 }
 
 impl ErasedSystemInstance {
@@ -71,15 +74,25 @@ impl ErasedSystemInstance {
                     async move { instance.gen_lock_entry().await }.boxed()
                 })
             },
-            load_config_fn: Box::new(move |config, bb, state| {
+            load_config_fn: {
                 let instance = instance.clone();
-                async move {
-                    let state: Option<Box<L>> =
-                        state.map(|st| st.downcast().expect_or_log("downcast error"));
-                    instance.load_config(config, bb, state.map(|bx| *bx)).await
-                }
-                .boxed()
-            }),
+                Box::new(move |config, bb, state| {
+                    let instance = instance.clone();
+                    async move {
+                        let state: Option<Box<L>> =
+                            state.map(|st| st.downcast().expect_or_log("downcast error"));
+                        instance.load_config(config, bb, state.map(|bx| *bx)).await
+                    }
+                    .boxed()
+                })
+            },
+            commands_fn: {
+                let instance = instance.clone();
+                Box::new(move || {
+                    let instance = instance.clone();
+                    async move { instance.commands().await }.boxed()
+                })
+            },
         }
     }
 
@@ -99,6 +112,10 @@ impl ErasedSystemInstance {
     pub async fn gen_lock_entry(&self) -> Res<serde_json::Value> {
         (self.gen_lock_entry_fn)().await
     }
+
+    pub async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
+        (self.commands_fn)().await
+    }
 }
 
 pub type SystemId = CHeapStr;
@@ -107,6 +124,26 @@ pub type SystemId = CHeapStr;
 pub struct SystemConfig {
     pub id: SystemId,
     pub config: serde_json::Value,
+}
+
+pub type CliCommandAction =
+    Box<dyn Fn(clap::ArgMatches) -> BoxFuture<'static, Res<()>> + Send + Sync>;
+
+pub struct SystemCliCommand {
+    pub name: CHeapStr,
+    pub clap: clap::Command,
+    pub sub_commands: IndexMap<CHeapStr, SystemCliCommand>,
+    pub action: Option<CliCommandAction>,
+}
+
+impl std::fmt::Debug for SystemCliCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SystemCliCommand")
+            .field("name", &self.name)
+            .field("sub_commands", &self.sub_commands)
+            .field("actions", &self.action.is_some())
+            .finish()
+    }
 }
 
 pub type ConfigBlackboard = Arc<serde_json::Map<String, serde_json::Value>>;

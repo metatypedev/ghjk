@@ -1,10 +1,13 @@
+use std::io::IsTerminal;
+
 use crate::interlude::*;
 
 use crate::systems::*;
 
 mod deno;
 mod hashfile;
-use hashfile::*;
+
+use hashfile::HashObj;
 
 #[derive(Debug)]
 pub struct Config {
@@ -26,7 +29,7 @@ pub struct HostCtx {
     pub config: Config,
     #[educe(Debug(ignore))]
     pub systems: HashMap<SystemId, SystemManifest>,
-    pub file_hash_memo: DHashMap<PathBuf, CHeapStr>,
+    pub file_hash_memo: DHashMap<PathBuf, hashfile::SharedFileContentDigestFuture>,
 }
 
 impl HostCtx {
@@ -45,12 +48,16 @@ impl HostCtx {
 }
 
 #[tracing::instrument(skip(hcx))]
-pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSystems>> {
+pub async fn systems_from_ghjkfile(
+    hcx: Arc<HostCtx>,
+    ghjkdir_path: &Path,
+) -> Res<Option<GhjkfileSystems>> {
     let (hashfile_path, lockfile_path) = (
-        hcx.gcx.ghjk_dir_path.join("hash.json"),
-        hcx.gcx.ghjk_dir_path.join("lock.json"),
+        ghjkdir_path.join("hash.json"),
+        ghjkdir_path.join("lock.json"),
     );
 
+    // read both files concurrently
     let (hash_obj, lock_obj) = (
         HashObj::from_file(&hashfile_path),
         LockObj::from_file(&lockfile_path),
@@ -58,9 +65,38 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         .join()
         .await;
 
+    // discard corrupt files if needed
     let (mut hash_obj, mut lock_obj) = (
-        hash_obj.inspect_err(|err| warn!("{err}")).ok(),
-        lock_obj.inspect_err(|err| warn!("{err}")).ok(),
+        match hash_obj {
+            Ok(val) => val,
+            Err(hashfile::HashfileError::Serialization(_)) => {
+                error!("hashfile is corrupt, discarding");
+                None
+            }
+            Err(hashfile::HashfileError::Other(err)) => return Err(err),
+        },
+        match lock_obj {
+            Ok(val) => val,
+            Err(LockfileError::Serialization(err)) => {
+                // interactive discard of lockfile if in an interactive shell
+                if std::io::stderr().is_terminal()
+                    && tokio::task::spawn_blocking(|| {
+                        dialoguer::Confirm::new()
+                            .with_prompt("lockfile is corrupt, discard?")
+                            .default(false)
+                            .interact()
+                    })
+                    .await
+                    .expect_or_log("tokio error")
+                    .wrap_err("prompt error")?
+                {
+                    None
+                } else {
+                    return Err(ferr!(err).wrap_err("corrupt lockfile"));
+                }
+            }
+            Err(LockfileError::Other(err)) => return Err(err),
+        },
     );
 
     if hcx.config.locked {
@@ -72,10 +108,14 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         }
     }
 
-    let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.ghjkfile_path {
+    let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.config.ghjkfile {
         (
             matches!(tokio::fs::try_exists(path).await, Ok(true)),
-            Some(file_content_digest_hash(hcx.as_ref(), path).await?),
+            Some(
+                hashfile::file_digest_hash(hcx.as_ref(), path)
+                    .await?
+                    .unwrap(),
+            ),
         )
     } else {
         (false, None)
@@ -89,10 +129,17 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         }
         if !hcx.config.locked
             && (hcx.config.re_serialize
+                // no need for expensive staleness checks if the ghjkfile
+                // no longer exists
                 || ghjkfile_hash.is_none()
                 || obj
                     .is_stale(hcx.as_ref(), ghjkfile_hash.as_ref().unwrap())
-                    .await?)
+                    .await
+                    .inspect(|is_stale| {
+                        if *is_stale {
+                            debug!("stale hashfile, discarding")
+                        }
+                    })?)
         {
             hash_obj = None;
         }
@@ -143,7 +190,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         // Assumes that a hashfile tags the specific serialized version of the ghjkfile
         // and it's context put in the lockfile
         (lock_obj.config.clone(), hash_obj)
-    } else if let Some(ghjkfile_path) = &hcx.gcx.ghjkfile_path {
+    } else if let Some(ghjkfile_path) = &hcx.gcx.config.ghjkfile {
         if !ghjkfile_exists {
             eyre::bail!("no file found at ghjkfile path {ghjkfile_path:?}");
         }
@@ -152,6 +199,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         }
         info!(?ghjkfile_path, "serializing ghjkfile");
         fresh_serialized = true;
+        // TODO: configurable timeout on serialization
         serialize_ghjkfile(hcx.as_ref(), ghjkfile_path)
             .await
             .wrap_err("error serializing ghjkfile")?
@@ -162,6 +210,7 @@ pub async fn systems_from_ghjkfile(hcx: Arc<HostCtx>) -> Res<Option<GhjkfileSyst
         return Ok(None);
     };
 
+    debug!("initializing ghjkfile systems");
     let sys_instances = {
         let mut sys_instances = IndexMap::new();
         for sys_conf in &config.modules {
@@ -202,7 +251,7 @@ pub struct GhjkfileSystems {
     hcx: Arc<HostCtx>,
     pub config: Arc<SerializedConfig>,
     hash_obj: HashObj,
-    sys_instances: IndexMap<CHeapStr, ErasedSystemInstance>,
+    pub sys_instances: IndexMap<CHeapStr, ErasedSystemInstance>,
     old_lock_obj: Option<LockObj>,
     lockfile_path: PathBuf,
     hashfile_path: PathBuf,
@@ -211,6 +260,12 @@ pub struct GhjkfileSystems {
 }
 
 impl GhjkfileSystems {
+    pub async fn write_lockfile_or_log(&mut self) {
+        if let Err(err) = self.write_lockfile().await {
+            error!("error writing lockfile: {err}");
+        }
+    }
+
     #[tracing::instrument(skip(self))]
     pub async fn write_lockfile(&mut self) -> Res<()> {
         let mut lock_obj = LockObj {
@@ -235,13 +290,13 @@ impl GhjkfileSystems {
             if self.hcx.config.locked {
                 warn!("locked flag set, changes to lockfile discarded");
             } else {
-                debug!(lockfile_path = ?self.lockfile_path, ?lock_obj, "writing lock.json");
-                /* tokio::fs::write(
+                trace!(lockfile_path = ?self.lockfile_path, /* ?lock_obj, */ "writing lock.json");
+                tokio::fs::write(
                     &self.lockfile_path,
                     serde_json::to_vec_pretty(&lock_obj).expect_or_log("error jsonifying lockfile"),
                 )
                 .await
-                .wrap_err("error writing to lockfile")?; */
+                .wrap_err("error writing to lockfile")?;
                 self.old_lock_obj.replace(lock_obj);
             }
         }
@@ -252,14 +307,14 @@ impl GhjkfileSystems {
             if self.hcx.config.locked {
                 unreachable!("code should have early exited");
             }
-            debug!(hashfile_path = ?self.hashfile_path, hash_obj= ?self.hash_obj, "writing hash.json");
-            /* tokio::fs::write(
+            trace!(hashfile_path = ?self.hashfile_path, /* hash_obj= ?self.hash_obj, */ "writing hash.json");
+            tokio::fs::write(
                 &self.hashfile_path,
                 serde_json::to_vec_pretty(&self.hash_obj)
                     .expect_or_log("error jsonifying hashfile"),
             )
             .await
-            .wrap_err("error writing to lockfile")?; */
+            .wrap_err("error writing to lockfile")?;
             self.hashfile_written = true;
         }
         Ok(())
@@ -273,32 +328,11 @@ async fn serialize_ghjkfile(hcx: &HostCtx, path: &Path) -> Res<(Arc<SerializedCo
     } else {
         eyre::bail!("unrecognized ghjkfile extension: {path:?}")
     };
-    Ok((
-        Arc::new(res.config),
-        HashObj {
-            version: "0".into(),
-            env_var_hashes: env_var_digests(
-                &hcx.config.env_vars,
-                res.accessed_env_keys.iter().map(|key| key.as_ref()),
-            ),
-            ghjkfile_hash: file_digest_hash(hcx, path)
-                .await?
-                .expect_or_log("ghjkfile is gone"),
-            listed_files: res
-                .listed_file_paths
-                .into_iter()
-                .map(|path| pathdiff::diff_paths(path, &hcx.config.cwd).unwrap_or_log())
-                .collect(),
-            read_file_hashes: file_digests(
-                hcx,
-                res.read_file_paths
-                    .iter()
-                    .map(|path| path.as_ref())
-                    .collect(),
-            )
-            .await?,
-        },
-    ))
+    debug!("ghjkfile serialized");
+    let hash_obj = HashObj::from_result(hcx, path, &res)
+        .await
+        .wrap_err("error building hash obj")?;
+    Ok((Arc::new(res.config), hash_obj))
 }
 
 #[derive(Debug)]
@@ -322,14 +356,24 @@ pub struct LockObj {
     pub config: Arc<SerializedConfig>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum LockfileError {
+    #[error("error parsing lockfile:{0}")]
+    Serialization(serde_json::Error),
+    #[error("{0}")]
+    Other(eyre::Report),
+}
+
 impl LockObj {
     /// The lock.json file stores the serialized config and some entries
     /// from systems. It's primary purpose is as a memo store to avoid
     /// re-serialization on each CLI invocation.
-    pub async fn from_file(path: &Path) -> Res<Self> {
-        let raw = tokio::fs::read(path)
-            .await
-            .wrap_err("error reading hash.json")?;
-        serde_json::from_slice(&raw).wrap_err("error parsing lock.json")
+    pub async fn from_file(path: &Path) -> Result<Option<Self>, LockfileError> {
+        let raw = match tokio::fs::read(path).await {
+            Ok(val) => val,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(LockfileError::Other(ferr!("error reading hashfile: {err}"))),
+        };
+        serde_json::from_slice(&raw).map_err(LockfileError::Serialization)
     }
 }

@@ -1,6 +1,6 @@
 # ghjk
 
-ghjk /gk/ is a programmable runtime manager and an attempt at a successor for [asdf](https://github.com/asdf-vm/asdf).
+ghjk /gk/ is a set of tools for managing developer environments and an attempt at a successor for [asdf](https://github.com/asdf-vm/asdf).
 
 > ghjk is part of the
 > [Metatype ecosystem](https://github.com/metatypedev/metatype). Consider
@@ -46,7 +46,7 @@ Before anything, make sure the following programs are available on the system.
 Install the ghjk cli using the installer scripts like so:
 
 ```bash
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh | bash
+curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh | bash
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:
@@ -61,9 +61,9 @@ Ghjk is primarily configured through constructs called "environments" or "envs" 
 They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
-import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0/mod.ts";
+import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
 // ports are small programs that install sowtware to your envs
-import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0/ports/mod.ts";
+import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/ports/mod.ts";
 
 const ghjk = file({});
 
@@ -151,7 +151,6 @@ Run the tests in the repository through the deno task:
 
 ```bash
 $ deno task test
+# this supports filtering
+$ deno task test --filter envHooks
 ```
-
-Most tests are isolated from each other using containers. 
-Set `$GHJK_TEST_E2E_TYPE` to `local` to use the local test runner.

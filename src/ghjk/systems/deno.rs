@@ -3,20 +3,22 @@
 
 use crate::interlude::*;
 
-use super::{SystemId, SystemInstance, SystemManifest};
+use super::{SystemCliCommand, SystemId, SystemInstance, SystemManifest};
+
+mod cli;
 
 #[derive(Clone)]
 pub struct DenoSystemsContext {
     callbacks: crate::ext::CallbacksHandle,
-    exit_code_channel: Arc<std::sync::Mutex<Option<tokio::task::JoinHandle<i32>>>>,
-    term_signal: Arc<std::sync::atomic::AtomicBool>,
+    exit_code_channel: Arc<std::sync::Mutex<Option<tokio::task::JoinHandle<Res<()>>>>>,
+    term_signal: tokio::sync::watch::Sender<bool>,
     #[allow(unused)]
     hostcalls: crate::ext::Hostcalls,
 }
 
 impl DenoSystemsContext {
     #[allow(unused)]
-    pub async fn terminate(&mut self) -> Res<i32> {
+    pub async fn terminate(mut self) -> Res<()> {
         let channel = {
             let mut opt = self.exit_code_channel.lock().expect_or_log("mutex error");
             opt.take()
@@ -24,9 +26,8 @@ impl DenoSystemsContext {
         let Some(channel) = channel else {
             eyre::bail!("already terminated")
         };
-        self.term_signal
-            .store(true, std::sync::atomic::Ordering::Relaxed);
-        Ok(channel.await.expect_or_log("channel error"))
+        self.term_signal.send(true).expect_or_log("channel error");
+        channel.await.expect_or_log("channel error")
     }
 }
 
@@ -34,8 +35,10 @@ impl DenoSystemsContext {
 pub async fn systems_from_deno(
     gcx: &GhjkCtx,
     source_uri: &url::Url,
-) -> Res<HashMap<SystemId, SystemManifest>> {
+    ghjkdir_path: &Path,
+) -> Res<(HashMap<SystemId, SystemManifest>, DenoSystemsContext)> {
     let main_module = gcx
+        .config
         .repo_root
         .join("src/deno_systems/bindings.ts")
         .wrap_err("repo url error")?;
@@ -45,32 +48,38 @@ pub async fn systems_from_deno(
     let bb = ext_conf.blackboard.clone();
     bb.insert("args".into(), {
         #[derive(Serialize)]
-        struct GhjkCtxBean<'a> {
-            ghjkfile_path: Option<&'a Path>,
-            ghjk_dir_path: &'a Path,
-            share_dir_path: &'a Path,
+        struct ConfigRef<'a> {
+            pub ghjkfile: Option<&'a Path>,
+            pub ghjkdir: &'a Path,
+            pub data_dir: &'a Path,
+            pub deno_dir: &'a Path,
+            pub deno_lockfile: Option<&'a Path>,
+            pub repo_root: &'a url::Url,
         }
 
         #[derive(Serialize)]
         struct BindingArgs<'a> {
             uri: url::Url,
-            gcx: GhjkCtxBean<'a>,
+            config: ConfigRef<'a>,
         }
-        let GhjkCtx {
-            deno,
+        let crate::config::Config {
             repo_root,
-            ghjkfile_path,
-            ghjk_dir_path,
-            share_dir_path,
-        } = gcx;
-        _ = (deno, repo_root);
+            ghjkdir: _,
+            data_dir,
+            deno_lockfile,
+            ghjkfile,
+            deno_dir,
+        } = &gcx.config;
 
         serde_json::json!(BindingArgs {
             uri: source_uri.clone(),
-            gcx: GhjkCtxBean {
-                ghjkfile_path: ghjkfile_path.as_ref().map(|path| path.as_path()),
-                ghjk_dir_path,
-                share_dir_path,
+            config: ConfigRef {
+                ghjkfile: ghjkfile.as_ref().map(|path| path.as_path()),
+                ghjkdir: ghjkdir_path,
+                data_dir,
+                deno_lockfile: deno_lockfile.as_ref().map(|path| path.as_path()),
+                deno_dir,
+                repo_root
             },
         })
     });
@@ -88,7 +97,7 @@ pub async fn systems_from_deno(
             .boxed()
         }),
     );
-    let cb_line = ext_conf.callbacks_handle();
+    let cb_line = ext_conf.callbacks_handle(&gcx.deno);
 
     let mut worker = gcx
         .deno
@@ -113,22 +122,42 @@ pub async fn systems_from_deno(
         )
         .await?;
     worker.execute().await?;
-    let (exit_code_channel, term_signal, _) = worker.drive_till_exit().await?;
+    let (mut exit_code_channel, term_signal, _) = worker.drive_till_exit().await?;
 
-    let join_exit_code_watcher = tokio::spawn(async {
-        let exit_code = exit_code_channel
-            .await
-            .expect_or_log("channel error")
-            .wrap_err("error on event loop for deno systems")
-            .unwrap_or_log();
-        if exit_code != 0 {
-            // TODO: exit signals
-            error!(%exit_code, "deno systems died with non-zero exit code");
-        } else {
-            info!(%exit_code, "deno systems exit")
+    let manifests = tokio::select! {
+        res = &mut exit_code_channel => {
+            let exit_code = res
+                .expect_or_log("channel error")
+                .wrap_err("deno systems error building manifests")?;
+            eyre::bail!("premature exit of deno systems before manifests were sent: exit code = {exit_code}");
+        },
+        manifests = manifests_rx.recv() => {
+            manifests.expect_or_log("channel error")
         }
-        exit_code
+    };
+
+    let manifests: Vec<ManifestDesc> =
+        serde_json::from_value(manifests).wrap_err("protocol error")?;
+
+    let dcx = gcx.deno.clone();
+    let join_exit_code_watcher = tokio::spawn(async {
+        let err = match exit_code_channel.await {
+            Ok(Ok(0)) => return Ok(()),
+            Ok(Ok(exit_code)) => {
+                ferr!("deno systems died with non-zero exit code: {exit_code}")
+            }
+            Ok(Err(err)) => err.wrap_err("error on event loop for deno systems"),
+            Err(_) => {
+                ferr!("deno systems unexpected shutdown")
+            }
+        };
+        error!("deno systems error: {err:?}");
+        dcx.terminate()
+            .await
+            .expect_or_log("error terminating deno worker");
+        Err(err)
     });
+
     let exit_code_channel = Arc::new(std::sync::Mutex::new(Some(join_exit_code_watcher)));
 
     let scx = DenoSystemsContext {
@@ -137,11 +166,7 @@ pub async fn systems_from_deno(
         term_signal,
         exit_code_channel,
     };
-    let scx = Arc::new(scx);
 
-    let manifests = manifests_rx.recv().await.expect_or_log("channel error");
-    let manifests: Vec<ManifestDesc> =
-        serde_json::from_value(manifests).wrap_err("protocol error")?;
     let manifests = manifests
         .into_iter()
         .map(|desc| {
@@ -155,7 +180,7 @@ pub async fn systems_from_deno(
         })
         .collect();
 
-    Ok(manifests)
+    Ok((manifests, scx))
 }
 
 #[derive(Debug, Deserialize)]
@@ -169,12 +194,13 @@ struct ManifestDesc {
 pub struct DenoSystemManifest {
     desc: ManifestDesc,
     #[educe(Debug(ignore))]
-    scx: Arc<DenoSystemsContext>,
+    scx: DenoSystemsContext,
 }
 
 impl DenoSystemManifest {
+    #[tracing::instrument]
     pub async fn ctor(&self) -> Res<DenoSystemInstance> {
-        debug!(id = %self.desc.id, "initializing deno system");
+        trace!("initializing deno system");
         let desc = self
             .scx
             .callbacks
@@ -183,7 +209,7 @@ impl DenoSystemManifest {
 
         let desc = serde_json::from_value(desc).wrap_err("protocol error")?;
 
-        debug!(id = %self.desc.id, "deno system initialized");
+        trace!("deno system initialized");
 
         Ok(DenoSystemInstance {
             desc,
@@ -198,11 +224,12 @@ struct InstanceDesc {
     load_lock_entry_cb_key: CHeapStr,
     gen_lock_entry_cb_key: CHeapStr,
     load_config_cb_key: CHeapStr,
+    cli_commands_cb_key: CHeapStr,
 }
 
 pub struct DenoSystemInstance {
     desc: InstanceDesc,
-    scx: Arc<DenoSystemsContext>,
+    scx: DenoSystemsContext,
 }
 
 #[async_trait::async_trait]
@@ -252,5 +279,24 @@ impl SystemInstance for DenoSystemInstance {
             )
             .await
             .wrap_err("callback error")
+    }
+
+    async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
+        let cmds = self
+            .scx
+            .callbacks
+            .exec(self.desc.cli_commands_cb_key.clone(), serde_json::json!({}))
+            .await
+            .wrap_err("callback error")?;
+
+        let cmds: Vec<cli::CliCommandDesc> =
+            serde_json::from_value(cmds).wrap_err("protocol error")?;
+
+        let cmds = cmds
+            .into_iter()
+            .map(|cmd| cmd.convert(self.scx.clone()))
+            .collect();
+
+        Ok(cmds)
     }
 }

@@ -47,6 +47,7 @@ const envVarTestEnvs: EnvDefArgs[] = [
 ];
 const envVarTestsPosix = `
 set -ex
+env
 # by default, we should be in main
 [ "$SONG" = "ditto" ] || exit 1010
 [ "$GHJK_ENV" = "main" ] || exit 1011
@@ -57,6 +58,7 @@ ghjk_deactivate
 [ "$GHJK_ENV" = "main" ] && exit 1022
 
 ghjk envs cook sss
+echo $?
 . .ghjk/envs/sss/activate.sh
 # by default, envs should be based on main
 # so they should inherit it's env vars

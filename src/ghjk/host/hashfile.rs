@@ -16,20 +16,63 @@ pub struct HashObj {
     pub listed_files: Vec<PathBuf>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum HashfileError {
+    #[error("error parsing hashfile: {0}")]
+    Serialization(serde_json::Error),
+    #[error("{0}")]
+    Other(eyre::Report),
+}
+
 impl HashObj {
+    #[tracing::instrument(skip(hcx, res))]
+    pub async fn from_result(
+        hcx: &super::HostCtx,
+        ghjkfile_path: &Path,
+        res: &super::SerializationResult,
+    ) -> Res<Self> {
+        Ok(HashObj {
+            version: "0".into(),
+            env_var_hashes: env_var_digests(
+                &hcx.config.env_vars,
+                res.accessed_env_keys.iter().map(|key| key.as_ref()),
+            ),
+            ghjkfile_hash: file_digest_hash(hcx, ghjkfile_path)
+                .await?
+                .expect_or_log("ghjkfile is gone"),
+            listed_files: res
+                .listed_file_paths
+                .iter()
+                .map(|path| pathdiff::diff_paths(path, &hcx.config.cwd).unwrap_or_log())
+                .collect(),
+            read_file_hashes: file_digests(
+                hcx,
+                res.read_file_paths
+                    .iter()
+                    .map(|path| path.as_ref())
+                    .collect(),
+            )
+            .await?,
+        })
+    }
+
     /// The hash.json file stores the digests of all external accesses
     /// of a ghjkfile during serialization. The primary purpose is to
     /// do "cache invalidation" on ghjkfiles, re-serializing them if
     /// any of the digests change.
-    pub async fn from_file(path: &Path) -> Res<HashObj> {
-        let raw = tokio::fs::read(path)
-            .await
-            .wrap_err("error reading hash.json")?;
-        serde_json::from_slice(&raw).wrap_err("error parsing hash.json")
+    pub async fn from_file(path: &Path) -> Result<Option<HashObj>, HashfileError> {
+        let raw = match tokio::fs::read(path).await {
+            Ok(val) => val,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(HashfileError::Other(ferr!("error reading hashfile: {err}"))),
+        };
+        serde_json::from_slice(&raw).map_err(HashfileError::Serialization)
     }
 
+    #[tracing::instrument(skip(hcx))]
     pub async fn is_stale(&self, hcx: &HostCtx, ghjkfile_hash: &str) -> Res<bool> {
         if self.ghjkfile_hash != ghjkfile_hash {
+            trace!("stale ghjkfile hash");
             return Ok(true);
         }
         {
@@ -38,12 +81,14 @@ impl HashObj {
                 self.env_var_hashes.keys().map(|key| &key[..]),
             );
             if self.env_var_hashes != new_digest {
+                trace!("stale env var digests");
                 return Ok(true);
             }
         }
         {
             for path in &self.listed_files {
                 if !matches!(tokio::fs::try_exists(path).await, Ok(true)) {
+                    trace!("stale listed files");
                     return Ok(true);
                 }
             }
@@ -59,6 +104,7 @@ impl HashObj {
                 )
                 .await?
             {
+                trace!("stale read files digest");
                 return Ok(true);
             }
         }
@@ -66,7 +112,7 @@ impl HashObj {
     }
 }
 
-pub fn env_var_digests<'a>(
+fn env_var_digests<'a>(
     all: &IndexMap<String, String>,
     accessed: impl Iterator<Item = &'a str>,
 ) -> IndexMap<String, Option<String>> {
@@ -80,11 +126,31 @@ pub fn env_var_digests<'a>(
         .collect()
 }
 
-pub async fn file_digests(
+async fn file_digests(
     hcx: &HostCtx,
     read_files: Vec<&Path>,
 ) -> Res<IndexMap<PathBuf, Option<String>>> {
-    let out = read_files
+    // FIXME: this will exhaust memory if the number of files is large
+    // ConcurrentStream supports limiting concurrency but has a bug
+    // tracked at https://github.com/yoshuawuyts/futures-concurrency/issues/203
+    futures::future::join_all(
+        read_files
+            .into_iter()
+            .map(|path| {
+                async move {
+                    let path = std::path::absolute(path)?;
+                    let hash = file_digest_hash(hcx, &path).await?;
+                    let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
+                    Ok((relative_path, hash))
+                }
+                .boxed()
+            })
+            .collect::<Vec<_>>(),
+    )
+    .await
+    .into_iter()
+    .collect()
+    /* let out = read_files
         .into_co_stream()
         .map(|path| async move {
             let path = tokio::fs::canonicalize(path).await?;
@@ -94,17 +160,26 @@ pub async fn file_digests(
         })
         .collect::<Res<Vec<_>>>()
         .await?;
-    Ok(out.into_iter().collect())
+    Ok(out.into_iter().collect()) */
 }
 
 pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
+    let path = match tokio::fs::canonicalize(path).await {
+        Ok(val) => val,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(None);
+        }
+        Err(err) => return Err(err).wrap_err("error resolving realpath"),
+    };
     match tokio::fs::metadata(&path).await {
         Ok(stat) => {
             let content_hash = if stat.file_type().is_file() || stat.file_type().is_symlink() {
-                Some(file_content_digest_hash(hcx, &path).await?)
+                Some(
+                    file_content_digest_hash(hcx, &path)
+                        .await?
+                        .await
+                        .map_err(|err| ferr!(err))?,
+                )
             } else {
                 None
             };
@@ -119,21 +194,36 @@ pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>>
     }
 }
 
-pub async fn file_content_digest_hash(hcx: &HostCtx, path: &Path) -> Res<CHeapStr> {
-    let path = tokio::fs::canonicalize(path)
-        .await
-        .wrap_err("error resolving realpath")?;
+pub type SharedFileContentDigestFuture =
+    futures::future::Shared<BoxFuture<'static, Result<CHeapStr, String>>>;
+
+async fn file_content_digest_hash(
+    hcx: &HostCtx,
+    path: &Path,
+) -> Res<SharedFileContentDigestFuture> {
+    let path = path.to_owned();
     use dashmap::mapref::entry::*;
     match hcx.file_hash_memo.entry(path.clone()) {
         Entry::Occupied(occupied_entry) => Ok(occupied_entry.get().clone()),
         Entry::Vacant(vacant_entry) => {
-            // FIXME: optimize by stream hashing, this reads whole file into memory
-            let file = tokio::fs::read(path)
-                .await
-                .wrap_err("error reading file for")?;
-            let hash: CHeapStr = crate::utils::encode_base32_multibase(file).into();
-            vacant_entry.insert(hash.clone());
-            Ok(hash)
+            let shared = vacant_entry
+                .insert(
+                    async {
+                        let file = tokio::fs::File::open(path)
+                            .await
+                            .map_err(|err| format!("error opening file: {err}"))?;
+                        let hash: CHeapStr = crate::utils::hash_reader(file)
+                            .await
+                            .map_err(|err| format!("error hashing file reader {err}"))?
+                            .into();
+                        Ok(hash)
+                    }
+                    .boxed()
+                    .shared(),
+                )
+                .value()
+                .clone();
+            Ok(shared)
         }
     }
 }

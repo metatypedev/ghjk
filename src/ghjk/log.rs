@@ -25,9 +25,9 @@ Platform: {platform}
 Version: {version}
 Args: {args:?}
 "#,
-            platform = crate::build::BUILD_TARGET,
+            platform = crate::shadow::BUILD_TARGET,
             // TODO: include commit sha
-            version = crate::build::PKG_VERSION,
+            version = crate::shadow::PKG_VERSION,
             args = std::env::args().collect::<Vec<_>>()
         ));
 
@@ -49,16 +49,13 @@ Args: {args:?}
             eyre_panic_hook(panic_info);
             // - Tokio does not exit the process when a task panics, so we define a custom
             //   panic hook to implement this behaviour.
-            // std::process::exit(1);
+            std::process::exit(1);
         }));
 
-        // FIXME: for some reason, the tests already have
-        // an eyre_hook
-        #[cfg(not(test))]
         _eyre_hook.install().unwrap();
 
         if std::env::var("RUST_LOG").is_err() {
-            std::env::set_var("RUST_LOG", "info,actix_server=warn");
+            std::env::set_var("RUST_LOG", "info");
         }
         #[cfg(not(debug_assertions))]
         if std::env::var("RUST_SPANTRACE").is_err() {
@@ -83,13 +80,21 @@ Args: {args:?}
 
         let filter = tracing_subscriber::EnvFilter::from_default_env();
 
-        tracing_subscriber::registry()
+        let registry = tracing_subscriber::registry();
+
+        #[cfg(feature = "console-subscriber")]
+        // FIXME: this isn't being picked up by tokio-console
+        let registry = registry.with(console_subscriber::spawn());
+
+        let registry = registry
             // filter on values from RUST_LOG
             .with(filter)
             // subscriber that emits to stderr
             .with(fmt)
             // instrument errors with SpanTraces, used by color-eyre
-            .with(tracing_error::ErrorLayer::default())
-            .init();
+            .with(tracing_error::ErrorLayer::default());
+
+        registry.init();
+        // console_subscriber::init();
     });
 }

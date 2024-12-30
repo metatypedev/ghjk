@@ -34,19 +34,22 @@ impl ExtConfig {
         Self::default()
     }
 
-    pub fn callbacks_handle(&mut self) -> callbacks::CallbacksHandle {
-        let (line, handle) = callbacks::CallbackLine::new();
+    pub fn callbacks_handle(
+        &mut self,
+        dworker: &denort::worker::DenoWorkerHandle,
+    ) -> callbacks::CallbacksHandle {
+        let (line, handle) = callbacks::CallbackLine::new(dworker);
         self.callbacks_rx = Arc::new(std::sync::Mutex::new(line));
 
         handle
     }
 
     fn inject(self, state: &mut deno_core::OpState) {
+        let callbacks = callbacks::worker(&self);
         let ctx = ExtContext {
             config: self,
-            callbacks: default(),
+            callbacks,
         };
-        callbacks::worker(ctx.clone());
         state.put(ctx);
     }
 }
@@ -74,7 +77,7 @@ fn customizer(ext: &mut deno_core::Extension) {
 
 #[derive(Clone)]
 struct ExtContext {
-    callbacks: callbacks::Callbacks,
+    callbacks: Option<callbacks::Callbacks>,
     config: ExtConfig,
 }
 

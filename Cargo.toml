@@ -4,15 +4,15 @@ exclude = ["src/deno_systems"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.0-rc.1"
 edition = "2021"
 
 [workspace.dependencies]
 denort = { path = "src/denort" }
-deno = { git = "https://github.com/metatypedev/deno", branch = "v2.0.6-embeddable" }
+deno = { git = "https://github.com/metatypedev/deno", branch = "v2.1.2-embeddable" }
 # needed to get deno_core::op2 working
-# must track version used by deno
-deno_core = "=0.318.0"
+# WARN: must track version used by deno
+deno_core = "=0.323.0"
 
 educe = "0.6"
 
@@ -28,8 +28,10 @@ tracing-unwrap = "1.0"
 
 once_cell = "1"
 
-# version must match on clap in `deno`
+# WARN: version must match on clap in `deno`
 clap = "=4.5"
+clap_complete = "=4.5.24"
+
 shadow-rs = "0.36.0"
 
 

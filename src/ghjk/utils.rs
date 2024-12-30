@@ -19,7 +19,7 @@ mod cheapstr {
     };
     // lifted from github.com/bevyengine/bevy 's bevy_core/Name struct
     // MIT/APACHE2 licence
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Clone, Serialize, Deserialize)]
     #[serde(crate = "serde", from = "String", into = "String")]
     pub struct CHeapStr {
         hash: u64,
@@ -128,6 +128,12 @@ mod cheapstr {
             self.string.fmt(f)
         }
     }
+
+    impl std::fmt::Debug for CHeapStr {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.string.fmt(f)
+        }
+    }
 }
 
 const SHA2_256: u64 = 0x12;
@@ -144,15 +150,47 @@ pub fn hash_obj<T: serde::Serialize>(obj: &T) -> String {
 }
 
 pub fn hash_str(string: &str) -> String {
+    hash_bytes(string.as_bytes())
+}
+
+pub fn hash_bytes(bytes: &[u8]) -> String {
     use sha2::Digest;
     let mut hash = sha2::Sha256::new();
-    hash.write(string.as_bytes())
-        .expect_or_log("error writing to hasher");
+    hash.write(bytes).expect_or_log("error writing to hasher");
     let hash = hash.finalize();
 
     let hash =
         multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
     encode_base32_multibase(hash.digest())
+}
+
+pub async fn hash_reader<T: tokio::io::AsyncRead>(reader: T) -> Res<String> {
+    use sha2::Digest;
+    use tokio::io::*;
+    let mut hash = sha2::Sha256::new();
+    let mut buf = vec![0u8; 65536];
+
+    let reader = tokio::io::BufReader::new(reader);
+
+    let mut reader = std::pin::pin!(reader);
+
+    loop {
+        // Read a chunk of data
+        let bytes_read = reader.read(&mut buf).await?;
+
+        // Break the loop if we reached EOF
+        if bytes_read == 0 {
+            break;
+        }
+        hash.write(&buf[..bytes_read])
+            .expect_or_log("error writing to hasher");
+    }
+    let hash = hash.finalize();
+
+    let hash =
+        multihash::Multihash::<32>::wrap(SHA2_256, &hash[..]).expect_or_log("error multihashing");
+    let hash = encode_base32_multibase(hash.digest());
+    Ok(hash)
 }
 
 pub fn encode_base32_multibase<T: AsRef<[u8]>>(source: T) -> String {
@@ -206,17 +244,17 @@ pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf
     loop {
         let location = cur.join(name);
         match tokio::fs::try_exists(&location).await {
-            Ok(_) => {
+            Ok(true) => {
                 return Ok(Some(location));
             }
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => {
+                return Err(err).wrap_err("error on file stat");
+            }
+            _ => {
                 let Some(next_cur) = cur.parent() else {
                     return Ok(None);
                 };
                 cur = next_cur;
-            }
-            Err(err) => {
-                return Err(err).wrap_err("error on file stat");
             }
         }
     }

@@ -1,5 +1,5 @@
-import { cliffy_cmd } from "../deps/cli.ts";
 import { Blackboard } from "../host/types.ts";
+import { CliCommand } from "../src/deno_systems/types.ts";
 import type { Json } from "../utils/mod.ts";
 import type { GhjkCtx, ModuleManifest } from "./types.ts";
 
@@ -18,5 +18,5 @@ export abstract class ModuleBase<LockEnt> {
     raw: Json,
   ): Promise<LockEnt | undefined> | LockEnt | undefined;
   abstract genLockEntry(): Promise<Json> | Json;
-  abstract commands(): Record<string, cliffy_cmd.Command<any>>;
+  abstract commands(): CliCommand[];
 }

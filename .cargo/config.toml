@@ -1,3 +1,10 @@
 [alias]
 xtask = "run --package xtask --"
 x = "run --package xtask --"
+
+[build]
+rustflags = [
+  # for use with tokio-rs/console
+  "--cfg", 
+  "tokio_unstable"
+]

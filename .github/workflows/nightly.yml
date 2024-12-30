@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  DENO_VERSION: "2.0.6"
+  DENO_VERSION: "2.1.2"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir

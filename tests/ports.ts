@@ -150,14 +150,7 @@ const cases: CustomE2eTestCase[] = [
       ports.meta_cli_ghrel({ full: true }),
       ports.wasmedge(),
     ],
-    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") != "local"
-      // meta cli runs into segmentation error in the alpine
-      // image
-      // https://github.com/metatypedev/metatype/issues/584
-      // just check that the shell's able to find the
-      // executrable
-      ? `which meta && wasmedge --version`
-      : `meta --version && wasmedge --version`,
+    ePoint: `which meta && wasmedge --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
   // 80 meg
