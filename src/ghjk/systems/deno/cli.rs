@@ -1,3 +1,6 @@
+//! Types and conversions for runtime specified CLI commands
+//! from deno systems
+
 use crate::{interlude::*, systems::CliCommandAction};
 
 #[derive(Debug, Deserialize)]

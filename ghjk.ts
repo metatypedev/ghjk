@@ -8,7 +8,7 @@ import { sedLock } from "./std.ts";
 import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 
-// keep in sync with deno's reqs
+// keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
 
 const installs = {

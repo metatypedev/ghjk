@@ -53,7 +53,7 @@ export type SyncCtx = Awaited<ReturnType<typeof syncCtxFromGhjk>>;
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
 ) {
-  const portsPath = await $.path(gcx.ghjkShareDir).resolve("ports")
+  const portsPath = await $.path(gcx.ghjkDataDir).resolve("ports")
     .ensureDir();
   const [installsPath, downloadsPath, tmpPath] = (
     await Promise.all([

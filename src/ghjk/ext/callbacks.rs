@@ -118,8 +118,8 @@ pub fn worker(config: &ExtConfig) -> Option<Callbacks> {
         mut rx,
         term_signal,
     } = {
-        let mut mutex = config.callbacks_rx.lock().expect_or_log("mutex err");
-        mutex.take()?
+        let mut line = config.callbacks_rx.lock().expect_or_log("mutex err");
+        line.take()?
     };
 
     let callbacks = Callbacks::default();

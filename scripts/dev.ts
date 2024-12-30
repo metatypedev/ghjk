@@ -31,7 +31,7 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
 const env: Record<string, string> = {
   BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
   ZDOTDIR: ghjkDataDir.toString(),
-  GHJK_SHARE_DIR: ghjkDataDir.toString(),
+  GHJK_DATA_DIR: ghjkDataDir.toString(),
   PATH: `${ghjkDataDir.toString()}:${Deno.env.get("PATH")}`,
   GHJK_CONFIG_DIR: devDir.toString(),
   // HOME: devDir.toString(),
@@ -49,12 +49,12 @@ await install({
   shellsToHook: [],
 });
 
-// await $`${ghjkShareDir.join("ghjk").toString()} print config`
+// await $`${ghjkDataDir.join("ghjk").toString()} print config`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);
 //
-// await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
+// await $`${ghjkDataDir.join("ghjk").toString()} envs cook`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);

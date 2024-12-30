@@ -306,31 +306,6 @@ export async function findEntryRecursive(path: string | Path, name: string) {
   }
 }
 
-export function homeDir() {
-  switch (Deno.build.os) {
-    case "linux":
-    case "darwin":
-      return Deno.env.get("HOME") ?? null;
-    case "windows":
-      return Deno.env.get("USERPROFILE") ?? null;
-    default:
-      return null;
-  }
-}
-
-export function dirs() {
-  const home = homeDir();
-  if (!home) {
-    throw new Error("cannot find home dir");
-  }
-  return {
-    homeDir: home,
-    // FIXME: use proper xdg dirs
-    shareDir: $.path(home).resolve(".local", "share"),
-    configDir: $.path(home).resolve(".config", "ghjk"),
-  };
-}
-
 export const AVAIL_CONCURRENCY = Number.parseInt(
   Deno.env.get("DENO_JOBS") ?? "1",
 );

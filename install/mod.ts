@@ -5,8 +5,9 @@
 // relying on --frozen-lockfile
 
 import getLogger from "../utils/logger.ts";
-import { $, dirs, importRaw } from "../utils/mod.ts";
+import { $, importRaw } from "../utils/mod.ts";
 import type { Path } from "../utils/mod.ts";
+import { xdg } from "../deps/install.ts";
 
 const logger = getLogger(import.meta);
 
@@ -97,7 +98,6 @@ async function filterAddContent(
 interface InstallArgs {
   homeDir: string;
   ghjkDataDir: string;
-  ghjkConfigDir: string;
   shellsToHook?: string[];
   /** The mark used when adding the hook to the user's shell rcs.
    * Override to allow multiple hooks in your rc.
@@ -105,12 +105,29 @@ interface InstallArgs {
   shellHookMarker: string;
 }
 
+function getHomeDir() {
+  switch (Deno.build.os) {
+    case "linux":
+    case "darwin":
+      return Deno.env.get("HOME") ?? null;
+    case "windows":
+      return Deno.env.get("USERPROFILE") ?? null;
+    default:
+      return null;
+  }
+}
+const homeDir = getHomeDir();
+if (!homeDir) {
+  throw new Error("cannot find home dir");
+}
+
 export const defaultInstallArgs: InstallArgs = {
-  ghjkDataDir: $.path(dirs().shareDir).resolve("ghjk").toString(),
-  homeDir: dirs().homeDir,
+  // remove first the xdg.data suffix added in windows by lib
+  ghjkDataDir: $.path(xdg.data().replace("xdg.data", "")).resolve("ghjk")
+    .toString(),
+  homeDir,
   shellsToHook: [],
   shellHookMarker: "ghjk-hook-default",
-  ghjkConfigDir: $.path(dirs().configDir).toString(),
 };
 
 const shellConfig: Record<string, string> = {
@@ -134,7 +151,7 @@ export async function install(
   await unpackVFS(
     await getHooksVfs(),
     ghjkDataDir,
-    [[/__GHJK_SHARE_DIR__/g, ghjkDataDir.toString()]],
+    [[/__GHJK_DATA_DIR__/g, ghjkDataDir.toString()]],
   );
   for (const shell of args.shellsToHook ?? Object.keys(shellConfig)) {
     const { homeDir } = args;

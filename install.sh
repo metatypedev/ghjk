@@ -81,7 +81,7 @@ printf "Detected version: %s\n" "$VERSION"
 ASSET="$NAME-v$VERSION-$PLATFORM"
 DOWNLOAD_URL="$RELEASE_URL/download/v$VERSION/$ASSET.$EXT"
 
-if curl --fail --silent --location --output "$TMP_DIR/$ASSET.$EXT" "$DOWNLOAD_URL"; then
+if curl --fail --silent --location --tlsv1.2 --proto '=https' --output "$TMP_DIR/$ASSET.$EXT" "$DOWNLOAD_URL"; then
   printf "Downloaded successfully: %s\n" "$ASSET.$EXT"
 else
   cat >&2 <<EOF

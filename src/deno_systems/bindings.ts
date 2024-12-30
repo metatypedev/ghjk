@@ -40,7 +40,7 @@ await prepareSystems(args);
 async function prepareSystems(args: zod.infer<typeof prepareArgs>) {
   const gcx = {
     ghjkDir: $.path(args.config.ghjkdir),
-    ghjkShareDir: $.path(args.config.data_dir),
+    ghjkDataDir: $.path(args.config.data_dir),
     ghjkfilePath: args.config.ghjkfile
       ? $.path(args.config.ghjkfile)
       : undefined,

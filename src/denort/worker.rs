@@ -10,10 +10,11 @@ use deno::{
 // thread tag used for basic sanity checks
 pub const WORKER_THREAD_NAME: &str = "denort-worker-thread";
 
-/// This starts a new thread and uses it to run  all the tasks
-/// that'll need to touch deno internals. Deno is single threaded.
+/// This starts a new task to run all the work
+/// that'll need to touch deno internals.
+/// Deno is single threaded and this expects to run on single threaded runtimes.
 ///
-/// Returned handles will use channels internally to communicate to this worker.
+/// The returned handle will use channels internally to communicate to this worker.
 pub async fn worker(
     flags: deno::args::Flags,
     custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,

@@ -130,6 +130,9 @@ async fn file_digests(
     hcx: &HostCtx,
     read_files: Vec<&Path>,
 ) -> Res<IndexMap<PathBuf, Option<String>>> {
+    // FIXME: this will exhaust memory if the number of files is large
+    // ConcurrentStream supports limiting concurrency but has a bug
+    // tracked at https://github.com/yoshuawuyts/futures-concurrency/issues/203
     futures::future::join_all(
         read_files
             .into_iter()
@@ -199,7 +202,6 @@ async fn file_content_digest_hash(
     path: &Path,
 ) -> Res<SharedFileContentDigestFuture> {
     let path = path.to_owned();
-
     use dashmap::mapref::entry::*;
     match hcx.file_hash_memo.entry(path.clone()) {
         Entry::Occupied(occupied_entry) => Ok(occupied_entry.get().clone()),

@@ -4,6 +4,7 @@ import type { GhjkCtx } from "../modules/types.ts";
 
 /**
  * Returns a simple posix function to invoke the ghjk CLI.
+ * This shim assumes it's running inside the ghjk embedded deno runtime.
  */
 export function ghjk_sh(
   gcx: GhjkCtx,
@@ -17,6 +18,7 @@ export function ghjk_sh(
 
 /**
  * Returns a simple fish function to invoke the ghjk CLI.
+ * This shim assumes it's running inside the ghjk embedded deno runtime.
  */
 export function ghjk_fish(
   gcx: GhjkCtx,

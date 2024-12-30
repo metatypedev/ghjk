@@ -168,7 +168,7 @@ pub async fn hash_reader<T: tokio::io::AsyncRead>(reader: T) -> Res<String> {
     use sha2::Digest;
     use tokio::io::*;
     let mut hash = sha2::Sha256::new();
-    let mut buf = vec![0u8; 4096];
+    let mut buf = vec![0u8; 65536];
 
     let reader = tokio::io::BufReader::new(reader);
 

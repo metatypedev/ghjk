@@ -97,7 +97,7 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
     const entry = lockValidator.parse(raw);
 
     if (entry.version != "0") {
-      throw new Error(`unexepected version tag deserializing lockEntry`);
+      throw new Error(`unexpected version tag deserializing lockEntry`);
     }
 
     return entry;

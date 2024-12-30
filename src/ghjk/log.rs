@@ -49,12 +49,9 @@ Args: {args:?}
             eyre_panic_hook(panic_info);
             // - Tokio does not exit the process when a task panics, so we define a custom
             //   panic hook to implement this behaviour.
-            // std::process::exit(1);
+            std::process::exit(1);
         }));
 
-        // // FIXME: for some reason, the tests already have
-        // // an eyre_hook
-        // #[cfg(not(test))]
         _eyre_hook.install().unwrap();
 
         if std::env::var("RUST_LOG").is_err() {

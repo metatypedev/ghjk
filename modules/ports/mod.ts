@@ -284,13 +284,11 @@ async function outdatedCommand(
   }
 
   if (updateInstallFlag) {
-    const installName = updateInstallFlag;
-    // TODO: convert from install name to install id, after port module refactor
-    let installId!: string;
+    const installId = updateInstallFlag;
     const newVersion = latest.get(installId);
     if (!newVersion) {
       logger().info(
-        `Error while fetching the latest version for: ${installName}`,
+        `Error while fetching the latest version for: ${installId}`,
       );
       return;
     }
