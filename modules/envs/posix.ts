@@ -302,7 +302,7 @@ async function writeActivators(
       }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim to improve to improve reliablity`,
+      `# on this shim to improve reliablity`,
       ghjk_sh(gcx, ghjkShimName),
       ``,
       `# only run the hooks in interactive mode`,

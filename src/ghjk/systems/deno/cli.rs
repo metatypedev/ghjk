@@ -353,18 +353,18 @@ impl From<ValueHintSerde> for clap::ValueHint {
         use ValueHintSerde::*;
         match val {
             Unknown => clap::ValueHint::Unknown,
-            Other => clap::ValueHint::Unknown,
-            AnyPath => clap::ValueHint::Unknown,
-            FilePath => clap::ValueHint::Unknown,
-            DirPath => clap::ValueHint::Unknown,
-            ExecutablePath => clap::ValueHint::Unknown,
-            CommandName => clap::ValueHint::Unknown,
-            CommandString => clap::ValueHint::Unknown,
-            CommandWithArguments => clap::ValueHint::Unknown,
-            Username => clap::ValueHint::Unknown,
-            Hostname => clap::ValueHint::Unknown,
-            Url => clap::ValueHint::Unknown,
-            EmailAddress => clap::ValueHint::Unknown,
+            Other => clap::ValueHint::Other,
+            AnyPath => clap::ValueHint::AnyPath,
+            FilePath => clap::ValueHint::FilePath,
+            DirPath => clap::ValueHint::DirPath,
+            ExecutablePath => clap::ValueHint::ExecutablePath,
+            CommandName => clap::ValueHint::CommandName,
+            CommandString => clap::ValueHint::CommandString,
+            CommandWithArguments => clap::ValueHint::CommandWithArguments,
+            Username => clap::ValueHint::Username,
+            Hostname => clap::ValueHint::Hostname,
+            Url => clap::ValueHint::Url,
+            EmailAddress => clap::ValueHint::EmailAddress,
         }
     }
 }

@@ -29,12 +29,15 @@ const cases: CustomE2eTestCase[] = [
     ePoint: `jq --version`,
   },
   {
-    name: "jq",
+    name: "asdf-jq",
+    ePoint: `jq --version`,
     installConf: ports.asdf({
       pluginRepo: "https://github.com/lsanwick/asdf-jq",
       installType: "version",
     }),
-    ePoint: `jq --version`,
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // 3 megs
   {

@@ -4,7 +4,7 @@ use std::io::Write;
 
 #[inline]
 pub fn default<T: Default>() -> T {
-    std::default::Default::default()
+    T::default()
 }
 
 pub type DHashMap<K, V> = dashmap::DashMap<K, V, ahash::random_state::RandomState>;

@@ -127,41 +127,26 @@ async fn file_digests(
     hcx: &HostCtx,
     read_files: Vec<&Path>,
 ) -> Res<IndexMap<PathBuf, Option<String>>> {
-    // FIXME: this will exhaust memory if the number of files is large
-    // ConcurrentStream supports limiting concurrency but has a bug
-    // tracked at https://github.com/yoshuawuyts/futures-concurrency/issues/203
-    let mut map = futures::future::join_all(
-        read_files
-            .into_iter()
-            .map(|path| {
-                async move {
-                    let path = std::path::absolute(path)?;
-                    let hash = file_digest_hash(hcx, &path).await?;
-                    let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
-                    Ok((relative_path, hash))
-                }
-                .boxed()
-            })
-            .collect::<Vec<_>>(),
-    )
+    use futures::StreamExt;
+    let mut map = futures::stream::iter(read_files.into_iter().map(|path| {
+        async move {
+            let path = std::path::absolute(path)?;
+            let hash = file_digest_hash(hcx, &path).await?;
+            let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
+            Ok((relative_path, hash))
+        }
+        .boxed()
+    }))
+    .buffer_unordered(16)
+    .collect::<Vec<_>>()
     .await
     .into_iter()
     .collect::<Res<IndexMap<_, _>>>()?;
     map.sort_unstable_keys();
     Ok(map)
-    /* let out = read_files
-        .into_co_stream()
-        .map(|path| async move {
-            let path = tokio::fs::canonicalize(path).await?;
-            let hash = file_digest_hash(hcx, &path).await?;
-            let relative_path = pathdiff::diff_paths(path, &hcx.config.cwd).unwrap();
-            Ok((relative_path, hash))
-        })
-        .collect::<Res<Vec<_>>>()
-        .await?;
-    Ok(out.into_iter().collect()) */
 }
 
+#[tracing::instrument(skip(hcx))]
 pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>> {
     let path = match tokio::fs::canonicalize(path).await {
         Ok(val) => val,
@@ -172,13 +157,23 @@ pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>>
     };
     match tokio::fs::metadata(&path).await {
         Ok(stat) => {
+            const LARGE_FILE_THRESHOLD: u64 = 100 * 1024 * 1024; // 100MB
+
             let content_hash = if stat.file_type().is_file() || stat.file_type().is_symlink() {
-                Some(
-                    file_content_digest_hash(hcx, &path)
-                        .await?
-                        .await
-                        .map_err(|err| ferr!(err))?,
-                )
+                if stat.len() > LARGE_FILE_THRESHOLD {
+                    warn!(
+                        len = stat.len(),
+                        "large file detected, skippin content hash"
+                    );
+                    None
+                } else {
+                    Some(
+                        file_content_digest_hash(hcx, &path)
+                            .await?
+                            .await
+                            .map_err(|err| ferr!(err))?,
+                    )
+                }
             } else {
                 None
             };

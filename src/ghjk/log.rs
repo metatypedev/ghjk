@@ -35,12 +35,12 @@ Args: {args:?}
         let eyre_panic_hook = eyre_panic_hook.into_panic_hook();
 
         std::panic::set_hook(Box::new(move |panic_info| {
-            if let Some(msg) = panic_info.payload().downcast_ref::<&str>() {
-                if msg.contains("A Tokio 1.x context was found, but it is being shutdown.") {
-                    warn!("improper shutdown, make sure to terminate all workers first");
-                    return;
-                }
-            } else if let Some(msg) = panic_info.payload().downcast_ref::<String>() {
+            if let Some(msg) = panic_info
+                .payload()
+                .downcast_ref::<String>()
+                .map(|val| val.as_str())
+                .or_else(|| panic_info.payload().downcast_ref::<&str>().cloned())
+            {
                 if msg.contains("A Tokio 1.x context was found, but it is being shutdown.") {
                     warn!("improper shutdown, make sure to terminate all workers first");
                     return;

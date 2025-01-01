@@ -62,12 +62,10 @@ pub async fn systems_from_ghjkfile(
     );
 
     // read both files concurrently
-    let (hash_obj, lock_obj) = (
+    let (hash_obj, lock_obj) = futures::join!(
         HashObj::from_file(&hashfile_path),
         LockObj::from_file(&lockfile_path),
-    )
-        .join()
-        .await;
+    );
 
     // discard corrupt files if needed
     let (mut hash_obj, mut lock_obj) = (
@@ -127,7 +125,7 @@ pub async fn systems_from_ghjkfile(
 
     // check if we need to discard the hashfile
     if let Some(obj) = &mut hash_obj {
-        // TODO: version migrator
+        // NOTE: version migrator would go here
         if obj.version != "0" {
             eyre::bail!("unsupported hashfile version: {:?}", obj.version);
         }
@@ -154,9 +152,6 @@ pub async fn systems_from_ghjkfile(
         if obj.version != "0" {
             eyre::bail!("unsupported hashfile version: {:?}", obj.version);
         }
-        // if obj.version != "0" {
-        //     hash_obj = None;
-        // }
     }
     // TODO:
     // if hcx.re_resolve {}

@@ -73,8 +73,8 @@ const cliCommandBase = zod.object({
   before_help: zod.string().optional(),
   before_long_help: zod.string().optional(),
 
-  args: zod.record(cliArg).optional().optional(),
-  flags: zod.record(cliFlag).optional().optional(),
+  args: zod.record(cliArg).optional(),
+  flags: zod.record(cliFlag).optional(),
 });
 
 const flagsAndArgs = zod.record(

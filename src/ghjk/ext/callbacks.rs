@@ -26,7 +26,7 @@ pub enum CallbackError {
 }
 
 struct CallbackCtx {
-    rx: mpsc::Receiver<CallbacksMsg>,
+    msg_rx: mpsc::Receiver<CallbacksMsg>,
     term_signal: tokio::sync::watch::Receiver<bool>,
 }
 
@@ -34,7 +34,10 @@ struct CallbackCtx {
 /// invocations.
 #[derive(Default)]
 pub struct CallbackLine {
+    /// This would be None if the callback line was already
+    /// taken or if the callback line was not initially set
     cx: Option<CallbackCtx>,
+    /// Indicates weather the callback line was initially set
     was_set: bool,
 }
 
@@ -45,7 +48,7 @@ impl CallbackLine {
             Self {
                 was_set: true,
                 cx: Some(CallbackCtx {
-                    rx: msg_rx,
+                    msg_rx,
                     term_signal: dworker.term_signal_watcher(),
                 }),
             },
@@ -116,7 +119,7 @@ pub struct Callbacks {
 /// support callbacks.
 pub fn worker(config: &ExtConfig) -> Option<Callbacks> {
     let CallbackCtx {
-        mut rx,
+        msg_rx: mut rx,
         term_signal,
     } = {
         let mut line = config.callbacks_rx.lock().expect_or_log("mutex err");
@@ -201,15 +204,10 @@ impl Callbacks {
                         .expect_or_log("got None from callback call");
                     if tc_scope.has_caught() {
                         let exception = tc_scope.exception().unwrap();
-                        let exception = exception.to_rust_string_lossy(tc_scope);
-                        /* let exception = serde_v8::from_v8(tc_scope, exception).map_err(|err| {
-                            CallbackError::ProtocolError(
-                                ferr!(err).wrap_err("error deserializaing exception from v8"),
-                            )
-                        })?; */
-                        return Err(CallbackError::JsError(ferr!(
-                            "callback exception: {exception}"
-                        )));
+                        return Err(CallbackError::JsError(
+                            ferr!(js_error_message(tc_scope, exception))
+                                .wrap_err("callback exception"),
+                        ));
                     }
                     res
                 };
@@ -378,6 +376,7 @@ pub fn op_callbacks_set(
         warn!("callback set but callback feature is not enabled");
         anyhow::bail!("callbacks feature is not enabled");
     };
+    debug!(%name, "registering callback");
     callbacks.store.insert(
         name.into(),
         Callback {
