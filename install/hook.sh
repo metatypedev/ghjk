@@ -7,7 +7,9 @@ __ghjk_get_mtime_ts () {
             stat -c "%Y" "$1"
         ;;
         "darwin")
-            stat -f "%Sm" -t "%s" "$1"
+            # darwin stat doesn't support ms since epoch so we bring out the big guns
+            deno eval 'console.log((await Deno.stat(Deno.args[0])).mtime.getTime())' "$1"
+            # stat -f "%Sm" -t "%s" "$1"
         ;;
         "*")
             stat -c "%Y" "$1"

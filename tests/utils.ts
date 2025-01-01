@@ -66,8 +66,9 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     HOME: tmpDir.toString(),
     GHJK_REPO_ROOT: import.meta.resolve("../"),
     // share the system's deno cache
-    GHJK_DENO_DIR: Deno.env.get("DENO_DIR") ??
-      $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
+    GHJK_DENO_DIR: Deno.env.get("DENO_DIR")
+      ? $.path(Deno.env.get("DENO_DIR")!).resolve().toString()
+      : $.path(Deno.env.get("HOME")!).resolve(".cache", "deno").toString(),
     RUST_LOG: Deno.env.get("RUST_LOG"),
     GHJK_LOG: Deno.env.get("GHJK_LOG"),
     ...testEnvs,

@@ -1,11 +1,13 @@
 function __ghjk_get_mtime_ts 
     switch (uname -s | tr '[:upper:]' '[:lower:]')
         case "linux"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
         case "darwin"
-            stat -f "%Sm" -t "%s" $argv
+            # darwin stat doesn't support ms since epoch so we bring out the big guns
+            deno eval 'console.log((await Deno.stat(Deno.args[0])).mtime.getTime())' $argv
+            # stat -f "%Sm" -t "%s" $argv
         case "*"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
     end
 end
 
