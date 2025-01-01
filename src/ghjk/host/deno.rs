@@ -30,7 +30,7 @@ pub async fn serialize_deno_ghjkfile(
         // with the deno side of the code
         (
             "args".into(),
-            serde_json::json!({
+            json!({
                 "uri": url::Url::from_file_path(path).unwrap_or_log(),
             }),
         ),

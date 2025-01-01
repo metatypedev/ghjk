@@ -3,7 +3,6 @@ mod interlude {
     pub use crate::utils::{default, CHeapStr, DHashMap};
 
     pub use std::collections::HashMap;
-    pub use std::future::Future;
     pub use std::path::{Path, PathBuf};
     pub use std::sync::Arc;
 

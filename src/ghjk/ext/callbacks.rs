@@ -360,14 +360,6 @@ struct SendPtr<T>(std::ptr::NonNull<T>);
 // as deno
 unsafe impl<T> Send for SendPtr<T> {}
 
-/* impl Callback {
-    fn drop(self, scope: &mut v8::HandleScope) {
-        unsafe {
-            _ = v8::Global::from_raw(scope, self.js_fn.0);
-        }
-    }
-} */
-
 #[tracing::instrument(skip(state, cb))]
 #[deno_core::op2]
 pub fn op_callbacks_set(

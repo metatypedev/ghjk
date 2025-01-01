@@ -29,6 +29,10 @@ pub struct HostCtx {
     pub config: Config,
     #[educe(Debug(ignore))]
     pub systems: HashMap<SystemId, SystemManifest>,
+    // NOTE: only use this for hashfile usage which is invalidated and generated
+    // anew around the serialization process which is expected to take a reasonably
+    // short amount of time. Any code, like system impls, afterwards might take
+    // an unkown amount of time possibly making the hashes in this memo stale
     pub file_hash_memo: DHashMap<PathBuf, hashfile::SharedFileContentDigestFuture>,
 }
 

@@ -71,7 +71,7 @@ pub async fn systems_from_deno(
             deno_dir,
         } = &gcx.config;
 
-        serde_json::json!(BindingArgs {
+        json!(BindingArgs {
             uri: source_uri.clone(),
             config: ConfigRef {
                 ghjkfile: ghjkfile.as_ref().map(|path| path.as_path()),
@@ -268,7 +268,7 @@ impl SystemInstance for DenoSystemInstance {
             .callbacks
             .exec(
                 self.desc.load_config_cb_key.clone(),
-                serde_json::json!({
+                json!({
                     "config": config,
                     "bb": bb,
                     "state": state
@@ -284,7 +284,7 @@ impl SystemInstance for DenoSystemInstance {
             .callbacks
             .exec(
                 self.desc.load_lock_entry_cb_key.clone(),
-                serde_json::json!({
+                json!({
                     "raw": raw
                 }),
             )
@@ -295,10 +295,7 @@ impl SystemInstance for DenoSystemInstance {
     async fn gen_lock_entry(&self) -> Res<serde_json::Value> {
         self.scx
             .callbacks
-            .exec(
-                self.desc.gen_lock_entry_cb_key.clone(),
-                serde_json::json!({}),
-            )
+            .exec(self.desc.gen_lock_entry_cb_key.clone(), json!({}))
             .await
             .wrap_err("callback error")
     }
@@ -307,7 +304,7 @@ impl SystemInstance for DenoSystemInstance {
         let cmds = self
             .scx
             .callbacks
-            .exec(self.desc.cli_commands_cb_key.clone(), serde_json::json!({}))
+            .exec(self.desc.cli_commands_cb_key.clone(), json!({}))
             .await
             .wrap_err("callback error")?;
 

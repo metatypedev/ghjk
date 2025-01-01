@@ -188,7 +188,7 @@ pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>>
                 accessed: None,
                 ..StatMeta::from(stat)
             };
-            let json = serde_json::json!({
+            let json = json!({
                 "content_hash": content_hash,
                 "stat": stat
             });

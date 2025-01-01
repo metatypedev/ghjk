@@ -142,20 +142,20 @@ async fn deno_cb_action(
             ArgActionSerde::Set => matches
                 .try_remove_one::<String>(id.as_str())
                 .wrap_err_with(|| format!("error extracting match string for {id}"))?
-                .map(|val| serde_json::json!(val)),
+                .map(|val| json!(val)),
             ArgActionSerde::Append => matches
                 .try_remove_many::<String>(id.as_str())
                 .wrap_err_with(|| format!("error extracting match bool for {id}"))?
                 .map(|vals| vals.collect::<Vec<_>>())
-                .map(|val| serde_json::json!(val)),
+                .map(|val| json!(val)),
             ArgActionSerde::SetTrue | ArgActionSerde::SetFalse => matches
                 .try_remove_one::<bool>(id.as_str())
                 .wrap_err_with(|| format!("error extracting match bool for {id}"))?
-                .map(|val| serde_json::json!(val)),
+                .map(|val| json!(val)),
             ArgActionSerde::Count => matches
                 .try_remove_one::<i64>(id.as_str())
                 .wrap_err_with(|| format!("error extracting match count for {id}"))?
-                .map(|val| serde_json::json!(val)),
+                .map(|val| json!(val)),
             ArgActionSerde::Help
             | ArgActionSerde::HelpShort
             | ArgActionSerde::HelpLong
@@ -177,7 +177,7 @@ async fn deno_cb_action(
         .callbacks
         .exec(
             cb_key.clone(),
-            serde_json::json!({
+            json!({
                 "flags": flags,
                 "args": args
             }),
