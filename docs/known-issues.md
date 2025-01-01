@@ -1,10 +1,5 @@
 # Known issues
 
-## Cache invalidation of imported scripts
-
-Currently, ghjk is unable to track changes to local typescript files imported by the ghjk.ts file.
-You can force re-serialization of the ghjkfile by deleting the `.ghjk/hash.json` file.
-
 ## GitHub API rate-limit
 
 The GitHub API is rate-limited to 60 calls per hour for unauthenticated requests. 

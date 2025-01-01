@@ -202,7 +202,7 @@ async function writeActivators(
   onExitHooks: [string, string[]][],
 ) {
   const ghjkDirVar = "_ghjk_dir";
-  const shareDirVar = "_ghjk_share_dir";
+  const dataDirVar = "_ghjk_data_dir";
   pathVars = {
     ...Object.fromEntries(
       Object.entries(pathVars).map((
@@ -211,7 +211,7 @@ async function writeActivators(
         key,
         val
           .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
-          .replace(gcx.ghjkShareDir.toString(), "$" + shareDirVar),
+          .replace(gcx.ghjkDataDir.toString(), "$" + dataDirVar),
       ]),
     ),
   };
@@ -227,9 +227,6 @@ async function writeActivators(
       .join(" ").replaceAll("'", "'\\''")
   );
 
-  // ghjk.sh sets the DENO_DIR so we can usually
-  // assume it's set
-  const denoDir = Deno.env.get("DENO_DIR") ?? "";
   const scripts = {
     //
     // posix shell version
@@ -252,7 +249,7 @@ async function writeActivators(
       ``,
       `# the following variables are used to make the script more human readable`,
       `${ghjkDirVar}="${gcx.ghjkDir.toString()}"`,
-      `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
+      `${dataDirVar}="${gcx.ghjkDataDir.toString()}"`,
       ``,
       `export GHJK_CLEANUP_POSIX="";`,
       `# env vars`,
@@ -305,11 +302,8 @@ async function writeActivators(
       }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim instead to improve latency`,
-      // the ghjk executable is itself a shell script
-      // which execs deno, we remove the middleman here
-      // also, the ghjk executable is optional
-      ghjk_sh(gcx, denoDir, ghjkShimName),
+      `# on this shim to improve reliablity`,
+      ghjk_sh(gcx, ghjkShimName),
       ``,
       `# only run the hooks in interactive mode`,
       `case "$-" in`,
@@ -346,7 +340,7 @@ async function writeActivators(
       ``,
       `# the following variables are used to make the script more human readable`,
       `set ${ghjkDirVar} "${gcx.ghjkDir.toString()}"`,
-      `set ${shareDirVar} "${gcx.ghjkShareDir.toString()}"`,
+      `set ${dataDirVar} "${gcx.ghjkDataDir.toString()}"`,
       ``,
       `# env vars`,
       `# we keep track of old values before this script is run`,
@@ -376,8 +370,8 @@ async function writeActivators(
       }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim to improve latency`,
-      ghjk_fish(gcx, denoDir, ghjkShimName),
+      `# on this shim to improve to improve reliablity`,
+      ghjk_fish(gcx, ghjkShimName),
       ``,
       `# only run the hooks in interactive mode`,
       `if status is-interactive;`,

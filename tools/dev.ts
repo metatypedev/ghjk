@@ -14,53 +14,59 @@ const devDir = $.path(
   // }),
 ).join("../.dev");
 
-const ghjkShareDir = await devDir.join("ghjk").ensureDir();
+const ghjkDataDir = await devDir.join("ghjk").ensureDir();
 
 await (await $.removeIfExists(devDir.join("ghjk.ts")))
   .symlinkTo(import.meta.resolve("../ghjk.ts"));
 
+const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
+await ghjkDataDir
+  .join("ghjk")
+  .writeText(
+    `#!/bin/sh
+exec ${ghjkExePath.resolve().toString()} "$@"`,
+    { mode: 0o700 },
+  );
+
 const env: Record<string, string> = {
-  BASH_ENV: `${ghjkShareDir.toString()}/env.bash`,
-  ZDOTDIR: ghjkShareDir.toString(),
-  GHJK_SHARE_DIR: ghjkShareDir.toString(),
-  PATH: `${ghjkShareDir.toString()}:${Deno.env.get("PATH")}`,
-  HOME: devDir.toString(),
+  BASH_ENV: `${ghjkDataDir.toString()}/env.bash`,
+  ZDOTDIR: ghjkDataDir.toString(),
+  GHJK_DATA_DIR: ghjkDataDir.toString(),
+  PATH: `${ghjkDataDir.toString()}:${Deno.env.get("PATH")}`,
+  GHJK_CONFIG_DIR: devDir.toString(),
+  // HOME: devDir.toString(),
 };
 
-{
-  const confHome = await ghjkShareDir.join(".config").ensureDir();
-  const fishConfDir = await confHome.join("fish").ensureDir();
-  await (await $.removeIfExists(fishConfDir.join("config.fish")))
-    .symlinkTo(ghjkShareDir.join("env.fish").toString());
-  env["XDG_CONFIG_HOME"] = confHome.toString();
-}
+await devDir.join("config.json").writeJsonPretty({
+  "data_dir": ghjkDataDir.toString(),
+});
 
 // install ghjk
 await install({
   ...defaultInstallArgs,
-  skipExecInstall: false,
-  ghjkExecInstallDir: ghjkShareDir.toString(),
-  // share the system's deno cache
-  ghjkDenoCacheDir: Deno.env.get("DENO_DIR") ??
-    $.path(Deno.env.get("HOME")!).join(".cache", "deno").toString(),
-  ghjkShareDir: ghjkShareDir.toString(),
+  ghjkDataDir: ghjkDataDir.toString(),
   // don't modify system shell configs
   shellsToHook: [],
 });
 
-// await $`${ghjkShareDir.join("ghjk").toString()} print config`
+// await $`${ghjkDataDir.join("ghjk").toString()} print config`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);
 //
-// await $`${ghjkShareDir.join("ghjk").toString()} envs cook`
+// await $`${ghjkDataDir.join("ghjk").toString()} envs cook`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);
 let cmd;
 if (Deno.args.length) {
-  if (Deno.args[0] == "bash") {
+  if (Deno.args[0] == "bash" && Deno.args.length == 1) {
     cmd = $`bash --rcfile ${env.BASH_ENV}`;
+  } else if (Deno.args[0] == "fish" && Deno.args.length == 1) {
+    // cmd = $`fish --no-config --init-command 'source ${
+    cmd = $`fish --init-command 'source ${
+      ghjkDataDir.join("env.fish").toString()
+    }'`;
   } else {
     cmd = $`${Deno.args}`;
   }

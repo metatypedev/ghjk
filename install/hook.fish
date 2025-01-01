@@ -1,11 +1,13 @@
 function __ghjk_get_mtime_ts 
     switch (uname -s | tr '[:upper:]' '[:lower:]')
         case "linux"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
         case "darwin"
-            stat -f "%Sm" -t "%s" $argv
+            # darwin stat doesn't support ms since epoch so we bring out the big guns
+            deno eval 'console.log((await Deno.stat(Deno.args[0])).mtime.getTime())' $argv
+            # stat -f "%Sm" -t "%s" $argv
         case "*"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
     end
 end
 
@@ -109,6 +111,7 @@ function __ghjk_preexec --on-event fish_preexec
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
+        and test -e $GHJK_LAST_ENV_DIR/activate.fish;
         and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_MTIME;
         ghjk_hook
     end

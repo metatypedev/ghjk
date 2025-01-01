@@ -22,7 +22,10 @@
     "DENO",
     "ghjk",
     "ghjkfile",
+    "ghjkfiles",
     "Hashfile",
+    "indexmap",
+    "kwargs",
     "POSIX",
     "runtimes",
     "sophon"

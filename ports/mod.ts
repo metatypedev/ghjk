@@ -3,7 +3,6 @@ export { default as asdf } from "./asdf.ts";
 export { default as asdf_plugin_git } from "./asdf_plugin_git.ts";
 export { default as cargo_binstall } from "./cargo-binstall.ts";
 export { default as cargobi } from "./cargobi.ts";
-export { default as cmake } from "./cmake.ts";
 export { default as cpy_bs } from "./cpy_bs.ts";
 export { default as curl } from "./curl.ts";
 export { default as deno_ghrel } from "./deno_ghrel.ts";

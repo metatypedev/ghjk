@@ -4,7 +4,6 @@ import {
   std_fs,
   std_io,
   std_path,
-  std_streams,
   std_untar,
 } from "../deps/ports.ts";
 
@@ -45,7 +44,7 @@ export async function untgz(
   await Foras.initBundledOnce();
   const tgzFile = await Deno.open(path, { read: true });
   const gzDec = new Foras.GzDecoder();
-  await std_streams.copy(tgzFile, {
+  await std_io.copy(tgzFile, {
     write(buf) {
       const mem = new Foras.Memory(buf);
       gzDec.write(mem);
@@ -77,7 +76,7 @@ export async function untar(
  * This does not close the reader.
  */
 export async function untarReader(
-  reader: Deno.Reader,
+  reader: std_io.Reader,
   dest = "./",
 ) {
   for await (const entry of new std_untar.Untar(reader)) {
@@ -93,7 +92,7 @@ export async function untarReader(
       write: true,
       mode: entry.fileMode,
     });
-    await std_streams.copy(entry, file);
+    await std_io.copy(entry, file);
     file.close();
   }
 }

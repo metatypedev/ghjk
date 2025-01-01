@@ -43,7 +43,7 @@ export const jsonSchema: zod.ZodType<Json> = zod.lazy(() =>
 );
 
 export function dbg<T>(val: T, ...more: unknown[]) {
-  logger().debug(() => val, ...more, "DBG");
+  logger().debug("DBG", val, ...more);
   return val;
 }
 
@@ -250,11 +250,12 @@ export const $ = dax.build$(
           depth: 10,
         });
       },
-      co<T extends readonly unknown[] | []>(
+      co: ((values: any[]) => Promise.all(values)) as typeof Promise.all,
+      /* co<T extends readonly unknown[] | []>(
         values: T,
       ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
         return Promise.all(values);
-      },
+      }, */
       // coIter<T, O>(
       //   items: Iterable<T>,
       //   fn: (item:T) => PromiseLike<O>,
@@ -281,6 +282,7 @@ export const $ = dax.build$(
         }
         return pathRef;
       },
+      dbg,
     },
   },
 );
@@ -303,29 +305,6 @@ export async function findEntryRecursive(path: string | Path, name: string) {
     }
     current = nextCurrent;
   }
-}
-
-export function homeDir() {
-  switch (Deno.build.os) {
-    case "linux":
-    case "darwin":
-      return Deno.env.get("HOME") ?? null;
-    case "windows":
-      return Deno.env.get("USERPROFILE") ?? null;
-    default:
-      return null;
-  }
-}
-
-export function dirs() {
-  const home = homeDir();
-  if (!home) {
-    throw new Error("cannot find home dir");
-  }
-  return {
-    homeDir: home,
-    shareDir: $.path(home).resolve(".local", "share"),
-  };
 }
 
 export const AVAIL_CONCURRENCY = Number.parseInt(
@@ -409,6 +388,7 @@ export type DownloadFileArgs = {
 export async function downloadFile(
   args: DownloadFileArgs,
 ) {
+  logger().debug("downloading", args);
   const { name, mode, url, downloadPath, tmpDirPath, headers } = {
     name: $.path(args.url).basename(),
     mode: 0o666,
@@ -542,32 +522,36 @@ export function thinInstallConfig(fat: InstallConfigFat) {
 
 export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
 
+/**
+ * This tries to emulate a rust `match` statement but in a typesafe
+ * way. This is a WIP function.
+ * ```ts
+ * const pick: 2 = switchMap(
+ *   "hello",
+ *   {
+ *     hey: () => 1,
+ *     hello: () => 2,
+ *     hi: 3,
+ *     holla: 4,
+ *   },
+ * );
+ * ```
+ */
 export function switchMap<
   K extends string | number | symbol,
   All extends {
-    [Key in K]: All[K];
+    [Key in K]?: All[K];
   },
->(
+> // D = undefined,
+(
   val: K,
   branches: All,
-  // def?: D,
+  // def?: (val: K) => D,
 ): K extends keyof All ? OrRetOf<All[K]>
-  : /* All[keyof All] | */ undefined {
-  // return branches[val];
+  : OrRetOf<All[keyof All]> | undefined {
   const branch = branches[val];
   return typeof branch == "function" ? branch() : branch;
 }
-
-switchMap(
-  "holla" as string,
-  {
-    hey: () => 1,
-    hello: () => 2,
-    hi: 3,
-    holla: 4,
-  } as const,
-  // () =>5
-);
 
 export async function expandGlobsAndAbsolutize(
   path: string,
@@ -597,13 +581,12 @@ export function unwrapZodRes<In, Out>(
     const zodErr = zod_val_err.fromZodError(res.error, {
       includePath: true,
       maxIssuesInMessage: 3,
+      prefix: errMessage,
     });
-    throw new Error(`${errMessage}: ${zodErr}`, {
-      cause: {
-        issues: res.error.issues,
-        ...cause,
-      },
-    });
+    zodErr.cause = {
+      ...cause,
+    };
+    throw zodErr;
   }
   return res.data;
 }

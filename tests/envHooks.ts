@@ -49,7 +49,7 @@ const fishInteractiveScript = [
 ]
   .join("\n");
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   ePoint: string;
   stdin: string;
 };
@@ -60,9 +60,7 @@ const cases: CustomE2eTestCase[] = [
     // -s: read from stdin
     // -l: login mode
     // -i: make it interactive
-    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") == "local"
-      ? `bash --rcfile $BASH_ENV -si` // we don't want to use the system rcfile
-      : `bash -sil`,
+    ePoint: `bash --rcfile $BASH_ENV -si`, // we don't want to use the system rcfile
     stdin: posixInteractiveScript,
   },
   {
@@ -80,7 +78,8 @@ const cases: CustomE2eTestCase[] = [
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: `
+  fs: {
+    "ghjk.ts": `
 export { sophon } from "$ghjk/hack.ts";
 import { task, env } from "$ghjk/hack.ts";
 
@@ -88,6 +87,7 @@ env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))
   .onExit(task($ => $\`/bin/sh -c 'rm marker'\`))
 `,
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envHooks/${testCase.name}`,
 })));

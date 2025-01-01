@@ -16,7 +16,7 @@ export type ModuleManifest = zod.infer<typeof moduleManifest>;
 export type GhjkCtx = {
   ghjkfilePath?: Path;
   ghjkDir: Path;
-  ghjkShareDir: Path;
+  ghjkDataDir: Path;
   blackboard: Map<string, unknown>;
 };
 

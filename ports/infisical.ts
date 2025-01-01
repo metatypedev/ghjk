@@ -39,7 +39,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "Infisical";
   repoName = "infisical";
 
-  async listAll(args: ListAllArgs) {
+  override async listAll(args: ListAllArgs) {
     const all = await super.listAll(args);
     return all.map((str) => str.replace(/^infisical-cli\/v/, ""));
   }

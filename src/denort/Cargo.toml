@@ -1,0 +1,22 @@
+[package]
+name = "denort"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+tracing-unwrap.workspace = true
+
+educe.workspace = true
+
+color-eyre.workspace = true
+anyhow.workspace = true
+
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+deno.workspace = true
+
+tokio.workspace = true

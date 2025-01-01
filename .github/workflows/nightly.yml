@@ -1,71 +1,66 @@
+name: nightly jobs
 on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
 
 env:
-  DENO_VERSION: "1.44.2"
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DENO_VERSION: "2.1.2"
+  GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
-  DOCKER_NO_RMI: 1
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   test-e2e:
+    timeout-minutes: 60
     runs-on: "${{ matrix.os }}"
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            e2eType: "local"
+            platform: linux/x86_64
+          - os: custom-arm
+            platform: linux/aarch64
           - os: macos-latest
-            e2eType: "local"
+            platform: darwin/x86_64
           - os: macos-14
-            e2eType: "local"
+            platform: darwin/aarch64
           # - os: windows-latest
-          #   e2eType: "local"
-    env:
-      GHJK_TEST_E2E_TYPE: ${{ matrix.e2eType }}
     steps:
       - uses: actions/checkout@v4
+      - uses: dsherret/rust-toolchain-file@v1
       - uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ env.DENO_VERSION }}
-      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
-        run: |
-          # we need coreutils on max for the `timeout` command
-          sudo apt update
-          sudo apt install -y --no-install-recommends fish zsh
-      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
-        # we need coreutils on max for the `timeout` command
-        run: brew install fish zsh coreutils
       - name: Cache deno dir
-        if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
         uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
-          key: deno-mac-${{ hashFiles('**/deno.lock') }}
-
-      - if: "${{ matrix.e2eType == 'docker' }}"
-        uses: docker/setup-buildx-action@v3
-      - if: "${{ matrix.e2eType == 'docker' }}"
-        uses: actions-hub/docker/cli@master
-        env:
-          SKIP_LOGIN: true
-      
+          key: deno-${{ hashFiles('**/deno.lock') }}
+      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+        # need coreutils on max for the `timeout` command
+        # need cmake to build the rust deps
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends fish zsh cmake
+      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+        # need cmake to build the rust deps
+        # need coreutils on max for the `timeout` command
+        run: brew install fish zsh coreutils cmake
       - run: deno task test
 
-  test-action:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
-        with:
-          installer-url: ./install.ts
-        env: 
-          GHJKFILE: ./examples/protoc/ghjk.ts
-      - run: |
-          cd examples/tasks
-          . $(ghjk print share-dir-path)/env.sh
-          ghjk x hey
+  # test-action:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
+  #       with:
+  #         installer-url: ./install.ts
+  #       env:
+  #         GHJKFILE: ./examples/protoc/ghjk.ts
+  #     - run: |
+  #         cd examples/tasks
+  #         . $(ghjk print share-dir-path)/env.sh
+  #         ghjk x hey

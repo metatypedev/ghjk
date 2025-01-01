@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "xtask"
+path = "main.rs"
+
+[dependencies]
+denort.workspace = true
+
+tracing-unwrap.workspace = true
+
+color-eyre.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+once_cell.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }

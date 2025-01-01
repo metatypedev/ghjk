@@ -15,13 +15,13 @@ repos:
       - id: end-of-file-fixer
         # exclude all generated files
         exclude: |
-            (?x)^(
-                .ghjk/lock.json|
-                .ghjk/hash.json|
-                .ghjk/deno.lock|
-                deno.lock|
-                gh_action/.*.js
-            )$
+          (?x)^(
+              .ghjk/lock.json|
+              .ghjk/hash.json|
+              .ghjk/deno.lock|
+              deno.lock|
+              gh_action/.*.js
+          )$
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.28.2
     hooks:
@@ -38,12 +38,12 @@ repos:
       - id: ghjk-resolve
         name: Ghjk resolve
         language: system
-        entry: bash -c 'deno run --unstable -A main.ts p resolve'
+        entry: bash -c 'deno task self p resolve'
         pass_filenames: false
       - id: lock-sed
         name: Sed lock
         language: system
-        entry: bash -c 'deno run --unstable -A main.ts x lock-sed'
+        entry: bash -c 'deno task self x lock-sed'
         pass_filenames: false
       - id: deno-fmt
         name: Deno format
@@ -66,3 +66,15 @@ repos:
         pass_filenames: false
         types:
           - ts
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+      - id: clippy
+        args:
+          - "--locked"
+          - "--all-features"
+          - "--all-targets"
+          - "--"
+          - "--deny"
+          - "warnings"

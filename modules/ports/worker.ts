@@ -164,6 +164,9 @@ export class DenoWorkerPort extends PortBase {
     const worker = new Worker(import.meta.url, {
       name: `${this.manifest.name}@${this.manifest.version}`,
       type: "module",
+      // FIXME: catch worker errors or they bring down the whole
+      // program (no lockfile generated)
+      // TODO: proper permissions
     });
     // promise that resolves when worker replies
     const promise = new Promise<WorkerResp>((resolve, reject) => {

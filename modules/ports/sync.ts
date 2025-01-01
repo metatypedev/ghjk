@@ -53,7 +53,7 @@ export type SyncCtx = Awaited<ReturnType<typeof syncCtxFromGhjk>>;
 export async function syncCtxFromGhjk(
   gcx: GhjkCtx,
 ) {
-  const portsPath = await $.path(gcx.ghjkShareDir).resolve("ports")
+  const portsPath = await $.path(gcx.ghjkDataDir).resolve("ports")
     .ensureDir();
   const [installsPath, downloadsPath, tmpPath] = (
     await Promise.all([
@@ -518,9 +518,14 @@ function resolveConfig(
         version.match(new RegExp(`^v?${config.version}$`))
       );
       if (!match) {
-        throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest, allVersions },
-        });
+        throw new Error(
+          `error resolving verison ${config.version}: not found, available versions: [${
+            allVersions.join(", ")
+          }]`,
+          {
+            cause: { config, manifest, allVersions },
+          },
+        );
       }
       version = match;
     } else {
