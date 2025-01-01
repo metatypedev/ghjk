@@ -1,3 +1,22 @@
+// NOTE: this mechanism is currently offline for deno systems
+// we just
+//
+// we catch all rejections and explicityly dispatch them to the host
+// to avoid shutting down the event loop on uncaught errors
+globalThis.addEventListener("unhandledrejection", (evt) => {
+  let reason = evt.reason;
+  if (reason instanceof Error) {
+    reason = reason.stack;
+  }
+  if (Ghjk.dispatchException(reason)) {
+    evt.preventDefault();
+  }
+});
+
+// start an interval to prevent the event loop exiting
+// after loading systems
+setInterval(() => {/* beat */}, 1000);
+
 // import "../../src/ghjk/js/mock.sfx.ts";
 import { zod } from "../../deps/common.ts";
 import { $, unwrapZodRes } from "../../utils/mod.ts";
@@ -13,9 +32,6 @@ import type {
 } from "./types.ts";
 import bindingTypes from "./types.ts";
 
-// start an interval to prevent the event loop exiting
-// after loading systems
-setInterval(() => {/* beat */}, 1000);
 // FIXME: better means of exit detection, keep alive as long
 // as callbacks are registered?
 // globalThis.onbeforeunload = (evt) => {

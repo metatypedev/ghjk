@@ -5,8 +5,9 @@ use crate::interlude::*;
 use deno_core::serde_v8;
 use deno_core::v8;
 use deno_core::OpState;
+// necessary for re-exported macros to work
 #[rustfmt::skip]
-use deno_core as deno_core; // necessary for re-exported macros to work
+use deno_core as deno_core;
 use tokio::sync::{mpsc, oneshot};
 
 use super::ExtConfig;
@@ -16,16 +17,16 @@ use super::ExtContext;
 pub enum CallbackError {
     #[error("no callback found under {key}")]
     NotFound { key: String },
-    #[error("callback protocol error {0:?}")]
-    ProtocolError(eyre::Report),
-    #[error("error executing callback {0:?}")]
-    JsError(eyre::Report),
-    #[error("v8 error {0:?}")]
-    V8Error(eyre::Report),
+    #[error("callback protocol error")]
+    ProtocolError(#[source] eyre::Report),
+    #[error("error executing callback")]
+    JsError(#[source] eyre::Report),
+    #[error("v8 error")]
+    V8Error(#[source] eyre::Report),
 }
 
 struct CallbackCtx {
-    rx: tokio::sync::mpsc::Receiver<CallbacksMsg>,
+    rx: mpsc::Receiver<CallbacksMsg>,
     term_signal: tokio::sync::watch::Receiver<bool>,
 }
 
@@ -39,16 +40,16 @@ pub struct CallbackLine {
 
 impl CallbackLine {
     pub fn new(dworker: &denort::worker::DenoWorkerHandle) -> (Self, CallbacksHandle) {
-        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        let (msg_tx, msg_rx) = mpsc::channel(1);
         (
             Self {
                 was_set: true,
                 cx: Some(CallbackCtx {
-                    rx,
+                    rx: msg_rx,
                     term_signal: dworker.term_signal_watcher(),
                 }),
             },
-            CallbacksHandle { sender: tx },
+            CallbacksHandle { msg_tx },
         )
     }
 
@@ -65,7 +66,7 @@ impl CallbackLine {
 /// Line used to invoke callbacks registered by js code.
 #[derive(Clone)]
 pub struct CallbacksHandle {
-    sender: mpsc::Sender<CallbacksMsg>,
+    msg_tx: mpsc::Sender<CallbacksMsg>,
 }
 
 impl CallbacksHandle {
@@ -75,7 +76,7 @@ impl CallbacksHandle {
         args: serde_json::Value,
     ) -> Result<serde_json::Value, CallbackError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.sender
+        self.msg_tx
             .send(CallbacksMsg::Exec {
                 response_channel: tx,
                 key,
@@ -212,44 +213,41 @@ impl Callbacks {
                     }
                     res
                 };
-                if res.is_promise() {
-                    let promise = v8::Local::<v8::Promise>::try_from(res).unwrap();
-
-                    let deno_shutting_down =
-                        denort::promises::watch_promise(scope, promise, move |scope, _rf, res| {
-                            let res =
-                                match res {
-                                    Ok(val) => serde_v8::from_v8(scope, val).map_err(|err| {
-                                        CallbackError::ProtocolError(ferr!(err).wrap_err(
-                                            "error deserializaing promise result from v8",
-                                        ))
-                                    }),
-                                    Err(err) => Err(CallbackError::JsError(ferr!(
-                                        "callback promise rejection: {}",
-                                        err.to_rust_string_lossy(scope)
-                                    ))), /* Err(err) => match serde_v8::from_v8(scope, err) {
-                                             Ok(json) => Err(CallbackError::JsError(json)),
-                                             Err(err) => Err(CallbackError::ProtocolError(
-                                                 ferr!(err)
-                                                     .wrap_err("error deserializaing promise rejection from v8"),
-                                             )),
-                                         }, */
-                                };
-                            tx.send(res).expect_or_log("channel error")
-                        })
-                        .is_none();
-                    if deno_shutting_down {
-                        return Err(CallbackError::V8Error(ferr!("js runtime is shutting down")));
-                    };
-                    Ok(None)
-                } else {
+                if !res.is_promise() {
                     let res = serde_v8::from_v8(scope, res).map_err(|err| {
                         CallbackError::ProtocolError(
                             ferr!(err).wrap_err("error deserializaing result from v8"),
                         )
                     })?;
-                    Ok(Some(res))
+                    return Ok(Some(res));
                 }
+                let promise = v8::Local::<v8::Promise>::try_from(res).unwrap();
+                let deno_shutting_down =
+                    denort::promises::watch_promise(scope, promise, move |scope, _rf, res| {
+                        let res = match res {
+                            Ok(val) => serde_v8::from_v8(scope, val).map_err(|err| {
+                                CallbackError::ProtocolError(
+                                    ferr!(err)
+                                        .wrap_err("error deserializaing promise result from v8"),
+                                )
+                            }),
+                            // FIXME: this is a bit of a mess and a bunch of workaround
+                            // for private deno_core functionality as discussed at
+                            // https://github.com/denoland/deno/discussions/27504
+                            Err(err) => Err(CallbackError::JsError(
+                                ferr!(js_error_message(scope, err))
+                                    .wrap_err("callback promise rejection"),
+                            )),
+                        };
+                        if let Err(res) = tx.send(res) {
+                            debug!(?res, "callback response after abortion");
+                        }
+                    })
+                    .is_none();
+                if deno_shutting_down {
+                    return Err(CallbackError::V8Error(ferr!("js runtime is shutting down")));
+                };
+                Ok(None)
             })
         });
 
@@ -270,6 +268,75 @@ impl Callbacks {
 
         Ok(res)
     }
+}
+
+fn js_error_message(scope: &mut v8::HandleScope, err: v8::Local<v8::Value>) -> String {
+    let Some(obj) = err.to_object(scope) else {
+        return err.to_rust_string_lossy(scope);
+    };
+    let evt_err_class = {
+        let name = v8::String::new(scope, "ErrorEvent")
+            .expect_or_log("v8 error")
+            .into();
+        scope
+            .get_current_context()
+            // classes are stored on the global obj
+            .global(scope)
+            .get(scope, name)
+            .expect_or_log("v8 error")
+            .to_object(scope)
+            .expect_or_log("v8 error")
+    };
+    if !obj
+        .instance_of(scope, evt_err_class)
+        .expect_or_log("v8 error")
+    {
+        for key in &["stack", "message"] {
+            let key = v8::String::new(scope, key).expect_or_log("v8 error");
+            if let Some(inner) = obj.get(scope, key.into()) {
+                if inner.boolean_value(scope) {
+                    return inner.to_rust_string_lossy(scope);
+                }
+            }
+        }
+        return err.to_rust_string_lossy(scope);
+    }
+    // ErrorEvents are recieved here for some reason
+    // https://developer.mozilla.org/en-US/docs/Web/API/ErrorEvent
+    {
+        // if it has an error value attached, prefer that
+        let key = v8::String::new(scope, "error")
+            .expect_or_log("v8 error")
+            .into();
+        if let Some(inner) = obj.get(scope, key) {
+            // check if it's not null or undefined
+            if inner.boolean_value(scope) {
+                // stack messages are preferred if it has one
+                let Some(inner) = inner.to_object(scope) else {
+                    return inner.to_rust_string_lossy(scope);
+                };
+                let key = v8::String::new(scope, "stack").expect_or_log("v8 error");
+                if let Some(stack) = inner.get(scope, key.into()) {
+                    if stack.boolean_value(scope) {
+                        return stack.to_rust_string_lossy(scope);
+                    }
+                }
+                return inner.to_rust_string_lossy(scope);
+            }
+        }
+    }
+    #[derive(Deserialize)]
+    struct ErrorEvt {
+        lineno: i64,
+        colno: i64,
+        filename: String,
+        message: String,
+    }
+    let evt: ErrorEvt = serde_v8::from_v8(scope, err).unwrap();
+    format!(
+        "{} ({}:{}:{})",
+        evt.message, evt.filename, evt.lineno, evt.colno
+    )
 }
 
 struct Callback {

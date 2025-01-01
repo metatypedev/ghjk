@@ -142,6 +142,7 @@ export default function logger(
     logger = new std_log.Logger(name, level, {
       handlers: [consoleHandler],
     });
+    loggers.set(name, logger);
   }
   return logger;
 }

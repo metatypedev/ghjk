@@ -250,11 +250,12 @@ export const $ = dax.build$(
           depth: 10,
         });
       },
-      co<T extends readonly unknown[] | []>(
+      co: ((values: any[]) => Promise.all(values)) as typeof Promise.all,
+      /* co<T extends readonly unknown[] | []>(
         values: T,
       ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
         return Promise.all(values);
-      },
+      }, */
       // coIter<T, O>(
       //   items: Iterable<T>,
       //   fn: (item:T) => PromiseLike<O>,

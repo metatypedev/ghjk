@@ -18,7 +18,7 @@ if (
 
 export type E2eTestCase = {
   name: string;
-  tsGhjkfileStr: string;
+  fs: Record<string, string>;
   envVars?: Record<string, string>;
   ePoints: { cmd: string | string[]; stdin?: string }[];
   timeout_ms?: number;
@@ -27,7 +27,7 @@ export type E2eTestCase = {
 };
 
 export async function localE2eTest(testCase: E2eTestCase) {
-  const { envVars: testEnvs, ePoints, tsGhjkfileStr } = testCase;
+  const { envVars: testEnvs, ePoints, fs } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
       prefix: "ghjk_le2e_",
@@ -35,13 +35,19 @@ export async function localE2eTest(testCase: E2eTestCase) {
   );
   const ghjkDataDir = await tmpDir.join("ghjk").ensureDir();
 
-  await tmpDir.join("ghjk.ts").writeText(
-    tsGhjkfileStr.replaceAll(
-      "$ghjk",
-      std_url.dirname(import.meta.resolve("../mod.ts")).href,
-    ),
+  await $.co(
+    Object.entries(fs)
+      .map(
+        ([path, content]) =>
+          tmpDir.join(path)
+            .writeText(
+              content.replaceAll(
+                "$ghjk",
+                std_url.dirname(import.meta.resolve("../mod.ts")).href,
+              ),
+            ),
+      ),
   );
-
   const ghjkExePath = $.path(import.meta.resolve("../target/debug/ghjk"));
   const ghjkShimPath = await ghjkDataDir
     .join("ghjk")

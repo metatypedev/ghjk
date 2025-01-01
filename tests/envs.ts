@@ -9,7 +9,7 @@ import dummy from "../ports/dummy.ts";
 import type { FileArgs } from "../mod.ts";
 
 type CustomE2eTestCase =
-  & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
+  & Omit<E2eTestCase, "ePoints" | "fs">
   & {
     ePoint: string;
     stdin: string;
@@ -335,14 +335,16 @@ test (dummy) = "e1"; or exit 105
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
-    {
-      secureConf: {
-        ...testCase.secureConfig,
-        envs: [...testCase.envs, ...(testCase.secureConfig?.envs ?? [])],
+  fs: {
+    "ghjk.ts": "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
+      {
+        secureConf: {
+          ...testCase.secureConfig,
+          envs: [...testCase.envs, ...(testCase.secureConfig?.envs ?? [])],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envs/${testCase.name}`,
 })));

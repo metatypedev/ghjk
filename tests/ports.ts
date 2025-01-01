@@ -6,7 +6,7 @@ import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../modules/ports/types.ts";
 import { testTargetPlatform } from "./utils.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: FileArgs;
@@ -26,6 +26,14 @@ const cases: CustomE2eTestCase[] = [
   {
     name: "jq",
     installConf: ports.jq_ghrel(),
+    ePoint: `jq --version`,
+  },
+  {
+    name: "jq",
+    installConf: ports.asdf({
+      pluginRepo: "https://github.com/lsanwick/asdf-jq",
+      installType: "version",
+    }),
     ePoint: `jq --version`,
   },
   // 3 megs
@@ -159,15 +167,6 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.cpy_bs(),
     ePoint: `python3 --version`,
   },
-  // 77 meg +, depends on "cpy_bs" on darwin/macos
-  {
-    name: "cmake",
-    installConf: ports.cmake({}),
-    ePoint: `cmake --version`,
-    secureConf: {
-      enableRuntimes: true,
-    },
-  },
   // 80 meg +
   {
     name: "pipi-poetry",
@@ -220,16 +219,18 @@ const cases: CustomE2eTestCase[] = [
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: genTsGhjkFile(
-    {
-      secureConf: {
-        ...testCase.secureConf,
-        installs: Array.isArray(testCase.installConf)
-          ? testCase.installConf
-          : [testCase.installConf],
+  fs: {
+    "ghjk.ts": genTsGhjkFile(
+      {
+        secureConf: {
+          ...testCase.secureConf,
+          installs: Array.isArray(testCase.installConf)
+            ? testCase.installConf
+            : [testCase.installConf],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [
     ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
       cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],

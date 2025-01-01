@@ -49,7 +49,7 @@ const fishInteractiveScript = [
 ]
   .join("\n");
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   ePoint: string;
   stdin: string;
 };
@@ -78,7 +78,8 @@ const cases: CustomE2eTestCase[] = [
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: `
+  fs: {
+    "ghjk.ts": `
 export { sophon } from "$ghjk/hack.ts";
 import { task, env } from "$ghjk/hack.ts";
 
@@ -86,6 +87,7 @@ env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))
   .onExit(task($ => $\`/bin/sh -c 'rm marker'\`))
 `,
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envHooks/${testCase.name}`,
 })));

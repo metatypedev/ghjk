@@ -12,5 +12,6 @@ type GhjkNs = {
     set: (key: string, fn: (arg: Json) => Json | Promise<Json>) => string;
   };
   hostcall: (key: string, args: Json) => Promise<Json>;
+  dispatchException: (exception: any) => boolean;
 };
 export const Ghjk: GhjkNs;

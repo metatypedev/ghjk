@@ -96,12 +96,7 @@ async fn module_worker(
                 trace!(?msg, "module worker msg");
                 match msg {
                     ModuleWorkerReq::Run { response_channel } => response_channel
-                        .send(
-                            module_cx
-                                .run(global_term_signal.clone())
-                                .await
-                                .map_err(|err| ferr!(Box::new(err))),
-                        )
+                        .send(module_cx.run(global_term_signal.clone()).await)
                         .expect_or_log("channel error"),
                     ModuleWorkerReq::DriveTillExit {
                         term_signal,
@@ -111,7 +106,7 @@ async fn module_worker(
                             module_cx
                                 .drive_till_exit(global_term_signal.clone(), term_signal)
                                 .await
-                                .map_err(|err| ferr!(Box::new(err))),
+                                .map_err(crate::anyhow_to_eyre!()),
                         )
                         .expect_or_log("channel error"),
                     ModuleWorkerReq::Execute { response_channel } => response_channel
@@ -119,7 +114,7 @@ async fn module_worker(
                             module_cx
                                 .execute_main_module()
                                 .await
-                                .map_err(|err| ferr!(Box::new(err))),
+                                .map_err(crate::anyhow_to_eyre!()),
                         )
                         .expect_or_log("channel error"),
                     ModuleWorkerReq::GetLoadedModules { response_channel } => response_channel
@@ -175,7 +170,7 @@ impl WorkerContext {
         let graph = cli_factory
             .main_module_graph_container()
             .await
-            .map_err(|err| ferr!(Box::new(err)))?
+            .map_err(crate::anyhow_to_eyre!())?
             .clone();
         Ok(Self {
             cli_factory,
@@ -195,7 +190,7 @@ impl WorkerContext {
         let desc_parser = self
             .cli_factory
             .permission_desc_parser()
-            .map_err(|err| ferr!(Box::new(err)))?
+            .map_err(crate::anyhow_to_eyre!())?
             .clone();
         let permissions =
             deno_permissions::Permissions::from_options(desc_parser.as_ref(), permissions)?;
@@ -210,11 +205,11 @@ impl WorkerContext {
                 stdio,
             )
             .await
-            .map_err(|err| ferr!(Box::new(err)))?;
+            .map_err(crate::anyhow_to_eyre!())?;
         let maybe_coverage_collector = worker
             .maybe_setup_coverage_collector()
             .await
-            .map_err(|err| ferr!(Box::new(err)))?;
+            .map_err(crate::anyhow_to_eyre!())?;
 
         // TODO: hot module support, expose shared worker contet from deno/cli/worker
         // let maybe_hmr_runner = worker
@@ -339,26 +334,33 @@ impl ModuleWorkerContext {
         use deno::graph_container::*;
         self.graph
             .graph()
-            .walk(
-                [&self.main_module].into_iter(),
-                deno::deno_graph::WalkOptions {
-                    kind: deno::deno_graph::GraphKind::CodeOnly,
-                    check_js: false,
-                    follow_dynamic: true,
-                    prefer_fast_check_graph: false,
-                },
-            )
-            .map(|(url, _)| url.clone())
+            .modules()
+            .map(|module| match module {
+                deno_graph::Module::Js(js_module) => js_module.specifier.clone(),
+                deno_graph::Module::Json(json_module) => json_module.specifier.clone(),
+                deno_graph::Module::Wasm(wasm_module) => wasm_module.specifier.clone(),
+                deno_graph::Module::Npm(npm_module) => npm_module.specifier.clone(),
+                deno_graph::Module::Node(built_in_node_module) => {
+                    built_in_node_module.specifier.clone()
+                }
+                deno_graph::Module::External(external_module) => external_module.specifier.clone(),
+            })
             .collect()
     }
 
-    async fn run(&mut self, global_term_signal: TermSignal) -> anyhow::Result<i32> {
+    async fn run(&mut self, global_term_signal: TermSignal) -> Res<i32> {
         debug!("main_module {}", self.main_module);
-        self.execute_main_module().await?;
-
-        let (_local_signal_tx, local_signal_rx) = tokio::sync::watch::channel(false);
-        self.drive_till_exit(global_term_signal, local_signal_rx)
+        self.execute_main_module()
             .await
+            .map_err(crate::anyhow_to_eyre!())?;
+
+        let (_term_signal_tx, term_signal_rx) = tokio::sync::watch::channel(false);
+        let exit_code = self
+            .drive_till_exit(global_term_signal, term_signal_rx)
+            .await
+            .map_err(crate::anyhow_to_eyre!())?;
+
+        Ok(exit_code)
     }
 
     async fn drive_till_exit(
@@ -410,9 +412,9 @@ impl ModuleWorkerContext {
                   break
               },
               event_loop_result = event_loop_future => {
-                 event_loop_result?
+                anyhow::Context::context(event_loop_result, "event loop error")?;
               }
-            };
+            }
 
             let web_continue = self.worker.dispatch_beforeunload_event()?;
             if !web_continue {
@@ -444,7 +446,6 @@ impl ModuleWorkerContext {
                 .await?;
         } */
         Ok(self.worker.exit_code())
-        //.map_err(|err| ferr!(Box::new(err)))
     }
 
     async fn execute_main_module(&mut self) -> anyhow::Result<()> {
@@ -485,20 +486,27 @@ pub struct FinishedWorkerHandle {
     sender: tokio::sync::mpsc::Sender<ModuleWorkerReq>,
 }
 
+#[derive(Debug)]
+pub struct ActiveWorkerHandle {
+    pub exit_code_rx: tokio::sync::oneshot::Receiver<Res<i32>>,
+    pub term_signal_tx: tokio::sync::watch::Sender<bool>,
+    pub finished: FinishedWorkerHandle,
+}
+
 impl ModuleWorkerHandle {
     /// Load and execute the main module
     /// and drive the main loop until the program
     /// exits.
     pub async fn run(self) -> Res<(i32, FinishedWorkerHandle)> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (result_tx, result_rx) = tokio::sync::oneshot::channel();
         self.sender
             .send(ModuleWorkerReq::Run {
-                response_channel: tx,
+                response_channel: result_tx,
             })
             .await
             .expect_or_log("channel error");
         Ok((
-            rx.await.expect_or_log("channel error")?,
+            result_rx.await.expect_or_log("channel error")?,
             FinishedWorkerHandle {
                 sender: self.sender,
             },
@@ -523,29 +531,23 @@ impl ModuleWorkerHandle {
     /// result in returned channel or the term signal
     /// is lit.
     /// Expects that [`execute`] was called first on the worker.
-    pub async fn drive_till_exit(
-        self,
-    ) -> Res<(
-        tokio::sync::oneshot::Receiver<Res<i32>>,
-        tokio::sync::watch::Sender<bool>,
-        FinishedWorkerHandle,
-    )> {
+    pub async fn drive_till_exit(self) -> Res<ActiveWorkerHandle> {
         let (term_signal_tx, term_signal_rx) = tokio::sync::watch::channel(false);
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (exit_code_tx, exit_code_rx) = tokio::sync::oneshot::channel();
         self.sender
             .send(ModuleWorkerReq::DriveTillExit {
                 term_signal: term_signal_rx,
-                response_channel: tx,
+                response_channel: exit_code_tx,
             })
             .await
             .expect_or_log("channel error");
-        Ok((
-            rx,
+        Ok(ActiveWorkerHandle {
+            exit_code_rx,
             term_signal_tx,
-            FinishedWorkerHandle {
+            finished: FinishedWorkerHandle {
                 sender: self.sender,
             },
-        ))
+        })
     }
 }
 

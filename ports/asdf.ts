@@ -124,6 +124,7 @@ export class Port extends PortBase {
       return;
     }
     const conf = confValidator.parse(args.config);
+    await $.path(args.downloadPath).ensureDir();
     await $`${binPath}`
       .env({
         ...pathsWithDepArts(args.depArts, args.platform.os),
@@ -136,6 +137,7 @@ export class Port extends PortBase {
   }
   override async install(args: InstallArgs) {
     const conf = confValidator.parse(args.config);
+    await $.path(args.installPath).ensureDir();
     await $`${
       depExecShimPath(std_ports.asdf_plugin_git, "install", args.depArts)
     }`

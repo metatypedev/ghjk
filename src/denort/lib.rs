@@ -2,6 +2,7 @@
 
 pub use deno;
 
+pub mod macros;
 pub mod promises;
 pub mod unsync;
 pub mod worker;

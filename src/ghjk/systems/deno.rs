@@ -98,6 +98,7 @@ pub async fn systems_from_deno(
         }),
     );
     let cb_line = ext_conf.callbacks_handle(&gcx.deno);
+    let mut exception_line = ext_conf.exceptions_rx();
 
     let mut worker = gcx
         .deno
@@ -122,10 +123,10 @@ pub async fn systems_from_deno(
         )
         .await?;
     worker.execute().await?;
-    let (mut exit_code_channel, term_signal, _) = worker.drive_till_exit().await?;
+    let mut active_worker = worker.drive_till_exit().await?;
 
     let manifests = tokio::select! {
-        res = &mut exit_code_channel => {
+        res = &mut active_worker.exit_code_rx => {
             let exit_code = res
                 .expect_or_log("channel error")
                 .wrap_err("deno systems error building manifests")?;
@@ -139,24 +140,45 @@ pub async fn systems_from_deno(
     let manifests: Vec<ManifestDesc> =
         serde_json::from_value(manifests).wrap_err("protocol error")?;
 
-    let dcx = gcx.deno.clone();
-    let join_exit_code_watcher = tokio::spawn(async {
-        let err = match exit_code_channel.await {
-            Ok(Ok(0)) => return Ok(()),
-            Ok(Ok(exit_code)) => {
-                ferr!("deno systems died with non-zero exit code: {exit_code}")
+    let term_signal = active_worker.term_signal_tx.clone();
+    let join_exit_code_watcher = {
+        let dcx = gcx.deno.clone();
+        tokio::spawn(async move {
+            let res;
+            loop {
+                res = tokio::select! {
+                    res = &mut active_worker.exit_code_rx => {
+                        match res {
+                            Ok(res) => res.wrap_err("error on deno worker for deno systems"),
+                            Err(_) => Err(ferr!("deno systems unexpected shutdown"))
+                        }
+                    }
+                    Some(err) = exception_line.recv() => {
+                        // NOTE: we only log the error here
+                        // this assumes that the systems are processing
+                        // a callback and that they will recieve an EventError
+                        // when the event loop continues
+                        // mostly relevant for Worker errors
+                        error!("event loop error caught: {err}");
+                        continue;
+                    }
+                };
+                break;
             }
-            Ok(Err(err)) => err.wrap_err("error on event loop for deno systems"),
-            Err(_) => {
-                ferr!("deno systems unexpected shutdown")
-            }
-        };
-        error!("deno systems error: {err:?}");
-        dcx.terminate()
-            .await
-            .expect_or_log("error terminating deno worker");
-        Err(err)
-    });
+            let err = match res {
+                Ok(0) => return Ok(()),
+                Ok(exit_code) => {
+                    ferr!("deno systems died with non-zero exit code: {exit_code}")
+                }
+                Err(err) => err,
+            };
+            error!("deno systems error: {err:?}");
+            dcx.terminate()
+                .await
+                .expect_or_log("error terminating deno worker");
+            Err(err)
+        })
+    };
 
     let exit_code_channel = Arc::new(std::sync::Mutex::new(Some(join_exit_code_watcher)));
 

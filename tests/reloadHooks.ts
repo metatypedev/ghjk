@@ -199,7 +199,7 @@ test "$GHJK_ENV" = "test"; or exit 112
   ])
   .join("\n");
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   installConf?: InstallConfigFat[];
   ePoint: string;
   stdin: string;
@@ -296,21 +296,23 @@ const cases: CustomE2eTestCase[] = [
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: genTsGhjkFile(
-    {
-      secureConf: {
-        envs: [
-          {
-            name: "main",
-            installs: testCase.installConf ? testCase.installConf : [dummy()],
-          },
-          {
-            name: "test",
-          },
-        ],
+  fs: {
+    "ghjk.ts": genTsGhjkFile(
+      {
+        secureConf: {
+          envs: [
+            {
+              name: "main",
+              installs: testCase.installConf ? testCase.installConf : [dummy()],
+            },
+            {
+              name: "test",
+            },
+          ],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `reloadHooks/${testCase.name}`,
 })));

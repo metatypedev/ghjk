@@ -5,8 +5,6 @@ use super::HostCtx;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HashObj {
     pub version: String,
-    /// Hash of the ghjkfile contents.
-    pub ghjkfile_hash: String,
     /// Hashes of all env vars that were read.
     pub env_var_hashes: indexmap::IndexMap<String, Option<String>>,
     /// Hashes of all files that were read.
@@ -21,7 +19,7 @@ pub enum HashfileError {
     #[error("error parsing hashfile: {0}")]
     Serialization(serde_json::Error),
     #[error("{0}")]
-    Other(eyre::Report),
+    Other(#[source] eyre::Report),
 }
 
 impl HashObj {
@@ -37,13 +35,16 @@ impl HashObj {
                 &hcx.config.env_vars,
                 res.accessed_env_keys.iter().map(|key| key.as_ref()),
             ),
-            ghjkfile_hash: file_digest_hash(hcx, ghjkfile_path)
-                .await?
-                .expect_or_log("ghjkfile is gone"),
             listed_files: res
                 .listed_file_paths
                 .iter()
-                .map(|path| pathdiff::diff_paths(path, &hcx.config.cwd).unwrap_or_log())
+                .map(|path| {
+                    pathdiff::diff_paths(
+                        std::path::absolute(path).expect_or_log("error absolutizing path"),
+                        &hcx.config.cwd,
+                    )
+                    .unwrap_or_log()
+                })
                 .collect(),
             read_file_hashes: file_digests(
                 hcx,
@@ -70,11 +71,7 @@ impl HashObj {
     }
 
     #[tracing::instrument(skip(hcx))]
-    pub async fn is_stale(&self, hcx: &HostCtx, ghjkfile_hash: &str) -> Res<bool> {
-        if self.ghjkfile_hash != ghjkfile_hash {
-            trace!("stale ghjkfile hash");
-            return Ok(true);
-        }
+    pub async fn is_stale(&self, hcx: &HostCtx) -> Res<bool> {
         {
             let new_digest = env_var_digests(
                 &hcx.config.env_vars,
@@ -133,7 +130,7 @@ async fn file_digests(
     // FIXME: this will exhaust memory if the number of files is large
     // ConcurrentStream supports limiting concurrency but has a bug
     // tracked at https://github.com/yoshuawuyts/futures-concurrency/issues/203
-    futures::future::join_all(
+    let mut map = futures::future::join_all(
         read_files
             .into_iter()
             .map(|path| {
@@ -149,7 +146,9 @@ async fn file_digests(
     )
     .await
     .into_iter()
-    .collect()
+    .collect::<Res<IndexMap<_, _>>>()?;
+    map.sort_unstable_keys();
+    Ok(map)
     /* let out = read_files
         .into_co_stream()
         .map(|path| async move {
@@ -184,10 +183,16 @@ pub async fn file_digest_hash(hcx: &HostCtx, path: &Path) -> Res<Option<String>>
                 None
             };
 
-            Ok(Some(crate::utils::hash_obj(&serde_json::json!({
+            let stat = StatMeta {
+                // we're not going to invalidate on access
+                accessed: None,
+                ..StatMeta::from(stat)
+            };
+            let json = serde_json::json!({
                 "content_hash": content_hash,
-                "stat": StatMeta::from(stat)
-            }))))
+                "stat": stat
+            });
+            Ok(Some(crate::utils::hash_obj(&json)))
         }
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(err) => Err(err).wrap_err("error on file stat"),

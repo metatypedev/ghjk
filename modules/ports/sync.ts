@@ -518,9 +518,14 @@ function resolveConfig(
         version.match(new RegExp(`^v?${config.version}$`))
       );
       if (!match) {
-        throw new Error(`error resolving verison: not found`, {
-          cause: { config, manifest, allVersions },
-        });
+        throw new Error(
+          `error resolving verison ${config.version}: not found, available versions: [${
+            allVersions.join(", ")
+          }]`,
+          {
+            cause: { config, manifest, allVersions },
+          },
+        );
       }
       version = match;
     } else {

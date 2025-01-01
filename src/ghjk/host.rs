@@ -133,7 +133,7 @@ pub async fn systems_from_ghjkfile(
                 // no longer exists
                 || ghjkfile_hash.is_none()
                 || obj
-                    .is_stale(hcx.as_ref(), ghjkfile_hash.as_ref().unwrap())
+                    .is_stale(hcx.as_ref())
                     .await
                     .inspect(|is_stale| {
                         if *is_stale {
@@ -360,8 +360,8 @@ pub struct LockObj {
 pub enum LockfileError {
     #[error("error parsing lockfile:{0}")]
     Serialization(serde_json::Error),
-    #[error("{0}")]
-    Other(eyre::Report),
+    #[error(transparent)]
+    Other(#[from] eyre::Report),
 }
 
 impl LockObj {

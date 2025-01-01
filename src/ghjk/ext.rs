@@ -1,8 +1,10 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::interlude::*;
 
+use std::{cell::RefCell, rc::Rc};
+
+use deno_core::v8;
 use deno_core::OpState;
+use tokio::sync::mpsc;
 #[rustfmt::skip]
 use deno_core as deno_core; // necessary for re-exported macros to work
 
@@ -26,6 +28,7 @@ pub fn extensions(config: ExtConfig) -> Arc<denort::deno::worker::CustomExtensio
 pub struct ExtConfig {
     pub blackboard: Arc<DHashMap<CHeapStr, serde_json::Value>>,
     callbacks_rx: Arc<std::sync::Mutex<callbacks::CallbackLine>>,
+    exception_tx: Option<mpsc::UnboundedSender<eyre::Report>>,
     pub hostcalls: Hostcalls,
 }
 
@@ -44,6 +47,12 @@ impl ExtConfig {
         handle
     }
 
+    pub fn exceptions_rx(&mut self) -> mpsc::UnboundedReceiver<eyre::Report> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.exception_tx = Some(tx);
+        rx
+    }
+
     fn inject(self, state: &mut deno_core::OpState) {
         let callbacks = callbacks::worker(&self);
         let ctx = ExtContext {
@@ -56,7 +65,13 @@ impl ExtConfig {
 
 deno_core::extension!(
     ghjk_deno_ext,
-    ops = [op_blackboard_get, op_blackboard_set, callbacks::op_callbacks_set, op_hostcall],
+    ops = [
+        op_blackboard_get,
+        op_blackboard_set,
+        callbacks::op_callbacks_set,
+        op_hostcall,
+        op_dispatch_exception2
+    ],
     options = { config: ExtConfig },
     state = |state, opt| {
         opt.config.inject(state);
@@ -125,4 +140,22 @@ pub async fn op_hostcall(
         anyhow::bail!("no hostcall found under {name}");
     };
     func(args).await.map_err(|err| anyhow::anyhow!(err))
+}
+
+#[deno_core::op2(fast)]
+pub fn op_dispatch_exception2(
+    scope: &mut v8::HandleScope,
+    #[state] ctx: &ExtContext,
+    exception: v8::Local<v8::Value>,
+) -> bool {
+    if let Some(tx) = &ctx.config.exception_tx {
+        tx.send(ferr!(
+            "unhandledrejection: {}",
+            exception.to_rust_string_lossy(scope)
+        ))
+        .expect_or_log("channel error");
+        true
+    } else {
+        false
+    }
 }

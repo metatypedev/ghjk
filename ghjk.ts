@@ -7,6 +7,7 @@ import * as ports from "./ports/mod.ts";
 import { sedLock } from "./std.ts";
 import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
+import dummy from "./ports/dummy.ts";
 
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
@@ -55,7 +56,6 @@ env("main").vars({
 
 env("_rust")
   .install(
-    // TODO: cmake
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
     installs.rust,
@@ -79,8 +79,13 @@ if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
   env("dev").install(mold);
 }
 
-// these  are just for quick testing
-install();
+// these are just for quick testing
+install(
+  ports.asdf({
+    pluginRepo: "https://github.com/lsanwick/asdf-jq",
+    installType: "version",
+  }),
+);
 
 const DENO_VERSION = "2.1.2";
 

@@ -46,7 +46,7 @@ export class Port extends PortBase {
   }
 
   listAll() {
-    return ["dummy"];
+    return [];
   }
 
   override async download(args: DownloadArgs) {

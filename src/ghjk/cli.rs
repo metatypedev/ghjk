@@ -78,11 +78,12 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     let hcx = host::HostCtx::new(
         gcx.clone(),
         host::Config {
+            env_vars: std::env::vars().collect(),
+            cwd,
+            // TODO: env vars, flags and tests for the following
             re_resolve: false,
             locked: false,
             re_serialize: false,
-            env_vars: std::env::vars().collect(),
-            cwd,
         },
         systems_deno,
     );

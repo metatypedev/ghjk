@@ -38,6 +38,7 @@ const ____GhjkHost = {
     },
   },
   hostcall: getOp("op_hostcall"),
+  dispatchException: getOp("op_dispatch_exception2"),
 };
 
 globalThis.____GhjkHost = ____GhjkHost;
