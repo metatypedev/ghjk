@@ -1,8 +1,10 @@
 import {
   $,
+  AllowedPortDep,
   defaultLatestStable,
   depExecShimPath,
   type DownloadArgs,
+  getPortRef,
   type InstallArgs,
   type InstallConfigSimple,
   type ListAllArgs,
@@ -35,10 +37,26 @@ export type AsdfPluginInstallConf =
   & InstallConfigSimple
   & zod.input<typeof confValidator>;
 
+/**
+ * WARNING: this is probably no the function you want if you intend
+ * to add `asdf_plugin_git` to your `allowedBuildDeps`.
+ *
+ * This module exports a {@link buildDep} function for the purpose of adding
+ * the port to the allowedBuildDeps list.
+ */
 export default function conf(config: AsdfPluginInstallConf) {
   return {
     ...confValidator.parse(config),
     port: manifest,
+  };
+}
+
+export function buildDep(): AllowedPortDep {
+  return {
+    manifest,
+    defaultInst: {
+      portRef: getPortRef(manifest),
+    },
   };
 }
 
@@ -55,11 +73,11 @@ export class Port extends PortBase {
       .map((line) => line.split(/\s/)[0].slice(0, 10));
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, args);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     if (await $.path(args.downloadPath).exists()) {
       // FIXME: remove this once download tracking is part of core
       return;
@@ -74,7 +92,7 @@ export class Port extends PortBase {
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const tmpPath = $.path(args.tmpDirPath);
     // we copy the repo to a src dir
     const srcDir = (await tmpPath.ensureDir()).join("src");

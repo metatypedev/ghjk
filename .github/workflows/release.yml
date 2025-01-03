@@ -1,0 +1,90 @@
+name: release jobs
+run-name: release jobs for ${{  github.ref }}
+on:
+  workflow_dispatch:
+    inputs:
+      ovewriteArtifacts:
+        description: Ovewrite artifacts on the release. Some will only be skipped.
+        required: true
+        type: boolean
+        default: true
+      checkBump:
+        description: check-bump adds a release entry to github so it's disabled by default.
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags:
+      - v*
+
+jobs:
+  check-bump:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' || ( github.event_name == 'workflow_dispatch' && inputs.checkBump )
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: WyriHaximus/github-action-get-previous-tag@v1.4.0
+        id: latest-tag
+      - uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.latest-tag.outputs.tag }}
+          allowUpdates: ${{ github.event_name == 'workflow_dispatch' }}
+          generateReleaseNotes: true
+          discussionCategory: "Announcements"
+          prerelease: ${{ contains(steps.latest-tag.outputs.tag, 'rc') || contains(steps.latest-tag.outputs.tag, 'dev') }}
+
+  pub-cli:
+    needs:
+      - check-bump
+    # using `always()` makes the job evaulte despite
+    # status of check-bump
+    # we combine that with our own conditions
+    if: |
+      always()
+      && (
+        needs.check-bump.result == 'success'
+        || github.event_name == 'workflow_dispatch'
+      )
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          # FIXME: deno doesn't support musl today https://github.com/denoland/deno/issues/3711
+          # - os: ubuntu-latest
+          #   target: x86_64-unknown-linux-musl
+          - os: custom-arm
+            target: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # some targets don't use cross so will require the deps in the host
+      - uses: WyriHaximus/github-action-get-previous-tag@v1.4.0
+        id: latest-tag
+      - uses: dsherret/rust-toolchain-file@v1
+        with:
+          targets: ${{ matrix.target }}
+      - uses: mozilla-actions/sccache-action@v0.0.6
+      - run: |
+          rustup target add ${{ matrix.target }}
+      - shell: bash
+        run: |
+          cargo build --release --locked --package ghjk --target ${{ matrix.target }}
+          cd target/${{ matrix.target }}/release/
+          tar czvf ../../../ghjk-${{ steps.latest-tag.outputs.tag }}-${{ matrix.target }}.tar.gz ghjk
+          cd ../../../
+      - uses: svenstaro/upload-release-action@v2
+        with:
+          tag: ${{ steps.latest-tag.outputs.tag }}
+          file: "ghjk-${{ steps.latest-tag.outputs.tag }}-${{ matrix.target }}.tar.gz"
+          asset_name: "ghjk-${{ steps.latest-tag.outputs.tag }}-${{ matrix.target }}.tar.gz"
+          overwrite: ${{ inputs.ovewriteArtifacts }}

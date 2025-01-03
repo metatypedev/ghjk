@@ -202,7 +202,7 @@ async function writeActivators(
   onExitHooks: [string, string[]][],
 ) {
   const ghjkDirVar = "_ghjk_dir";
-  const shareDirVar = "_ghjk_share_dir";
+  const dataDirVar = "_ghjk_data_dir";
   pathVars = {
     ...Object.fromEntries(
       Object.entries(pathVars).map((
@@ -211,7 +211,7 @@ async function writeActivators(
         key,
         val
           .replace(gcx.ghjkDir.toString(), "$" + ghjkDirVar)
-          .replace(gcx.ghjkShareDir.toString(), "$" + shareDirVar),
+          .replace(gcx.ghjkDataDir.toString(), "$" + dataDirVar),
       ]),
     ),
   };
@@ -227,9 +227,6 @@ async function writeActivators(
       .join(" ").replaceAll("'", "'\\''")
   );
 
-  // ghjk.sh sets the DENO_DIR so we can usually
-  // assume it's set
-  const denoDir = Deno.env.get("DENO_DIR") ?? "";
   const scripts = {
     //
     // posix shell version
@@ -238,16 +235,26 @@ async function writeActivators(
       `# shellcheck disable=SC2016`,
       `# SC2016: disabled because single quoted expressions are used for the cleanup scripts`,
       ``,
-      `if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then`,
-      `    eval "$GHJK_CLEANUP_POSIX"`,
-      `fi`,
-      `export GHJK_CLEANUP_POSIX="";`,
+      `# this file bust be sourced from an existing sh/bash/zsh session using the \`source\` command`,
+      `# it cannot be executed directly`,
+      ``,
+      `ghjk_deactivate () {`,
+      `    if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then`,
+      `        eval "$GHJK_CLEANUP_POSIX"`,
+      `        unset GHJK_CLEANUP_POSIX`,
+      `    fi`,
+      `}`,
+      `ghjk_deactivate`,
+      ``,
       ``,
       `# the following variables are used to make the script more human readable`,
       `${ghjkDirVar}="${gcx.ghjkDir.toString()}"`,
-      `${shareDirVar}="${gcx.ghjkShareDir.toString()}"`,
+      `${dataDirVar}="${gcx.ghjkDataDir.toString()}"`,
       ``,
+      `export GHJK_CLEANUP_POSIX="";`,
       `# env vars`,
+      `# we keep track of old values before this script is run`,
+      `# so that we can restore them on cleanup`,
       ...Object.entries(envVars).flatMap(([key, val]) => {
         const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "'\\''");
         // avoid triggering unbound variable if -e is set
@@ -273,7 +280,7 @@ async function writeActivators(
           // i.e. export KEY='OLD $VALUE OF KEY'
           // but $VALUE won't be expanded when the cleanup actually runs
           // we also unset the key if it wasn't previously set
-          `$([ -z "$\{${key}+x}" ] && echo 'export ${key}= '\\'"$\{${key}:-unreachable}""';" || echo 'unset ${key};');`,
+          `$([ -z "$\{${key}+x}" ] && echo 'unset ${key};' || echo 'export ${key}='\\'"$\{${key}:-unreachable}""';");`,
           `export ${key}='${safeVal}';`,
           ``,
         ];
@@ -289,17 +296,14 @@ async function writeActivators(
           //  FIXME: we're allowing expansion in the value to allow
           //  readable $ghjkDirVar usage
           // (for now safe since all paths are created within ghjk)
-          `export ${key}="${safeVal}:$${key}";`,
+          `export ${key}="${safeVal}:$\{${key}-}";`,
           ``,
         ];
       }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim to improving latency`,
-      // the ghjk executable is itself a shell script
-      // which execs deno, we remove the middleman here
-      // also, the ghjk executable is optional
-      ghjk_sh(gcx, denoDir, ghjkShimName),
+      `# on this shim to improve reliablity`,
+      ghjk_sh(gcx, ghjkShimName),
       ``,
       `# only run the hooks in interactive mode`,
       `case "$-" in`,
@@ -323,25 +327,33 @@ async function writeActivators(
     //
     // fish version
     fish: [
-      `if set --query GHJK_CLEANUP_FISH`,
-      `    eval $GHJK_CLEANUP_FISH`,
-      `    set --erase GHJK_CLEANUP_FISH`,
+      `# this file bust be sourced from an existing fish session using the \`source\` command`,
+      `# it cannot be executed directly`,
+      ``,
+      `function ghjk_deactivate`,
+      `    if set --query GHJK_CLEANUP_FISH`,
+      `        eval $GHJK_CLEANUP_FISH`,
+      `        set --erase GHJK_CLEANUP_FISH`,
+      `    end`,
       `end`,
+      `ghjk_deactivate`,
       ``,
       `# the following variables are used to make the script more human readable`,
       `set ${ghjkDirVar} "${gcx.ghjkDir.toString()}"`,
-      `set ${shareDirVar} "${gcx.ghjkShareDir.toString()}"`,
+      `set ${dataDirVar} "${gcx.ghjkDataDir.toString()}"`,
       ``,
       `# env vars`,
+      `# we keep track of old values before this script is run`,
+      `# so that we can restore them on cleanup`,
       ...Object.entries(envVars).flatMap(([key, val]) => {
         const safeVal = val.replaceAll("\\", "\\\\").replaceAll("'", "\\'");
         // read the comments from the posix version of this section
         // the fish version is notably simpler since
-        // - we can escape single quates within single quotes
+        // - we can escape single quotes within single quotes
         // - we don't have to deal with 'set -o nounset'
         return [
           `set --global --append GHJK_CLEANUP_FISH 'test "$${key}" = \\'${safeVal}\\'; and '` +
-          `(if set -q ${key}; echo 'set --global --export ${key} \\'' "$${key}" "';"; else; echo 'set -e ${key};'; end;);`,
+          `(if set -q ${key}; echo 'set --global --export ${key} \\''"$${key}""';"; else; echo 'set -e ${key};'; end;);`,
           `set --global --export ${key} '${val}';`,
           ``,
         ];
@@ -358,8 +370,8 @@ async function writeActivators(
       }),
       ``,
       `# hooks that want to invoke ghjk are made to rely`,
-      `# on this shim to improving latency`,
-      ghjk_fish(gcx, denoDir, ghjkShimName),
+      `# on this shim to improve to improve reliablity`,
+      ghjk_fish(gcx, ghjkShimName),
       ``,
       `# only run the hooks in interactive mode`,
       `if status is-interactive;`,

@@ -7,7 +7,9 @@ __ghjk_get_mtime_ts () {
             stat -c "%Y" "$1"
         ;;
         "darwin")
-            stat -f "%Sm" -t "%s" "$1"
+            # darwin stat doesn't support ms since epoch so we bring out the big guns
+            deno eval 'console.log((await Deno.stat(Deno.args[0])).mtime.getTime())' "$1"
+            # stat -f "%Sm" -t "%s" "$1"
         ;;
         "*")
             stat -c "%Y" "$1"
@@ -15,7 +17,7 @@ __ghjk_get_mtime_ts () {
     esac
 }
 
-ghjk_reload() {
+ghjk_hook() {
 
     # precedence is given to argv over GHJK_ENV
     # which's usually the current active env
@@ -99,21 +101,36 @@ precmd() {
         # we ignore previously loaded GHJK_ENV when switching 
         # directories
         unset GHJK_ENV
-        ghjk_reload
+        ghjk_hook
         export GHJK_LAST_PWD="$PWD"
 
     # -nextfile exists
     elif [ -f "$GHJK_NEXTFILE" ]; then 
 
-        ghjk_reload "$(cat "$GHJK_NEXTFILE")"
+        ghjk_hook "$(cat "$GHJK_NEXTFILE")"
         rm "$GHJK_NEXTFILE"
 
     #  - the env dir loader mtime changes
-    elif [ -n "${GHJK_LAST_ENV_DIR+x}" ] && [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
+    elif [ -n "${GHJK_LAST_ENV_DIR+x}" ] && [ -e "$GHJK_LAST_ENV_DIR/activate.sh" ] && [ "$(__ghjk_get_mtime_ts "$GHJK_LAST_ENV_DIR/activate.sh")" -gt "$GHJK_LAST_ENV_DIR_MTIME" ]; then 
 
-        ghjk_reload
+        ghjk_hook
 
     fi
 }
 
-ghjk_reload
+case "$-" in
+    *i*) # if the shell variables contain "i"
+        # only run the hook in interactive mode
+        # and GHJK_AUTO_HOOK is unset/false
+        if [ -z "$GHJK_AUTO_HOOK" ] || [ "$GHJK_AUTO_HOOK" != "0" ] && [ "$GHJK_AUTO_HOOK" != "false" ]; then
+            ghjk_hook
+        fi
+    ;;
+    *)
+        # also run the hook if GHJK_AUTO_HOOK is set
+        if [ -n "${GHJK_AUTO_HOOK+x}" ] && [ "$GHJK_AUTO_HOOK" != "0" ] && [ "$GHJK_AUTO_HOOK" != "false" ]; then
+            ghjk_hook
+        fi
+        :
+    ;;
+esac

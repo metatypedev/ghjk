@@ -5,18 +5,11 @@
 // relying on --frozen-lockfile
 
 import getLogger from "../utils/logger.ts";
-import { $, dirs, importRaw } from "../utils/mod.ts";
+import { $, importRaw } from "../utils/mod.ts";
 import type { Path } from "../utils/mod.ts";
+import { xdg } from "../deps/install.ts";
 
 const logger = getLogger(import.meta);
-
-/**
- * Deno unstable flags needed for ghjk host.
- */
-export const unstableFlags = [
-  "--unstable-kv",
-  "--unstable-worker-options",
-];
 
 // TODO: calculate and add integrity hashes to these raw imports
 // as they won't be covered by deno.lock
@@ -39,7 +32,7 @@ const getHooksVfs = async () => ({
   "env.bash": [
     "# importing bash-preexec, see the ghjk hook at then end\n\n",
     await importRaw(
-      "https://raw.githubusercontent.com/rcaloras/bash-preexec/0.5.0/bash-preexec.sh",
+      import.meta.resolve("./bash-preexec.sh"),
     ),
     await importRaw(import.meta.resolve("./hook.sh")),
   ].join("\n"),
@@ -104,51 +97,37 @@ async function filterAddContent(
 
 interface InstallArgs {
   homeDir: string;
-  ghjkShareDir: string;
+  ghjkDataDir: string;
   shellsToHook?: string[];
   /** The mark used when adding the hook to the user's shell rcs.
    * Override to allow multiple hooks in your rc.
    */
   shellHookMarker: string;
-  /**
-   * The ghjk bin is optional, one can always invoke it
-   * using `deno run --flags uri/to/ghjk/main.ts`;
-   */
-  skipExecInstall: boolean;
-  /** The directory in which to install the ghjk exec
-   * Preferrably, one that's in PATH
-   */
-  ghjkExecInstallDir: string;
-  /**
-   * The deno exec to be used by the ghjk executable
-   * by default will be "deno" i.e. whatever in $PATH that resolves that to.
-   */
-  ghjkExecDenoExec: string;
-  /**
-   * The cache dir to use by the ghjk deno installation.
-   */
-  ghjkDenoCacheDir?: string;
-  /**
-   * Disable using a lockfile for the ghjk command
-   */
-  noLockfile: boolean;
+}
+
+function getHomeDir() {
+  switch (Deno.build.os) {
+    case "linux":
+    case "darwin":
+      return Deno.env.get("HOME") ?? null;
+    case "windows":
+      return Deno.env.get("USERPROFILE") ?? null;
+    default:
+      return null;
+  }
+}
+const homeDir = getHomeDir();
+if (!homeDir) {
+  throw new Error("cannot find home dir");
 }
 
 export const defaultInstallArgs: InstallArgs = {
-  ghjkShareDir: $.path(dirs().shareDir).resolve("ghjk").toString(),
-  homeDir: dirs().homeDir,
+  // remove first the xdg.data suffix added in windows by lib
+  ghjkDataDir: $.path(xdg.data().replace("xdg.data", "")).resolve("ghjk")
+    .toString(),
+  homeDir,
   shellsToHook: [],
   shellHookMarker: "ghjk-hook-default",
-  skipExecInstall: true,
-  // TODO: respect xdg dirs
-  ghjkExecInstallDir: $.path(dirs().homeDir).resolve(".local", "bin")
-    .toString(),
-  ghjkExecDenoExec: Deno.execPath(),
-  /**
-   * the default behvaior kicks in with ghjkDenoCacheDir is falsy
-   * ghjkDenoCacheDir: undefined,
-   */
-  noLockfile: false,
 };
 
 const shellConfig: Record<string, string> = {
@@ -165,14 +144,14 @@ export async function install(
   if (Deno.build.os == "windows") {
     throw new Error("windows is not yet supported, please use wsl");
   }
-  const ghjkShareDir = $.path(Deno.cwd())
-    .resolve(args.ghjkShareDir);
+  const ghjkDataDir = $.path(Deno.cwd())
+    .resolve(args.ghjkDataDir);
 
-  logger.info("unpacking vfs", { ghjkShareDir });
+  logger.info("unpacking vfs", { ghjkDataDir });
   await unpackVFS(
     await getHooksVfs(),
-    ghjkShareDir,
-    [[/__GHJK_SHARE_DIR__/g, ghjkShareDir.toString()]],
+    ghjkDataDir,
+    [[/__GHJK_DATA_DIR__/g, ghjkDataDir.toString()]],
   );
   for (const shell of args.shellsToHook ?? Object.keys(shellConfig)) {
     const { homeDir } = args;
@@ -188,7 +167,7 @@ export async function install(
       continue;
     }
     logger.info("installing hook", {
-      ghjkShareDir,
+      ghjkDataDir,
       shell,
       marker: args.shellHookMarker,
       rcPath,
@@ -196,54 +175,7 @@ export async function install(
     await filterAddContent(
       rcPath,
       new RegExp(args.shellHookMarker, "g"),
-      `. ${ghjkShareDir}/env.${shell} # ${args.shellHookMarker}`,
+      `. ${ghjkDataDir}/env.${shell} # ${args.shellHookMarker}`,
     );
   }
-
-  if (!args.skipExecInstall) {
-    switch (Deno.build.os) {
-      case "linux":
-      case "freebsd":
-      case "solaris":
-      case "illumos":
-      case "darwin": {
-        const installDir = await $.path(args.ghjkExecInstallDir).ensureDir();
-        const exePath = installDir.resolve(`ghjk`);
-        logger.info("installing executable", { exePath });
-
-        // use an isolated cache by default
-        const denoCacheDir = args.ghjkDenoCacheDir
-          ? $.path(args.ghjkDenoCacheDir)
-          : ghjkShareDir.resolve("deno");
-        await exePath.writeText(
-          (await importRaw(import.meta.resolve("./ghjk.sh")))
-            .replaceAll(
-              "__GHJK_SHARE_DIR__",
-              ghjkShareDir.toString(),
-            )
-            .replaceAll(
-              "__DENO_CACHE_DIR",
-              denoCacheDir.toString(),
-            )
-            .replaceAll(
-              "__DENO_EXEC__",
-              args.ghjkExecDenoExec,
-            )
-            .replaceAll(
-              "__UNSTABLE_FLAGS__",
-              unstableFlags.join(" "),
-            )
-            .replaceAll(
-              "__MAIN_TS_URL__",
-              import.meta.resolve("../main.ts"),
-            ),
-          { mode: 0o700 },
-        );
-        break;
-      }
-      default:
-        throw new Error(`${Deno.build.os} is not yet supported`);
-    }
-  }
-  logger.info("install success");
 }

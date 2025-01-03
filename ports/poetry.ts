@@ -49,22 +49,22 @@ const toPipiConfig = (config: InstallConfigLiteX) => ({
 });
 
 export class Port extends PipiPort {
-  listAll(args: ListAllArgs) {
+  override listAll(args: ListAllArgs) {
     return super.listAll({ ...args, config: toPipiConfig(args.config) });
   }
 
-  latestStable(args: ListAllArgs): Promise<string> {
+  override latestStable(args: ListAllArgs): Promise<string> {
     return defaultLatestStable(this, {
       ...args,
       config: toPipiConfig(args.config),
     });
   }
 
-  download(args: DownloadArgs) {
+  override download(args: DownloadArgs) {
     return super.download({ ...args, config: toPipiConfig(args.config) });
   }
 
-  install(args: InstallArgs) {
+  override install(args: InstallArgs) {
     return super.install({ ...args, config: toPipiConfig(args.config) });
   }
 }

@@ -12,3 +12,9 @@ npm
 deno.land
 jsr.io
 esm.sh
+
+src/play/*.rs
+
+# Added by cargo
+
+/target

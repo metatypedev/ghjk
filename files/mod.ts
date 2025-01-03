@@ -25,8 +25,7 @@ import {
   unwrapZodRes,
 } from "../utils/mod.ts";
 import * as std_ports from "../modules/ports/std.ts";
-import * as cpy from "../ports/cpy_bs.ts";
-import * as node from "../ports/node.ts";
+import runtime_ports from "../modules/ports/std_runtime.ts";
 // host
 import type { SerializedConfig } from "../host/types.ts";
 import * as std_modules from "../modules/std.ts";
@@ -1085,15 +1084,14 @@ export function stdDeps(args = { enableRuntimes: false }) {
   if (args.enableRuntimes) {
     out.push(
       ...reduceAllowedDeps([
-        node.default(),
-        cpy.default(),
+        ...runtime_ports,
       ]),
     );
   }
   return out;
 }
 
-function task$(
+export function task$(
   argv: string[],
   env: Record<string, string | undefined>,
   workingDir: string,

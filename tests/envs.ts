@@ -9,7 +9,7 @@ import dummy from "../ports/dummy.ts";
 import type { FileArgs } from "../mod.ts";
 
 type CustomE2eTestCase =
-  & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
+  & Omit<E2eTestCase, "ePoints" | "fs">
   & {
     ePoint: string;
     stdin: string;
@@ -47,11 +47,18 @@ const envVarTestEnvs: EnvDefArgs[] = [
 ];
 const envVarTestsPosix = `
 set -ex
+env
 # by default, we should be in main
-[ "$SONG" = "ditto" ] || exit 101
+[ "$SONG" = "ditto" ] || exit 1010
 [ "$GHJK_ENV" = "main" ] || exit 1011
 
+# vars should be gone after deactivation
+ghjk_deactivate
+[ "$SONG" = "ditto" ] && exit 1022
+[ "$GHJK_ENV" = "main" ] && exit 1022
+
 ghjk envs cook sss
+echo $?
 . .ghjk/envs/sss/activate.sh
 # by default, envs should be based on main
 # so they should inherit it's env vars
@@ -60,6 +67,7 @@ ghjk envs cook sss
 [ "$GHJK_ENV" = "sss" ] || exit 1012
 
 # go back to main and "sss" variables shouldn't be around
+# through deactivation
 . .ghjk/envs/main/activate.sh
 [ "$SONG" = "ditto" ] || exit 104
 [ "$SING" = "Seoul Sonyo Sound" ] && exit 105
@@ -77,6 +85,11 @@ set fish_trace 1
 # by default, we should be in main
 test "$SONG" = "ditto"; or exit 101;
 test "$GHJK_ENV" = "main"; or exit 1010;
+
+# vars should be gone after deactivation
+ghjk_deactivate
+test "$SONG" = "ditto"; and exit 101;
+test "$GHJK_ENV" = "main"; and exit 1010;
 
 ghjk envs cook sss
 . .ghjk/envs/sss/activate.fish
@@ -131,6 +144,7 @@ ghjk envs cook foo
 
 const installTestsFish = `
 set fish_trace 1
+
 # by default, we should be in main
 test (dummy) = "main"; or exit 101;
 
@@ -186,6 +200,7 @@ const cases: CustomE2eTestCase[] = [
     secureConfig: { defaultEnv: "yuki" },
     stdin: `
 set fish_trace 1
+
 # env base is false for "yuki" and thus no vars from "main"
 test "$GHJK_ENV" = "yuki"; or exit 106
 test "$SONG" = "ditto"; and exit 107
@@ -320,14 +335,16 @@ test (dummy) = "e1"; or exit 105
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
-    {
-      secureConf: {
-        ...testCase.secureConfig,
-        envs: [...testCase.envs, ...(testCase.secureConfig?.envs ?? [])],
+  fs: {
+    "ghjk.ts": "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
+      {
+        secureConf: {
+          ...testCase.secureConfig,
+          envs: [...testCase.envs, ...(testCase.secureConfig?.envs ?? [])],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `envs/${testCase.name}`,
 })));

@@ -39,16 +39,16 @@ export class Port extends GithubReleasePort {
   repoOwner = "Infisical";
   repoName = "infisical";
 
-  async listAll(args: ListAllArgs) {
+  override async listAll(args: ListAllArgs) {
     const all = await super.listAll(args);
     return all.map((str) => str.replace(/^infisical-cli\/v/, ""));
   }
-  async latestStable(args: ListAllArgs) {
+  override async latestStable(args: ListAllArgs) {
     const lsv = await super.latestStable(args);
     return lsv.replace(/^infisical-cli\/v/, "");
   }
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     let arch;
     switch (platform.arch) {
@@ -84,7 +84,7 @@ export class Port extends GithubReleasePort {
     ].map(dwnUrlOut);
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
 
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);

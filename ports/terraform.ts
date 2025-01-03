@@ -41,7 +41,7 @@ export class Port extends PortBase {
 
     return versions.reverse();
   }
-  async latestStable() {
+  override async latestStable() {
     const all = await this.listAll();
     // stable versions don't have any additional info in theform of 1.2.3-alpha
     return all.findLast((str) => !str.match(/-/))!;
@@ -68,14 +68,14 @@ export class Port extends PortBase {
     ].map(dwnUrlOut);
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const urls = this.downloadUrls(args);
     await Promise.all(
       urls.map((obj) => downloadFile({ ...args, ...obj })),
     );
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);
 

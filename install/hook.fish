@@ -1,15 +1,24 @@
 function __ghjk_get_mtime_ts 
     switch (uname -s | tr '[:upper:]' '[:lower:]')
         case "linux"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
         case "darwin"
-            stat -f "%Sm" -t "%s" $argv
+            # darwin stat doesn't support ms since epoch so we bring out the big guns
+            deno eval 'console.log((await Deno.stat(Deno.args[0])).mtime.getTime())' $argv
+            # stat -f "%Sm" -t "%s" $argv
         case "*"
-            stat -c "%Y" $argv
+            stat -c "%.Y" $argv
     end
 end
 
-function ghjk_reload --on-variable PWD --on-event ghjk_env_dir_change
+function ghjk_hook --on-variable PWD
+    # to be consistent with the posix shells
+    # we avoid reloading the env on PWD changes
+    # if not in an interactive shell
+    if not status is-interactive; and test "$argv" = "VARIABLE SET PWD"; 
+        return
+    end
+
     # precedence is gven to argv over GHJK_ENV
     set --local next_env $argv[1]
     test -z $next_env; and set next_env "$GHJK_ENV"
@@ -97,14 +106,22 @@ function __ghjk_preexec --on-event fish_preexec
     # exists
     if set --query GHJK_NEXTFILE; and test -f "$GHJK_NEXTFILE";
 
-        ghjk_reload (cat $GHJK_NEXTFILE)
+        ghjk_hook (cat $GHJK_NEXTFILE)
         rm "$GHJK_NEXTFILE"
 
     # activate script has reloaded
     else if set --query GHJK_LAST_ENV_DIR; 
+        and test -e $GHJK_LAST_ENV_DIR/activate.fish;
         and test (__ghjk_get_mtime_ts $GHJK_LAST_ENV_DIR/activate.fish) -gt $GHJK_LAST_ENV_DIR_MTIME;
-        ghjk_reload
+        ghjk_hook
     end
 end
 
-ghjk_reload
+
+if set --query GHJK_AUTO_HOOK; and begin;
+    test $GHJK_AUTO_HOOK != "0"; 
+    and test $GHJK_AUTO_HOOK != "false"; 
+    and test $GHJK_AUTO_HOOK != "" 
+end; or status is-interactive;
+    ghjk_hook
+end

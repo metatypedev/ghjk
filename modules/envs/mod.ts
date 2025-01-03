@@ -1,6 +1,6 @@
 export * from "./types.ts";
 
-import { cliffy_cmd, zod } from "../../deps/cli.ts";
+import { zod } from "../../deps/cli.ts";
 import { $, detectShellPath, Json, unwrapZodRes } from "../../utils/mod.ts";
 import validators from "./types.ts";
 import type {
@@ -20,6 +20,7 @@ import type {
 import { buildInstallGraph, syncCtxFromGhjk } from "../ports/sync.ts";
 import { getEnvsCtx } from "./inter.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
+import { CliCommand } from "../../src/deno_systems/types.ts";
 
 export type EnvsCtx = {
   activeEnv: string;
@@ -33,9 +34,8 @@ const lockValidator = zod.object({
 
 type EnvsLockEnt = zod.infer<typeof lockValidator>;
 
-export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
-  processManifest(
-    gcx: GhjkCtx,
+export class EnvsModule extends ModuleBase<EnvsLockEnt> {
+  override loadConfig(
     manifest: ModuleManifest,
     _bb: Blackboard,
     _lockEnt: EnvsLockEnt | undefined,
@@ -52,20 +52,18 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
     const setEnv = Deno.env.get("GHJK_ENV");
     const activeEnv = setEnv && setEnv != "" ? setEnv : config.defaultEnv;
 
-    const envsCtx = getEnvsCtx(gcx);
-    envsCtx.activeEnv = activeEnv;
-    envsCtx.config = config;
+    const ecx = getEnvsCtx(this.gcx);
+    ecx.activeEnv = activeEnv;
+    ecx.config = config;
     for (const [name, key] of Object.entries(config.envsNamed)) {
-      envsCtx.keyToName[key] = [name, ...(envsCtx.keyToName[key] ?? [])];
+      ecx.keyToName[key] = [name, ...(ecx.keyToName[key] ?? [])];
     }
-
-    return Promise.resolve(envsCtx);
   }
 
-  commands(
-    gcx: GhjkCtx,
-    ecx: EnvsCtx,
-  ) {
+  override commands(): CliCommand[] {
+    const gcx = this.gcx;
+    const ecx = getEnvsCtx(this.gcx);
+
     function envKeyArgs(
       args: {
         taskKeyMaybe?: string;
@@ -92,20 +90,32 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
         : { envKey: envKeyMaybe ?? ecx.activeEnv };
     }
 
-    return {
-      envs: new cliffy_cmd
-        .Command()
-        .description("Envs module, reproducable posix shells environments.")
-        .alias("e")
-        // .alias("env")
-        .action(function () {
-          this.showHelp();
-        })
-        .command(
-          "ls",
-          new cliffy_cmd.Command()
-            .description("List environments defined in the ghjkfile.")
-            .action(() => {
+    const commonFlags: CliCommand["flags"] = {
+      taskEnv: {
+        short: "t",
+        long: "task-env",
+        value_name: "TASK NAME",
+        help: "Activate the environment used by the named task",
+        exclusive: true,
+      },
+    };
+
+    const commonArgs: CliCommand["args"] = {
+      envKey: {
+        value_name: "ENV KEY",
+      },
+    };
+
+    return [
+      {
+        name: "envs",
+        visible_aliases: ["e"],
+        about: "Envs module, reproducable posix shells environments.",
+        sub_commands: [
+          {
+            name: "ls",
+            about: "List environments defined in the ghjkfile.",
+            action: () => {
               // deno-lint-ignore no-console
               console.log(
                 Object.entries(ecx.config.envsNamed)
@@ -118,91 +128,115 @@ export class EnvsModule extends ModuleBase<EnvsCtx, EnvsLockEnt> {
                   })
                   .join("\n"),
               );
-            }),
-        )
-        .command(
-          "activate",
-          new cliffy_cmd.Command()
-            .description(`Activate an environment.
-
-- If no [envName] is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`)
-            .arguments("[envName:string]")
-            .option(
-              "-t, --task-env <taskName>",
-              "Synchronize to the environment used by the named task",
-              { standalone: true },
-            )
-            .action(async function ({ taskEnv }, envKeyMaybe) {
+            },
+          },
+          {
+            name: "activate",
+            about: `Activate an environment.`,
+            before_long_help:
+              `- If no ENV KEY is specified and no env is currently active, this activates the configured default env [${ecx.config.defaultEnv}].`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              {
+                flags: { taskEnv: taskKeyMaybe },
+                args: { envKey: envKeyMaybe },
+              },
+            ) {
               const { envKey } = envKeyArgs({
-                taskKeyMaybe: taskEnv,
-                envKeyMaybe,
+                taskKeyMaybe: taskKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
               });
               await activateEnv(envKey);
-            }),
-        )
-        .command(
-          "cook",
-          new cliffy_cmd.Command()
-            .description(`Cooks the environment to a posix shell.
-
-- If no [envName] is specified, this will cook the active env [${ecx.activeEnv}]`)
-            .arguments("[envName:string]")
-            .option(
-              "-t, --task-env <taskName>",
-              "Synchronize to the environment used by the named task",
-              { standalone: true },
-            )
-            .action(async function ({ taskEnv }, envKeyMaybe) {
+            },
+          },
+          {
+            name: "cook",
+            about: `Cooks the environment to a posix shell.`,
+            before_long_help:
+              `- If no ENV KEY is specified, this will cook the active env [${ecx.activeEnv}]`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              {
+                flags: { taskEnv: taskKeyMaybe },
+                args: { envKey: envKeyMaybe },
+              },
+            ) {
               const { envKey, envName } = envKeyArgs({
-                taskKeyMaybe: taskEnv,
-                envKeyMaybe,
+                taskKeyMaybe: taskKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
               });
               await reduceAndCookEnv(gcx, ecx, envKey, envName ?? envKey);
-            }),
-        )
-        .command(
-          "show",
-          new cliffy_cmd.Command()
-            .description(`Show details about an environment.
+            },
+          },
+          {
+            name: "show",
+            about: `Cooks the environment to a posix shell.`,
+            before_long_help: `Show details about an environment.
 
-- If no [envName] is specified, this shows details of the active env [${ecx.activeEnv}].
-- If no [envName] is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].
-        `)
-            .arguments("[envName:string]")
-            .option(
-              "-t, --task-env <taskName>",
-              "Synchronize to the environment used by the named task",
-              { standalone: true },
-            )
-            .action(async function ({ taskEnv }, envKeyMaybe) {
+- If no ENV KEY is specified, this shows details of the active env [${ecx.activeEnv}].
+- If no ENV KEY is specified and no env is active, this shows details of the default env [${ecx.config.defaultEnv}].`,
+            flags: {
+              ...commonFlags,
+            },
+            args: {
+              ...commonArgs,
+            },
+            action: async function (
+              {
+                flags: { taskEnv: taskKeyMaybe },
+                args: { envKey: envKeyMaybe },
+              },
+            ) {
               const { envKey } = envKeyArgs({
-                taskKeyMaybe: taskEnv,
-                envKeyMaybe,
+                taskKeyMaybe: taskKeyMaybe as string,
+                envKeyMaybe: (Array.isArray(envKeyMaybe)
+                  ? envKeyMaybe[0]
+                  : envKeyMaybe) as string,
               });
               const env = ecx.config.envs[envKey];
               if (!env) {
-                throw new Error(`no env found under "${envKeyMaybe}"`);
+                throw new Error(`no env found under "${envKey}"`);
               }
               // deno-lint-ignore no-console
               console.log($.inspect(await showableEnv(gcx, env, envKey)));
-            }),
-        ),
-      sync: new cliffy_cmd.Command()
-        .description(`Synchronize your shell to what's in your config.
-
-Cooks and activates an environment.
-- If no [envName] is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
-- If the environment is already active, this doesn't launch a new shell.`)
-        .arguments("[envName:string]")
-        .option(
-          "-t, --task-env <taskName>",
-          "Synchronize to the environment used by the named task",
-          { standalone: true },
-        )
-        .action(async function ({ taskEnv }, envKeyMaybe) {
+            },
+          },
+        ],
+      },
+      {
+        name: "sync",
+        about: "Synchronize your shell to what's in your config.",
+        before_long_help: `Cooks and activates an environment.
+- If no ENV KEY is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
+- If the environment is already active, this doesn't launch a new shell.`,
+        flags: {
+          ...commonFlags,
+        },
+        args: {
+          ...commonArgs,
+        },
+        action: async function (
+          { flags: { taskEnv: taskKeyMaybe }, args: { envKey: envKeyMaybe } },
+        ) {
           const { envKey, envName } = envKeyArgs({
-            taskKeyMaybe: taskEnv,
-            envKeyMaybe,
+            taskKeyMaybe: taskKeyMaybe as string,
+            envKeyMaybe: (Array.isArray(envKeyMaybe)
+              ? envKeyMaybe[0]
+              : envKeyMaybe) as string,
           });
           await reduceAndCookEnv(
             gcx,
@@ -211,14 +245,12 @@ Cooks and activates an environment.
             envName ?? envKey,
           );
           await activateEnv(envKey);
-        }),
-    };
+        },
+      },
+    ];
   }
 
-  loadLockEntry(
-    _gcx: GhjkCtx,
-    raw: Json,
-  ) {
+  loadLockEntry(raw: Json) {
     const entry = lockValidator.parse(raw);
 
     if (entry.version != "0") {
@@ -227,10 +259,7 @@ Cooks and activates an environment.
 
     return entry;
   }
-  genLockEntry(
-    _gcx: GhjkCtx,
-    _tcx: EnvsCtx,
-  ) {
+  genLockEntry() {
     return {
       version: "0",
     };

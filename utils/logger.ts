@@ -1,3 +1,5 @@
+// care needed in importing items here since this is a common
+// import file
 import {
   std_fmt_colors,
   std_log,
@@ -105,7 +107,7 @@ export class TestConsoleErrHandler extends ConsoleErrHandler {
     super(levelName, options);
   }
 
-  handle(lr: std_log.LogRecord): void {
+  override handle(lr: std_log.LogRecord): void {
     if (lr.level >= this.throwLevel) {
       throw new Error(`detected ${lr.levelName} log record:`, { cause: lr });
     }
@@ -140,6 +142,7 @@ export default function logger(
     logger = new std_log.Logger(name, level, {
       handlers: [consoleHandler],
     });
+    loggers.set(name, logger);
   }
   return logger;
 }

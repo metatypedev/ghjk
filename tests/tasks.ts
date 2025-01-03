@@ -4,7 +4,7 @@ import * as ghjk from "../mod.ts";
 import * as ports from "../ports/mod.ts";
 
 type CustomE2eTestCase =
-  & Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr">
+  & Omit<E2eTestCase, "ePoints" | "fs">
   & {
     ePoint: string;
     stdin: string;
@@ -171,16 +171,18 @@ test (cat output.txt) = 'A#STATIC, B#DYNAMIC'
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
-    {
-      secureConf: {
-        tasks: Object.fromEntries(
-          testCase.tasks.map((def) => [def.name!, def]),
-        ),
-        enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
+  fs: {
+    "ghjk.ts": "ghjkTs" in testCase ? testCase.ghjkTs : genTsGhjkFile(
+      {
+        secureConf: {
+          tasks: Object.fromEntries(
+            testCase.tasks.map((def) => [def.name!, def]),
+          ),
+          enableRuntimes: testCase.enableRuntimesOnMasterPDAL,
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [{ cmd: testCase.ePoint, stdin: testCase.stdin }],
   name: `tasks/${testCase.name}`,
 })));

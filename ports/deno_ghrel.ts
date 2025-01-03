@@ -35,7 +35,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "denoland";
   repoName = "deno";
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     const arch = platform.arch;
     let os;
@@ -60,7 +60,7 @@ export class Port extends GithubReleasePort {
     ].map(dwnUrlOut);
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
 
     const fileDwnPath = std_path.resolve(args.downloadPath, fileName);

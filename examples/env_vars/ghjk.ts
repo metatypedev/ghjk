@@ -16,6 +16,6 @@ const { env, task } = ghjk;
 
 env("main")
   .var("A", "A#STATIC")
-  .var("C", ($) => $`echo C [$A, $B]`.text())
   .var("B", () => "B#DYNAMIC")
+  .var("C", ($) => $`echo C [$A, $B]`.text())
   .onEnter(task(($) => $`echo enter $A, $B, $C`));

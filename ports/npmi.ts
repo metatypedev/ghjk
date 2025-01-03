@@ -81,11 +81,11 @@ export class Port extends PortBase {
     return versions;
   }
 
-  async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
     await $.raw`${
       depExecShimPath(std_ports.node_org, "npm", args.depArts)
-    } install --no-fund ${conf.packageName}@${args.installVersion}`
+    } install --prefix ${args.tmpDirPath} --no-fund ${conf.packageName}@${args.installVersion}`
       .cwd(args.tmpDirPath)
       .env(pathsWithDepArts(args.depArts, args.platform.os));
     await std_fs.move(args.tmpDirPath, args.downloadPath);
@@ -93,7 +93,7 @@ export class Port extends PortBase {
 
   // FIXME: replace shebangs with the runtime dep node path
   // default shebangs just use #!/bin/env node
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const conf = confValidator.parse(args.config);
     await std_fs.copy(
       args.downloadPath,

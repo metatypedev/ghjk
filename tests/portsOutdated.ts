@@ -4,7 +4,7 @@ import * as ports from "../ports/mod.ts";
 import type { InstallConfigFat } from "../modules/ports/types.ts";
 import { FileArgs } from "../mod.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: FileArgs;
@@ -26,7 +26,7 @@ const cases: CustomE2eTestCase[] = [
     name: "update_all",
     installConf: [
       ports.jq_ghrel({ version: "jq-1.7" }),
-      ports.protoc({ version: "v24.0" }),
+      ports.protoc({ version: "v28.2" }),
     ],
     ePoint: `ghjk p outdated --update-all`,
     secureConf: {
@@ -37,16 +37,18 @@ const cases: CustomE2eTestCase[] = [
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: genTsGhjkFile(
-    {
-      secureConf: {
-        ...testCase.secureConf,
-        installs: Array.isArray(testCase.installConf)
-          ? testCase.installConf
-          : [testCase.installConf],
+  fs: {
+    "ghjk.ts": genTsGhjkFile(
+      {
+        secureConf: {
+          ...testCase.secureConf,
+          installs: Array.isArray(testCase.installConf)
+            ? testCase.installConf
+            : [testCase.installConf],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [
     ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
       cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],

@@ -33,7 +33,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "protocolbuffers";
   repoName = "protobuf";
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     let os;
     switch (platform.os) {
@@ -66,7 +66,7 @@ export class Port extends GithubReleasePort {
     ].map(dwnUrlOut);
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
     const fileDwnPath = $.path(args.downloadPath).join(fileName);
 

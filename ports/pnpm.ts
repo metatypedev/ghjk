@@ -31,7 +31,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "pnpm";
   repoName = "pnpm";
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
     let arch;
     let os;
@@ -74,7 +74,7 @@ export class Port extends GithubReleasePort {
     ];
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const [{ name: fileName }] = this.downloadUrls(args);
 
     const installPath = $.path(args.installPath);

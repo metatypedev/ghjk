@@ -38,7 +38,7 @@ export class Port extends GithubReleasePort {
   repoOwner = "jqlang";
   repoName = "jq";
 
-  downloadUrls(args: DownloadArgs) {
+  override downloadUrls(args: DownloadArgs) {
     const { installVersion, platform } = args;
 
     let arch;
@@ -64,7 +64,7 @@ export class Port extends GithubReleasePort {
       .map((out) => ({ ...out, mode: 0o700 }));
   }
 
-  async install(args: InstallArgs) {
+  override async install(args: InstallArgs) {
     const installPath = $.path(args.installPath);
     await $.removeIfExists(installPath);
 

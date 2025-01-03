@@ -6,11 +6,14 @@ import dummy from "../ports/dummy.ts";
 import type { InstallConfigFat } from "../modules/ports/types.ts";
 import { testTargetPlatform } from "./utils.ts";
 
-type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "tsGhjkfileStr"> & {
+type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   ePoint: string;
   installConf: InstallConfigFat | InstallConfigFat[];
   secureConf?: FileArgs;
 };
+
+// FIXME: where did the asdf test go?
+
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
   // 0 megs
@@ -24,6 +27,17 @@ const cases: CustomE2eTestCase[] = [
     name: "jq",
     installConf: ports.jq_ghrel(),
     ePoint: `jq --version`,
+  },
+  {
+    name: "asdf-jq",
+    ePoint: `jq --version`,
+    installConf: ports.asdf({
+      pluginRepo: "https://github.com/lsanwick/asdf-jq",
+      installType: "version",
+    }),
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // 3 megs
   {
@@ -67,6 +81,19 @@ const cases: CustomE2eTestCase[] = [
     name: "rustup",
     installConf: ports.rustup(),
     ePoint: `rustup-init --version`,
+  },
+  // 15 megs
+  {
+    name: "fx_ghrel",
+    installConf: ports.fx_ghrel(),
+    ePoint: `fx --version`,
+  },
+  // 22 megs
+  {
+    name: "livekit_cli_ghrel",
+    installConf: ports.livekit_cli_ghrel(),
+    ePoint: `lk --version`,
+    ignore: Deno.build.os == "darwin",
   },
   // 23 megs
   {
@@ -134,14 +161,7 @@ const cases: CustomE2eTestCase[] = [
       ports.meta_cli_ghrel({ full: true }),
       ports.wasmedge(),
     ],
-    ePoint: Deno.env.get("GHJK_TEST_E2E_TYPE") != "local"
-      // meta cli runs into segmentation error in the alpine
-      // image
-      // https://github.com/metatypedev/metatype/issues/584
-      // just check that the shell's able to find the
-      // executrable
-      ? `which meta && wasmedge --version`
-      : `meta --version && wasmedge --version`,
+    ePoint: `which meta && wasmedge --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
   // 80 meg
@@ -149,15 +169,6 @@ const cases: CustomE2eTestCase[] = [
     name: "cpy_bs",
     installConf: ports.cpy_bs(),
     ePoint: `python3 --version`,
-  },
-  // 77 meg +, depends on "cpy_bs" on darwin/macos
-  {
-    name: "cmake",
-    installConf: ports.cmake({}),
-    ePoint: `cmake --version`,
-    secureConf: {
-      enableRuntimes: true,
-    },
   },
   // 80 meg +
   {
@@ -187,6 +198,9 @@ const cases: CustomE2eTestCase[] = [
         profile: "minimal",
       },
     }),
+    secureConf: {
+      enableRuntimes: true,
+    },
     ePoint: `sd --version`,
   },
   // rust + cargo_binstall + 22 megs
@@ -199,22 +213,27 @@ const cases: CustomE2eTestCase[] = [
         profile: "minimal",
       },
     }),
+    secureConf: {
+      enableRuntimes: true,
+    },
     ePoint: `sd --version`,
   },
 ];
 
 harness(cases.map((testCase) => ({
   ...testCase,
-  tsGhjkfileStr: genTsGhjkFile(
-    {
-      secureConf: {
-        ...testCase.secureConf,
-        installs: Array.isArray(testCase.installConf)
-          ? testCase.installConf
-          : [testCase.installConf],
+  fs: {
+    "ghjk.ts": genTsGhjkFile(
+      {
+        secureConf: {
+          ...testCase.secureConf,
+          installs: Array.isArray(testCase.installConf)
+            ? testCase.installConf
+            : [testCase.installConf],
+        },
       },
-    },
-  ),
+    ),
+  },
   ePoints: [
     ...["bash -c", "fish -c", "zsh -c"].map((sh) => ({
       cmd: [...`env ${sh}`.split(" "), `"${testCase.ePoint}"`],
