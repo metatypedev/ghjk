@@ -92,8 +92,7 @@ impl Config {
                         .join(&format!("{}/", cwd.file_name().unwrap().to_string_lossy()))
                         .wrap_err("repo url error")?
                 } else {
-                    const BASE_URL: &str =
-                        "https://raw.githubusercontent.com/metatypedev/metatype/";
+                    const BASE_URL: &str = "https://raw.githubusercontent.com/metatypedev/ghjk/";
                     // repo root url must end in slash due to
                     // how Url::join works
                     let url = BASE_URL.to_owned() + crate::shadow::COMMIT_HASH + "/";

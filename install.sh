@@ -22,7 +22,6 @@ INSTALLER_URL="https://raw.githubusercontent.com/$ORG/$REPO/main/install.sh"
 RELEASE_URL="https://github.com/$ORG/$REPO/releases"
 
 LATEST_VERSION=$(curl "$RELEASE_URL/latest" -s -L -I -o /dev/null -w '%{url_effective}')
-LATEST_VERSION="${LATEST_VERSION##*v}"
 
 PLATFORM="${PLATFORM:-}"
 TMP_DIR=$(mktemp -d)
@@ -31,7 +30,9 @@ VERSION="${VERSION:-$LATEST_VERSION}"
 
 # make sure the version is prepended with v
 if [ "${VERSION#"v"}" = "$VERSION" ]; then
-    VERSION="v$VERSION"
+  cat >&2 <<EOF
+WARN: Resolved version "$VERSION" doesn't have "v" prefix.
+EOF
 fi
 
 if [ "${PLATFORM:-x}" = "x" ]; then
@@ -78,8 +79,8 @@ fi
 
 printf "Detected version: %s\n" "$VERSION"
 
-ASSET="$NAME-v$VERSION-$PLATFORM"
-DOWNLOAD_URL="$RELEASE_URL/download/v$VERSION/$ASSET.$EXT"
+ASSET="$NAME-$VERSION-$PLATFORM"
+DOWNLOAD_URL="$RELEASE_URL/download/$VERSION/$ASSET.$EXT"
 
 if curl --fail --silent --location --tlsv1.2 --proto '=https' --output "$TMP_DIR/$ASSET.$EXT" "$DOWNLOAD_URL"; then
   printf "Downloaded successfully: %s\n" "$ASSET.$EXT"
@@ -92,12 +93,12 @@ To continue with installation, please make sure the release exists in:
 $DOWNLOAD_URL
 
 Then set the PLATFORM and VERSION environment variables, and re-run this script:
-$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl VERSION=0.1.10 bash
+$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl VERSION=v0.1.10 bash
 EOF
   exit 1
 fi
 
-tar -C "$TMP_DIR" -xzf "$TMP_DIR/$ASSET.$EXT" "$EXE"
+tar -C "$TMP_DIR" -xvzf "$TMP_DIR/$ASSET.$EXT" "$EXE"
 chmod +x "$TMP_DIR/$EXE"
 
 if [ "${GHJK_INSTALL_EXEC_DIR}" = "." ]; then
@@ -119,6 +120,7 @@ EOF
     printf "Press enter to continue (or cancel with Ctrl+C):" >&2
     read -r _throwaway
     mv "$TMP_DIR/$EXE" "$GHJK_INSTALL_EXEC_DIR"
+    rm -r "$TMP_DIR"
   else
     echo "$GHJK_INSTALL_EXEC_DIR is not writable."
     exit 1
@@ -126,9 +128,8 @@ EOF
 fi
 
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/$ORG/$REPO/$VERSION/install.ts}"
-"$TMP_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
+"$GHJK_INSTALL_EXEC_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
 
-rm -r "$TMP_DIR"
 
 SHELL_TYPE=$(basename "$SHELL")
 
