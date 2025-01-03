@@ -85,7 +85,7 @@ export class Port extends PortBase {
     const conf = confValidator.parse(args.config);
     await $.raw`${
       depExecShimPath(std_ports.node_org, "npm", args.depArts)
-    } install --no-fund ${conf.packageName}@${args.installVersion}`
+    } install --prefix ${args.tmpDirPath} --no-fund ${conf.packageName}@${args.installVersion}`
       .cwd(args.tmpDirPath)
       .env(pathsWithDepArts(args.depArts, args.platform.os));
     await std_fs.move(args.tmpDirPath, args.downloadPath);

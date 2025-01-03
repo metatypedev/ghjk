@@ -13,7 +13,7 @@ mod interlude {
         self,
         deno_runtime::{
             self,
-            deno_core::{self, url},
+            deno_core::{self, serde_v8, url, v8},
         },
     };
     pub use eyre::{format_err as ferr, Context, Result as Res, WrapErr};

@@ -2,8 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::interlude::*;
 
-use deno_core::serde_v8;
-use deno_core::v8;
 use deno_core::OpState;
 // necessary for re-exported macros to work
 #[rustfmt::skip]
@@ -205,7 +203,7 @@ impl Callbacks {
                     if tc_scope.has_caught() {
                         let exception = tc_scope.exception().unwrap();
                         return Err(CallbackError::JsError(
-                            ferr!(js_error_message(tc_scope, exception))
+                            ferr!(super::js_error_message(tc_scope, exception))
                                 .wrap_err("callback exception"),
                         ));
                     }
@@ -233,7 +231,7 @@ impl Callbacks {
                             // for private deno_core functionality as discussed at
                             // https://github.com/denoland/deno/discussions/27504
                             Err(err) => Err(CallbackError::JsError(
-                                ferr!(js_error_message(scope, err))
+                                ferr!(super::js_error_message(scope, err))
                                     .wrap_err("callback promise rejection"),
                             )),
                         };
@@ -266,75 +264,6 @@ impl Callbacks {
 
         Ok(res)
     }
-}
-
-fn js_error_message(scope: &mut v8::HandleScope, err: v8::Local<v8::Value>) -> String {
-    let Some(obj) = err.to_object(scope) else {
-        return err.to_rust_string_lossy(scope);
-    };
-    let evt_err_class = {
-        let name = v8::String::new(scope, "ErrorEvent")
-            .expect_or_log("v8 error")
-            .into();
-        scope
-            .get_current_context()
-            // classes are stored on the global obj
-            .global(scope)
-            .get(scope, name)
-            .expect_or_log("v8 error")
-            .to_object(scope)
-            .expect_or_log("v8 error")
-    };
-    if !obj
-        .instance_of(scope, evt_err_class)
-        .expect_or_log("v8 error")
-    {
-        for key in &["stack", "message"] {
-            let key = v8::String::new(scope, key).expect_or_log("v8 error");
-            if let Some(inner) = obj.get(scope, key.into()) {
-                if inner.boolean_value(scope) {
-                    return inner.to_rust_string_lossy(scope);
-                }
-            }
-        }
-        return err.to_rust_string_lossy(scope);
-    }
-    // ErrorEvents are recieved here for some reason
-    // https://developer.mozilla.org/en-US/docs/Web/API/ErrorEvent
-    {
-        // if it has an error value attached, prefer that
-        let key = v8::String::new(scope, "error")
-            .expect_or_log("v8 error")
-            .into();
-        if let Some(inner) = obj.get(scope, key) {
-            // check if it's not null or undefined
-            if inner.boolean_value(scope) {
-                // stack messages are preferred if it has one
-                let Some(inner) = inner.to_object(scope) else {
-                    return inner.to_rust_string_lossy(scope);
-                };
-                let key = v8::String::new(scope, "stack").expect_or_log("v8 error");
-                if let Some(stack) = inner.get(scope, key.into()) {
-                    if stack.boolean_value(scope) {
-                        return stack.to_rust_string_lossy(scope);
-                    }
-                }
-                return inner.to_rust_string_lossy(scope);
-            }
-        }
-    }
-    #[derive(Deserialize)]
-    struct ErrorEvt {
-        lineno: i64,
-        colno: i64,
-        filename: String,
-        message: String,
-    }
-    let evt: ErrorEvt = serde_v8::from_v8(scope, err).unwrap();
-    format!(
-        "{} ({}:{}:{})",
-        evt.message, evt.filename, evt.lineno, evt.colno
-    )
 }
 
 struct Callback {

@@ -1,4 +1,4 @@
-//! This module is intended to be re-exported by `ghjk.ts` config scripts.
+//! The primary import used by `ghjk.ts` ghjkfiles.
 
 // TODO: harden most of the items in here
 
