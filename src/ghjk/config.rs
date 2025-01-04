@@ -1,6 +1,6 @@
 use crate::interlude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Config {
     pub ghjkfile: Option<PathBuf>,
     pub ghjkdir: Option<PathBuf>,
@@ -92,8 +92,7 @@ impl Config {
                         .join(&format!("{}/", cwd.file_name().unwrap().to_string_lossy()))
                         .wrap_err("repo url error")?
                 } else {
-                    const BASE_URL: &str =
-                        "https://raw.githubusercontent.com/metatypedev/metatype/";
+                    const BASE_URL: &str = "https://raw.githubusercontent.com/metatypedev/ghjk/";
                     // repo root url must end in slash due to
                     // how Url::join works
                     let url = BASE_URL.to_owned() + crate::shadow::COMMIT_HASH + "/";
@@ -142,7 +141,7 @@ impl Config {
 
         if let Some(path) = &config.ghjkdir {
             let ignore_path = path.join(".gitignore");
-            if !matches!(tokio::fs::try_exists(&ignore_path).await, Ok(true)) {
+            if !crate::utils::file_exists(&ignore_path).await? {
                 tokio::fs::create_dir_all(path)
                     .await
                     .wrap_err_with(|| format!("error creating ghjkdir at {path:?}"))?;

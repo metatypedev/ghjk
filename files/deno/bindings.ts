@@ -20,7 +20,15 @@ async function serialize(args: zod.infer<typeof serializeArgs>) {
   const { setup: setupLogger } = await import("../../utils/logger.ts");
   setupLogger();
   const mod = await import(args.uri);
-  const rawConfig = await mod.sophon.getConfig(args.uri, mod.secureConfig);
+  if (!mod.ghjk) {
+    throw new Error(`ghjk.ts does not export a ghjk object: ${args.uri}`);
+  }
+  if (!mod.ghjk.sophon) {
+    throw new Error(
+      `no sophon found on exported ghjk object from ghjk.ts: ${args.uri}`,
+    );
+  }
+  const rawConfig = await mod.ghjk.sophon.getConfig(args.uri, mod.secureConfig);
   const config = JSON.parse(JSON.stringify(rawConfig));
   return {
     config,

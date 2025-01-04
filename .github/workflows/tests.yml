@@ -42,7 +42,7 @@ jobs:
       # pre commit runs ghjk. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
       # in the CI
-      - run: deno task self envs cook -t lock-sed
+      - run: deno task ghjk envs cook -t lock-sed
       - uses: pre-commit/action@v3.0.1
         env:
           SKIP: ghjk-resolve

@@ -74,7 +74,7 @@ async function importAndExec(
 ) {
   const _shimHandle = shimDenoNamespace(args.envVars);
   const mod = await import(uri);
-  const ret = await mod.sophon.execTask(args);
+  const ret = await mod.ghjk.sophon.execTask(args);
   return { data: ret, status: true };
 }
 

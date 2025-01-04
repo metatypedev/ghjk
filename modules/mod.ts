@@ -1,7 +1,6 @@
-import { Blackboard } from "../host/types.ts";
-import { CliCommand } from "../src/deno_systems/types.ts";
+import type { CliCommand } from "../src/deno_systems/types.ts";
 import type { Json } from "../utils/mod.ts";
-import type { GhjkCtx, ModuleManifest } from "./types.ts";
+import type { Blackboard, GhjkCtx, ModuleManifest } from "./types.ts";
 
 export abstract class ModuleBase<LockEnt> {
   constructor(protected gcx: GhjkCtx) {}

@@ -13,7 +13,7 @@ const taskDefBase = zod.object({
 });
 
 const taskDefFullBase = taskDefBase.merge(zod.object({
-  env: envsValidators.envRecipe.optional(),
+  env: envsValidators.envRecipe.nullish(),
 }));
 
 const taskDefHashedBase = taskDefBase.merge(zod.object({

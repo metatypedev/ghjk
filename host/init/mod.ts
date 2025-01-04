@@ -106,12 +106,12 @@ async function handleVscodeSettings(
   }
 
   const schema = zod.object({
-    "deno.enablePaths": zod.string().array().optional(),
-    "deno.disablePaths": zod.string().array().optional(),
+    "deno.enablePaths": zod.string().array().nullish(),
+    "deno.disablePaths": zod.string().array().nullish(),
     deno: zod.object({
-      enablePaths: zod.string().array().optional(),
-      disablePaths: zod.string().array().optional(),
-    }).passthrough().optional(),
+      enablePaths: zod.string().array().nullish(),
+      disablePaths: zod.string().array().nullish(),
+    }).passthrough().nullish(),
   }).passthrough();
 
   const originalConfig = await vscodeSettings.readJson()

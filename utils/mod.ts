@@ -607,7 +607,7 @@ export async function detectShellPath(): Promise<string | undefined> {
 }
 
 /**
- * {@inheritdoc detectShellPath}
+ * {@inheritDoc detectShellPath}
  */
 export async function detectShell(): Promise<string | undefined> {
   const shellPath = await detectShellPath();

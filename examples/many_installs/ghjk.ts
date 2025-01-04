@@ -1,4 +1,4 @@
-export { sophon } from "../../hack.ts";
+export { ghjk } from "../../hack.ts";
 import { config, install } from "../../hack.ts";
 import * as ports from "../../ports/mod.ts";
 
