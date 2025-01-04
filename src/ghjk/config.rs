@@ -1,6 +1,6 @@
 use crate::interlude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Config {
     pub ghjkfile: Option<PathBuf>,
     pub ghjkdir: Option<PathBuf>,
@@ -141,7 +141,7 @@ impl Config {
 
         if let Some(path) = &config.ghjkdir {
             let ignore_path = path.join(".gitignore");
-            if !matches!(tokio::fs::try_exists(&ignore_path).await, Ok(true)) {
+            if !crate::utils::file_exists(&ignore_path).await? {
                 tokio::fs::create_dir_all(path)
                     .await
                     .wrap_err_with(|| format!("error creating ghjkdir at {path:?}"))?;

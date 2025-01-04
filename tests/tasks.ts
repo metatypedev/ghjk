@@ -122,7 +122,7 @@ test (cat eddy) = 'ed edd eddy'
   {
     name: "anon",
     ghjkTs: `
-export { sophon } from "$ghjk/hack.ts";
+export { ghjk } from "$ghjk/hack.ts";
 import { task } from "$ghjk/hack.ts";
 
 task({
@@ -149,9 +149,8 @@ test (cat eddy) = 'ed edd eddy'
     ghjkTs: `
 import { file } from "$ghjk/hack.ts";
 
-const ghjk = file({});
+export const ghjk = file({});
 
-export const sophon = ghjk.sophon;
 const { env, task } = ghjk;
 
 env("main")

@@ -2,7 +2,7 @@
   "tasks": {
     "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A tests/*",
     "test-doc": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A --doc **/*.ts",
-    "self": "cargo run -p ghjk",
+    "ghjk": "cargo run -p ghjk",
     "cache": "deno cache deps/*",
     "check": "deno run -A ./tools/check.ts",
     "dev": "deno run -A ./tools/dev.ts"

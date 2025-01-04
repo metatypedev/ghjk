@@ -8,9 +8,8 @@ import type {
   EnvsModuleConfigX,
   WellKnownProvision,
 } from "./types.ts";
-import { type GhjkCtx, type ModuleManifest } from "../types.ts";
+import type { Blackboard, GhjkCtx, ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
-import type { Blackboard } from "../../host/types.ts";
 import { cookPosixEnv } from "./posix.ts";
 import { getPortsCtx, installGraphToSetMeta } from "../ports/inter.ts";
 import type {
@@ -212,7 +211,15 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
                 throw new Error(`no env found under "${envKey}"`);
               }
               // deno-lint-ignore no-console
-              console.log($.inspect(await showableEnv(gcx, env, envKey)));
+              console.log(
+                $.inspect(
+                  await showableEnv(
+                    gcx,
+                    env,
+                    ecx.keyToName[envKey] ?? [envKey],
+                  ),
+                ),
+              );
             },
           },
         ],
@@ -343,7 +350,7 @@ async function reduceAndCookEnv(
 async function showableEnv(
   gcx: GhjkCtx,
   recipe: EnvRecipeX,
-  envName: string,
+  envName: string[],
 ) {
   const printBag = {} as Record<string, any>;
   await using scx = await syncCtxFromGhjk(gcx);
@@ -411,7 +418,7 @@ async function showableEnv(
   return {
     ...printBag,
     ...(recipe.desc ? { desc: recipe.desc } : {}),
-    envName,
+    envName: envName.length < 2 ? envName[0] : envName,
   };
 }
 

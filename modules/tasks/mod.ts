@@ -5,11 +5,10 @@ import { Json, unwrapZodRes } from "../../utils/mod.ts";
 
 import validators from "./types.ts";
 import type { TasksModuleConfigX } from "./types.ts";
-import { type ModuleManifest } from "../types.ts";
+import { Blackboard, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
-import { Blackboard } from "../../host/types.ts";
 import { getTasksCtx } from "./inter.ts";
 import { CliCommand } from "../../src/deno_systems/types.ts";
 

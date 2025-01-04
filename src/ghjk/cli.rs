@@ -131,8 +131,11 @@ pub async fn cli() -> Res<std::process::ExitCode> {
             _ = commands.action(&gcx.config, Some(&systems.config))?;
             return Ok(ExitCode::SUCCESS);
         }
+        Ok(QuickComands::Init { .. }) => {
+            unreachable!("quick_cli will prevent this")
+        }
         Ok(QuickComands::Deno { .. }) => {
-            unreachable!("deno quick cli will prevent this")
+            unreachable!("deno_quick_cli will prevent this")
         }
         Err(err) => {
             let kind = err.kind();
@@ -204,6 +207,7 @@ pub async fn try_quick_cli(config: &Config) -> Res<Option<clap::Error>> {
                 )));
             }
         }
+        QuickComands::Init { commands } => commands.action(config).await?,
         QuickComands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
     }
 
@@ -229,10 +233,15 @@ struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 enum QuickComands {
-    /// Print different discovored or built values to stdout.
+    /// Print different discovored or built values to stdout
     Print {
         #[command(subcommand)]
         commands: PrintCommands,
+    },
+    /// Setup your working directory for ghjk usage
+    Init {
+        #[command(subcommand)]
+        commands: InitCommands,
     },
     /// Access the deno cli
     Deno {
@@ -243,17 +252,19 @@ enum QuickComands {
 
 #[derive(clap::Subcommand, Debug)]
 enum PrintCommands {
-    /// Print the path to the data dir used by ghjk.
+    /// Print the path to the data dir used by ghjk
     DataDirPath,
-    /// Print the path to the dir of the currently active ghjk context.
+    /// Print the path to the dir of the currently active ghjk context
     GhjkdirPath,
-    /// Print the path of the ghjkfile used.
+    /// Print the path of the ghjkfile used
     GhjkfilePath,
-    /// Print the extracted and serialized config from the ghjkfile.
-    Config {
-        /// Use json format when printing config.
+    /// Print the currently resolved configuration
+    Config,
+    /// Print the extracted and serialized config from the ghjkfile
+    Serialized {
+        /* /// Use json format when printing config
         #[arg(long)]
-        json: bool,
+        json: bool, */
     },
 }
 
@@ -289,15 +300,81 @@ impl PrintCommands {
                     eyre::bail!("no ghjkfile found.");
                 }
             }
-            PrintCommands::Config { .. } => match serialized_config {
+            PrintCommands::Serialized { .. } => match serialized_config {
                 Some(config) => {
-                    let conf_json = serde_json::to_string_pretty(&config)?;
-                    println!("{conf_json}");
+                    let serialized_json = serde_json::to_string_pretty(&config)?;
+                    println!("{serialized_json}");
                     true
                 }
                 None => false,
             },
+            PrintCommands::Config {} => {
+                let conf_json = serde_json::to_string_pretty(&cli_config)?;
+                println!("{conf_json}");
+                true
+            }
         })
+    }
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum InitCommands {
+    /// Create a starter typescript ghjkfile (ghjk.ts) in the current directory.    
+    Ts {
+        /// Auto confirm every choice.
+        #[clap(long)]
+        yes: bool,
+    },
+    /// Interactively configure working directory for best LSP
+    /// support of ghjk.ts.
+    TsLsp {
+        /// Auto confirm every choice.
+        #[clap(long)]
+        yes: bool,
+    },
+}
+
+impl InitCommands {
+    async fn action(self, cli_config: &Config) -> Res<()> {
+        match self {
+            InitCommands::Ts { yes } => self.init(cli_config, yes).await,
+            InitCommands::TsLsp { yes } => self.init_ts_lsp(cli_config, yes).await,
+        }
+    }
+
+    async fn init(self, cli_config: &Config, yes: bool) -> Res<()> {
+        if let Some(path) = &cli_config.ghjkdir {
+            eyre::bail!(
+                "conflict, already in ghjkdir context located at {}",
+                path.display()
+            );
+        }
+        /* if let Some(path) = cli_config.ghjkfile {
+            eyre::bail!("conflict, another ghjkfile located at {}", path.display());
+        } */
+        let cwd = std::env::current_dir().expect_or_log("cwd error");
+        let path = cli_config
+            .ghjkfile
+            .clone()
+            .unwrap_or_else(|| cwd.join("ghjk.ts"));
+        if !crate::utils::file_exists(&path).await? {
+            const TEMPLATE_TS: &str = include_str!("../../examples/template.ts");
+            let re = regex::Regex::new("from \"../(.*)\"; // template-import")
+                .expect_or_log("regex error");
+
+            let contents =
+                re.replace_all(TEMPLATE_TS, format!("from \"{}$1\";", cli_config.repo_root));
+
+            tokio::fs::write(&path, &contents[..])
+                .await
+                .wrap_err_with(|| format!("error writing out ghjk.ts at {}", path.display()))?;
+
+            info!(path = %path.display(),"written out ghjk.ts");
+        }
+        self.init_ts_lsp(cli_config, yes).await
+    }
+    async fn init_ts_lsp(self, _cli_config: &Config, _yes: bool) -> Res<()> {
+        Ok(())
     }
 }
 

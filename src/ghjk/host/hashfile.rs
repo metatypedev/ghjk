@@ -5,6 +5,8 @@ use super::HostCtx;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HashObj {
     pub version: String,
+    /// The cli config used during serializatin
+    pub cli_config: crate::config::Config,
     /// Hashes of all env vars that were read.
     pub env_var_hashes: indexmap::IndexMap<String, Option<String>>,
     /// Hashes of all files that were read.
@@ -54,6 +56,7 @@ impl HashObj {
                     .collect(),
             )
             .await?,
+            cli_config: hcx.gcx.config.clone(),
         })
     }
 
@@ -73,6 +76,12 @@ impl HashObj {
     #[tracing::instrument(skip(hcx))]
     pub async fn is_stale(&self, hcx: &HostCtx) -> Res<bool> {
         {
+            if self.cli_config != hcx.gcx.config {
+                trace!("stale cli config");
+                return Ok(true);
+            }
+        }
+        {
             let new_digest = env_var_digests(
                 &hcx.config.env_vars,
                 self.env_var_hashes.keys().map(|key| &key[..]),
@@ -84,7 +93,7 @@ impl HashObj {
         }
         {
             for path in &self.listed_files {
-                if !matches!(tokio::fs::try_exists(path).await, Ok(true)) {
+                if crate::utils::file_exists(path).await? {
                     trace!("stale listed files");
                     return Ok(true);
                 }

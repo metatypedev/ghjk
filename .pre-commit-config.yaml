@@ -38,12 +38,12 @@ repos:
       - id: ghjk-resolve
         name: Ghjk resolve
         language: system
-        entry: bash -c 'deno task self p resolve'
+        entry: bash -c 'deno task ghjk p resolve'
         pass_filenames: false
       - id: lock-sed
         name: Sed lock
         language: system
-        entry: bash -c 'deno task self x lock-sed'
+        entry: bash -c 'deno task ghjk x lock-sed'
         pass_filenames: false
       - id: deno-fmt
         name: Deno format

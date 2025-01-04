@@ -239,6 +239,18 @@ pub fn decode_hex_multibase(source: &str) -> eyre::Result<Vec<u8>> {
     }
 }
 
+/// A simpler version of [`tokio::fs::try_exists`] that returns
+/// false on a non-existent file and not just on a broken symlink.
+#[inline(always)]
+pub async fn file_exists(path: &Path) -> Result<bool, std::io::Error> {
+    match tokio::fs::try_exists(path).await {
+        Ok(true) => Ok(true),
+        Ok(false) => Ok(false),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(err) => Err(err),
+    }
+}
+
 pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf>> {
     let mut cur = from;
     loop {

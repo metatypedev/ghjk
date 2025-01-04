@@ -81,7 +81,7 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     shellsToHook: [],
   });
 
-  await $`ghjk print config`
+  await $`ghjk print serialized`
     .cwd(tmpDir.toString())
     .clearEnv()
     .env(env);
@@ -163,9 +163,7 @@ const confStr = \`
 ${serializedSecConf}
 \`;
 const confObj = JSON.parse(confStr);
-const ghjk = file(confObj);
-
-export const sophon = ghjk.sophon;
+export const ghjk = file(confObj);
 
 ${tasks}
 

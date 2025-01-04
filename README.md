@@ -46,7 +46,7 @@ Before anything, make sure the following programs are available on the system.
 Install the ghjk cli using the installer scripts like so:
 
 ```bash
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh" | bash
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:
@@ -65,12 +65,8 @@ import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts
 // ports are small programs that install sowtware to your envs
 import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/ports/mod.ts";
 
-const ghjk = file({});
-
-// NOTE: `ghjk.ts` files are expected to export this sophon object
-// all the functions on the ghjk object  are ultimately modifying the 'sophon' proxy 
-// object exported here.
-export const sophon = ghjk.sophon;
+// NOTE: `ghjk.ts` files are expected to export this ghjk object
+export const ghjk = file({});
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());

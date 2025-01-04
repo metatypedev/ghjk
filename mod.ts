@@ -110,17 +110,21 @@ type SecureConfigArgs = Omit<
 >;
 
 type DenoFileKnobs = {
+  /**
+   * The sophon is the actual proxy between the host world
+   * and the ghjkfile world.
+   */
   sophon: Readonly<object>;
   /**
-   * {@inheritdoc AddInstall}
+   * {@inheritDoc AddInstall}
    */
   install: AddInstall;
   /**
-   * {@inheritdoc AddTask}
+   * {@inheritDoc AddTask}
    */
   task: AddTask;
   /**
-   * {@inheritdoc AddTasks}
+   * {@inheritDoc AddTasks}
    */
   tasks: AddTasks;
   /**

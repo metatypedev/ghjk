@@ -27,7 +27,7 @@ import {
 import * as std_ports from "../modules/ports/std.ts";
 import runtime_ports from "../modules/ports/std_runtime.ts";
 // host
-import type { SerializedConfig } from "../host/types.ts";
+import type { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 // tasks
 // WARN: this module has side-effects and only ever import

@@ -1,16 +1,28 @@
 // @ts-nocheck: Ghjkfile based on Deno
 
-export { sophon } from "./hack.ts";
-import { config, env, install, task } from "./hack.ts";
-import { switchMap } from "./port.ts";
+import { file } from "./mod.ts";
+
 import * as ports from "./ports/mod.ts";
+import { switchMap } from "./port.ts";
 import { sedLock } from "./std.ts";
 import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 import dummy from "./ports/dummy.ts";
 
+export const ghjk = file({});
+
+const DENO_VERSION = "2.1.2";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
+
+ghjk.env("main")
+  // these are used for developing ghjk
+  .install(
+    ports.act(),
+    ports.pipi({ packageName: "pre-commit" })[0],
+    ports.pipi({ packageName: "vale" })[0],
+    ports.deno_ghrel({ version: DENO_VERSION }),
+  );
 
 const installs = {
   rust: ports.rust({
@@ -20,84 +32,75 @@ const installs = {
   }),
 };
 
-config({
+ghjk.config({
   defaultEnv: "dev",
   enableRuntimes: true,
   allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
 });
 
-env("main").vars({
-  RUST_LOG: [
-    "info",
-    Object.entries({
-      "TRACE": [
-        // "denort",
-        // "deno",
-      ],
-      "DEBUG": [
-        // "runtime",
-        // "tokio",
-      ],
-      "INFO": [
-        "deno::npm",
-        "deno::file_fetcher",
-        "swc_ecma_transforms_base",
-        "swc_common",
-        "h2",
-        "rustls",
-        "mio",
-        "hyper_util",
-      ],
-    }).flatMap(([level, modules]) =>
-      modules.map((module) => `${module}=${level.toLowerCase()}`)
-    ),
-  ].join(),
-});
-
-env("_rust")
+ghjk.env("_rust")
   .install(
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
     installs.rust,
+    ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
+      ? [ports.mold({
+        version: "v2.4.0",
+        replaceLd: true,
+      })]
+      : []),
   );
 
-const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
-
-env("dev")
+ghjk.env("dev")
   .inherit("_rust")
   .install(ports.cargobi({ crateName: "tokio-console" }))
+  .install(ports.cargobi({ crateName: "cargo-bloat" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
-    RUSTY_V8_MIRROR,
+    RUSTY_V8_MIRROR: `${import.meta.dirname}/.dev/rusty_v8`,
   });
 
-if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
-  const mold = ports.mold({
-    version: "v2.4.0",
-    replaceLd: true,
-  });
-  env("dev").install(mold);
-}
+ghjk.env("ci")
+  .inherit("_rust");
 
 // these are just for quick testing
-install(
+ghjk.install(
   ports.asdf({
     pluginRepo: "https://github.com/lsanwick/asdf-jq",
     installType: "version",
   }),
 );
 
-const DENO_VERSION = "2.1.2";
+ghjk.env("main")
+  .vars({
+    RUST_LOG: [
+      "info",
+      Object.entries({
+        "TRACE": [
+          // "denort",
+          // "deno",
+        ],
+        "DEBUG": [
+          // "runtime",
+          // "tokio",
+        ],
+        "INFO": [
+          "deno::npm",
+          "deno::file_fetcher",
+          "swc_ecma_transforms_base",
+          "swc_common",
+          "h2",
+          "rustls",
+          "mio",
+          "hyper_util",
+        ],
+      }).flatMap(([level, modules]) =>
+        modules.map((module) => `${module}=${level.toLowerCase()}`)
+      ),
+    ].join(),
+  });
 
-// these are used for developing ghjk
-install(
-  ports.act(),
-  ports.pipi({ packageName: "pre-commit" })[0],
-  ports.pipi({ packageName: "vale" })[0],
-  ports.deno_ghrel({ version: DENO_VERSION }),
-);
-
-task(
+ghjk.task(
   "cache-v8",
   {
     desc: "Install the V8 builds to a local cache.",
@@ -142,7 +145,7 @@ task(
   },
 );
 
-task(
+ghjk.task(
   "lock-sed",
   async ($) => {
     const GHJK_VERSION = "0.3.0-rc.1";

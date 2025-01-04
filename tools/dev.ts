@@ -49,7 +49,7 @@ await install({
   shellsToHook: [],
 });
 
-// await $`${ghjkDataDir.join("ghjk").toString()} print config`
+// await $`${ghjkDataDir.join("ghjk").toString()} print serialized`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);

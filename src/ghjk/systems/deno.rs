@@ -126,6 +126,9 @@ pub async fn systems_from_deno(
     let mut active_worker = worker.drive_till_exit().await?;
 
     let manifests = tokio::select! {
+        Some(err) = exception_line.recv() => {
+            return Err(err).wrap_err("error setting up deno systems")
+        }
         res = &mut active_worker.exit_code_rx => {
             let exit_code = res
                 .expect_or_log("channel error")

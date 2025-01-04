@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh" | bash
 ```
 
 This will install the CLI and add configuration your shell rc files the necessary hooks ghjk needs to function.
@@ -44,11 +44,8 @@ import { file } from ".../mod.ts";
 // import the port for the node program
 import node from ".../ports/node.ts";
 
-const ghjk = file();
-
-// all ghjk.ts files are expected to export this special `sophon` object
-// all the functions from the ghjk object are modifying the sophon
-export const sophon = ghjk.sophon;
+// all ghjk.ts files are expected to export this special `ghjk` object
+export const ghjk = file();
 
 // install programs (ports) into your env
 ghjk.install(
@@ -95,7 +92,7 @@ To look at what the ghjkfile looks like serialized, you can use the following co
 
 ```bash
 # look at the serialized form the ghjkfile
-ghjk print config
+ghjk print serialized
 ```
 
 #### The Hashfile
@@ -414,7 +411,7 @@ Namely, it's good practice to:
 # sample of how one would install ghjk for use in a Dockerfile
 ARG GHJK_VERSION=v0.3.0-rc.1
 # /usr/bin is available in $PATH by default making ghjk immediately avail
-RUN curl -fsSL https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh \
+RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
 ```
 

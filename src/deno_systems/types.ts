@@ -9,7 +9,7 @@ const denoSystemsRoot = zod.object({
 const charSchema = zod.string().length(1);
 
 const cliArg = zod.object({
-  value_name: zod.string().optional(),
+  value_name: zod.string().nullish(),
   value_hint: zod.enum([
     "Unknown",
     "Other",
@@ -24,7 +24,7 @@ const cliArg = zod.object({
     "Hostname",
     "Url",
     "EmailAddress",
-  ]).optional(),
+  ]).nullish(),
 
   action: zod.enum([
     "Set",
@@ -36,45 +36,45 @@ const cliArg = zod.object({
     "HelpShort",
     "HelpLong",
     "Version",
-  ]).optional(),
+  ]).nullish(),
 
-  required: zod.boolean().optional(),
-  global: zod.boolean().optional(),
-  hide: zod.boolean().optional(),
-  exclusive: zod.boolean().optional(),
-  trailing_var_arg: zod.boolean().optional(),
+  required: zod.boolean().nullish(),
+  global: zod.boolean().nullish(),
+  hide: zod.boolean().nullish(),
+  exclusive: zod.boolean().nullish(),
+  trailing_var_arg: zod.boolean().nullish(),
 
-  env: zod.string().optional(),
+  env: zod.string().nullish(),
 
-  help: zod.string().optional(),
-  long_help: zod.string().optional(),
+  help: zod.string().nullish(),
+  long_help: zod.string().nullish(),
 });
 
 const cliFlag = cliArg.extend({
-  long: zod.string().optional(),
-  long_aliases: zod.string().array().optional(),
-  visible_long_aliases: zod.string().array().optional(),
+  long: zod.string().nullish(),
+  long_aliases: zod.string().array().nullish(),
+  visible_long_aliases: zod.string().array().nullish(),
 
-  short: charSchema.optional(),
-  short_aliases: charSchema.array().optional(),
-  visible_short_aliases: charSchema.array().optional(),
+  short: charSchema.nullish(),
+  short_aliases: charSchema.array().nullish(),
+  visible_short_aliases: charSchema.array().nullish(),
 });
 
 const cliCommandBase = zod.object({
   name: zod.string(),
 
-  aliases: zod.string().array().optional(),
-  visible_aliases: zod.string().array().optional(),
+  aliases: zod.string().array().nullish(),
+  visible_aliases: zod.string().array().nullish(),
 
-  hide: zod.boolean().optional(),
-  disable_help_subcommand: zod.boolean().optional(),
+  hide: zod.boolean().nullish(),
+  disable_help_subcommand: zod.boolean().nullish(),
 
-  about: zod.string().optional(),
-  before_help: zod.string().optional(),
-  before_long_help: zod.string().optional(),
+  about: zod.string().nullish(),
+  before_help: zod.string().nullish(),
+  before_long_help: zod.string().nullish(),
 
-  args: zod.record(cliArg).optional(),
-  flags: zod.record(cliFlag).optional(),
+  args: zod.record(cliArg).nullish(),
+  flags: zod.record(cliFlag).nullish(),
 });
 
 const flagsAndArgs = zod.record(
@@ -83,7 +83,7 @@ const flagsAndArgs = zod.record(
     zod.string().array(),
     zod.number(),
     zod.boolean(),
-  ]).optional(),
+  ]).nullish(),
 );
 
 const cliActionArgs = zod.object({
@@ -94,20 +94,20 @@ const cliActionArgs = zod.object({
 const cliCommandActionBase = cliCommandBase.extend({
   action: zod.function()
     .args(cliActionArgs)
-    .returns(zod.union([zod.promise(zod.void()), zod.void()])).optional(),
+    .returns(zod.union([zod.promise(zod.void()), zod.void()])).nullish(),
 });
 
 const cliCommandBindedBase = cliCommandBase.extend({
-  action_cb_key: zod.string().optional(),
+  action_cb_key: zod.string().nullish(),
 });
 
 const cliCommand: zod.ZodType<CliCommandX> = cliCommandActionBase.extend({
-  sub_commands: zod.lazy(() => zod.array(cliCommand).optional()),
+  sub_commands: zod.lazy(() => zod.array(cliCommand).nullish()),
 });
 
 const cliCommandBinded: zod.ZodType<CliCommandBindedX> = cliCommandBindedBase
   .extend({
-    sub_commands: zod.lazy(() => zod.array(cliCommandBinded).optional()),
+    sub_commands: zod.lazy(() => zod.array(cliCommandBinded).nullish()),
   });
 
 type DenoSystemCtor = (gcx: GhjkCtx) => ModuleBase<unknown>;
@@ -117,17 +117,17 @@ export type DenoSystemsRoot = {
 };
 
 export type CliCommand = zod.input<typeof cliCommandActionBase> & {
-  sub_commands?: CliCommand[];
+  sub_commands?: CliCommand[] | null;
 };
 export type CliCommandX = zod.infer<typeof cliCommandActionBase> & {
-  sub_commands?: CliCommandX[];
+  sub_commands?: CliCommandX[] | null;
 };
 
 export type CliCommandBinded = zod.input<typeof cliCommandBindedBase> & {
-  sub_commands?: CliCommandBinded[];
+  sub_commands?: CliCommandBinded[] | null;
 };
 export type CliCommandBindedX = zod.infer<typeof cliCommandBindedBase> & {
-  sub_commands?: CliCommandBindedX[];
+  sub_commands?: CliCommandBindedX[] | null;
 };
 
 export type CliFlag = zod.input<typeof cliFlag>;
