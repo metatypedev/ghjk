@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh" | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.2/install.sh" | bash
 ```
 
 This will install the CLI and add configuration your shell rc files the necessary hooks ghjk needs to function.
@@ -39,6 +39,9 @@ Look through the following snippet to understand the basic structure of a `ghjk.
 ```ts
 // all ghjk.ts files are expected to export this special `sophon` object
 export { sophon } from "ghjk";
+// by default, a `deno.jsonc` file is created in the `.ghjk/` directory
+// which will provide the `ghjk` import alias configured to the CLI's version
+// of ghjk
 import { file } from "ghjk";
 // import the port for the node program
 import node from "ghjk/ports/node.ts";
@@ -109,7 +112,7 @@ Thankfully, through the great sandbox provided through Deno's implementation, th
 - Environment variables read during serialization
 - Configuration used by the ghjk cli
 
-This doesn't cover everything though and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
+This doesn't cover everything though, and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
 You'll generally want to avoid any logic that's not deterministic and depends on inputs like time or RNGs.
 If you encounter any edge cases or want to force re-serialization, you can remove the hashfile at `.ghjk/hash.json` which contains hashes for change tracking.
 
@@ -126,7 +129,7 @@ $ ghjk --help
 
 The cached value of the serialization results are stored in the lockfile.
 The lockfile is what the different systems of ghjk use to store transient information that needs to be tracked across serializations.
-Currently, this is mainly used by the ports system to retain version numbers resolved during installation which is important for the basic need of reproducibility.
+Currently, this is mainly used by the ports system to retain version numbers resolved during installation, which is important for the basic need of reproducibility.
 
 To maintain reproducibility across different machines, this file needs to be checked into version control.
 Unfortunately, this can lead to version conflicts during git merges for example.
@@ -411,7 +414,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.0-rc.1
+ARG GHJK_VERSION=v0.3.0-rc.2
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
@@ -492,13 +495,13 @@ ghjk print config
 # }
 ```
 
-These is mostly set of paths to resolve ghjkfiles or other values that need to be resolved before the serializaiton process.
-Most of these settings can be configured through the `config.json` file which is looked for at `.ghjk/config.json` by default.
-Additionaly, most of these values can be configured through environment variables under keys that are the name of the config value prefixed by `GHJK_`.
+These are generally values that need to be resolved before the serializaiton process.
+Most of these settings can be configured through the `config.json` file, which is looked for at `.ghjk/config.json` by default.
+Additionally, most of these values can be configured through environment variables under keys that are the name of the config value prefixed by `GHJK_`.
 So for the `repo_root` config, this would be resolved from the `$GHJK_REPO_ROOT` env var.
 Some of the values can be configured globally thorugh a file looked for at `$XDG_CONFIG_PATH/ghjk/config.json`.
 
-The following snippet shows current config set, their defafults and an explanation of their purpose.
+The following snippet shows the current config set, their defafults, and an explanation of their purpose.
 
 ```jsonc
 {
@@ -535,3 +538,4 @@ The following snippet shows current config set, their defafults and an explanati
 ```
 
 In addition to a `config.json` files, `config.json5` files are also supported which is a [friendlier superset of JSON](https://json5.org/) with support for comments and more.
+Note that environment varible resolved config takes precedence over the local `config.json` which takes precedence over globally configured values.

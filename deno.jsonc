@@ -4,8 +4,7 @@
     "ghjk/": "./"
   },
   "tasks": {
-    "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A tests/*",
-    "test-doc": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A --doc **/*.ts",
+    "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A --doc **/*.ts",
     "test-rust": "cargo test",
     "ghjk": "cargo run -p ghjk",
     "cache": "deno cache deps/*",
@@ -24,7 +23,9 @@
       "./src/deno_systems/bindings.ts",
       "./src/ghjk/js",
       "./files/deno/bindings.ts",
-      "./tools"
+      "./tools",
+      "./examples",
+      "ghjk.ts"
     ]
   },
   "fmt": {
