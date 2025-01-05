@@ -44,7 +44,7 @@ impl PrintCommands {
                 }
             }
             PrintCommands::GhjkfilePath => {
-                if let Some(path) = &cli_config.ghjkdir {
+                if let Some(path) = &cli_config.ghjkfile {
                     println!("{}", path.display());
                     true
                 } else {

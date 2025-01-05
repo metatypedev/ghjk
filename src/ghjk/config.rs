@@ -187,7 +187,11 @@ hash.json",
                         },
                     }))
                 }
-                if let Some(deno_lockfile_path) = &config.deno_lockfile {
+                if config.deno_no_lockfile {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": false
+                    }))
+                } else if let Some(deno_lockfile_path) = &config.deno_lockfile {
                     deno_json = deno_json.destructure_into_self(json!({
                         "lock": pathdiff::diff_paths(deno_lockfile_path, parent)
                             .unwrap_or_else(|| deno_lockfile_path.clone())

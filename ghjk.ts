@@ -1,14 +1,14 @@
 // @ts-nocheck: Ghjkfile based on Deno
 
-export { sophon } from "./mod.ts";
-import { $, file } from "./mod.ts";
+export { sophon } from "ghjk";
+import { $, file } from "ghjk";
 
-import * as ports from "./ports/mod.ts";
-import { switchMap } from "./port.ts";
-import { sedLock } from "./std.ts";
-import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
-import { unarchive } from "./utils/unarchive.ts";
-import dummy from "./ports/dummy.ts";
+import * as ports from "ghjk/ports/mod.ts";
+import { switchMap } from "ghjk/port.ts";
+import { sedLock } from "ghjk/std.ts";
+import { downloadFile, DownloadFileArgs } from "ghjk/utils/mod.ts";
+import { unarchive } from "ghjk/utils/unarchive.ts";
+import dummy from "ghjk/ports/dummy.ts";
 
 const ghjk = file({});
 

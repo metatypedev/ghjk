@@ -1,7 +1,7 @@
 {
   "imports": {
-    "ghjk/": "/",
-    "ghjk": "./mod.ts"
+    "ghjk": "./mod.ts",
+    "ghjk/": "./"
   },
   "tasks": {
     "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A tests/*",

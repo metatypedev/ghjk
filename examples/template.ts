@@ -1,8 +1,7 @@
 // @ts-nocheck: Deno based
-
-export { sophon } from "../mod.ts"; // template-import
-import { file } from "../mod.ts"; // template-import
-// import * as ports from "../ports/mod.ts"; // template-import
+export { sophon } from "ghjk";
+import { file } from "ghjk";
+// import * as ports from "ghjk/ports/mod.ts"; // template-import
 
 // This export is necessary for typescript ghjkfiles
 const ghjk = file({

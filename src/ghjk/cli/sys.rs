@@ -47,7 +47,7 @@ pub async fn commands_from_systems(
 
             if let Some(conflict) = conflict_tracker.insert(sys_cmd.name.clone(), id) {
                 eyre::bail!(
-                    "system commannd conflict under name {:?} for modules {conflict:?} and {id:?}",
+                    "system command conflict under name {:?} for modules {conflict:?} and {id:?}",
                     sys_cmd.name.clone(),
                 );
             }

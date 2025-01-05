@@ -122,7 +122,7 @@ test (cat eddy) = 'ed edd eddy'
   {
     name: "anon",
     ghjkTs: `
-export { ghjk } from "ghjk/hack.ts";
+export { sophon } from "ghjk/hack.ts";
 import { task } from "ghjk/hack.ts";
 
 task({
@@ -148,11 +148,7 @@ test (cat eddy) = 'ed edd eddy'
     name: "dyn_vars",
     ghjkTs: `
 export { sophon } from "ghjk/hack.ts";
-import { file } from "ghjk/hack.ts";
-
-const ghjk = file({});
-
-const { env, task } = ghjk;
+import { env, task } from "ghjk/hack.ts";
 
 env("main")
   .var("A", "A#STATIC")

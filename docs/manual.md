@@ -345,7 +345,7 @@ The default set includes common utilities like `curl`, `git`, `tar` and others w
 More ports can be easily added to the allowed port dep set.
 
 ```ts
-import { file } from "ghjk/mod.ts";
+import { file } from "ghjk";
 // barrel export for ports in the ghjk repo
 import * as ports from "ghjk/ports/mod.ts";
 
@@ -420,7 +420,7 @@ RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.
 ### Activation
 
 When working on non-interactive shells, the ghjk shell hooks are not available.
-This means that the default environment won't be activated for that CWD nor will any changes occur on changing directories.
+This means that the default environment won't be activated for that CWD, nor will any changes occur on changing directories.
 It also prevents the `ghjk sync` and `ghjk envs activate` commands from functioning which requires that these hooks be run before each command.
 In such scenarios, one can directly `source` the activation script for the target env from the `.ghjk` directory.
 

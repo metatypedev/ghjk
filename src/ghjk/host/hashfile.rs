@@ -5,7 +5,7 @@ use super::HostCtx;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HashObj {
     pub version: String,
-    /// The cli config used during serializatin
+    /// The cli config used during serialization
     pub cli_config: crate::config::Config,
     /// Hashes of all env vars that were read.
     pub env_var_hashes: indexmap::IndexMap<String, Option<String>>,
