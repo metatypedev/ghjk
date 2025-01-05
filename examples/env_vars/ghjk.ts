@@ -1,6 +1,7 @@
+export { sophon } from "../../hack.ts";
 import { file } from "../../hack.ts";
 
-export const ghjk = file({
+const ghjk = file({
   defaultEnv: "empty",
   envs: [{ name: "empty", inherit: false }],
   defaultBaseEnv: "empty",

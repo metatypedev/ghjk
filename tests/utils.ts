@@ -157,13 +157,14 @@ export function genTsGhjkFile(
   ).join("\n");
 
   return `
+export { sophon } from "$ghjk/mod.ts";
 import { file } from "$ghjk/mod.ts";
 
 const confStr = \`
 ${serializedSecConf}
 \`;
 const confObj = JSON.parse(confStr);
-export const ghjk = file(confObj);
+const ghjk = file(confObj);
 
 ${tasks}
 

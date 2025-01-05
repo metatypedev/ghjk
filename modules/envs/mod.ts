@@ -418,7 +418,7 @@ async function showableEnv(
   return {
     ...printBag,
     ...(recipe.desc ? { desc: recipe.desc } : {}),
-    envName: envName.length < 2 ? envName[0] : envName,
+    envName,
   };
 }
 

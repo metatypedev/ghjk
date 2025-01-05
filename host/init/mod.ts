@@ -122,7 +122,7 @@ async function handleVscodeSettings(
     });
   const parsedConfig = unwrapZodRes(schema.safeParse(originalConfig), {
     originalConfig,
-  }, "unexpected JSON discovored at .vscode/settings.json");
+  }, "unexpected JSON discovered at .vscode/settings.json");
 
   let writeOut = false;
 

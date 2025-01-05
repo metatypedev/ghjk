@@ -1,11 +1,12 @@
 import { stdDeps } from "../../files/mod.ts";
+export { sophon } from "../../mod.ts";
 import { file } from "../../mod.ts";
 import * as ports from "../../ports/mod.ts";
 
 // we need this export for this file to be a valid ghjkfile
 // it's the one thing used by the ghjk host implementation to
 // interact with your ghjkfile
-export const ghjk = file({
+const ghjk = file({
   // configre an empty env so that no ports are avail by default in our workdir
   defaultEnv: "empty",
   envs: [{ name: "empty", inherit: false }],

@@ -41,11 +41,15 @@ Look through the following snippet to understand the basic structure of a `ghjk.
 // one's using. For example 
 // https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/
 import { file } from ".../mod.ts";
+// all ghjk.ts files are expected to export this special `sophon` object
+export { sophon } from ".../mod.ts";
 // import the port for the node program
 import node from ".../ports/node.ts";
 
-// all ghjk.ts files are expected to export this special `ghjk` object
-export const ghjk = file();
+// Create the ghjk object using the file functiono. This modifies 
+// the sophon exported above and may only be called once during 
+// serialization.
+const ghjk = file();
 
 // install programs (ports) into your env
 ghjk.install(
@@ -106,11 +110,10 @@ Thankfully, through the great sandbox provided through Deno's implementation, th
 - The contents of the ghjkfile
 - Files accessed during serialization
 - Environment variables read during serialization
+- Configuration used by the ghjk cli
 
 This doesn't cover everything though and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
-You'll generally want to avoid any logic that's deterministic on inputs like time or RNGs.
-
-There are still a couple of glaring omissions from this list that will be addressed as ghjk matures.
+You'll generally want to avoid any logic that's not deterministic and depends on inputs like time or RNGs.
 If you encounter any edge cases or want to force re-serialization, you can remove the hashfile at `.ghjk/hash.json` which contains hashes for change tracking.
 
 ```bash
@@ -140,7 +143,7 @@ The best way to resolve ghjk merge conflicts is to:
     - In git, easier to remove any changes in the merge and revert to the base/HEAD branch
 - Re-serialize by invoking the ghjk CLI
 
-This simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
+These simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
 Of course, if the discarded version of the lockfile contained new versions, they'll be re-resolved possibly to a different version.
 But generally, if the versions specified in ghjkfile are tight enough, it'll resolve the same values as before.
 If versions are important, it's good to explicitly specify them in your ghjkfile.
@@ -211,7 +214,7 @@ ghjk.env("my-env")
 
 By default, your ghjkfile has an env called `main`.
 Envs can inherit from each other and by default inherit from the `main` environment.
-Inheritance is additive based for most env properties and allows easy composition.
+Inheritance is additive on most env properties and allows easy composition.
 Please look at the [envs example](../examples/envs/ghjk.ts) or the [kitchen sink](../examples/kitchen/ghjk.ts) example which show all the knobs available on envs.
 
 You can then access the envs feature under the `envs` section of the CLI:
@@ -403,15 +406,15 @@ The primarily difference between the two scenarios is how activation of envs is 
 The standard installation script is the best way to install ghjk in CI environments.
 The environment [variables](./installation-vars.md) used for the installer customization come in extra handy here.
 Namely, it's good practice to:
-- Make sure the `$GHJK_VERSION` is the one used by the ghjkfile.
-- Specify `$GHJK_SHARE_DIR` to a location that can be cached by your CI tooling. This is where ports get installed.
+- Make sure the `$VERSION` is the one used by the ghjkfile.
+- Specify `$GHJK_DATA_DIR` to a location that can be cached by your CI tooling. This is where ports get installed.
 - Specify `$GHJK_INSTALL_EXE_DIR` to a location that you know will be in `$PATH`. This is where the ghjk CLI gets installed to.
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
 ARG GHJK_VERSION=v0.3.0-rc.1
 # /usr/bin is available in $PATH by default making ghjk immediately avail
-RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh" \
+RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
 ```
 
@@ -419,7 +422,7 @@ RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh
 
 When working on non-interactive shells, the ghjk shell hooks are not available.
 This means that the default environment won't be activated for that CWD nor will any changes occur on changing directories.
-It also prevents the `ghjk envs activate` command from functioning which requires that these hooks be run before each command.
+It also prevents the `ghjk sync` and `ghjk envs activate` commands from functioning which requires that these hooks be run before each command.
 In such scenarios, one can directly `source` the activation script for the target env from the `.ghjk` directory.
 
 ```bash

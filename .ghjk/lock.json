@@ -403,7 +403,7 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqocjamyeiuh6llwcdqg4q4ceantuzpbm5bmnlz7pkqz4r2ca7w2eq"
+              "envKey": "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
@@ -430,13 +430,13 @@
                 }
               ]
             },
-            "bciqfnku2tswsz4gapwhys5ox5uiyzcb5r7bmuwzljjeziljcu7efroi": {
+            "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa": {
               "desc": "the default default environment.",
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -444,12 +444,12 @@
                 }
               ]
             },
-            "bciqocjamyeiuh6llwcdqg4q4ceantuzpbm5bmnlz7pkqz4r2ca7w2eq": {
+            "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -457,12 +457,12 @@
                 }
               ]
             },
-            "bciqex5g2cetqvfipwhu6fb3mmyke3y6jvrscjrykf2zl7wfwupiqhca": {
+            "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -470,12 +470,12 @@
                 }
               ]
             },
-            "bciqgcwltl3sbuyrqlhxz2spihe2asdzrgt3axosw3mre7ived23syhy": {
+            "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "posix.envVar",
@@ -491,10 +491,10 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqfnku2tswsz4gapwhys5ox5uiyzcb5r7bmuwzljjeziljcu7efroi",
-            "_rust": "bciqex5g2cetqvfipwhu6fb3mmyke3y6jvrscjrykf2zl7wfwupiqhca",
-            "ci": "bciqex5g2cetqvfipwhu6fb3mmyke3y6jvrscjrykf2zl7wfwupiqhca",
-            "dev": "bciqgcwltl3sbuyrqlhxz2spihe2asdzrgt3axosw3mre7ived23syhy"
+            "main": "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa",
+            "_rust": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
+            "ci": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
+            "dev": "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai"
           }
         }
       }

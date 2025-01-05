@@ -93,7 +93,7 @@ impl HashObj {
         }
         {
             for path in &self.listed_files {
-                if crate::utils::file_exists(path).await? {
+                if !crate::utils::file_exists(path).await? {
                     trace!("stale listed files");
                     return Ok(true);
                 }

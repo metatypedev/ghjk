@@ -25,13 +25,13 @@ LATEST_VERSION=$(curl "$RELEASE_URL/latest" -s -L -I -o /dev/null -w '%{url_effe
 
 PLATFORM="${PLATFORM:-}"
 TMP_DIR=$(mktemp -d)
-GHJK_INSTALL_EXEC_DIR="${GHJK_INSTALL_EXEC_DIR:-$HOME/.local/bin}"
+GHJK_INSTALL_EXE_DIR="${GHJK_INSTALL_EXE_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-$LATEST_VERSION}"
 
 # make sure the version is prepended with v
 if [ "${VERSION#"v"}" = "$VERSION" ]; then
   cat >&2 <<EOF
-WARN: Resolved version "$VERSION" doesn't have "v" prefix.
+WARN: Resolved version "$VERSION" doesn't have "v" prefix. This may affect asset resolution. Expected format: v0.1.0
 EOF
 fi
 
@@ -93,7 +93,7 @@ To continue with installation, please make sure the release exists in:
 $DOWNLOAD_URL
 
 Then set the PLATFORM and VERSION environment variables, and re-run this script:
-$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl VERSION=v0.1.10 bash
+$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl VERSION=<version> bash
 EOF
   exit 1
 fi
@@ -101,34 +101,34 @@ fi
 tar -C "$TMP_DIR" -xvzf "$TMP_DIR/$ASSET.$EXT" "$EXE"
 chmod +x "$TMP_DIR/$EXE"
 
-if [ "${GHJK_INSTALL_EXEC_DIR}" = "." ]; then
+if [ "${GHJK_INSTALL_EXE_DIR}" = "." ]; then
   mv "$TMP_DIR/$EXE" .
   printf "\n\n%s has been extracted to your current directory\n" "$EXE"
 else
   cat <<EOF
 
-$EXE will be moved to $GHJK_INSTALL_EXEC_DIR
-Set the GHJK_INSTALL_EXEC_DIR environment variable to change the installation directory:
-$ curl -fsSL $INSTALLER_URL | GHJK_INSTALL_EXEC_DIR=. bash
+$EXE will be moved to $GHJK_INSTALL_EXE_DIR
+Set the GHJK_INSTALL_EXE_DIR environment variable to change the installation directory:
+$ curl -fsSL $INSTALLER_URL | GHJK_INSTALL_EXE_DIR=. bash
 
 EOF
-  if [ ! -d "${GHJK_INSTALL_EXEC_DIR}" ]; then
-    mkdir -p "$GHJK_INSTALL_EXEC_DIR"
+  if [ ! -d "${GHJK_INSTALL_EXE_DIR}" ]; then
+    mkdir -p "$GHJK_INSTALL_EXE_DIR"
   fi
 
-  if [ -w "${GHJK_INSTALL_EXEC_DIR}" ]; then
+  if [ -w "${GHJK_INSTALL_EXE_DIR}" ]; then
     printf "Press enter to continue (or cancel with Ctrl+C):" >&2
     read -r _throwaway
-    mv "$TMP_DIR/$EXE" "$GHJK_INSTALL_EXEC_DIR"
+    mv "$TMP_DIR/$EXE" "$GHJK_INSTALL_EXE_DIR"
     rm -r "$TMP_DIR"
   else
-    echo "$GHJK_INSTALL_EXEC_DIR is not writable."
+    echo "$GHJK_INSTALL_EXE_DIR is not writable."
     exit 1
   fi
 fi
 
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/$ORG/$REPO/$VERSION/install.ts}"
-"$GHJK_INSTALL_EXEC_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
+"$GHJK_INSTALL_EXE_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
 
 
 SHELL_TYPE=$(basename "$SHELL")
@@ -153,10 +153,10 @@ if [ -n "$SHELL_CONFIG" ]; then
 
   case $SHELL_TYPE in
     bash|zsh|ksh)
-      APPEND_CMD="export PATH=\"$GHJK_INSTALL_EXEC_DIR:\$PATH\""
+      APPEND_CMD="export PATH=\"$GHJK_INSTALL_EXE_DIR:\$PATH\""
       ;;
     fish)
-      APPEND_CMD="fish_add_path $GHJK_INSTALL_EXEC_DIR"
+      APPEND_CMD="fish_add_path $GHJK_INSTALL_EXE_DIR"
       ;;
   esac
 
@@ -166,10 +166,10 @@ if [ -n "$SHELL_CONFIG" ]; then
   else
     cat <<EOF
 
-Consider adding $GHJK_INSTALL_EXEC_DIR to your PATH if it is not already configured.
+Consider adding $GHJK_INSTALL_EXE_DIR to your PATH if it is not already configured.
 $ $APPEND_CMD
 EOF
   fi
 else
-  printf "\nConsider adding %s to your PATH if it is not already configured." "$GHJK_INSTALL_EXEC_DIR"
+  printf "\nConsider adding %s to your PATH if it is not already configured." "$GHJK_INSTALL_EXE_DIR"
 fi

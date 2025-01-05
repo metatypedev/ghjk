@@ -61,12 +61,13 @@ Ghjk is primarily configured through constructs called "environments" or "envs" 
 They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
+// NOTE: `ghjk.ts` files are expected to export this sophon object
+export { sophon } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
 import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
 // ports are small programs that install sowtware to your envs
 import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/ports/mod.ts";
 
-// NOTE: `ghjk.ts` files are expected to export this ghjk object
-export const ghjk = file({});
+const ghjk = file({});
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());

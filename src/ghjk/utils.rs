@@ -271,3 +271,35 @@ pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf
         }
     }
 }
+
+pub trait JsonExt {
+    // fn remove_keys_from_obj(self, keys: &[&str]) -> Self;
+    fn destructure_into_self(self, from: Self) -> Self;
+}
+impl JsonExt for serde_json::Value {
+    /* fn remove_keys_from_obj(self, keys: &[&str]) -> Self {
+        match self {
+            serde_json::Value::Object(mut map) => {
+                for key in keys {
+                    map.remove(*key);
+                }
+                serde_json::Value::Object(map)
+            }
+            json => panic!("provided json was not an object: {:?}", json),
+        }
+    } */
+    fn destructure_into_self(self, from: Self) -> Self {
+        match (self, from) {
+            (serde_json::Value::Object(mut first), serde_json::Value::Object(second)) => {
+                for (key, value) in second.into_iter() {
+                    first.insert(key, value);
+                }
+                serde_json::Value::Object(first)
+            }
+            (first, second) => panic!(
+                "provided jsons weren't objects: first {:?}, second: {:?}",
+                first, second
+            ),
+        }
+    }
+}

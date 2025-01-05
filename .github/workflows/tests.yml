@@ -84,7 +84,10 @@ jobs:
         # need cmake to build the rust deps
         # need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils cmake
-      - run: deno task test
+      - run: |
+          deno task test-rust
+          deno task test-doc
+          deno task test
 
   # test-action:
   #   runs-on: ubuntu-latest

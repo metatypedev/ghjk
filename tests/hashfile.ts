@@ -55,8 +55,7 @@ test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
     name: "invalidated_cli_config_changed",
     stdin: `
 __ghjk_get_mtime_ts .ghjk/hash.json > tstamp
-rm dir/one
-GHJK_DENO_LOCKFILLE=deno.lock ghjk sync
+GHJK_DENO_LOCKFILE=deno.lock ghjk sync
 test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
 `,
   },
@@ -66,7 +65,7 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { ghjk } from "$ghjk/hack.ts";
+export { sophon } from "$ghjk/hack.ts";
 import { task, env } from "$ghjk/hack.ts";
 import {stuff} from "./extra.ts"
 

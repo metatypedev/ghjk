@@ -1,6 +1,7 @@
 // @ts-nocheck: Ghjkfile based on Deno
 
-import { file } from "./mod.ts";
+export { sophon } from "./mod.ts";
+import { $, file } from "./mod.ts";
 
 import * as ports from "./ports/mod.ts";
 import { switchMap } from "./port.ts";
@@ -9,7 +10,7 @@ import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
 import { unarchive } from "./utils/unarchive.ts";
 import dummy from "./ports/dummy.ts";
 
-export const ghjk = file({});
+const ghjk = file({});
 
 const DENO_VERSION = "2.1.2";
 // keep in sync with the deno repo's ./rust-toolchain.toml
@@ -81,8 +82,8 @@ ghjk.env("main")
           // "deno",
         ],
         "DEBUG": [
-          // "runtime",
-          // "tokio",
+          "runtime",
+          "tokio",
         ],
         "INFO": [
           "deno::npm",

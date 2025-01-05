@@ -555,16 +555,16 @@ export class Ghjkfile {
       envsNamed: {},
     };
     const workingSet = indie;
-    // console.log({
-    //   indie,
-    //   deps,
-    // });
+    /* $.dbg("graph", {
+      indie,
+      deps,
+    }); */
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
 
       const base = this.#mergeEnvs(final.envBaseResolved ?? [], final.key);
-      // console.log({ parents: final.envBaseResolved, child: final.key, base });
+      // $.dbg("processing", { parents: final.envBaseResolved, child: final.key, base });
 
       const finalVars = {
         ...base.vars,
