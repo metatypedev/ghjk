@@ -21,7 +21,7 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "$ghjk/hack.ts";
+export { sophon } from "ghjk";
 `,
   },
   ePoints: [{ cmd: "fish", stdin: testCase.stdin }],

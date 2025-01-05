@@ -62,10 +62,10 @@ They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
 // NOTE: `ghjk.ts` files are expected to export this sophon object
-export { sophon } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
-import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
+export { sophon } from "ghjk";
+import { file } from "ghjk";
 // ports are small programs that install sowtware to your envs
-import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/ports/mod.ts";
+import * as ports from "ghjk/ports/mod.ts";
 
 const ghjk = file({});
 

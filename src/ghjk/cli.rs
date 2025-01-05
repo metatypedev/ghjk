@@ -48,7 +48,15 @@ pub async fn cli() -> Res<std::process::ExitCode> {
                     .collect(),
                 ..default()
             },
-            no_lock: config.deno_lockfile.is_none(),
+            no_lock: config.deno_no_lockfile,
+            config_flag: match config.deno_json.as_ref() {
+                Some(path) => deno::args::ConfigFlag::Path(path.to_string_lossy().into()),
+                None => deno::args::ConfigFlag::Disabled,
+            },
+            import_map_path: config
+                .import_map
+                .as_ref()
+                .map(|path| path.to_string_lossy().into()),
             lock: config
                 .deno_lockfile
                 .as_ref()

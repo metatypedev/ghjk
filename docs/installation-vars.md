@@ -8,4 +8,3 @@
 | `GHJK_INSTALL_EXE_DIR`     | Location to install the `ghjk` exec.                                                                                                                      | `$HOME/.local/bin`                               |
 | `GHJK_INSTALL_HOOK_SHELLS` | Comma separated list of shells to hook.                                                                                                                   | `bash,fish,zsh`                                  |
 | `GHJK_INSTALL_HOOK_MARKER` | Marker to use when installing shell hooks.                                                                                                                | `ghjk-hook-marker`                               |
-|                            |                                                                                                                                                           |                                                  |

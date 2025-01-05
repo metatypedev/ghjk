@@ -14,7 +14,7 @@ const tasks: Record<string, DenoTaskDefArgs> = {
     desc: "Create a typescript ghjkfile in the current directory.",
     async fn($, args) {
       {
-        const ghjkdir = $.env["GHJK_DIR"] ??
+        const ghjkdir = $.env["GHJKDIR"] ??
           await findEntryRecursive($.workingDir, ".ghjk");
         if (ghjkdir) {
           throw new Error(

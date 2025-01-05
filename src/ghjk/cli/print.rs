@@ -34,7 +34,6 @@ impl PrintCommands {
                 println!("{}", cli_config.data_dir.display());
                 true
             }
-            // TODO: rename GHJK_DIR to GHJKDIR
             PrintCommands::GhjkdirPath => {
                 if let Some(path) = &cli_config.ghjkdir {
                     // TODO: graceful termination on SIGPIPE

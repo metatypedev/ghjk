@@ -37,14 +37,11 @@ ghjk init ts
 Look through the following snippet to understand the basic structure of a `ghjk.ts` file.
 
 ```ts
-// import the file function from `mod.ts` using the version of ghjk
-// one's using. For example 
-// https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/
-import { file } from ".../mod.ts";
 // all ghjk.ts files are expected to export this special `sophon` object
-export { sophon } from ".../mod.ts";
+export { sophon } from "ghjk";
+import { file } from "ghjk";
 // import the port for the node program
-import node from ".../ports/node.ts";
+import node from "ghjk/ports/node.ts";
 
 // Create the ghjk object using the file functiono. This modifies 
 // the sophon exported above and may only be called once during 
@@ -64,7 +61,7 @@ ghjk.task("greet", async ($) => {
 
 One can look at the [examples](../examples/) found in the ghjk repo for an exploration of the different features available.
 
-## `$GHJK_DIR`
+## `$GHJKDIR`
 
 Once you have a ghjkfile ready to go, the ghjk CLI can be used to access all the features your ghjkfile is using.
 Augmenting the CLI are the hooks that were installed into your shells rc file (startup scripts like `~/.bashrc`). 
@@ -79,7 +76,7 @@ The `$GHJKFILE` environment variable can be set to point the CLI and hooks at a 
 
 The `.ghjk` dir is used by ghjk for different needs and contains some files you'll want to check into version control.
 It includes its own `.gitignore` file by default that excludes all items not of interest for version control.
-The `$GHJK_DIR` variable can be used to point the CLI at a different directory.
+The `$GHJKDIR` variable can be used to point the CLI at a different directory.
 
 ## Serialized
 
@@ -128,8 +125,8 @@ $ ghjk --help
 #### The Lockfile
 
 The cached value of the serialization results are stored in the lockfile.
-The lockfile is what the different modules of ghjk use to store transient information that needs to be tracked across serializations.
-Currently, this is mainly used by the port modules to retain version numbers resolved during installation which is important for the basic need of reproducibility.
+The lockfile is what the different systems of ghjk use to store transient information that needs to be tracked across serializations.
+Currently, this is mainly used by the ports system to retain version numbers resolved during installation which is important for the basic need of reproducibility.
 
 To maintain reproducibility across different machines, this file needs to be checked into version control.
 Unfortunately, this can lead to version conflicts during git merges for example.
@@ -157,7 +154,8 @@ You declare them in your ghjkfile, using typescript functions, and then invoke t
 The CLI will then load your ghjkfile in a worker and execute your function.
 
 ```ts
-import { file } from ".../mod.ts";
+export { sophon } from "ghjk";
+import { file } from "ghjk";
 
 const ghjk = file();
 
@@ -198,7 +196,8 @@ Ghjk envs then allow you:
 Let's look at how one configures an environment using the `ghjk.ts` file:
 
 ```ts
-import { file } from ".../mod.ts";
+export { sophon } from "ghjk";
+import { file } from "ghjk";
 
 const ghjk = file();
 
@@ -312,9 +311,9 @@ Any `InstallConfig` objects included in an env will then be resolved and install
 
 ```ts
 // the default export corresponds to the `conf` function
-import node from ".../ports/node.ts";
+import node from "ghjk/ports/node.ts";
 // the npmi installs executable packages from npm
-import npmi from ".../ports/node.ts";
+import npmi from "ghjk/ports/node.ts";
 
 // top level `install` calls go to the `main` env
 ghjk.install(
@@ -346,9 +345,9 @@ The default set includes common utilities like `curl`, `git`, `tar` and others w
 More ports can be easily added to the allowed port dep set.
 
 ```ts
-import { file } from ".../mod.ts";
+import { file } from "ghjk/mod.ts";
 // barrel export for ports in the ghjk repo
-import * as ports from "../../ports/mod.ts";
+import * as ports from "ghjk/ports/mod.ts";
 
 const ghjk = file();
 
@@ -481,3 +480,58 @@ Otherwise, it's necessary to use the approach described in the section above.
         run: |
           echo $GHJK_ENV
 ```
+
+## `config.json`
+
+One can examine the configuration values used by the CLI using the following command...
+
+```bash
+ghjk print config
+# {
+#   /* json rep of config */
+# }
+```
+
+These is mostly set of paths to resolve ghjkfiles or other values that need to be resolved before the serializaiton process.
+Most of these settings can be configured through the `config.json` file which is looked for at `.ghjk/config.json` by default.
+Additionaly, most of these values can be configured through environment variables under keys that are the name of the config value prefixed by `GHJK_`.
+So for the `repo_root` config, this would be resolved from the `$GHJK_REPO_ROOT` env var.
+Some of the values can be configured globally thorugh a file looked for at `$XDG_CONFIG_PATH/ghjk/config.json`.
+
+The following snippet shows current config set, their defafults and an explanation of their purpose.
+
+```jsonc
+{
+  // Path to the deno config file used to configure the deno runtime
+  // like import aliases. 
+  // If not found, this is created by default to support the `ghjk` 
+  // alias used by ghjk.ts files. Default creation is disabled if
+  // the import_map path is set.
+  "deno_json": "<$ghjkdir/deno.jsonc>",
+  // Path to an deno.lock file used to lock modules imported by deno.
+  // Set it to value `off` to disable lockfile usage.
+  // The `deno.json` spec also supports configuring the deno.lock path 
+  // from within it which will be respected
+  "deno_lockfile": "<$ghjkdir/deno.lock>",
+  // Path to an import_map.json for resolving js import aliases
+  // `deno_json`, if set, will takes precedence over this. 
+  // The `deno.json` spec also supports configuring the import_map path 
+  // from within it which will be respected
+  "import_map": null,
+
+  // data dir to be used by systems. This is where
+  // ports get installed and is shared across ghjkdirs.
+  // *supports global configuration*
+  "data_dir": "<$XDG_DATA_DIR/ghjk>",
+  // Cache dir used by deno. This is where
+  // where deno caches downloaded modules.
+  // *supports global configuration*
+  "deno_dir": "<$XDG_DATA_DIR/ghjk/deno>",
+  // The repo root url used to import the typescript section
+  // of the ghjk implementation from.
+  // *supports global configuration*
+  "repo_root": "<url to ghjk git repo under the ref used to build the current cli>",
+}
+```
+
+In addition to a `config.json` files, `config.json5` files are also supported which is a [friendlier superset of JSON](https://json5.org/) with support for comments and more.

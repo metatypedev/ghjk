@@ -47,7 +47,6 @@ const prepareArgs = zod.object({
     ghjkfile: zod.string().nullish(),
     ghjkdir: zod.string(),
     data_dir: zod.string(),
-    deno_lockfile: zod.string().nullish(),
     repo_root: zod.string(),
     deno_dir: zod.string(),
   }),
