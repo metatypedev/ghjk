@@ -45,6 +45,11 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.protoc(),
     ePoint: `protoc --version`,
   },
+  {
+    name: "lade",
+    installConf: ports.protoc(),
+    ePoint: `lade --version`,
+  },
   // 6 megs
   {
     name: "ruff",
@@ -175,6 +180,15 @@ const cases: CustomE2eTestCase[] = [
     name: "pipi-poetry",
     installConf: ports.pipi({ packageName: "poetry" }),
     ePoint: `poetry --version`,
+    secureConf: {
+      enableRuntimes: true,
+    },
+  },
+  // 95 meg
+  {
+    name: "terragrunt",
+    installConf: ports.terragrunt_ghrel({}),
+    ePoint: `terragrunt --version`,
     secureConf: {
       enableRuntimes: true,
     },
