@@ -4,7 +4,7 @@ import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import {
   $,
   ALL_ARCH,
@@ -13,7 +13,7 @@ import {
   PortBase,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,

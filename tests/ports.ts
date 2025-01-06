@@ -1,9 +1,9 @@
-import "../setup_logger.ts";
-import { FileArgs } from "../mod.ts";
+import "../src/deno_utils/setup_logger.ts";
+import type { FileArgs } from "../src/ghjk_ts/mod.ts";
 import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import * as ports from "../ports/mod.ts";
 import dummy from "../ports/dummy.ts";
-import type { InstallConfigFat } from "../modules/ports/types.ts";
+import type { InstallConfigFat } from "../src/sys_deno/ports/types.ts";
 import { testTargetPlatform } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {

@@ -17,13 +17,13 @@ import {
   std_path,
   thinInstallConfig,
   zod,
-} from "../port.ts";
-import * as std_ports from "../modules/ports/std.ts";
+} from "../src/deno_ports/mod.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 import {
   ghConfValidator,
   GithubReleasesInstConf,
   readGhVars,
-} from "../modules/ports/ghrel.ts";
+} from "../src/sys_deno/ports/ghrel.ts";
 import rust, { RustInstallConf } from "./rust.ts";
 
 const manifest = {

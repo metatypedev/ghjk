@@ -1,4 +1,4 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import {
   E2eTestCase,
   type EnvDefArgs,
@@ -6,7 +6,7 @@ import {
   harness,
 } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
-import type { FileArgs } from "../mod.ts";
+import type { FileArgs } from "../src/ghjk_ts/mod.ts";
 
 type CustomE2eTestCase =
   & Omit<E2eTestCase, "ePoints" | "fs">

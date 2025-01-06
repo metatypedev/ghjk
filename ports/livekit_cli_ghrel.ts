@@ -8,8 +8,11 @@ import {
   osXarch,
   std_path,
   unarchive,
-} from "../port.ts";
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+} from "../src/deno_ports/mod.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -76,6 +79,7 @@ export class Port extends GithubReleasePort {
     const tmpDir = $.path(args.tmpDirPath);
     const binDir = await tmpDir.join("bin").ensureDir();
     for (const fileName of ["lk"]) {
+      // deno-lint-ignore no-await-in-loop
       await tmpDir
         .join(args.platform.os == "windows" ? fileName + ".exe" : fileName)
         .renameToDir(binDir);

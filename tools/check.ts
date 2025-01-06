@@ -1,7 +1,7 @@
 #!/bin/env -S ghjk deno run --allow-env --allow-run --allow-read --allow-write=.
 
-import "../setup_logger.ts";
-import { $ } from "../utils/mod.ts";
+import "../src/deno_utils/setup_logger.ts";
+import { $ } from "../src/deno_utils/mod.ts";
 
 const files = (await Array.fromAsync(
   $.path(import.meta.url).parentOrThrow().parentOrThrow().expandGlob(

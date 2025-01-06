@@ -3,6 +3,7 @@ play.*
 examples/**/.ghjk
 .dev
 
+# deno crash artifacts
 deps/https
 node_analysis_*
 v8_code_cache_*

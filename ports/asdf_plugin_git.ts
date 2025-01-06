@@ -13,12 +13,12 @@ import {
   shimScript,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import {
   ghConfValidator,
   type GithubReleasesInstConf,
   readGhVars,
-} from "../modules/ports/ghrel.ts";
+} from "../src/sys_deno/ports/ghrel.ts";
 
 const git_aa_id = {
   name: "git_aa",

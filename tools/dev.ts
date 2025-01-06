@@ -4,8 +4,8 @@
 //! that contains a ghjk installation from the repo instead
 //! of the gloabl ghjk installation
 
-import { defaultInstallArgs, install } from "../install/mod.ts";
-import { $ } from "../utils/mod.ts";
+import { defaultInstallArgs, install } from "../src/install/mod.ts";
+import { $ } from "../src/deno_utils/mod.ts";
 
 const devDir = $.path(
   import.meta.dirname!,

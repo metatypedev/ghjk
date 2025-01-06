@@ -8,13 +8,13 @@ import {
   osXarch,
   PortBase,
   std_fs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
   ListAllArgs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 const git_aa_id = {
   name: "git_aa",

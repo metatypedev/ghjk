@@ -14,9 +14,9 @@ import {
   PortBase,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import cpy_bs from "./cpy_bs.ts";
-import * as std_ports from "../modules/ports/std.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,

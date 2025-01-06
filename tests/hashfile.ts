@@ -1,4 +1,4 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, harness } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
@@ -65,8 +65,8 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "ghjk/hack.ts";
-import { task, env } from "ghjk/hack.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { task, env } from "@ghjk/ts/hack.ts";
 import {stuff} from "./extra.ts"
 
 await Array.fromAsync(Deno.readDir("dir"))

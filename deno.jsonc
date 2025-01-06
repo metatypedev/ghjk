@@ -1,7 +1,8 @@
 {
-  "imports": {
-    "ghjk": "./mod.ts",
-    "ghjk/": "./"
+  "workspace": {
+    "members": [
+      "./examples"
+    ]
   },
   "tasks": {
     "test": "cargo build -p ghjk && deno test --unstable-worker-options --unstable-kv -A --doc **/*.ts",
@@ -15,17 +16,19 @@
     "exclude": [
       ".git",
       ".dev",
-      "install.ts",
       "./target",
       ".ghjk/**",
       ".deno-dir/**",
       "vendor/**",
-      "./src/deno_systems/bindings.ts",
-      "./src/ghjk/js",
-      "./files/deno/bindings.ts",
+      // entry points
+      "./play.ts",
       "./tools",
       "./examples",
-      "ghjk.ts"
+      "ghjk.ts",
+      "install.ts",
+      "./src/sys_deno/bindings.ts",
+      "./src/ghjk_ts/bindings.ts",
+      "./src/ghjk/js"
     ]
   },
   "fmt": {
@@ -57,9 +60,9 @@
         "no-external-import",
         "no-inferrable-types",
         "no-self-compare",
-        "no-throw-literal"
+        "no-throw-literal",
         // "verbatim-module-syntax"
-        // "no-await-in-loop"
+        "no-await-in-loop"
         // "ban-untagged-todo"
       ],
       "exclude": [

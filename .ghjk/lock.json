@@ -389,6 +389,10 @@
               ],
               "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
+            "ghjkEnvProvInstSet_______task_env_lock-sed": {
+              "installs": [],
+              "allowedBuildDeps": "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq"
+            },
             "ghjkEnvProvInstSet_______task_env_cache-v8": {
               "installs": [],
               "allowedBuildDeps": "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq"
@@ -403,7 +407,7 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i"
+              "envKey": "bciqkayfukzybq7yeb4rh2bxjxqlb63owlidfwhi75dwn44yuysodkca"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
@@ -422,6 +426,14 @@
         "id": "envs",
         "config": {
           "envs": {
+            "bciqkayfukzybq7yeb4rh2bxjxqlb63owlidfwhi75dwn44yuysodkca": {
+              "provides": [
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet_______task_env_lock-sed"
+                }
+              ]
+            },
             "bciqngtgh6vxbmug3jgfhtc6t2o7d4375gzfwxca2hmq2mhwbe4tajvq": {
               "provides": [
                 {
@@ -432,19 +444,6 @@
             },
             "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa": {
               "desc": "the default default environment.",
-              "provides": [
-                {
-                  "ty": "posix.envVar",
-                  "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
-                },
-                {
-                  "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet___main"
-                }
-              ]
-            },
-            "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i": {
               "provides": [
                 {
                   "ty": "posix.envVar",

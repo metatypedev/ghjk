@@ -1,4 +1,7 @@
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 import {
   $,
   DownloadArgs,
@@ -9,7 +12,7 @@ import {
   osXarch,
   std_path,
   unarchive,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,
@@ -79,6 +82,7 @@ export class Port extends GithubReleasePort {
     for (
       const fileName of ["cargo-binstall", "detect-targets", "detect-wasi"]
     ) {
+      // deno-lint-ignore no-await-in-loop
       await tmpDir.join(fileName).renameToDir(binDir);
     }
 
