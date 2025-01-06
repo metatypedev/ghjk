@@ -112,15 +112,15 @@ type SecureConfigArgs = Omit<
 type DenoFileKnobs = {
   sophon: Readonly<object>;
   /**
-   * {@inheritdoc AddInstall}
+   * {@inheritDoc AddInstall}
    */
   install: AddInstall;
   /**
-   * {@inheritdoc AddTask}
+   * {@inheritDoc AddTask}
    */
   task: AddTask;
   /**
-   * {@inheritdoc AddTasks}
+   * {@inheritDoc AddTasks}
    */
   tasks: AddTasks;
   /**
@@ -133,14 +133,51 @@ type DenoFileKnobs = {
   config(args: SecureConfigArgs): void;
 };
 
-export const file = Object.freeze(function file(
-  args: FileArgs = {},
+const builder = new Ghjkfile();
+// We need this in the module scope since
+// both sophon.getConfig and setupGhjkts
+// need to access it
+let args: FileArgs | undefined;
+
+const DEFAULT_BASE_ENV_NAME = "main";
+/**
+ * The sophon is the actual proxy between the host world
+ * and the ghjkfile world.
+ */
+export const sophon = Object.freeze({
+  // FIXME: ses.lockdown to freeze primoridials
+  // freeze the object to prevent malicious tampering of the secureConfig
+  getConfig: Object.freeze(
+    (
+      ghjkfileUrl: string,
+    ) => {
+      if (!args) {
+        logger().warn(
+          "ghjk.ts has not called the `file` function even once.",
+        );
+      }
+      return builder.toConfig({
+        ghjkfileUrl,
+        defaultEnv: args?.defaultEnv ?? DEFAULT_BASE_ENV_NAME,
+        defaultBaseEnv: args?.defaultBaseEnv ??
+          DEFAULT_BASE_ENV_NAME,
+      });
+    },
+  ),
+  execTask: Object.freeze(
+    // TODO: do we need to source the default base env from
+    // the secure config here?
+    (args: ExecTaskArgs) => builder.execTask(args),
+  ),
+});
+
+function setupGhjkts(
+  fileArgs: FileArgs = {},
 ): DenoFileKnobs {
   const defaultBuildDepsSet: AllowedPortDep[] = [];
 
-  const DEFAULT_BASE_ENV_NAME = "main";
+  args = fileArgs;
 
-  const builder = new Ghjkfile();
   const mainEnv = builder.addEnv(DEFAULT_BASE_ENV_NAME, {
     name: DEFAULT_BASE_ENV_NAME,
     inherit: args.defaultBaseEnv && args.defaultBaseEnv != DEFAULT_BASE_ENV_NAME
@@ -205,28 +242,6 @@ export const file = Object.freeze(function file(
   for (const [name, def] of Object.entries(args.tasks ?? {})) {
     builder.addTask({ name, ...def, ty: "denoFile@v1" });
   }
-
-  // FIXME: ses.lockdown to freeze primoridials
-  // freeze the object to prevent malicious tampering of the secureConfig
-  const sophon = Object.freeze({
-    getConfig: Object.freeze(
-      (
-        ghjkfileUrl: string,
-      ) => {
-        return builder.toConfig({
-          ghjkfileUrl,
-          defaultEnv: args.defaultEnv ?? DEFAULT_BASE_ENV_NAME,
-          defaultBaseEnv: args.defaultBaseEnv ??
-            DEFAULT_BASE_ENV_NAME,
-        });
-      },
-    ),
-    execTask: Object.freeze(
-      // TODO: do we need to source the default base env from
-      // the secure config here?
-      (args: ExecTaskArgs) => builder.execTask(args),
-    ),
-  });
 
   function task(
     nameOrArgsOrFn: string | DenoTaskDefArgs | TaskFn,
@@ -307,10 +322,62 @@ export const file = Object.freeze(function file(
       ) {
         mainEnv.inherit(newArgs.defaultBaseEnv);
       }
-      // NOTE:we're deep mutating the first args from above
+      // NOTE:we're deep mutating the global args from above
       args = {
         ...newArgs,
       };
     },
   };
+}
+
+let fileCreated = false;
+const exitFn = Deno.exit;
+let firstCaller: string | undefined;
+
+export const file = Object.freeze(function file(
+  fileArgs: FileArgs = {},
+): DenoFileKnobs {
+  const caller = getCaller();
+  if (fileCreated) {
+    logger().error(
+      `double \`file\` invocation detected detected at ${caller} after being first called at ${firstCaller}.` +
+        ` A ghjkfile can only invoke \`file\` once, exiting.`,
+    );
+    exitFn(1);
+  }
+  fileCreated = true;
+  firstCaller = caller;
+  return setupGhjkts(fileArgs);
 });
+
+// lifted from https://github.com/apiel/caller/blob/ead98/caller.ts
+// MIT License 2020 Alexander Piel
+interface Bind {
+  cb?: (file: string) => string;
+}
+function getCaller(this: Bind | any, levelUp = 3) {
+  const err = new Error();
+  const stack = err.stack?.split("\n")[levelUp];
+  if (stack) {
+    return getFile.bind(this)(stack);
+  }
+  function getFile(this: Bind | any, stack: string): string {
+    stack = stack.substring(stack.indexOf("at ") + 3);
+    if (!stack.startsWith("file://")) {
+      stack = stack.substring(stack.lastIndexOf("(") + 1);
+    }
+    const path = stack.split(":");
+    let file;
+    if (Deno.build.os == "windows") {
+      file = `${path[0]}:${path[1]}:${path[2]}`;
+    } else {
+      file = `${path[0]}:${path[1]}`;
+    }
+
+    if ((this as Bind)?.cb) {
+      const cb = (this as Bind).cb as any;
+      file = cb(file);
+    }
+    return file;
+  }
+}

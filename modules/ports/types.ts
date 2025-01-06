@@ -118,7 +118,7 @@ const installConfigFat = stdInstallConfigFat;
 const installConfigResolved = installConfigLite.merge(zod.object({
   // NOTE: version is no longer nullish
   version: zod.string(),
-  versionSpecified: zod.boolean().optional(),
+  versionSpecified: zod.boolean().nullish(),
   // buildDepConfigs: zod.record(
   //   portName,
   //   // FIXME: figure out cyclically putting `installConfigResolved` here

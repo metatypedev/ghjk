@@ -46,7 +46,7 @@ Before anything, make sure the following programs are available on the system.
 Install the ghjk cli using the installer scripts like so:
 
 ```bash
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.2/install.sh" | bash
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:
@@ -61,16 +61,13 @@ Ghjk is primarily configured through constructs called "environments" or "envs" 
 They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
-import { file } from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/mod.ts";
+// NOTE: `ghjk.ts` files are expected to export this sophon object
+export { sophon } from "ghjk";
+import { file } from "ghjk";
 // ports are small programs that install sowtware to your envs
-import * as ports from "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/ports/mod.ts";
+import * as ports from "ghjk/ports/mod.ts";
 
 const ghjk = file({});
-
-// NOTE: `ghjk.ts` files are expected to export this sophon object
-// all the functions on the ghjk object  are ultimately modifying the 'sophon' proxy 
-// object exported here.
-export const sophon = ghjk.sophon;
 
 // top level `install`s go to the `main` env
 ghjk.install(ports.protoc());
@@ -108,7 +105,8 @@ ghjk.env("ci")
   .var("CI", "1")
   .install(ports.opentofu_ghrel());
 
-// each task describes it's own env as well
+// tasks, invokable using CLI commands
+// each one describes it's own env as well
 ghjk.task({
   name: "run",
   inherit: "dev",
@@ -138,8 +136,9 @@ Once you've configured your environments:
 
 More details can be found in the [user manual](./docs/manual.md).
 
-## Development
+## Contributing
 
+Thanks for taking the interest, we have so [many](https://github.com/metatypedev/ghjk/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen) cool features to implement yet!
 Use the following command to enter a shell where the ghjk CLI is based on the code that's in the working tree.
 This will setup a separate installation at `.dev`.
 

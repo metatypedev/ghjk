@@ -175,6 +175,13 @@ export class Port extends PortBase {
       }
     }
 
+    await $.co(
+      (await Array.fromAsync(
+        $.path(args.tmpDirPath).join("bin").walk({ maxDepth: 0 }),
+      ))
+        .map(({ path }) => path.chmod(0o700)),
+    );
+
     await std_fs.move(
       args.tmpDirPath,
       args.downloadPath,

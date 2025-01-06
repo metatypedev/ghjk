@@ -1,14 +1,13 @@
 #[allow(unused)]
 mod interlude {
-    pub use crate::utils::{default, CHeapStr, DHashMap};
+    pub use crate::utils::{default, CHeapStr, DHashMap, JsonExt};
+    pub use crate::GhjkCtx;
 
     pub use std::collections::HashMap;
     pub use std::path::{Path, PathBuf};
     pub use std::sync::Arc;
 
-    pub use crate::GhjkCtx;
-
-    pub use color_eyre::eyre;
+    pub use color_eyre::{eyre, Section, SectionExt};
     pub use denort::deno::{
         self,
         deno_runtime::{
@@ -56,12 +55,26 @@ fn main() -> Res<std::process::ExitCode> {
 
     debug!(version = shadow::PKG_VERSION, "ghjk CLI");
 
-    tokio::runtime::Builder::new_current_thread()
+    match tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(cli::cli())
+    {
+        Ok(code) => Ok(code),
+        Err(err) => {
+            let err_msg = format!("{err:?}");
+            let err_msg = err_msg.split('\n').filter(
+                |&line|
+                line != "Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it." 
+                && line != "Run with RUST_BACKTRACE=full to include source snippets."
+            ).join("\n");
+            println!("{err_msg}");
+            Ok(std::process::ExitCode::FAILURE)
+        }
+    }
 }
 
+use itertools::Itertools;
 use shadow_rs::shadow;
 shadow!(shadow);
 

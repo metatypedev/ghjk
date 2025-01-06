@@ -11,7 +11,7 @@ export function ghjk_sh(
   functionName = "__ghjk_shim",
 ) {
   return `${functionName} () {
-    GHJK_DIR="${gcx.ghjkDir}" \\
+    GHJKDIR="${gcx.ghjkDir}" \\
     ${Deno.execPath()} "$@"
 }`;
 }
@@ -25,7 +25,7 @@ export function ghjk_fish(
   functionName = "__ghjk_shim",
 ) {
   return `function ${functionName}
-    GHJK_DIR="${gcx.ghjkDir}" \\
+    GHJKDIR="${gcx.ghjkDir}" \\
     ${Deno.execPath()}  $argv
 end`;
 }

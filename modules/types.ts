@@ -11,6 +11,13 @@ const moduleManifest = zod.object({
   config: zod.unknown(),
 });
 
+/* const blackboard = zod.object({
+  // installs: zod.record(zod.string(), portsValidator.installConfigFat),
+  // allowedPortDeps: zod.record(zod.string(), portsValidator.allowedPortDep),
+}); */
+const blackboard = zod.record(zod.string(), zod.unknown());
+
+export type Blackboard = zod.infer<typeof blackboard>;
 export type ModuleId = zod.infer<typeof moduleId>;
 export type ModuleManifest = zod.infer<typeof moduleManifest>;
 export type GhjkCtx = {
@@ -24,4 +31,5 @@ export default {
   moduleManifest,
   moduleId,
   envVarName,
+  blackboard,
 };

@@ -29,12 +29,12 @@ ghjk_hook() {
         unset GHJK_CLEANUP_POSIX
     fi
 
-    local_ghjk_dir="${GHJK_DIR:-}"
-    # if $GHJKFILE is set, set the GHJK_DIR overriding
+    local_ghjk_dir="${GHJKDIR:-}"
+    # if $GHJKFILE is set, set the GHJKDIR overriding
     # any set by the user
     if [ -n "${GHJKFILE+x}" ]; then
         local_ghjk_dir="$(dirname "$GHJKFILE")/.ghjk"
-    # if both GHJKFILE and GHJK_DIR are unset
+    # if both GHJKFILE and GHJKDIR are unset
     elif [ -z "$local_ghjk_dir" ]; then
         # look for ghjk dirs in pwd parents
         # use do while format to allow detection of .ghjk in root dirs
@@ -54,8 +54,8 @@ ghjk_hook() {
     fi
 
     if [ -n "$local_ghjk_dir" ]; then
-        GHJK_LAST_GHJK_DIR="$local_ghjk_dir"
-        export GHJK_LAST_GHJK_DIR
+        GHJK_LAST_GHJKDIR="$local_ghjk_dir"
+        export GHJK_LAST_GHJKDIR
 
         # locate the next env
         next_env_dir="$local_ghjk_dir/envs/$next_env"

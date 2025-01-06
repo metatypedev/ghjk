@@ -235,8 +235,8 @@ async function writeActivators(
       `# shellcheck disable=SC2016`,
       `# SC2016: disabled because single quoted expressions are used for the cleanup scripts`,
       ``,
-      `# this file bust be sourced from an existing sh/bash/zsh session using the \`source\` command`,
-      `# it cannot be executed directly`,
+      `# this file must be sourced from an existing sh/bash/zsh session using the \`source\` command`,
+      `# it should be executed directly`,
       ``,
       `ghjk_deactivate () {`,
       `    if [ -n "$\{GHJK_CLEANUP_POSIX+x}" ]; then`,
@@ -327,8 +327,8 @@ async function writeActivators(
     //
     // fish version
     fish: [
-      `# this file bust be sourced from an existing fish session using the \`source\` command`,
-      `# it cannot be executed directly`,
+      `# this file must be sourced from an existing fish session using the \`source\` command`,
+      `# it should be executed directly`,
       ``,
       `function ghjk_deactivate`,
       `    if set --query GHJK_CLEANUP_FISH`,

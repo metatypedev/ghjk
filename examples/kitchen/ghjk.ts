@@ -1,7 +1,10 @@
-import { stdDeps } from "../../files/mod.ts";
-import { file } from "../../mod.ts";
-import * as ports from "../../ports/mod.ts";
+export { sophon } from "ghjk";
+import { file, stdDeps } from "ghjk";
+import * as ports from "ghjk/ports/mod.ts";
 
+// we need this export for this file to be a valid ghjkfile
+// it's the one thing used by the ghjk host implementation to
+// interact with your ghjkfile
 const ghjk = file({
   // configre an empty env so that no ports are avail by default in our workdir
   defaultEnv: "empty",
@@ -18,11 +21,6 @@ const ghjk = file({
   // tasks aren't attached to envs
   tasks: {},
 });
-
-// we need this export for this file to be a valid ghjkfile
-// it's the one thing used by the ghjk host implementation to
-// interact with your ghjkfile
-export const sophon = ghjk.sophon;
 
 const { install, env, task } = ghjk;
 

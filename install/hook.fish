@@ -33,12 +33,12 @@ function ghjk_hook --on-variable PWD
         set --erase GHJK_CLEANUP_FISH
     end
 
-    set --local local_ghjk_dir $GHJK_DIR
-    # if $GHJKFILE is set, set the GHJK_DIR overriding
+    set --local local_ghjk_dir $GHJKDIR
+    # if $GHJKFILE is set, set the GHJKDIR overriding
     # any set by the user
     if set --query GHJKFILE
         set local_ghjk_dir (dirname $GHJKFILE)/.ghjk
-    # if both GHJKFILE and GHJK_DIR are unset
+    # if both GHJKFILE and GHJKDIR are unset
     else if test -z "$local_ghjk_dir"
         # look for ghjk dirs in pwd and parents
         set --local cur_dir $PWD
@@ -59,7 +59,7 @@ function ghjk_hook --on-variable PWD
     end
 
     if test -n "$local_ghjk_dir"
-        set --global --export GHJK_LAST_GHJK_DIR $local_ghjk_dir
+        set --global --export GHJK_LAST_GHJKDIR $local_ghjk_dir
 
         # locate the next env
         set --local next_env_dir $local_ghjk_dir/envs/$next_env

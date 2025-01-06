@@ -80,8 +80,8 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "$ghjk/hack.ts";
-import { task, env } from "$ghjk/hack.ts";
+export { sophon } from "ghjk/hack.ts";
+import { task, env } from "ghjk/hack.ts";
 
 env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))

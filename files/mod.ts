@@ -27,7 +27,7 @@ import {
 import * as std_ports from "../modules/ports/std.ts";
 import runtime_ports from "../modules/ports/std_runtime.ts";
 // host
-import type { SerializedConfig } from "../host/types.ts";
+import type { SerializedConfig } from "./types.ts";
 import * as std_modules from "../modules/std.ts";
 // tasks
 // WARN: this module has side-effects and only ever import
@@ -555,16 +555,16 @@ export class Ghjkfile {
       envsNamed: {},
     };
     const workingSet = indie;
-    // console.log({
-    //   indie,
-    //   deps,
-    // });
+    /* $.dbg("graph", {
+      indie,
+      deps,
+    }); */
     while (workingSet.length > 0) {
       const item = workingSet.pop()!;
       const final = all[item];
 
       const base = this.#mergeEnvs(final.envBaseResolved ?? [], final.key);
-      // console.log({ parents: final.envBaseResolved, child: final.key, base });
+      // $.dbg("processing", { parents: final.envBaseResolved, child: final.key, base });
 
       const finalVars = {
         ...base.vars,

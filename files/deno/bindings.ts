@@ -11,6 +11,8 @@ import { shimDenoNamespace } from "../../utils/worker.ts";
 import { zod } from "../../deps/common.ts";
 import { Ghjk } from "../../src/ghjk/js/runtime.js";
 
+// TODO: shim Deno.exit to avoid killing whole program
+
 const serializeArgs = zod.object({
   uri: zod.string(),
 });
@@ -20,6 +22,11 @@ async function serialize(args: zod.infer<typeof serializeArgs>) {
   const { setup: setupLogger } = await import("../../utils/logger.ts");
   setupLogger();
   const mod = await import(args.uri);
+  if (!mod.sophon) {
+    throw new Error(
+      `no sophon found on exported ghjk object from ghjk.ts: ${args.uri}`,
+    );
+  }
   const rawConfig = await mod.sophon.getConfig(args.uri, mod.secureConfig);
   const config = JSON.parse(JSON.stringify(rawConfig));
   return {

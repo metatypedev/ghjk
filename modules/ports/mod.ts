@@ -28,7 +28,7 @@ import {
   resolveAndInstall,
   syncCtxFromGhjk,
 } from "./sync.ts"; // TODO: rename to install.ts
-import type { Blackboard } from "../../host/types.ts";
+import type { Blackboard } from "../types.ts";
 import { getProvisionReducerStore } from "../envs/reducer.ts";
 import { installSetReducer, installSetRefReducer } from "./reducers.ts";
 import type { Provision, ProvisionReducer } from "../envs/types.ts";

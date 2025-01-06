@@ -5,12 +5,11 @@
 //! import the functions defined herin and mess with your ghjkfile.
 
 export * from "./mod.ts";
+export { sophon } from "./mod.ts";
 import { file } from "./mod.ts";
 import logger from "./utils/logger.ts";
 
 const ghjk = file();
-
-export const sophon = Object.freeze(ghjk.sophon);
 export const config = Object.freeze(firstCallerCheck(ghjk.config));
 export const env = Object.freeze(firstCallerCheck(ghjk.env));
 export const install = Object.freeze(firstCallerCheck(ghjk.install));

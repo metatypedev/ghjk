@@ -1,12 +1,15 @@
+use crate::interlude::*;
+
 use std::process::ExitCode;
 
 use clap::builder::styling::AnsiColor;
 
 use crate::config::Config;
-use crate::interlude::*;
-
-use crate::systems::{CliCommandAction, SystemCliCommand};
 use crate::{host, systems};
+
+mod init;
+mod print;
+mod sys;
 
 const DENO_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv"];
 
@@ -45,7 +48,15 @@ pub async fn cli() -> Res<std::process::ExitCode> {
                     .collect(),
                 ..default()
             },
-            no_lock: config.deno_lockfile.is_none(),
+            no_lock: config.deno_no_lockfile,
+            config_flag: match config.deno_json.as_ref() {
+                Some(path) => deno::args::ConfigFlag::Path(path.to_string_lossy().into()),
+                None => deno::args::ConfigFlag::Disabled,
+            },
+            import_map_path: config
+                .import_map
+                .as_ref()
+                .map(|path| path.to_string_lossy().into()),
             lock: config
                 .deno_lockfile
                 .as_ref()
@@ -104,7 +115,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     debug!("collecting system commands");
 
-    let (sys_cmds, sys_actions) = match commands_from_systems(&systems).await {
+    let (sys_cmds, sys_actions) = match sys::commands_from_systems(&systems).await {
         Ok(val) => val,
         Err(err) => {
             systems.write_lockfile_or_log().await;
@@ -131,8 +142,11 @@ pub async fn cli() -> Res<std::process::ExitCode> {
             _ = commands.action(&gcx.config, Some(&systems.config))?;
             return Ok(ExitCode::SUCCESS);
         }
+        Ok(QuickComands::Init { .. }) => {
+            unreachable!("quick_cli will prevent this")
+        }
         Ok(QuickComands::Deno { .. }) => {
-            unreachable!("deno quick cli will prevent this")
+            unreachable!("deno_quick_cli will prevent this")
         }
         Err(err) => {
             let kind = err.kind();
@@ -148,14 +162,14 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         }
     }
 
-    let (cmd_path, mut action, action_matches) = match action_for_match(sys_actions, &matches).await
-    {
-        Ok(val) => val,
-        Err(err) => {
-            systems.write_lockfile_or_log().await;
-            return Err(err);
-        }
-    };
+    let (cmd_path, mut action, action_matches) =
+        match sys::action_for_match(sys_actions, &matches).await {
+            Ok(val) => val,
+            Err(err) => {
+                systems.write_lockfile_or_log().await;
+                return Err(err);
+            }
+        };
 
     debug!(?cmd_path, "system command found");
     let Some(action) = action.action else {
@@ -204,6 +218,7 @@ pub async fn try_quick_cli(config: &Config) -> Res<Option<clap::Error>> {
                 )));
             }
         }
+        QuickComands::Init { commands } => commands.action(config).await?,
         QuickComands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
     }
 
@@ -229,165 +244,21 @@ struct Cli {
 
 #[derive(clap::Subcommand, Debug)]
 enum QuickComands {
-    /// Print different discovored or built values to stdout.
+    /// Print different discovered or built values to stdout
     Print {
         #[command(subcommand)]
-        commands: PrintCommands,
+        commands: print::PrintCommands,
+    },
+    /// Setup your working directory for ghjk usage
+    Init {
+        #[command(subcommand)]
+        commands: init::InitCommands,
     },
     /// Access the deno cli
     Deno {
         #[arg(raw(true))]
         args: String,
     },
-}
-
-#[derive(clap::Subcommand, Debug)]
-enum PrintCommands {
-    /// Print the path to the data dir used by ghjk.
-    DataDirPath,
-    /// Print the path to the dir of the currently active ghjk context.
-    GhjkdirPath,
-    /// Print the path of the ghjkfile used.
-    GhjkfilePath,
-    /// Print the extracted and serialized config from the ghjkfile.
-    Config {
-        /// Use json format when printing config.
-        #[arg(long)]
-        json: bool,
-    },
-}
-
-impl PrintCommands {
-    /// The return value specifies weather or not the CLI is done or
-    /// weather it should continue on with serialization if this
-    /// action was invoked as part of the quick cli
-    fn action(
-        self,
-        cli_config: &Config,
-        serialized_config: Option<&host::SerializedConfig>,
-    ) -> Res<bool> {
-        Ok(match self {
-            PrintCommands::DataDirPath => {
-                println!("{}", cli_config.data_dir.display());
-                true
-            }
-            // TODO: rename GHJK_DIR to GHJKDIR
-            PrintCommands::GhjkdirPath => {
-                if let Some(path) = &cli_config.ghjkdir {
-                    // TODO: graceful termination on SIGPIPE
-                    println!("{}", path.display());
-                    true
-                } else {
-                    eyre::bail!("no ghjkdir found.");
-                }
-            }
-            PrintCommands::GhjkfilePath => {
-                if let Some(path) = &cli_config.ghjkdir {
-                    println!("{}", path.display());
-                    true
-                } else {
-                    eyre::bail!("no ghjkfile found.");
-                }
-            }
-            PrintCommands::Config { .. } => match serialized_config {
-                Some(config) => {
-                    let conf_json = serde_json::to_string_pretty(&config)?;
-                    println!("{conf_json}");
-                    true
-                }
-                None => false,
-            },
-        })
-    }
-}
-
-type SysCmdActions = IndexMap<CHeapStr, SysCmdAction>;
-struct SysCmdAction {
-    name: CHeapStr,
-    clap: clap::Command,
-    action: Option<CliCommandAction>,
-    sub_commands: SysCmdActions,
-}
-
-async fn commands_from_systems(
-    systems: &host::GhjkfileSystems,
-) -> Res<(Vec<clap::Command>, SysCmdActions)> {
-    fn inner(cmd: SystemCliCommand) -> (SysCmdAction, clap::Command) {
-        // apply styles here due to propagation
-        // breaking for these dynamic subcommands for some reason
-        let mut clap_cmd = cmd.clap.styles(CLAP_STYLE);
-        let mut sub_commands = IndexMap::new();
-        for (id, cmd) in cmd.sub_commands {
-            let (sub_sys_cmd, sub_cmd) = inner(cmd);
-            clap_cmd = clap_cmd.subcommand(sub_cmd);
-            sub_commands.insert(id, sub_sys_cmd);
-        }
-        (
-            SysCmdAction {
-                clap: clap_cmd.clone(),
-                name: cmd.name,
-                action: cmd.action,
-                sub_commands,
-            },
-            clap_cmd,
-        )
-    }
-    let mut commands = vec![];
-    let mut conflict_tracker = HashMap::new();
-    let mut actions = SysCmdActions::new();
-    for (id, sys_inst) in &systems.sys_instances {
-        let cmds = sys_inst
-            .commands()
-            .await
-            .wrap_err_with(|| format!("error getting commands for system: {id}"))?;
-        for cmd in cmds {
-            let (sys_cmd, clap_cmd) = inner(cmd);
-
-            if let Some(conflict) = conflict_tracker.insert(sys_cmd.name.clone(), id) {
-                eyre::bail!(
-                    "system commannd conflict under name {:?} for modules {conflict:?} and {id:?}",
-                    sys_cmd.name.clone(),
-                );
-            }
-            actions.insert(sys_cmd.name.clone(), sys_cmd);
-            commands.push(clap_cmd);
-        }
-    }
-    Ok((commands, actions))
-}
-
-async fn action_for_match(
-    mut actions: SysCmdActions,
-    matches: &clap::ArgMatches,
-) -> Res<(Vec<String>, SysCmdAction, &clap::ArgMatches)> {
-    fn inner<'a>(
-        mut current: SysCmdAction,
-        matches: &'a clap::ArgMatches,
-        cmd_path: &mut Vec<String>,
-    ) -> Res<(SysCmdAction, &'a clap::ArgMatches)> {
-        match matches.subcommand() {
-            Some((cmd_name, matches)) => {
-                cmd_path.push(cmd_name.into());
-                match current.sub_commands.swap_remove(cmd_name) {
-                    Some(action) => inner(action, matches, cmd_path),
-                    None => {
-                        eyre::bail!("no match found for cmd {cmd_path:?}")
-                    }
-                }
-            }
-            None => Ok((current, matches)),
-        }
-    }
-    let mut cmd_path = vec![];
-    let Some((cmd_name, matches)) = matches.subcommand() else {
-        unreachable!("clap prevents this branch")
-    };
-    cmd_path.push(cmd_name.into());
-    let Some(action) = actions.swap_remove(cmd_name) else {
-        eyre::bail!("no match found for cmd {cmd_path:?}");
-    };
-    let (action, matches) = inner(action, matches, &mut cmd_path)?;
-    Ok((cmd_path, action, matches))
 }
 
 /// TODO: keep more of this in deno next time it's updated

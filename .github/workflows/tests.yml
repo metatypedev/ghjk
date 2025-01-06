@@ -42,7 +42,7 @@ jobs:
       # pre commit runs ghjk. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
       # in the CI
-      - run: deno task self envs cook -t lock-sed
+      - run: deno task ghjk envs cook -t lock-sed
       - uses: pre-commit/action@v3.0.1
         env:
           SKIP: ghjk-resolve
@@ -84,7 +84,9 @@ jobs:
         # need cmake to build the rust deps
         # need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils cmake
-      - run: deno task test
+      - run: |
+          deno task test-rust
+          deno task test
 
   # test-action:
   #   runs-on: ubuntu-latest

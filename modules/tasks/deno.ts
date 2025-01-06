@@ -74,6 +74,11 @@ async function importAndExec(
 ) {
   const _shimHandle = shimDenoNamespace(args.envVars);
   const mod = await import(uri);
+  if (!mod.sophon) {
+    throw new Error(
+      `no sophon found on exported ghjk object from ghjk.ts when executing task: ${uri}`,
+    );
+  }
   const ret = await mod.sophon.execTask(args);
   return { data: ret, status: true };
 }

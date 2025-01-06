@@ -6,7 +6,7 @@ pub fn init() {
         let eyre_panic_hook = color_eyre::config::HookBuilder::default().display_location_section(
             std::env::var("RUST_ERR_LOCATION")
                 .map(|var| var != "0")
-                .unwrap_or(true),
+                .unwrap_or(cfg!(debug_assertions)),
         );
 
         #[cfg(not(debug_assertions))]
@@ -16,7 +16,7 @@ at https://github.com/metatypedev/ghjk/issues/new.
 If you can reliably reproduce this panic, try to include the
 following items in your report:
 - Reproduction steps
-- Output of meta-cli doctor and
+- Output of `ghjk print config` and
 - A panic backtrace. Set the following environment variables as shown to enable full backtraces.
     - RUST_BACKTRACE=1
     - RUST_LIB_BACKTRACE=full

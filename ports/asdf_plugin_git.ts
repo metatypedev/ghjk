@@ -14,6 +14,11 @@ import {
   std_fs,
   zod,
 } from "../port.ts";
+import {
+  ghConfValidator,
+  type GithubReleasesInstConf,
+  readGhVars,
+} from "../modules/ports/ghrel.ts";
 
 const git_aa_id = {
   name: "git_aa",
@@ -35,6 +40,7 @@ const confValidator = zod.object({
 
 export type AsdfPluginInstallConf =
   & InstallConfigSimple
+  & GithubReleasesInstConf
   & zod.input<typeof confValidator>;
 
 /**
@@ -53,6 +59,7 @@ export default function conf(config: AsdfPluginInstallConf) {
 
 export function buildDep(): AllowedPortDep {
   return {
+    ...readGhVars(),
     manifest,
     defaultInst: {
       portRef: getPortRef(manifest),
@@ -63,9 +70,19 @@ export function buildDep(): AllowedPortDep {
 export class Port extends PortBase {
   async listAll(args: ListAllArgs) {
     const conf = confValidator.parse(args.config);
+
+    const repoUrl = new URL(conf.pluginRepo);
+    if (repoUrl.hostname == "github.com") {
+      const ghConf = ghConfValidator.parse(args.config);
+      if (ghConf.ghToken) {
+        repoUrl.username = ghConf.ghToken;
+        repoUrl.password = ghConf.ghToken;
+      }
+    }
+
     const fullOut = await $`${
       depExecShimPath(git_aa_id, "git", args.depArts)
-    } ls-remote ${conf.pluginRepo} HEAD`.lines();
+    } ls-remote ${repoUrl} HEAD`.lines();
 
     return fullOut
       .filter(Boolean)
@@ -83,9 +100,17 @@ export class Port extends PortBase {
       return;
     }
     const conf = confValidator.parse(args.config);
+    const repoUrl = new URL(conf.pluginRepo);
+    if (repoUrl.hostname == "github.com") {
+      const ghConf = ghConfValidator.parse(args.config);
+      if (ghConf.ghToken) {
+        repoUrl.username = ghConf.ghToken;
+        repoUrl.password = ghConf.ghToken;
+      }
+    }
     await $`${
       depExecShimPath(git_aa_id, "git", args.depArts)
-    } clone ${conf.pluginRepo} --depth 1 ${args.tmpDirPath}`;
+    } clone ${repoUrl} --depth 1 ${args.tmpDirPath}`;
     await std_fs.copy(
       args.tmpDirPath,
       args.downloadPath,

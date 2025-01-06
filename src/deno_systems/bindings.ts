@@ -20,9 +20,12 @@ setInterval(() => {/* beat */}, 1000);
 // import "../../src/ghjk/js/mock.sfx.ts";
 import { zod } from "../../deps/common.ts";
 import { $, unwrapZodRes } from "../../utils/mod.ts";
-import type { GhjkCtx, ModuleManifest } from "../../modules/types.ts";
+import type {
+  Blackboard,
+  GhjkCtx,
+  ModuleManifest,
+} from "../../modules/types.ts";
 import type { ModuleBase } from "../../modules/mod.ts";
-import type { Blackboard } from "../../host/types.ts";
 import { Ghjk, Json } from "../ghjk/js/runtime.js";
 
 import type {
@@ -41,10 +44,9 @@ import bindingTypes from "./types.ts";
 const prepareArgs = zod.object({
   uri: zod.string(),
   config: zod.object({
-    ghjkfile: zod.string().optional(),
+    ghjkfile: zod.string().nullish(),
     ghjkdir: zod.string(),
     data_dir: zod.string(),
-    deno_lockfile: zod.string().optional(),
     repo_root: zod.string(),
     deno_dir: zod.string(),
   }),

@@ -1,4 +1,5 @@
-import { file } from "../../hack.ts";
+export { sophon } from "ghjk/hack.ts";
+import { file } from "ghjk/hack.ts";
 
 const ghjk = file({
   defaultEnv: "empty",
@@ -11,7 +12,6 @@ const ghjk = file({
   tasks: {},
 });
 
-export const sophon = ghjk.sophon;
 const { env, task } = ghjk;
 
 env("main")
