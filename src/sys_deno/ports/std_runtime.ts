@@ -11,7 +11,7 @@ export default [
   // commonly used by the pipi port for installation using pip
   cpy_bs.default(),
   // commonly used by the cargobi port for building crates
-  rust.default(),
+  rust.default({ profile: "minimal" }),
   // used by the asdf port for installing asdf plugins
   asdf_plugin_git.buildDep(),
 ];

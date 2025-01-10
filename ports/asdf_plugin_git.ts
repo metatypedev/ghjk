@@ -52,6 +52,7 @@ export type AsdfPluginInstallConf =
  */
 export default function conf(config: AsdfPluginInstallConf) {
   return {
+    ...readGhVars(),
     ...confValidator.parse(config),
     port: manifest,
   };
@@ -59,7 +60,6 @@ export default function conf(config: AsdfPluginInstallConf) {
 
 export function buildDep(): AllowedPortDep {
   return {
-    ...readGhVars(),
     manifest,
     defaultInst: {
       portRef: getPortRef(manifest),

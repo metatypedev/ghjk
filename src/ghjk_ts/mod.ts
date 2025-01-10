@@ -5,15 +5,16 @@
 import "../deno_utils/setup_logger.ts";
 
 // ports specific imports
-import type {
-  AllowedPortDep,
-  InstallConfigFat,
+import {
+  type AllowedPortDep,
+  type InstallConfigFat,
+  reduceAllowedDeps,
 } from "../sys_deno/ports/types.ts";
 import logger from "../deno_utils/logger.ts";
 import { $ } from "../deno_utils/mod.ts";
-import { EnvBuilder, Ghjkfile, reduceAllowedDeps, stdDeps } from "./file.ts";
+import { EnvBuilder, Ghjkfile, stdDeps } from "./file.ts";
 import type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./file.ts";
-// WARN: this module has side-effects and only ever import
+// WARN: following module has side-effects and only ever import
 // types from it
 import type { ExecTaskArgs } from "../sys_deno/tasks/deno.ts";
 

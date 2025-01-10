@@ -12,8 +12,6 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
   secureConf?: FileArgs;
 };
 
-// FIXME: where did the asdf test go?
-
 // order tests by download size to make failed runs less expensive
 const cases: CustomE2eTestCase[] = [
   // 0 megs

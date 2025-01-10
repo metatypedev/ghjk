@@ -85,9 +85,12 @@ export class Port extends PortBase {
     const conf = confValidator.parse(args.config);
     await $.raw`${depExecShimPath(std_ports.node_org, "npm", args.depArts)
       // provide prefix flat to avoid looking at package.json in parent dirs
-    } install --prefix ${args.tmpDirPath} --no-fund ${conf.packageName}@${args.installVersion}`
+    } install --prefix ${args.tmpDirPath} --no-update-notifier --no-fund ${conf.packageName}@${args.installVersion}`
       .cwd(args.tmpDirPath)
-      .env(pathsWithDepArts(args.depArts, args.platform.os));
+      .env({
+        ...pathsWithDepArts(args.depArts, args.platform.os),
+        NO_UPDATE_NOTIFIER: "1",
+      });
     await std_fs.move(args.tmpDirPath, args.downloadPath);
   }
 

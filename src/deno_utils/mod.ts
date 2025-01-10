@@ -1,5 +1,9 @@
 /// <reference lib="deno.worker" />
 
+// class re-exports are tricky. We want al importers
+// of path to get it from here so we rename in common.ts
+export { _DaxPath as Path } from "./deps.ts";
+
 import {
   _DaxPath as Path,
   dax,
@@ -13,19 +17,9 @@ import {
   zod,
   zod_val_err,
 } from "./deps.ts";
-// class re-exports are tricky. We want al importers
-// of path to get it from here so we rename in common.ts
-export { _DaxPath as Path } from "./deps.ts";
 import logger, { isColorfulTty } from "./logger.ts";
-// NOTE: only use type imports only when getting stuff from "./modules"
-import type {
-  DepArts,
-  InstallConfigFat,
-  InstallConfigResolvedX,
-  OsEnum,
-  PortDep,
-  PortManifest,
-} from "../sys_deno/ports/types.ts";
+// NOTE: only use type imports only when getting stuff from "./sys_deno"
+import type { OsEnum } from "../sys_deno/ports/types.ts";
 
 export type DeArrayify<T> = T extends Array<infer Inner> ? Inner : T;
 const literalSchema = zod.union([
@@ -45,91 +39,6 @@ export const jsonSchema: zod.ZodType<Json> = zod.lazy(() =>
 export function dbg<T>(val: T, ...more: unknown[]) {
   logger().debug("DBG", val, ...more);
   return val;
-}
-
-export function pathsWithDepArts(
-  depArts: DepArts,
-  os: OsEnum,
-) {
-  const pathSet = new Set();
-  const libSet = new Set();
-  const includesSet = new Set();
-  for (const [_, { execs, libs, includes }] of Object.entries(depArts)) {
-    for (const [_, binPath] of Object.entries(execs)) {
-      pathSet.add($.path(binPath).parentOrThrow());
-    }
-    for (const [_, libPath] of Object.entries(libs)) {
-      libSet.add($.path(libPath).parentOrThrow());
-    }
-    for (const [_, incPath] of Object.entries(includes)) {
-      includesSet.add($.path(incPath).parentOrThrow());
-    }
-  }
-
-  let LD_LIBRARY_ENV: string;
-  switch (os) {
-    case "darwin":
-      LD_LIBRARY_ENV = "DYLD_LIBRARY_PATH";
-      break;
-    case "linux":
-      LD_LIBRARY_ENV = "LD_LIBRARY_PATH";
-      break;
-    default:
-      throw new Error(`unsupported os ${os}`);
-  }
-  return {
-    PATH: `${[...pathSet.keys()].join(":")}:${Deno.env.get("PATH") ?? ""}`,
-    LIBRARY_PATH: `${[...libSet.keys()].join(":")}:${
-      Deno.env.get("LIBRARY_PATH") ?? ""
-    }`,
-    C_INCLUDE_PATH: `${[...includesSet.keys()].join(":")}:${
-      Deno.env.get("C_INCLUDE_PATH") ?? ""
-    }`,
-    CPLUS_INCLUDE_PATH: `${[...includesSet.keys()].join(":")}:${
-      Deno.env.get("CPLUS_INCLUDE_PATH") ?? ""
-    }`,
-    [LD_LIBRARY_ENV]: `${[...libSet.keys()].join(":")}:${
-      Deno.env.get(LD_LIBRARY_ENV) ?? ""
-    }`,
-  };
-}
-
-export function depExecShimPath(
-  dep: PortDep,
-  execName: string,
-  depArts: DepArts,
-) {
-  const path = tryDepExecShimPath(dep, execName, depArts);
-  if (!path) {
-    throw new Error(
-      `unable to find shim path for bin "${execName}" of dep ${dep.name}`,
-    );
-  }
-  return path;
-}
-
-export function depEnv(
-  dep: PortDep,
-  depArts: DepArts,
-) {
-  return depArts[dep.name]?.env ?? {};
-}
-
-export function tryDepExecShimPath(
-  dep: PortDep,
-  execName: string,
-  depArts: DepArts,
-) {
-  const shimPaths = depArts[dep.name];
-  if (!shimPaths) {
-    return;
-  }
-  // FIXME: match despite `.exe` extension on windows
-  const path = shimPaths.execs[execName];
-  if (!path) {
-    return;
-  }
-  return path;
 }
 
 const syncSha256Hasher = multihasher.from({
@@ -168,15 +77,6 @@ export function objectHash(
   return stringHash(json_canonicalize(object));
 }
 
-export function getPortRef(manifest: PortManifest) {
-  return `${manifest.name}@${manifest.version}`;
-}
-
-export function getInstallHash(install: InstallConfigResolvedX) {
-  const fullHashHex = objectHash(JSON.parse(JSON.stringify(install)));
-  return `${install.portRef}!${fullHashHex}`;
-}
-
 export function defaultCommandBuilder() {
   const builder = new dax.CommandBuilder()
     .printCommand(true);
@@ -186,16 +86,6 @@ export function defaultCommandBuilder() {
   });
   return builder;
 }
-
-// type Last<T extends readonly any[]> = T extends readonly [...any, infer R] ? R
-//   : DeArrayify<T>;
-//
-// type Ser<T extends readonly Promise<any>[]> = T extends
-//   readonly [...Promise<any>[], infer R] ? { (...promises: T): R }
-//   : {
-//     (...promises: T): DeArrayify<T>;
-//   };
-//
 
 let requestBuilder;
 try {
@@ -250,29 +140,10 @@ export const $ = dax.build$(
           depth: 10,
         });
       },
+
       co: ((values: any[]) => Promise.all(values)) as typeof Promise.all,
       collector: promiseCollector,
-      /* co<T extends readonly unknown[] | []>(
-        values: T,
-      ): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }> {
-        return Promise.all(values);
-      }, */
-      // coIter<T, O>(
-      //   items: Iterable<T>,
-      //   fn: (item:T) => PromiseLike<O>,
-      //   opts: {
-      //     limit: "cpu" | number;
-      //   } = {
-      //     limit: "cpu"
-      //   },
-      // ): Promise<Awaited<O>[]> {
-      //   const limit = opts.limit == "cpu" ? AVAIL_CONCURRENCY : opts.limit;
-      //   const promises = [] as PromiseLike<O>[];
-      //   let freeSlots = limit;
-      //   do {
-      //   } while(true);
-      //   return Promise.all(promises);
-      // }
+
       pathToString(path: Path) {
         return path.toString();
       },
@@ -514,14 +385,6 @@ export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
   return rc;
 }
 
-export function thinInstallConfig(fat: InstallConfigFat) {
-  const { port, ...lite } = fat;
-  return {
-    portRef: getPortRef(port),
-    ...lite,
-  };
-}
-
 export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
 
 /**
@@ -672,31 +535,3 @@ export function promiseCollector<T>(promises: Promise<T>[] = []) {
     },
   };
 }
-
-// /**
-//  * Blocks the event loop till the promise is resolved
-//  */
-// export function deasyncPromise<T>(promise: Promise<T>) {
-//   // Note: npm:deasync does not work on deno
-//   // TODO: better impl or use a lib?
-//   const sleepSync = (timeout: number) => {
-//     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, timeout);
-//   };
-
-//   let resolved = false;
-//   let ret: T | undefined, err;
-
-//   promise
-//     .then((r) => { ret = r; })
-//     .catch((e) => { err = e; })
-//     .finally(() => { resolved = true; });
-
-//   while (!resolved) {
-//     sleepSync(100);
-//   }
-
-//   if (err) {
-//     throw err;
-//   }
-//   return ret;
-// }

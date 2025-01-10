@@ -2,7 +2,11 @@
 
 import { semver, zod } from "./deps.ts";
 import moduleValidators from "../types.ts";
-import { relativeToRepoRoot } from "../../deno_utils/mod.ts";
+import {
+  objectHash,
+  relativeToRepoRoot,
+  unwrapZodRes,
+} from "../../deno_utils/mod.ts";
 import { ALL_ARCH, ALL_OS, archEnum, osEnum } from "./types/platform.ts";
 
 export { ALL_ARCH, ALL_OS, archEnum, osEnum };
@@ -109,10 +113,7 @@ const stdInstallConfigFat = installConfigBaseFat.merge(zod.object({}))
 const stdInstallConfigLite = installConfigBaseLite.merge(zod.object({}))
   .passthrough();
 
-const installConfigLite =
-  // zod.union([
-  stdInstallConfigLite;
-// ]);
+const installConfigLite = stdInstallConfigLite;
 const installConfigFat = stdInstallConfigFat;
 
 const installConfigResolved = installConfigLite.merge(zod.object({
@@ -132,11 +133,6 @@ const installConfigResolved = installConfigLite.merge(zod.object({
 // fields meant for sibs.
 // Which's to say ordering matters
 const installConfig = zod.union([
-  // NOTE: generated types break if we make a union of other unions
-  // so we get the schemas of those unions instead
-  // https://github.com/colinhacks/zod/discussions/3010
-  // ...installConfigLite.options,
-  // ...installConfigFat.options,
   stdInstallConfigLite,
   stdInstallConfigFat,
 ]);
@@ -395,7 +391,6 @@ export interface PortArgsBase {
 export interface ListAllArgs {
   depArts: DepArts;
   manifest: PortManifestX;
-  // FIXME: switch to X type when https://github.com/colinhacks/zod/issues/2864 is resolved
   config: InstallConfigLiteX;
 }
 
@@ -415,3 +410,43 @@ export interface InstallArgs extends PortArgsBase {
 
 export type DownloadArtifacts = zod.infer<typeof validators.downloadArtifacts>;
 export type InstallArtifacts = zod.infer<typeof validators.installArtifacts>;
+
+export function reduceAllowedDeps(
+  deps: (AllowedPortDep | InstallConfigFat)[],
+): AllowedPortDep[] {
+  return deps.map(
+    (dep: any) => {
+      {
+        const res = allowedPortDep.safeParse(dep);
+        if (res.success) return res.data;
+      }
+      const inst = unwrapZodRes(
+        installConfigFat.safeParse(dep),
+        dep,
+        "invalid allowed dep object, provide either InstallConfigFat or AllowedPortDep objects",
+      );
+      const out: AllowedPortDep = {
+        manifest: inst.port,
+        defaultInst: thinInstallConfig(inst),
+      };
+      return allowedPortDep.parse(out);
+    },
+  );
+}
+
+export function getPortRef(manifest: PortManifest) {
+  return `${manifest.name}@${manifest.version}`;
+}
+
+export function thinInstallConfig(fat: InstallConfigFat) {
+  const { port, ...lite } = fat;
+  return {
+    portRef: getPortRef(port),
+    ...lite,
+  };
+}
+
+export function getInstallHash(install: InstallConfigResolvedX) {
+  const fullHashHex = objectHash(JSON.parse(JSON.stringify(install)));
+  return `${install.portRef}!${fullHashHex}`;
+}

@@ -18,13 +18,12 @@ import type {
   PortDep,
   PortManifestX,
 } from "./types.ts";
+import { getInstallHash, getPortRef } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
 import { AmbientAccessPort } from "./ambient.ts";
 import {
   $,
   AVAIL_CONCURRENCY,
-  getInstallHash,
-  getPortRef,
   objectHash,
   type Rc,
   rc,

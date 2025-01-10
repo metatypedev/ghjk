@@ -21,4 +21,4 @@ const files = (await Array.fromAsync(
   ),
 )).map((ref) => ref.path.toString());
 
-await $`${Deno.env.get("DENO_EXEC_PATH") ?? "deno"} check ${files}`;
+await $`bash -c "xargs deno check"`.stdinText(files.join(" "));

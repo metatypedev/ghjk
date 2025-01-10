@@ -7,7 +7,7 @@
 import { deep_eql, multibase32, multibase64, zod } from "../deps.ts";
 
 // ports specific imports
-import portsValidators from "../sys_deno/ports/types.ts";
+import portsValidators, { reduceAllowedDeps } from "../sys_deno/ports/types.ts";
 import type {
   AllowedPortDep,
   InstallConfigFat,
@@ -21,7 +21,6 @@ import {
   defaultCommandBuilder,
   objectHash,
   Path,
-  thinInstallConfig,
   unwrapZodRes,
 } from "../deno_utils/mod.ts";
 import * as std_ports from "../sys_deno/ports/std.ts";
@@ -1117,29 +1116,6 @@ type InlineTaskHookProvision = Provision & {
   ty: "hook.onExit.ghjkTask" | "hook.onEnter.ghjkTask";
   taskKey: string;
 };
-
-export function reduceAllowedDeps(
-  deps: (AllowedPortDep | InstallConfigFat)[],
-): AllowedPortDep[] {
-  return deps.map(
-    (dep: any) => {
-      {
-        const res = portsValidators.allowedPortDep.safeParse(dep);
-        if (res.success) return res.data;
-      }
-      const inst = unwrapZodRes(
-        portsValidators.installConfigFat.safeParse(dep),
-        dep,
-        "invalid allowed dep object, provide either InstallConfigFat or AllowedPortDep objects",
-      );
-      const out: AllowedPortDep = {
-        manifest: inst.port,
-        defaultInst: thinInstallConfig(inst),
-      };
-      return portsValidators.allowedPortDep.parse(out);
-    },
-  );
-}
 
 function objectHashSafe(obj: unknown) {
   return objectHash(JSON.parse(JSON.stringify(obj)));
