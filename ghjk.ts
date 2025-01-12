@@ -68,12 +68,7 @@ ghjk.env("ci")
   .inherit("_rust");
 
 // these are just for quick testing
-ghjk.install(
-  ports.asdf({
-    pluginRepo: "https://github.com/lsanwick/asdf-jq",
-    installType: "version",
-  }),
-);
+ghjk.install();
 
 ghjk.env("main")
   .vars({

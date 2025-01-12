@@ -55,7 +55,9 @@ test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
     name: "invalidated_cli_config_changed",
     stdin: `
 __ghjk_get_mtime_ts .ghjk/hash.json > tstamp
+ghjk print config
 GHJK_DENO_LOCKFILE=deno.lock ghjk sync
+GHJK_DENO_LOCKFILE=deno.lock ghjk print config
 test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
 `,
   },

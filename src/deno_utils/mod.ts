@@ -149,8 +149,12 @@ export const $ = dax.build$(
       },
       async removeIfExists(path: Path | string) {
         const pathRef = $.path(path);
-        if (await pathRef.exists()) {
+        try {
           await pathRef.remove({ recursive: true });
+        } catch (err) {
+          if (err! instanceof Error && err.name != "NotFound") {
+            throw err;
+          }
         }
         return pathRef;
       },

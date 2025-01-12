@@ -323,29 +323,33 @@ hash.json",
 
                 let parent = deno_json_path.parent().unwrap();
 
-                // make sure the lockfile path from deno.json is preferred
-                match config
-                    .to_lock_config()
-                    .map_err(denort::anyhow_to_eyre!())
-                    .wrap_err("error parsing deno.json lock section")?
-                {
-                    Some(LockConfig::Object {
-                        path: Some(path), ..
-                    })
-                    | Some(LockConfig::PathBuf(path)) => {
-                        self.deno_lockfile = if path.starts_with("/./") {
-                            // remove the weird prefix
-                            Some(parent.join(path.strip_prefix("/./").unwrap()))
-                        } else {
-                            Some(parent.join(path))
-                        };
-                    }
-                    _ => {
-                        if self.deno_lockfile.is_none() {
-                            self.deno_lockfile = Some(parent.join("deno.lock"))
+                // we always give preference to env vars
+                if std::env::var("GHJK_DENO_LOCKFILE").is_err() {
+                    // make sure the lockfile path from deno.json is preferred
+                    match config
+                        .to_lock_config()
+                        .map_err(denort::anyhow_to_eyre!())
+                        .wrap_err("error parsing deno.json lock section")?
+                    {
+                        Some(LockConfig::Object {
+                            path: Some(path), ..
+                        })
+                        | Some(LockConfig::PathBuf(path)) => {
+                            self.deno_lockfile = if path.starts_with("/./") {
+                                // remove the weird prefix
+                                Some(parent.join(path.strip_prefix("/./").unwrap()))
+                            } else {
+                                Some(parent.join(path))
+                            };
+                        }
+                        _ => {
+                            if self.deno_lockfile.is_none() {
+                                self.deno_lockfile = Some(parent.join("deno.lock"))
+                            }
                         }
                     }
                 }
+
                 Ok(())
             }
             // create the deno.json file if it doesn't exist

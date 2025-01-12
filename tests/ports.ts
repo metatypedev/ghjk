@@ -26,17 +26,6 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.jq_ghrel(),
     ePoint: `jq --version`,
   },
-  {
-    name: "asdf-jq",
-    ePoint: `jq --version`,
-    installConf: ports.asdf({
-      pluginRepo: "https://github.com/lsanwick/asdf-jq",
-      installType: "version",
-    }),
-    secureConf: {
-      enableRuntimes: true,
-    },
-  },
   // 3 megs
   {
     name: "protoc",
@@ -45,7 +34,7 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "lade",
-    installConf: ports.protoc(),
+    installConf: ports.lade_ghrel(),
     ePoint: `lade --version`,
   },
   // 6 megs
@@ -84,6 +73,18 @@ const cases: CustomE2eTestCase[] = [
     name: "rustup",
     installConf: ports.rustup(),
     ePoint: `rustup-init --version`,
+  },
+  // 14 megs
+  {
+    name: "asdf-duckdb",
+    ePoint: `duckdb --version`,
+    installConf: ports.asdf({
+      pluginRepo: "https://github.com/asdf-community/asdf-duckdb",
+      installType: "version",
+    }),
+    secureConf: {
+      enableRuntimes: true,
+    },
   },
   // 15 megs
   {
