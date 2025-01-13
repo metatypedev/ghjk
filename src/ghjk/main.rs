@@ -18,6 +18,7 @@ mod interlude {
     pub use eyre::{format_err as ferr, Context, Result as Res, WrapErr};
     pub use futures::{future::BoxFuture, FutureExt};
     pub use indexmap::IndexMap;
+    pub use itertools::Itertools;
     pub use serde::{Deserialize, Serialize};
     pub use serde_json::json;
     pub use smallvec::smallvec as svec;
@@ -74,7 +75,6 @@ fn main() -> Res<std::process::ExitCode> {
     }
 }
 
-use itertools::Itertools;
 use shadow_rs::shadow;
 shadow!(shadow);
 

@@ -1,7 +1,7 @@
 #!/bin/env -S ghjk deno run --allow-env --allow-run --allow-read --allow-write=.
 
-import "../setup_logger.ts";
-import { $ } from "../utils/mod.ts";
+import "../src/deno_utils/setup_logger.ts";
+import { $ } from "../src/deno_utils/mod.ts";
 
 const files = (await Array.fromAsync(
   $.path(import.meta.url).parentOrThrow().parentOrThrow().expandGlob(
@@ -21,4 +21,4 @@ const files = (await Array.fromAsync(
   ),
 )).map((ref) => ref.path.toString());
 
-await $`${Deno.env.get("DENO_EXEC_PATH") ?? "deno"} check ${files}`;
+await $`bash -c "xargs deno check"`.stdinText(files.join(" "));

@@ -3,7 +3,7 @@ import {
   InstallConfigSimple,
   osXarch,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import { Port as PipiPort } from "./pipi.ts";
 import {
   ALL_ARCH,
@@ -12,8 +12,8 @@ import {
   InstallArgs,
   InstallConfigLiteX,
   ListAllArgs,
-} from "../modules/ports/types.ts";
-import * as std_ports from "../modules/ports/std.ts";
+} from "../src/sys_deno/ports/types.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,

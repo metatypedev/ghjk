@@ -1,6 +1,6 @@
-export { sophon } from "ghjk/hack.ts";
-import { config, install } from "ghjk/hack.ts";
-import * as ports from "ghjk/ports/mod.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { config, install } from "@ghjk/ts/hack.ts";
+import * as ports from "@ghjk/ports_wip";
 
 const installs = {
   python: ports.cpy_bs({ version: "3.8.18", releaseTag: "20240224" }),

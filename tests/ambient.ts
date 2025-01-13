@@ -1,13 +1,13 @@
-import "../setup_logger.ts";
-import { std_assert } from "../deps/dev.ts";
-import { AmbientAccessPort } from "../modules/ports/ambient.ts";
-import validators, {} from "../modules/ports/types.ts";
+import "../src/deno_utils/setup_logger.ts";
+import { std_assert } from "./deps.ts";
+import { AmbientAccessPort } from "../src/sys_deno/ports/ambient.ts";
+import validators, {} from "../src/sys_deno/ports/types.ts";
 
 import * as tar from "../ports/tar.ts";
 import * as git from "../ports/git.ts";
 import * as curl from "../ports/curl.ts";
 import * as unzip from "../ports/unzip.ts";
-import logger from "../utils/logger.ts";
+import logger from "../src/deno_utils/logger.ts";
 
 const manifests = [
   tar.manifest,

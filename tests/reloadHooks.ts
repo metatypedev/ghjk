@@ -1,7 +1,7 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, genTsGhjkFile, harness } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
-import { type InstallConfigFat } from "../port.ts";
+import { type InstallConfigFat } from "../src/deno_ports/mod.ts";
 
 // TODO: test for hook reload when ghjk.ts is touched
 // TODO: test for hook reload when nextfile is touched

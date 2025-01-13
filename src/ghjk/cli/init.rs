@@ -129,10 +129,10 @@ impl InitCommands {
                             move || {
                                 dialoguer::Confirm::new()
                                     .with_prompt(format!(
-                                        "Mark {} with @ts-nocheck?",
+                                        "Mark {} with @ts-nocheck? (Useful if using tsserver)",
                                         path.clone().display()
                                     ))
-                                    .default(true)
+                                    .default(false)
                                     .interact()
                             }
                         })

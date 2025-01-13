@@ -2,13 +2,14 @@
 
 //! Install ghjk for the current user
 
-import "./setup_logger.ts";
-import { defaultInstallArgs, install } from "./install/mod.ts";
+import "./src/deno_utils/setup_logger.ts";
+import { defaultInstallArgs, install } from "./src/install/mod.ts";
 
 // import the main entry points so that they get cached into the deno
 // store during install
-import "./modules/std.ts";
-import "./port.ts";
+import "./src/sys_deno/std.ts";
+import "./src/ghjk_ts/mod.ts";
+import "./src/deno_ports/mod.ts";
 import "./ports/mod.ts";
 
 if (import.meta.main) {

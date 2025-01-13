@@ -40,7 +40,7 @@ pub async fn systems_from_deno(
     let main_module = gcx
         .config
         .repo_root
-        .join("src/deno_systems/bindings.ts")
+        .join("src/sys_deno/bindings.ts")
         .wrap_err("repo url error")?;
 
     let mut ext_conf = crate::ext::ExtConfig::new();

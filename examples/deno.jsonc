@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "@ghjk/ts": "../src/ghjk_ts/mod.ts",
+    "@ghjk/ts/": "../src/ghjk_ts/",
+    "@ghjk/ports_wip": "../ports/mod.ts",
+    "@ghjk/ports_wip/": "../ports/"
+  }
+}

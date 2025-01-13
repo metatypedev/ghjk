@@ -1,4 +1,7 @@
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 import {
   $,
   type DownloadArgs,
@@ -9,7 +12,7 @@ import {
   osXarch,
   std_path,
   unarchive,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -84,6 +87,7 @@ export class Port extends GithubReleasePort {
     for (
       const fileName of ["act"]
     ) {
+      // deno-lint-ignore no-await-in-loop
       await tmpDir.join(
         args.platform.os == "windows" ? fileName + ".exe" : fileName,
       ).renameToDir(binDir);

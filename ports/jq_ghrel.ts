@@ -7,8 +7,11 @@ import {
   type InstallConfigSimple,
   osXarch,
   serializePlatform,
-} from "../port.ts";
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+} from "../src/deno_ports/mod.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,

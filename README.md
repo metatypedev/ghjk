@@ -16,7 +16,7 @@ It enables you to define a consistent environment across your dev environments, 
 This makes it especially convenient for mono-repos and long-lived projects. See [Metatype](https://github.com/metatypedev/metatype) and its [ghjkfile](https://github.com/metatypedev/metatype/blob/main/ghjk.ts) for a real world example.
 
 <p align="center">
-  <img src="./ghjk.drawio.svg" alt="ghjk" />
+  <img src="./docs/ghjk.drawio.svg" alt="ghjk" />
 </p>
 
 ## Features
@@ -62,10 +62,10 @@ They serve as recipes for making (mostly) reproducible posix shells.
 
 ```ts
 // NOTE: `ghjk.ts` files are expected to export this sophon object
-export { sophon } from "ghjk";
-import { file } from "ghjk";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 // ports are small programs that install sowtware to your envs
-import * as ports from "ghjk/ports/mod.ts";
+import * as ports from "@ghjk/ports_wip";
 
 const ghjk = file({});
 

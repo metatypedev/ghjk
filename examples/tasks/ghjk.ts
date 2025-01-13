@@ -1,6 +1,6 @@
-export { sophon } from "ghjk/hack.ts";
-import { logger, task } from "ghjk/hack.ts";
-import * as ports from "ghjk/ports/mod.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { logger, task } from "@ghjk/ts/hack.ts";
+import * as ports from "@ghjk/ports_wip";
 
 task("greet", async ($, { argv: [name] }) => {
   await $`echo Hello ${name}!`;

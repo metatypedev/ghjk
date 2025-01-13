@@ -1,6 +1,6 @@
-export { sophon } from "ghjk";
-import { file, stdDeps } from "ghjk";
-import * as ports from "ghjk/ports/mod.ts";
+export { sophon } from "@ghjk/ts";
+import { file, stdDeps } from "@ghjk/ts";
+import * as ports from "@ghjk/ports_wip";
 
 // we need this export for this file to be a valid ghjkfile
 // it's the one thing used by the ghjk host implementation to

@@ -4,7 +4,7 @@ import {
   type AmbientAccessPortManifest,
   InstallConfigSimple,
   osXarch,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 export const manifest: AmbientAccessPortManifest = {
   ty: "ambientAccess@v1" as const,

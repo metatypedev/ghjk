@@ -2,8 +2,8 @@ import {
   ghHeaders,
   GithubReleasesInstConf,
   readGhVars,
-} from "../modules/ports/ghrel.ts";
-import { PortArgsBase } from "../modules/ports/types.ts";
+} from "../src/sys_deno/ports/ghrel.ts";
+import { PortArgsBase } from "../src/sys_deno/ports/types.ts";
 import {
   $,
   defaultLatestStable,
@@ -14,13 +14,13 @@ import {
   PortBase,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
   ListAllArgs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 const tar_aa_id = {
   name: "tar_aa",

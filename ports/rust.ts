@@ -7,13 +7,13 @@ import {
   PortBase,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
   ListAllArgs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 const rustup_rustlang_id = {
   name: "rustup_rustlang",

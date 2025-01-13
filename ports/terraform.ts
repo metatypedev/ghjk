@@ -8,12 +8,12 @@ import {
   std_fs,
   std_path,
   unarchive,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import type {
   DownloadArgs,
   InstallArgs,
   InstallConfigSimple,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 // TODO: sanity check exports of all ports
 export const manifest = {

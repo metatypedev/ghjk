@@ -1,5 +1,5 @@
-export { sophon } from "ghjk/hack.ts";
-import { file } from "ghjk/hack.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { file } from "@ghjk/ts/hack.ts";
 
 const ghjk = file({
   defaultEnv: "empty",

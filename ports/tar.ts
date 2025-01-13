@@ -2,7 +2,7 @@ import {
   type AmbientAccessPortManifest,
   InstallConfigSimple,
   osXarch,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 // FIXME: replace with bsdtar
 export const manifest: AmbientAccessPortManifest = {

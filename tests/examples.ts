@@ -1,4 +1,4 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, harness } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
@@ -21,7 +21,7 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "ghjk";
+export { sophon } from "@ghjk/ts";
 `,
   },
   ePoints: [{ cmd: "fish", stdin: testCase.stdin }],

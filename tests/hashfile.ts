@@ -1,4 +1,4 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, harness } from "./utils.ts";
 
 type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
@@ -55,7 +55,9 @@ test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
     name: "invalidated_cli_config_changed",
     stdin: `
 __ghjk_get_mtime_ts .ghjk/hash.json > tstamp
+ghjk print config
 GHJK_DENO_LOCKFILE=deno.lock ghjk sync
+GHJK_DENO_LOCKFILE=deno.lock ghjk print config
 test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
 `,
   },
@@ -65,8 +67,8 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "ghjk/hack.ts";
-import { task, env } from "ghjk/hack.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { task, env } from "@ghjk/ts/hack.ts";
 import {stuff} from "./extra.ts"
 
 await Array.fromAsync(Deno.readDir("dir"))

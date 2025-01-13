@@ -80,7 +80,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         &gcx,
         &gcx.config
             .repo_root
-            .join("src/deno_systems/mod.ts")
+            .join("src/sys_deno/std.ts")
             .wrap_err("repo url error")?,
         &ghjkdir_path,
     )

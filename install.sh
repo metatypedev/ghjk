@@ -22,18 +22,12 @@ INSTALLER_URL="https://raw.githubusercontent.com/$ORG/$REPO/main/install.sh"
 RELEASE_URL="https://github.com/$ORG/$REPO/releases"
 
 LATEST_VERSION=$(curl "$RELEASE_URL/latest" -s -L -I -o /dev/null -w '%{url_effective}')
+LATEST_VERSION="v${LATEST_VERSION##*v}"
 
 PLATFORM="${PLATFORM:-}"
 TMP_DIR=$(mktemp -d)
 GHJK_INSTALL_EXE_DIR="${GHJK_INSTALL_EXE_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-$LATEST_VERSION}"
-
-# make sure the version is prepended with v
-if [ "${VERSION#"v"}" = "$VERSION" ]; then
-  cat >&2 <<EOF
-WARN: Resolved version "$VERSION" doesn't have "v" prefix. This may affect asset resolution. Expected format: v0.1.0
-EOF
-fi
 
 if [ "${PLATFORM:-x}" = "x" ]; then
   MACHINE=$(uname -m)
@@ -79,10 +73,17 @@ fi
 
 printf "Detected version: %s\n" "$VERSION"
 
+# make sure the version is prepended with v
+if [ "${VERSION#"v"}" = "$VERSION" ]; then
+  cat >&2 <<EOF
+WARN: Resolved version "$VERSION" doesn't have "v" prefix. This may affect asset resolution. Expected format: v0.1.0
+EOF
+fi
+
 ASSET="$NAME-$VERSION-$PLATFORM"
 DOWNLOAD_URL="$RELEASE_URL/download/$VERSION/$ASSET.$EXT"
 
-if curl --fail --silent --location --tlsv1.2 --proto '=https' --output "$TMP_DIR/$ASSET.$EXT" "$DOWNLOAD_URL"; then
+if curl --fail --location --tlsv1.2 --proto '=https' --output "$TMP_DIR/$ASSET.$EXT" "$DOWNLOAD_URL"; then
   printf "Downloaded successfully: %s\n" "$ASSET.$EXT"
 else
   cat >&2 <<EOF

@@ -1,4 +1,7 @@
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 import {
   $,
   DownloadArgs,
@@ -7,7 +10,7 @@ import {
   InstallConfigSimple,
   osXarch,
   std_fs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,

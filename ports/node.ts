@@ -8,14 +8,14 @@ import {
   PortBase,
   std_fs,
   std_path,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import type {
   DownloadArgs,
   ExecEnvArgs,
   InstallArgs,
   InstallConfigSimple,
   ListAllArgs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 
 // FIXME: circular module resolution when one std_port imports another
 const tar_aa_id = {
