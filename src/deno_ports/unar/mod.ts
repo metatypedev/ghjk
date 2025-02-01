@@ -1,4 +1,4 @@
-import { Foras, jszip, std_fs, std_io, std_path, std_untar } from "./deps.ts";
+import { JSZip, std_fs, std_path, std_tar } from "./deps.ts";
 
 /**
  * - Uses file extension to determine archive type.
@@ -31,23 +31,23 @@ export async function untgz(
   path: string,
   dest = "./",
 ) {
-  // FIXME: replace Foras with zip.js from below if possible
-  // this unzips the whole thing into memory first
-  // but I was not able to figure out the
-  await Foras.initBundledOnce();
-  const tgzFile = await Deno.open(path, { read: true });
-  const gzDec = new Foras.GzDecoder();
-  await std_io.copy(tgzFile, {
-    write(buf) {
-      const mem = new Foras.Memory(buf);
-      gzDec.write(mem);
-      mem.freeNextTick();
-      return Promise.resolve(buf.length);
-    },
+  const tarFile = await Deno.open(path, {
+    read: true,
   });
-  const buf = gzDec.finish().copyAndDispose();
-  await untarReader(new std_io.Buffer(buf), dest);
+
+  try {
+    await untarReader(
+      tarFile.readable
+        .pipeThrough(new DecompressionStream("gzip")),
+      dest,
+    );
+  } catch (err) {
+    throw err;
+  } finally {
+    tarFile.close();
+  }
 }
+
 export async function untar(
   path: string,
   dest = "./",
@@ -57,7 +57,7 @@ export async function untar(
   });
 
   try {
-    await untarReader(tarFile, dest);
+    await untarReader(tarFile.readable, dest);
   } catch (err) {
     throw err;
   } finally {
@@ -69,24 +69,19 @@ export async function untar(
  * This does not close the reader.
  */
 export async function untarReader(
-  reader: std_io.Reader,
+  reader: ReadableStream<Uint8Array>,
   dest = "./",
 ) {
-  for await (const entry of new std_untar.Untar(reader)) {
-    const filePath = std_path.resolve(dest, entry.fileName);
-    if (entry.type === "directory") {
-      await std_fs.ensureDir(filePath);
-      continue;
-    }
+  for await (const entry of reader.pipeThrough(new std_tar.UntarStream())) {
+    const filePath = std_path.resolve(dest, entry.path);
     await std_fs.ensureDir(std_path.dirname(filePath));
     const file = await Deno.open(filePath, {
       create: true,
       truncate: true,
       write: true,
-      mode: entry.fileMode,
+      mode: entry.header.mode,
     });
-    await std_io.copy(entry, file);
-    file.close();
+    await entry.readable?.pipeTo(file.writable);
   }
 }
 
@@ -94,9 +89,10 @@ export async function unzip(
   path: string,
   dest = "./",
 ) {
-  const zipArc = await jszip.readZip(path);
+  const zipArc = new JSZip();
+  await zipArc.loadAsync(await Deno.readFile(path));
   await Promise.all(
-    Object.entries(zipArc.files()).map(async ([_, entry]) => {
+    Object.entries(zipArc.files).map(async ([_, entry]) => {
       const filePath = std_path.resolve(dest, entry.name);
       if (entry.dir) {
         await std_fs.ensureDir(filePath);

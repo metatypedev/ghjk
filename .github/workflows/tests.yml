@@ -6,7 +6,7 @@ on:
       tmate_enabled:
         type: boolean
         description: |
-          Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate). 
+          Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate).
           This disables all but the test-full jobs.
         required: false
         default: false

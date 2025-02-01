@@ -56,23 +56,10 @@ fn main() -> Res<std::process::ExitCode> {
 
     debug!(version = shadow::PKG_VERSION, "ghjk CLI");
 
-    match tokio::runtime::Builder::new_current_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(cli::cli())
-    {
-        Ok(code) => Ok(code),
-        Err(err) => {
-            let err_msg = format!("{err:?}");
-            let err_msg = err_msg.split('\n').filter(
-                |&line|
-                line != "Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it." 
-                && line != "Run with RUST_BACKTRACE=full to include source snippets."
-            ).join("\n");
-            println!("{err_msg}");
-            Ok(std::process::ExitCode::FAILURE)
-        }
-    }
 }
 
 use shadow_rs::shadow;
