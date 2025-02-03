@@ -63,11 +63,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux/x86_64
-          - os: custom-arm
+          - os: ubuntu-22.04-arm
             platform: linux/aarch64
-          - os: macos-latest
+          - os: macos-14-large
             platform: darwin/x86_64
           - os: macos-14
             platform: darwin/aarch64
@@ -88,13 +88,13 @@ jobs:
         with:
           path: ${{ env.DENO_DIR }}
           key: deno-${{ hashFiles('**/deno.lock') }}
-      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+      - if: "${{ matrix.os == 'ubuntu-22.04' || matrix.os == 'ubuntu-22.04-arm' }}"
         # need coreutils on max for the `timeout` command
         # need cmake to build the rust deps
         run: |
           sudo apt update
           sudo apt install -y --no-install-recommends fish zsh cmake
-      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+      - if: "${{ matrix.os == 'macos-14-large' || matrix.os == 'macos-14' }}"
         # need cmake to build the rust deps
         # need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils cmake
