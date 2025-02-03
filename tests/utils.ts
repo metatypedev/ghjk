@@ -1,10 +1,9 @@
-import { defaultInstallArgs, install } from "../install/mod.ts";
-import { std_url } from "../deps/dev.ts";
-import { std_async } from "../deps/dev.ts";
-import { $ } from "../utils/mod.ts";
-import type { DenoTaskDefArgs, FileArgs } from "../mod.ts";
-import { ALL_ARCH, ALL_OS } from "../modules/ports/types/platform.ts";
-export type { EnvDefArgs } from "../mod.ts";
+import { defaultInstallArgs, install } from "../src/install/mod.ts";
+import { std_async, std_url } from "./deps.ts";
+import { $ } from "../src/deno_utils/mod.ts";
+import type { DenoTaskDefArgs, FileArgs } from "../src/ghjk_ts/mod.ts";
+import { ALL_ARCH, ALL_OS } from "../src/sys_deno/ports/types/platform.ts";
+export type { EnvDefArgs } from "../src/ghjk_ts/mod.ts";
 
 export const testTargetPlatform = Deno.env.get("DOCKER_PLATFORM") ??
   (Deno.build.os + "/" + Deno.build.arch);
@@ -71,6 +70,8 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
       : $.path(Deno.env.get("HOME")!).resolve(".cache", "deno").toString(),
     RUST_LOG: Deno.env.get("RUST_LOG"),
     GHJK_LOG: Deno.env.get("GHJK_LOG"),
+    GITHUB_TOKEN: Deno.env.get("GITHUB_TOKEN"),
+    GH_TOKEN: Deno.env.get("GH_TOKEN"),
     ...testEnvs,
   };
   // install ghjk
@@ -113,6 +114,7 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     if (ePoint.stdin) {
       cmd = cmd.stdinText(ePoint.stdin);
     }
+    // deno-lint-ignore no-await-in-loop
     await cmd;
   }
   await tmpDir.remove({ recursive: true });
@@ -157,8 +159,8 @@ export function genTsGhjkFile(
   ).join("\n");
 
   return `
-export { sophon } from "ghjk";
-import { file } from "ghjk";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 
 const confStr = \`
 ${serializedSecConf}

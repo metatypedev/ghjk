@@ -1,17 +1,18 @@
-// @ts-nocheck: Ghjkfile based on Deno
+export { sophon } from "./src/ghjk_ts/mod.ts";
+import { file } from "./src/ghjk_ts/mod.ts";
+//
 
-export { sophon } from "ghjk";
-import { $, file } from "ghjk";
-
-import * as ports from "ghjk/ports/mod.ts";
-import { switchMap } from "ghjk/port.ts";
-import { sedLock } from "ghjk/std.ts";
-import { downloadFile, DownloadFileArgs } from "ghjk/utils/mod.ts";
-import { unarchive } from "ghjk/utils/unarchive.ts";
-import dummy from "ghjk/ports/dummy.ts";
+import * as ports from "./ports/mod.ts";
+import { sedLock } from "./src/ghjk_ts/std.ts";
+import {
+  downloadFile,
+  DownloadFileArgs,
+  switchMap,
+} from "./src/deno_utils/mod.ts";
 
 const ghjk = file({});
 
+const GHJK_VERSION = "0.3.0";
 const DENO_VERSION = "2.1.2";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
@@ -39,6 +40,8 @@ ghjk.config({
   allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
 });
 
+const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
+
 ghjk.env("_rust")
   .install(
     ports.protoc(),
@@ -58,19 +61,14 @@ ghjk.env("dev")
   .install(ports.cargobi({ crateName: "cargo-bloat" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
-    RUSTY_V8_MIRROR: `${import.meta.dirname}/.dev/rusty_v8`,
+    RUSTY_V8_MIRROR,
   });
 
 ghjk.env("ci")
   .inherit("_rust");
 
 // these are just for quick testing
-ghjk.install(
-  ports.asdf({
-    pluginRepo: "https://github.com/lsanwick/asdf-jq",
-    installType: "version",
-  }),
-);
+ghjk.install();
 
 ghjk.env("main")
   .vars({
@@ -128,7 +126,7 @@ ghjk.task(
                 `librusty_v8_release_${arch}-${os}.a.gz`,
                 `librusty_v8_debug_${arch}-${os}.a.gz`,
               ].map((archiveName) => ({
-                archiveName,
+                name: archiveName,
                 url:
                   `https://github.com/denoland/rusty_v8/releases/download/${version}/${archiveName}`,
                 downloadPath: $.path(RUSTY_V8_MIRROR).join(version).toString(),
@@ -137,7 +135,7 @@ ghjk.task(
             },
           )
           .filter((args) =>
-            !$.path(args.downloadPath).join(args.archiveName).existsSync()
+            !$.path(args.downloadPath).join(args.name).existsSync()
           )
           .map((args) => downloadFile(args)),
       );
@@ -148,9 +146,7 @@ ghjk.task(
 
 ghjk.task(
   "lock-sed",
-  async ($) => {
-    const GHJK_VERSION = "0.3.0-rc.2";
-
+  async ($) =>
     await sedLock(
       $.path(import.meta.dirname!),
       {
@@ -192,20 +188,12 @@ ghjk.task(
           // ignore this file to avoid hits on the regexps
           `ghjk.ts`,
           `.git`,
-          // TODO: std function for real ignore handling
-          ...(await $.path(".gitignore").readText())
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((line) => line.length > 0)
-            .map((l) => `${l}${l.endsWith("*") ? "" : "*"}`),
-          ...(await $.path(".ghjk/.gitignore").readText())
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((line) => line.length > 0)
-            .map((l) => `.ghjk/${l}${l.endsWith("*") ? "" : "*"}`),
+        ],
+        ignoreFiles: [
+          ".gitignore",
+          ".ghjk/.gitignore",
         ],
       },
-    );
-  },
-  { inherits: false },
+    ),
+  { inherit: false },
 );

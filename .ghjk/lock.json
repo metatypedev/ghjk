@@ -333,6 +333,122 @@
           "portRef": "cargobi_cratesio@0.1.0",
           "crateName": "cargo-bloat",
           "specifiedVersion": false
+        },
+        "bciqn6ydvecd55jxljsewhxy7qg6pjqq4kkubhdh3hrugn4oy4kccuby": {
+          "version": "1.1.3",
+          "buildDepConfigs": {
+            "curl_aa": {
+              "version": "8.9.1",
+              "buildDepConfigs": {},
+              "portRef": "curl_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "asdf_plugin_git": {
+              "version": "80fc844dae",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.1",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "asdf_plugin_git@0.1.0",
+              "pluginRepo": "https://github.com/asdf-community/asdf-duckdb",
+              "specifiedVersion": false
+            }
+          },
+          "resolutionDepConfigs": {
+            "asdf_plugin_git": {
+              "pluginRepo": "https://github.com/asdf-community/asdf-duckdb",
+              "portRef": "asdf_plugin_git@0.1.0"
+            }
+          },
+          "portRef": "asdf@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-duckdb",
+          "installType": "version",
+          "specifiedVersion": false
+        },
+        "bciqohwpm24tt7amjzlzh4lbmvwoit2g47v2w362bq3wyiu5bxe4ky2y": {
+          "version": "80fc844dae",
+          "buildDepConfigs": {
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "asdf_plugin_git@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-duckdb",
+          "specifiedVersion": false
+        },
+        "bciqlyn7enh4hwylipzztkulahfoybky5vwjznltnlwfzvtisttr6mhi": {
+          "version": "2.47.1",
+          "buildDepConfigs": {},
+          "portRef": "git_aa@0.1.0",
+          "specifiedVersion": true
+        },
+        "bciqlkrsun5iqwtwpjeim5xiupjmhahjdicbbcsm7lw2a2w77vun4n5q": {
+          "version": "0.5.26",
+          "buildDepConfigs": {
+            "curl_aa": {
+              "version": "8.9.1",
+              "buildDepConfigs": {},
+              "portRef": "curl_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "asdf_plugin_git": {
+              "version": "ce093c3592",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.1",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "asdf_plugin_git@0.1.0",
+              "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+              "specifiedVersion": false
+            }
+          },
+          "resolutionDepConfigs": {
+            "asdf_plugin_git": {
+              "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+              "portRef": "asdf_plugin_git@0.1.0"
+            }
+          },
+          "portRef": "asdf@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+          "installType": "version",
+          "specifiedVersion": false
+        },
+        "bciqoolqix77uqeyy2cpsuesznpqt3i4wjpxhunehi3cwya6lq7s4nca": {
+          "version": "ce093c3592",
+          "buildDepConfigs": {
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "asdf_plugin_git@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+          "specifiedVersion": false
         }
       }
     },
@@ -354,8 +470,7 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji",
-                "bciqjucge6yrzcawqzcljvrpmtwrocecsww6pcjwipzn5j2hfwjof7za"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
@@ -368,8 +483,7 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji",
-                "bciqjucge6yrzcawqzcljvrpmtwrocecsww6pcjwipzn5j2hfwjof7za"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
             },
@@ -384,10 +498,13 @@
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
                 "bciqpu4klxr3hl6ujhmflrlfd3dxp47ijq26mnathb26ojzwkeggy5ii",
-                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji",
-                "bciqjucge6yrzcawqzcljvrpmtwrocecsww6pcjwipzn5j2hfwjof7za"
+                "bciqelae2kzmf7umbo62flzq2mnlhnc4ilbfmn4va2fzrqwx7w7zusji"
               ],
               "allowedBuildDeps": "bciqdg64uhkvlkqyc7nli33cja3aolbcdr75qepnrhj5ojlifsvxqzgq"
+            },
+            "ghjkEnvProvInstSet_______task_env_lock-sed": {
+              "installs": [],
+              "allowedBuildDeps": "bciqeie3punk3gz4kcfdk2fxx5bsj5fh3j7bb7z36qmimayhwdsvp7cq"
             },
             "ghjkEnvProvInstSet_______task_env_cache-v8": {
               "installs": [],
@@ -403,7 +520,7 @@
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i"
+              "envKey": "bciqkayfukzybq7yeb4rh2bxjxqlb63owlidfwhi75dwn44yuysodkca"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
@@ -422,6 +539,14 @@
         "id": "envs",
         "config": {
           "envs": {
+            "bciqkayfukzybq7yeb4rh2bxjxqlb63owlidfwhi75dwn44yuysodkca": {
+              "provides": [
+                {
+                  "ty": "ghjk.ports.InstallSetRef",
+                  "setId": "ghjkEnvProvInstSet_______task_env_lock-sed"
+                }
+              ]
+            },
             "bciqngtgh6vxbmug3jgfhtc6t2o7d4375gzfwxca2hmq2mhwbe4tajvq": {
               "provides": [
                 {
@@ -432,19 +557,6 @@
             },
             "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa": {
               "desc": "the default default environment.",
-              "provides": [
-                {
-                  "ty": "posix.envVar",
-                  "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::file_fetcher=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
-                },
-                {
-                  "ty": "ghjk.ports.InstallSetRef",
-                  "setId": "ghjkEnvProvInstSet___main"
-                }
-              ]
-            },
-            "bciqei2rn3w6xakdaaapst7yyp36wjmz3txqtja24gl5v3fgwqcsa34i": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -470,7 +582,7 @@
                 }
               ]
             },
-            "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai": {
+            "bciqlzb7cvow3nmr4kwrejkgeh7f4xi3pvh4xiycgond3n5utuculpqi": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -480,7 +592,7 @@
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
-                  "val": "/var/home/asdf/repos/ecma/ghjk/.dev/rusty_v8"
+                  "val": "/home/yohe/ghjk/.dev/rusty_v8"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -494,7 +606,7 @@
             "main": "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa",
             "_rust": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
             "ci": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
-            "dev": "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai"
+            "dev": "bciqlzb7cvow3nmr4kwrejkgeh7f4xi3pvh4xiycgond3n5utuculpqi"
           }
         }
       }
@@ -600,56 +712,6 @@
           "version": "0.1.0",
           "moduleSpecifier": "file:///ports/deno_ghrel.ts"
         }
-      },
-      "bciqjucge6yrzcawqzcljvrpmtwrocecsww6pcjwipzn5j2hfwjof7za": {
-        "buildDepConfigs": {
-          "asdf_plugin_git": {
-            "pluginRepo": "https://github.com/lsanwick/asdf-jq",
-            "portRef": "asdf_plugin_git@0.1.0"
-          }
-        },
-        "resolutionDepConfigs": {
-          "asdf_plugin_git": {
-            "pluginRepo": "https://github.com/lsanwick/asdf-jq",
-            "portRef": "asdf_plugin_git@0.1.0"
-          }
-        },
-        "port": {
-          "ty": "denoWorker@v1",
-          "name": "asdf",
-          "platforms": [
-            "x86_64-linux",
-            "aarch64-linux",
-            "x86_64-darwin",
-            "aarch64-darwin"
-          ],
-          "version": "0.1.0",
-          "buildDeps": [
-            {
-              "name": "curl_aa"
-            },
-            {
-              "name": "git_aa"
-            },
-            {
-              "name": "asdf_plugin_git"
-            }
-          ],
-          "resolutionDeps": [
-            {
-              "name": "curl_aa"
-            },
-            {
-              "name": "git_aa"
-            },
-            {
-              "name": "asdf_plugin_git"
-            }
-          ],
-          "moduleSpecifier": "file:///ports/asdf.ts"
-        },
-        "pluginRepo": "https://github.com/lsanwick/asdf-jq",
-        "installType": "version"
       },
       "bciqdfarczmlu3r5dkvcdoultfbnuvn6saao55h4fbb3jg72kv6mkr3y": {
         "manifest": {

@@ -3,11 +3,13 @@ use crate::interlude::*;
 pub fn init() {
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
-        let eyre_panic_hook = color_eyre::config::HookBuilder::default().display_location_section(
-            std::env::var("RUST_ERR_LOCATION")
-                .map(|var| var != "0")
-                .unwrap_or(cfg!(debug_assertions)),
-        );
+        let eyre_panic_hook = color_eyre::config::HookBuilder::default()
+            .display_env_section(false)
+            .display_location_section(
+                std::env::var("RUST_ERR_LOCATION")
+                    .map(|var| var != "0")
+                    .unwrap_or(cfg!(debug_assertions)),
+            );
 
         #[cfg(not(debug_assertions))]
         let eyre_panic_hook = eyre_panic_hook.panic_section(format!(

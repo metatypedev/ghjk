@@ -88,11 +88,9 @@ impl Config {
             data_dir: xdg_dirs.data_dir().to_owned(),
             deno_dir: xdg_dirs.data_dir().join("deno"),
             deno_json: ghjkdir_path.as_ref().map(|path| path.join("deno.jsonc")),
+            // these are set by setup_deno_json below
             import_map: None,
-            // import_map: ghjkdir_path
-            //     .as_ref()
-            //     .map(|path| path.join("import_map.json")),
-            deno_lockfile: ghjkdir_path.as_ref().map(|path| path.join("deno.lock")),
+            deno_lockfile: None,
             deno_no_lockfile: false,
             repo_root: {
                 if cfg!(debug_assertions) {
@@ -117,7 +115,7 @@ impl Config {
 
         // we use builtin config-rs File implementation
         // which relies on sync std
-        let config = tokio::task::spawn_blocking(move || {
+        let mut config = tokio::task::spawn_blocking(move || {
             {
                 config
                     .source_global_config(&global_config_path)
@@ -165,50 +163,10 @@ hash.json",
             }
         }
         // create deno.json
-        if let Some(deno_json_path) = &config.deno_json {
-            if !crate::utils::file_exists(deno_json_path).await? {
-                let parent = deno_json_path
-                    .parent()
-                    .expect_or_log("deno_json path error");
-                tokio::fs::create_dir_all(&parent)
-                    .await
-                    .wrap_err_with(|| format!("error creating ghjkdir at {deno_json_path:?}"))?;
-                let mut deno_json = json!({});
-                if let Some(import_map_path) = &config.import_map {
-                    deno_json = deno_json.destructure_into_self(json!({
-                        "importMap": pathdiff::diff_paths(import_map_path, parent)
-                            .unwrap_or_else(|| import_map_path.clone())
-                    }))
-                } else {
-                    deno_json = deno_json.destructure_into_self(json!({
-                        "imports": {
-                            "ghjk/": config.repo_root.to_string(),
-                            "ghjk": config.repo_root.join("./mod.ts").expect_or_log("repo root error").to_string()
-                        },
-                    }))
-                }
-                if config.deno_no_lockfile {
-                    deno_json = deno_json.destructure_into_self(json!({
-                        "lock": false
-                    }))
-                } else if let Some(deno_lockfile_path) = &config.deno_lockfile {
-                    deno_json = deno_json.destructure_into_self(json!({
-                        "lock": pathdiff::diff_paths(deno_lockfile_path, parent)
-                            .unwrap_or_else(|| deno_lockfile_path.clone())
-                    }))
-                } else {
-                    deno_json = deno_json.destructure_into_self(json!({
-                        "lock": "./deno.lock",
-                    }))
-                }
-                tokio::fs::write(
-                    &deno_json_path,
-                    serde_json::to_vec_pretty(&deno_json).expect_or_log("json error"),
-                )
-                .await
-                .wrap_err_with(|| format!("error writing deno_json file at {deno_json_path:?}"))?;
-            }
-        }
+        config
+            .setup_deno_json()
+            .await
+            .wrap_err("error setting up deno.json")?;
         Ok(config)
     }
 
@@ -351,6 +309,98 @@ hash.json",
                 .wrap_err("error resolving repo_root")?;
         }
         Ok(())
+    }
+
+    async fn setup_deno_json(&mut self) -> Res<()> {
+        let Some(deno_json_path) = &self.deno_json else {
+            return Ok(());
+        };
+        match tokio::fs::read_to_string(deno_json_path).await {
+            Ok(raw) => {
+                use deno::deno_config::deno_json::{ConfigFile, LockConfig};
+                let config = ConfigFile::new(&raw, "file:///INLINE".parse().unwrap(), &default())
+                    .wrap_err("error parsing deno.json")?;
+
+                let parent = deno_json_path.parent().unwrap();
+
+                // we always give preference to env vars
+                if std::env::var("GHJK_DENO_LOCKFILE").is_err() {
+                    // make sure the lockfile path from deno.json is preferred
+                    match config
+                        .to_lock_config()
+                        .map_err(denort::anyhow_to_eyre!())
+                        .wrap_err("error parsing deno.json lock section")?
+                    {
+                        Some(LockConfig::Object {
+                            path: Some(path), ..
+                        })
+                        | Some(LockConfig::PathBuf(path)) => {
+                            self.deno_lockfile = if path.starts_with("/./") {
+                                // remove the weird prefix
+                                Some(parent.join(path.strip_prefix("/./").unwrap()))
+                            } else {
+                                Some(parent.join(path))
+                            };
+                        }
+                        _ => {
+                            if self.deno_lockfile.is_none() {
+                                self.deno_lockfile = Some(parent.join("deno.lock"))
+                            }
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+            // create the deno.json file if it doesn't exist
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                let parent = deno_json_path
+                    .parent()
+                    .expect_or_log("deno_json path error");
+                tokio::fs::create_dir_all(&parent)
+                    .await
+                    .wrap_err_with(|| format!("error creating ghjkdir at {deno_json_path:?}"))?;
+                let mut deno_json = json!({});
+                if let Some(import_map_path) = &self.import_map {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "importMap": pathdiff::diff_paths(import_map_path, parent)
+                            .unwrap_or_else(|| import_map_path.clone())
+                    }))
+                } else {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "imports": {
+                            "@ghjk/ts/": self.repo_root.join("./src/ghjk_ts/").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ts": self.repo_root.join("./src/ghjk_ts/mod.ts").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ports_wip": self.repo_root.join("./ports/mod.ts").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ports_wip/": self.repo_root.join("./ports/").expect_or_log("repo root error").to_string(),
+                        },
+                    }));
+                }
+                if self.deno_no_lockfile {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": false
+                    }))
+                } else if let Some(deno_lockfile_path) = &self.deno_lockfile {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": pathdiff::diff_paths(deno_lockfile_path, parent)
+                            .unwrap_or_else(|| deno_lockfile_path.clone())
+                    }))
+                } else {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": "./deno.lock",
+                    }))
+                }
+                tokio::fs::write(
+                    &deno_json_path,
+                    serde_json::to_vec_pretty(&deno_json).expect_or_log("json error"),
+                )
+                .await
+                .wrap_err_with(|| format!("error writing deno_json file at {deno_json_path:?}"))?;
+
+                Ok(())
+            }
+            Err(err) => Err(err.into()),
+        }
     }
 }
 

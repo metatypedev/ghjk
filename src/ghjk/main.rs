@@ -18,6 +18,7 @@ mod interlude {
     pub use eyre::{format_err as ferr, Context, Result as Res, WrapErr};
     pub use futures::{future::BoxFuture, FutureExt};
     pub use indexmap::IndexMap;
+    pub use itertools::Itertools;
     pub use serde::{Deserialize, Serialize};
     pub use serde_json::json;
     pub use smallvec::smallvec as svec;
@@ -55,26 +56,12 @@ fn main() -> Res<std::process::ExitCode> {
 
     debug!(version = shadow::PKG_VERSION, "ghjk CLI");
 
-    match tokio::runtime::Builder::new_current_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(cli::cli())
-    {
-        Ok(code) => Ok(code),
-        Err(err) => {
-            let err_msg = format!("{err:?}");
-            let err_msg = err_msg.split('\n').filter(
-                |&line|
-                line != "Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it." 
-                && line != "Run with RUST_BACKTRACE=full to include source snippets."
-            ).join("\n");
-            println!("{err_msg}");
-            Ok(std::process::ExitCode::FAILURE)
-        }
-    }
 }
 
-use itertools::Itertools;
 use shadow_rs::shadow;
 shadow!(shadow);
 

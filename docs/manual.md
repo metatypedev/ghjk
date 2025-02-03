@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.2/install.sh" | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh" | bash
 ```
 
 This will install the CLI and add configuration your shell rc files the necessary hooks ghjk needs to function.
@@ -38,13 +38,13 @@ Look through the following snippet to understand the basic structure of a `ghjk.
 
 ```ts
 // all ghjk.ts files are expected to export this special `sophon` object
-export { sophon } from "ghjk";
+export { sophon } from "@ghjk/ts";
 // by default, a `deno.jsonc` file is created in the `.ghjk/` directory
 // which will provide the `ghjk` import alias configured to the CLI's version
 // of ghjk
-import { file } from "ghjk";
+import { file } from "@ghjk/ts";
 // import the port for the node program
-import node from "ghjk/ports/node.ts";
+import node from "@ghjk/ports_wip/node.ts";
 
 // Create the ghjk object using the file functiono. This modifies 
 // the sophon exported above and may only be called once during 
@@ -157,8 +157,8 @@ You declare them in your ghjkfile, using typescript functions, and then invoke t
 The CLI will then load your ghjkfile in a worker and execute your function.
 
 ```ts
-export { sophon } from "ghjk";
-import { file } from "ghjk";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 
 const ghjk = file();
 
@@ -199,8 +199,8 @@ Ghjk envs then allow you:
 Let's look at how one configures an environment using the `ghjk.ts` file:
 
 ```ts
-export { sophon } from "ghjk";
-import { file } from "ghjk";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 
 const ghjk = file();
 
@@ -314,9 +314,9 @@ Any `InstallConfig` objects included in an env will then be resolved and install
 
 ```ts
 // the default export corresponds to the `conf` function
-import node from "ghjk/ports/node.ts";
+import node from "@ghjk/ports_wip/node.ts";
 // the npmi installs executable packages from npm
-import npmi from "ghjk/ports/node.ts";
+import npmi from "@ghjk/ports_wip/node.ts";
 
 // top level `install` calls go to the `main` env
 ghjk.install(
@@ -348,9 +348,9 @@ The default set includes common utilities like `curl`, `git`, `tar` and others w
 More ports can be easily added to the allowed port dep set.
 
 ```ts
-import { file } from "ghjk";
+import { file } from "@ghjk/ts";
 // barrel export for ports in the ghjk repo
-import * as ports from "ghjk/ports/mod.ts";
+import * as ports from "@ghjk/ports_wip";
 
 const ghjk = file();
 
@@ -414,7 +414,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.0-rc.2
+ARG GHJK_VERSION=v0.3.0
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
