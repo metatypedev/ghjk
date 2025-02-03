@@ -12,8 +12,7 @@ import {
 
 const ghjk = file({});
 
-const GHJK_VERSION = "0.3.0-rc.3";
-const GHJK_PUBLISHED_VERSION = "0.3.0-rc.2";
+const GHJK_VERSION = "0.3.0";
 const DENO_VERSION = "2.1.2";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
@@ -164,17 +163,17 @@ ghjk.task(
           "./docs/*.md": [
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
-              GHJK_PUBLISHED_VERSION,
+              GHJK_VERSION,
             ],
             [
               /(GHJK_VERSION\s*=\s*v)[^\s]*(.*)/,
-              GHJK_PUBLISHED_VERSION,
+              GHJK_VERSION,
             ],
           ],
           "./README.md": [
             [
               /(.*\/metatypedev\/ghjk\/v)[^/]*(\/.*)/,
-              GHJK_PUBLISHED_VERSION,
+              GHJK_VERSION,
             ],
           ],
           "**/Cargo.toml": [

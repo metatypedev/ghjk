@@ -46,7 +46,7 @@ Before anything, make sure the following programs are available on the system.
 Install the ghjk cli using the installer scripts like so:
 
 ```bash
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.2/install.sh" | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh" | bash
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:
@@ -146,7 +146,7 @@ This will setup a separate installation at `.dev`.
 $ deno task dev bash/fish/zsh
 ```
 
-Run the tests in the repository through the deno task:
+Run the tests in the repository through the deno tasks:
 
 ```bash
 $ deno task test

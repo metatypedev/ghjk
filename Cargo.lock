@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "denort"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "color-eyre",
@@ -3603,7 +3603,7 @@ dependencies = [
 
 [[package]]
 name = "ghjk"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -5917,7 +5917,7 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "play"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 dependencies = [
  "clap",
  "color-eyre",
@@ -9164,7 +9164,7 @@ checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
 
 [[package]]
 name = "xtask"
-version = "0.3.0-rc.3"
+version = "0.3.0"
 dependencies = [
  "clap",
  "color-eyre",

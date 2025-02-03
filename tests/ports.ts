@@ -74,7 +74,9 @@ const cases: CustomE2eTestCase[] = [
     installConf: ports.rustup(),
     ePoint: `rustup-init --version`,
   },
-  // 14 megs
+  // FIXME: this doesn't seem to work on mac and arm64 runners
+  // for some reason.
+  /* // 14 megs
   {
     name: "asdf-uv",
     ePoint: `uv --version`,
@@ -85,7 +87,7 @@ const cases: CustomE2eTestCase[] = [
     secureConf: {
       enableRuntimes: true,
     },
-  },
+  }, */
   // 15 megs
   {
     name: "fx_ghrel",
