@@ -1,5 +1,7 @@
 #!/bin/env -S deno run -A
 
+//! A devshell.
+//!
 //! Spawns the provided arguments within an environment
 //! that contains a ghjk installation from the repo instead
 //! of the gloabl ghjk installation

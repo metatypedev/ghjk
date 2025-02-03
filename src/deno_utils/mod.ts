@@ -261,6 +261,7 @@ export type DownloadFileArgs = {
 
 /**
  * This avoid re-downloading a file if it's already successfully downloaded before.
+ * FIXME: this has a shameful apisucks
  */
 export async function downloadFile(
   args: DownloadFileArgs,
@@ -278,7 +279,7 @@ export async function downloadFile(
     logger().debug(`file ${name} already downloaded, skipping`);
     return;
   }
-  const tmpFilePath = $.path(tmpDirPath).join(name);
+  const tmpFilePath = (await $.path(tmpDirPath).ensureDir()).join(name);
 
   await $.request(url)
     .header(headers)
@@ -365,8 +366,17 @@ export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
 /**
  * A reference counted box that makse use of `asyncDispose`.
  * `async using myVar = asyncRc(setTimeout(() => console.log("hola)), clearTimeout)`
+ * ```ts
+ * let val: number = 1;
+ * {
+ *    await using myVar = asyncRc("test", async () => { val -=1; })
+ *    if (val != 1) throw new Error("impossible")
+ * }
+ * //FIXME: type hints in doc tests are broken so we +0 to cast it to number.
+ * if ((val + 0) != 0) throw new Error("impossible")
+ * ```
  */
-export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<void>) {
+export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<any>) {
   const rc = {
     counter: 1,
     val,

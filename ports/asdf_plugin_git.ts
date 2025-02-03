@@ -60,6 +60,7 @@ export default function conf(config: AsdfPluginInstallConf) {
 
 export function buildDep(): AllowedPortDep {
   return {
+    ...readGhVars(),
     manifest,
     defaultInst: {
       portRef: getPortRef(manifest),

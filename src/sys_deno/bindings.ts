@@ -112,7 +112,11 @@ function instanceBinding(
     load_config_cb_key: Ghjk.callbacks.set(
       `sys_load_config_${instanceId}`,
       async (args: Json) => {
-        const { config, bb, state: stateRaw } = args as {
+        const { config, bb, state: stateRaw } = JSON.parse(
+          // the FFId values don't have prototypes
+          // resulting [Object null protoype]  prefixes during print
+          JSON.stringify(args),
+        ) as {
           config: ModuleManifest;
           bb: Blackboard;
           state?: State;

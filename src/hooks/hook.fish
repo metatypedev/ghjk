@@ -77,18 +77,18 @@ function ghjk_hook --on-variable PWD
             if test (__ghjk_get_mtime_ts $next_env_dir/activate.fish) -lt (__ghjk_get_mtime_ts $local_ghjk_dir/../ghjk.ts)
                 set_color FF4500
                 if test $next_env = "default"
-                    echo "[ghjk] Possible drift from default environment, please sync..."
+                    echo "[ghjk] Possible drift from default environment, please sync..." >&2
                 else
-                    echo "[ghjk] Possible drift from active environment ($next_env), please sync..."
+                    echo "[ghjk] Possible drift from active environment ($next_env), please sync..." >&2
                 end
                 set_color normal
             end
         else
             set_color FF4500
             if test $next_env = "default"
-                echo "[ghjk] Default environment not found, please sync..."
+                echo "[ghjk] Default environment not found, please sync..." >&2
             else
-                echo "[ghjk] Active environment ($next_env) not found, please sync..."
+                echo "[ghjk] Active environment ($next_env) not found, please sync..." >&2
             end
             set_color normal
         end

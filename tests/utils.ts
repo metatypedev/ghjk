@@ -70,6 +70,8 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
       : $.path(Deno.env.get("HOME")!).resolve(".cache", "deno").toString(),
     RUST_LOG: Deno.env.get("RUST_LOG"),
     GHJK_LOG: Deno.env.get("GHJK_LOG"),
+    GITHUB_TOKEN: Deno.env.get("GITHUB_TOKEN"),
+    GH_TOKEN: Deno.env.get("GH_TOKEN"),
     ...testEnvs,
   };
   // install ghjk

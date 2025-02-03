@@ -100,6 +100,7 @@ jobs:
         run: brew install fish zsh coreutils cmake
       - run: |
           deno task test-rust
+          deno task test-doc
           deno task test
 
   # test-action:
