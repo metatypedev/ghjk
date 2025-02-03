@@ -394,6 +394,61 @@
           "buildDepConfigs": {},
           "portRef": "git_aa@0.1.0",
           "specifiedVersion": true
+        },
+        "bciqlkrsun5iqwtwpjeim5xiupjmhahjdicbbcsm7lw2a2w77vun4n5q": {
+          "version": "0.5.26",
+          "buildDepConfigs": {
+            "curl_aa": {
+              "version": "8.9.1",
+              "buildDepConfigs": {},
+              "portRef": "curl_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            },
+            "asdf_plugin_git": {
+              "version": "ce093c3592",
+              "buildDepConfigs": {
+                "git_aa": {
+                  "version": "2.47.1",
+                  "buildDepConfigs": {},
+                  "portRef": "git_aa@0.1.0",
+                  "specifiedVersion": false
+                }
+              },
+              "portRef": "asdf_plugin_git@0.1.0",
+              "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+              "specifiedVersion": false
+            }
+          },
+          "resolutionDepConfigs": {
+            "asdf_plugin_git": {
+              "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+              "portRef": "asdf_plugin_git@0.1.0"
+            }
+          },
+          "portRef": "asdf@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+          "installType": "version",
+          "specifiedVersion": false
+        },
+        "bciqoolqix77uqeyy2cpsuesznpqt3i4wjpxhunehi3cwya6lq7s4nca": {
+          "version": "ce093c3592",
+          "buildDepConfigs": {
+            "git_aa": {
+              "version": "2.47.1",
+              "buildDepConfigs": {},
+              "portRef": "git_aa@0.1.0",
+              "specifiedVersion": false
+            }
+          },
+          "portRef": "asdf_plugin_git@0.1.0",
+          "pluginRepo": "https://github.com/asdf-community/asdf-uv",
+          "specifiedVersion": false
         }
       }
     },

@@ -76,10 +76,10 @@ const cases: CustomE2eTestCase[] = [
   },
   // 14 megs
   {
-    name: "asdf-duckdb",
-    ePoint: `duckdb --version`,
+    name: "asdf-uv",
+    ePoint: `uv --version`,
     installConf: ports.asdf({
-      pluginRepo: "https://github.com/asdf-community/asdf-duckdb",
+      pluginRepo: "https://github.com/asdf-community/asdf-uv",
       installType: "version",
     }),
     secureConf: {
