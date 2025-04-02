@@ -1,3 +1,4 @@
+// FIXME: auto generate this at pre-commit or use dynamic imports
 export { default as act } from "./act.ts";
 export { default as asdf } from "./asdf.ts";
 export { default as asdf_plugin_git } from "./asdf_plugin_git.ts";
@@ -12,6 +13,7 @@ export { default as git } from "./git.ts";
 export { default as infisical } from "./infisical.ts";
 export { default as jq_ghrel } from "./jq_ghrel.ts";
 export { default as livekit_cli_ghrel } from "./livekit_cli_ghrel.ts";
+export { default as lade_ghrel } from "./lade_ghrel.port.ts";
 export { default as meta_cli_ghrel } from "./meta_cli_ghrel.ts";
 export { default as mold } from "./mold.ts";
 export { default as node } from "./node.ts";
@@ -27,6 +29,7 @@ export { default as rustup } from "./rustup.ts";
 export { default as tar } from "./tar.ts";
 export { default as temporal_cli } from "./temporal_cli.ts";
 export { default as terraform } from "./terraform.ts";
+export { default as terragrunt_ghrel } from "./terragrunt_ghrel.port.ts";
 export { default as unzip } from "./unzip.ts";
 export { default as wasmedge } from "./wasmedge.ts";
 export { default as zstd } from "./zstd.ts";

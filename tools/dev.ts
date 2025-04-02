@@ -1,11 +1,13 @@
 #!/bin/env -S deno run -A
 
+//! A devshell.
+//!
 //! Spawns the provided arguments within an environment
 //! that contains a ghjk installation from the repo instead
 //! of the gloabl ghjk installation
 
-import { defaultInstallArgs, install } from "../install/mod.ts";
-import { $ } from "../utils/mod.ts";
+import { defaultInstallArgs, install } from "../src/install/mod.ts";
+import { $ } from "../src/deno_utils/mod.ts";
 
 const devDir = $.path(
   import.meta.dirname!,
@@ -49,7 +51,7 @@ await install({
   shellsToHook: [],
 });
 
-// await $`${ghjkDataDir.join("ghjk").toString()} print config`
+// await $`${ghjkDataDir.join("ghjk").toString()} print serialized`
 //   .cwd(devDir.toString())
 //   .clearEnv()
 //   .env(env);

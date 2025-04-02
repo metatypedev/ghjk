@@ -1,8 +1,8 @@
-use std::io::IsTerminal;
-
 use crate::interlude::*;
 
 use crate::systems::*;
+
+use std::io::IsTerminal;
 
 mod deno;
 mod hashfile;
@@ -112,7 +112,7 @@ pub async fn systems_from_ghjkfile(
 
     let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.config.ghjkfile {
         (
-            matches!(tokio::fs::try_exists(path).await, Ok(true)),
+            crate::utils::file_exists(path).await?,
             Some(
                 hashfile::file_digest_hash(hcx.as_ref(), path)
                     .await?

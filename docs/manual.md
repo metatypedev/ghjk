@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/install.sh | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh" | bash
 ```
 
 This will install the CLI and add configuration your shell rc files the necessary hooks ghjk needs to function.
@@ -37,18 +37,19 @@ ghjk init ts
 Look through the following snippet to understand the basic structure of a `ghjk.ts` file.
 
 ```ts
-// import the file function from `mod.ts` using the version of ghjk
-// one's using. For example 
-// https://raw.github.com/metatypedev/ghjk/v0.3.0-rc.1/
-import { file } from ".../mod.ts";
-// import the port for the node program
-import node from ".../ports/node.ts";
-
-const ghjk = file();
-
 // all ghjk.ts files are expected to export this special `sophon` object
-// all the functions from the ghjk object are modifying the sophon
-export const sophon = ghjk.sophon;
+export { sophon } from "@ghjk/ts";
+// by default, a `deno.jsonc` file is created in the `.ghjk/` directory
+// which will provide the `ghjk` import alias configured to the CLI's version
+// of ghjk
+import { file } from "@ghjk/ts";
+// import the port for the node program
+import node from "@ghjk/ports_wip/node.ts";
+
+// Create the ghjk object using the file functiono. This modifies 
+// the sophon exported above and may only be called once during 
+// serialization.
+const ghjk = file();
 
 // install programs (ports) into your env
 ghjk.install(
@@ -63,7 +64,7 @@ ghjk.task("greet", async ($) => {
 
 One can look at the [examples](../examples/) found in the ghjk repo for an exploration of the different features available.
 
-## `$GHJK_DIR`
+## `$GHJKDIR`
 
 Once you have a ghjkfile ready to go, the ghjk CLI can be used to access all the features your ghjkfile is using.
 Augmenting the CLI are the hooks that were installed into your shells rc file (startup scripts like `~/.bashrc`). 
@@ -78,7 +79,7 @@ The `$GHJKFILE` environment variable can be set to point the CLI and hooks at a 
 
 The `.ghjk` dir is used by ghjk for different needs and contains some files you'll want to check into version control.
 It includes its own `.gitignore` file by default that excludes all items not of interest for version control.
-The `$GHJK_DIR` variable can be used to point the CLI at a different directory.
+The `$GHJKDIR` variable can be used to point the CLI at a different directory.
 
 ## Serialized
 
@@ -95,7 +96,7 @@ To look at what the ghjkfile looks like serialized, you can use the following co
 
 ```bash
 # look at the serialized form the ghjkfile
-ghjk print config
+ghjk print serialized
 ```
 
 #### The Hashfile
@@ -109,11 +110,10 @@ Thankfully, through the great sandbox provided through Deno's implementation, th
 - The contents of the ghjkfile
 - Files accessed during serialization
 - Environment variables read during serialization
+- Configuration used by the ghjk cli
 
-This doesn't cover everything though and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
-You'll generally want to avoid any logic that's deterministic on inputs like time or RNGs.
-
-There are still a couple of glaring omissions from this list that will be addressed as ghjk matures.
+This doesn't cover everything though, and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
+You'll generally want to avoid any logic that's not deterministic and depends on inputs like time or RNGs.
 If you encounter any edge cases or want to force re-serialization, you can remove the hashfile at `.ghjk/hash.json` which contains hashes for change tracking.
 
 ```bash
@@ -128,8 +128,8 @@ $ ghjk --help
 #### The Lockfile
 
 The cached value of the serialization results are stored in the lockfile.
-The lockfile is what the different modules of ghjk use to store transient information that needs to be tracked across serializations.
-Currently, this is mainly used by the port modules to retain version numbers resolved during installation which is important for the basic need of reproducibility.
+The lockfile is what the different systems of ghjk use to store transient information that needs to be tracked across serializations.
+Currently, this is mainly used by the ports system to retain version numbers resolved during installation, which is important for the basic need of reproducibility.
 
 To maintain reproducibility across different machines, this file needs to be checked into version control.
 Unfortunately, this can lead to version conflicts during git merges for example.
@@ -143,7 +143,7 @@ The best way to resolve ghjk merge conflicts is to:
     - In git, easier to remove any changes in the merge and revert to the base/HEAD branch
 - Re-serialize by invoking the ghjk CLI
 
-This simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
+These simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
 Of course, if the discarded version of the lockfile contained new versions, they'll be re-resolved possibly to a different version.
 But generally, if the versions specified in ghjkfile are tight enough, it'll resolve the same values as before.
 If versions are important, it's good to explicitly specify them in your ghjkfile.
@@ -157,7 +157,8 @@ You declare them in your ghjkfile, using typescript functions, and then invoke t
 The CLI will then load your ghjkfile in a worker and execute your function.
 
 ```ts
-import { file } from ".../mod.ts";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 
 const ghjk = file();
 
@@ -198,7 +199,8 @@ Ghjk envs then allow you:
 Let's look at how one configures an environment using the `ghjk.ts` file:
 
 ```ts
-import { file } from ".../mod.ts";
+export { sophon } from "@ghjk/ts";
+import { file } from "@ghjk/ts";
 
 const ghjk = file();
 
@@ -214,7 +216,7 @@ ghjk.env("my-env")
 
 By default, your ghjkfile has an env called `main`.
 Envs can inherit from each other and by default inherit from the `main` environment.
-Inheritance is additive based for most env properties and allows easy composition.
+Inheritance is additive on most env properties and allows easy composition.
 Please look at the [envs example](../examples/envs/ghjk.ts) or the [kitchen sink](../examples/kitchen/ghjk.ts) example which show all the knobs available on envs.
 
 You can then access the envs feature under the `envs` section of the CLI:
@@ -312,9 +314,9 @@ Any `InstallConfig` objects included in an env will then be resolved and install
 
 ```ts
 // the default export corresponds to the `conf` function
-import node from ".../ports/node.ts";
+import node from "@ghjk/ports_wip/node.ts";
 // the npmi installs executable packages from npm
-import npmi from ".../ports/node.ts";
+import npmi from "@ghjk/ports_wip/node.ts";
 
 // top level `install` calls go to the `main` env
 ghjk.install(
@@ -346,9 +348,9 @@ The default set includes common utilities like `curl`, `git`, `tar` and others w
 More ports can be easily added to the allowed port dep set.
 
 ```ts
-import { file } from ".../mod.ts";
+import { file } from "@ghjk/ts";
 // barrel export for ports in the ghjk repo
-import * as ports from "../../ports/mod.ts";
+import * as ports from "@ghjk/ports_wip";
 
 const ghjk = file();
 
@@ -406,23 +408,23 @@ The primarily difference between the two scenarios is how activation of envs is 
 The standard installation script is the best way to install ghjk in CI environments.
 The environment [variables](./installation-vars.md) used for the installer customization come in extra handy here.
 Namely, it's good practice to:
-- Make sure the `$GHJK_VERSION` is the one used by the ghjkfile.
-- Specify `$GHJK_SHARE_DIR` to a location that can be cached by your CI tooling. This is where ports get installed.
+- Make sure the `$VERSION` is the one used by the ghjkfile.
+- Specify `$GHJK_DATA_DIR` to a location that can be cached by your CI tooling. This is where ports get installed.
 - Specify `$GHJK_INSTALL_EXE_DIR` to a location that you know will be in `$PATH`. This is where the ghjk CLI gets installed to.
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.0-rc.1
+ARG GHJK_VERSION=v0.3.0
 # /usr/bin is available in $PATH by default making ghjk immediately avail
-RUN curl -fsSL https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.sh \
+RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
 ```
 
 ### Activation
 
 When working on non-interactive shells, the ghjk shell hooks are not available.
-This means that the default environment won't be activated for that CWD nor will any changes occur on changing directories.
-It also prevents the `ghjk envs activate` command from functioning which requires that these hooks be run before each command.
+This means that the default environment won't be activated for that CWD, nor will any changes occur on changing directories.
+It also prevents the `ghjk sync` and `ghjk envs activate` commands from functioning which requires that these hooks be run before each command.
 In such scenarios, one can directly `source` the activation script for the target env from the `.ghjk` directory.
 
 ```bash
@@ -481,3 +483,59 @@ Otherwise, it's necessary to use the approach described in the section above.
         run: |
           echo $GHJK_ENV
 ```
+
+## `config.json`
+
+One can examine the configuration values used by the CLI using the following command...
+
+```bash
+ghjk print config
+# {
+#   /* json rep of config */
+# }
+```
+
+These are generally values that need to be resolved before the serializaiton process.
+Most of these settings can be configured through the `config.json` file, which is looked for at `.ghjk/config.json` by default.
+Additionally, most of these values can be configured through environment variables under keys that are the name of the config value prefixed by `GHJK_`.
+So for the `repo_root` config, this would be resolved from the `$GHJK_REPO_ROOT` env var.
+Some of the values can be configured globally thorugh a file looked for at `$XDG_CONFIG_PATH/ghjk/config.json`.
+
+The following snippet shows the current config set, their defafults, and an explanation of their purpose.
+
+```jsonc
+{
+  // Path to the deno config file used to configure the deno runtime
+  // like import aliases. 
+  // If not found, this is created by default to support the `ghjk` 
+  // alias used by ghjk.ts files. Default creation is disabled if
+  // the import_map path is set.
+  "deno_json": "<$ghjkdir/deno.jsonc>",
+  // Path to an deno.lock file used to lock modules imported by deno.
+  // Set it to value `off` to disable lockfile usage.
+  // The `deno.json` spec also supports configuring the deno.lock path 
+  // from within it which will be respected
+  "deno_lockfile": "<$ghjkdir/deno.lock>",
+  // Path to an import_map.json for resolving js import aliases
+  // `deno_json`, if set, will takes precedence over this. 
+  // The `deno.json` spec also supports configuring the import_map path 
+  // from within it which will be respected
+  "import_map": null,
+
+  // data dir to be used by systems. This is where
+  // ports get installed and is shared across ghjkdirs.
+  // *supports global configuration*
+  "data_dir": "<$XDG_DATA_DIR/ghjk>",
+  // Cache dir used by deno. This is where
+  // where deno caches downloaded modules.
+  // *supports global configuration*
+  "deno_dir": "<$XDG_DATA_DIR/ghjk/deno>",
+  // The repo root url used to import the typescript section
+  // of the ghjk implementation from.
+  // *supports global configuration*
+  "repo_root": "<url to ghjk git repo under the ref used to build the current cli>",
+}
+```
+
+In addition to a `config.json` files, `config.json5` files are also supported which is a [friendlier superset of JSON](https://json5.org/) with support for comments and more.
+Note that environment varible resolved config takes precedence over the local `config.json` which takes precedence over globally configured values.

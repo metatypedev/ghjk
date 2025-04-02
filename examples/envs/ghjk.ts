@@ -1,6 +1,6 @@
-export { sophon } from "../../hack.ts";
-import { config, env, install, task } from "../../hack.ts";
-import * as ports from "../../ports/mod.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { config, env, install, task } from "@ghjk/ts/hack.ts";
+import * as ports from "@ghjk/ports_wip";
 
 config({
   // we can change which environment

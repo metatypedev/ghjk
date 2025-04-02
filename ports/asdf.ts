@@ -13,9 +13,9 @@ import {
   PortBase,
   tryDepExecShimPath,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import asdf_plugin_git from "./asdf_plugin_git.ts";
-import * as std_ports from "../modules/ports/std.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 
 export const manifest = {
   ty: "denoWorker@v1" as const,

@@ -239,6 +239,18 @@ pub fn decode_hex_multibase(source: &str) -> eyre::Result<Vec<u8>> {
     }
 }
 
+/// A simpler version of [`tokio::fs::try_exists`] that returns
+/// false on a non-existent file and not just on a broken symlink.
+#[inline(always)]
+pub async fn file_exists(path: &Path) -> Result<bool, std::io::Error> {
+    match tokio::fs::try_exists(path).await {
+        Ok(true) => Ok(true),
+        Ok(false) => Ok(false),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(err) => Err(err),
+    }
+}
+
 pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf>> {
     let mut cur = from;
     loop {
@@ -256,6 +268,38 @@ pub async fn find_entry_recursive(from: &Path, name: &str) -> Res<Option<PathBuf
                 };
                 cur = next_cur;
             }
+        }
+    }
+}
+
+pub trait JsonExt {
+    // fn remove_keys_from_obj(self, keys: &[&str]) -> Self;
+    fn destructure_into_self(self, from: Self) -> Self;
+}
+impl JsonExt for serde_json::Value {
+    /* fn remove_keys_from_obj(self, keys: &[&str]) -> Self {
+        match self {
+            serde_json::Value::Object(mut map) => {
+                for key in keys {
+                    map.remove(*key);
+                }
+                serde_json::Value::Object(map)
+            }
+            json => panic!("provided json was not an object: {:?}", json),
+        }
+    } */
+    fn destructure_into_self(self, from: Self) -> Self {
+        match (self, from) {
+            (serde_json::Value::Object(mut first), serde_json::Value::Object(second)) => {
+                for (key, value) in second.into_iter() {
+                    first.insert(key, value);
+                }
+                serde_json::Value::Object(first)
+            }
+            (first, second) => panic!(
+                "provided jsons weren't objects: first {:?}, second: {:?}",
+                first, second
+            ),
         }
     }
 }

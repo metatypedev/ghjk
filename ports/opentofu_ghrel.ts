@@ -6,15 +6,17 @@ import {
   InstallArgs,
   type InstallConfigSimple,
   osXarch,
-  std_fs,
   std_path,
   unarchive,
-} from "../port.ts";
-import { GithubReleasesInstConf, readGhVars } from "../modules/ports/ghrel.ts";
+} from "../src/deno_ports/mod.ts";
+import {
+  GithubReleasesInstConf,
+  readGhVars,
+} from "../src/sys_deno/ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
-  name: "opentofu_ghrel",
+  name: "opentofu_ghrel_fix",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
   platforms: osXarch(
@@ -71,14 +73,19 @@ export class Port extends GithubReleasePort {
 
     await unarchive(fileDwnPath, args.tmpDirPath);
 
+    const tmpDir = $.path(args.tmpDirPath);
+    const binDir = await tmpDir.join("bin").ensureDir();
+    for (const fileName of ["tofu"]) {
+      // deno-lint-ignore no-await-in-loop
+      await tmpDir
+        .join(args.platform.os == "windows" ? fileName + ".exe" : fileName)
+        .renameToDir(binDir);
+    }
+
     const installPath = $.path(args.installPath);
     if (await installPath.exists()) {
       await installPath.remove({ recursive: true });
     }
-
-    await std_fs.copy(
-      args.tmpDirPath,
-      installPath.join("bin").toString(),
-    );
+    await tmpDir.rename(installPath);
   }
 }

@@ -1,13 +1,16 @@
 use crate::interlude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Config {
     pub ghjkfile: Option<PathBuf>,
     pub ghjkdir: Option<PathBuf>,
     pub data_dir: PathBuf,
     pub deno_dir: PathBuf,
+    pub deno_json: Option<PathBuf>,
     pub deno_lockfile: Option<PathBuf>,
+    pub import_map: Option<PathBuf>,
     pub repo_root: url::Url,
+    pub deno_no_lockfile: bool,
 }
 
 #[derive(Deserialize)]
@@ -21,7 +24,9 @@ struct GlobalConfigFile {
 struct LocalConfigFile {
     #[serde(flatten)]
     global: GlobalConfigFile,
+    deno_json: Option<PathBuf>,
     deno_lockfile: Option<String>,
+    import_map: Option<PathBuf>,
 }
 
 impl Config {
@@ -30,7 +35,7 @@ impl Config {
         let xdg_dirs = directories::ProjectDirs::from("", "", "ghjk")
             .expect_or_log("unable to resolve home dir");
 
-        let ghjkdir_path = match path_from_env(&cwd, "GHJK_DIR")? {
+        let ghjkdir_path = match path_from_env(&cwd, "GHJKDIR")? {
             Some(val) => Some(val),
             None => crate::utils::find_entry_recursive(&cwd, ".ghjk")
                 .await
@@ -45,9 +50,7 @@ impl Config {
                 match &ghjkdir_path {
                     Some(ghjkfile_path) => {
                         crate::utils::find_entry_recursive(
-                            ghjkfile_path
-                                .parent()
-                                .expect_or_log("invalid GHJK_DIR path"),
+                            ghjkfile_path.parent().expect_or_log("invalid GHJKDIR path"),
                             ghjkfile_name,
                         )
                         .await?
@@ -61,7 +64,7 @@ impl Config {
             }
         };
 
-        // if ghjkfile var is set, set the GHJK_DIR overriding
+        // if ghjkfile var is set, set the GHJKDIR overriding
         // any set by the user
         let (ghjkfile_path, ghjkdir_path) = if let Some(path) = ghjkfile_path {
             let file_path = tokio::fs::canonicalize(&path)
@@ -84,7 +87,11 @@ impl Config {
             ghjkdir: ghjkdir_path.clone(),
             data_dir: xdg_dirs.data_dir().to_owned(),
             deno_dir: xdg_dirs.data_dir().join("deno"),
-            deno_lockfile: ghjkdir_path.as_ref().map(|path| path.join("deno.lock")),
+            deno_json: ghjkdir_path.as_ref().map(|path| path.join("deno.jsonc")),
+            // these are set by setup_deno_json below
+            import_map: None,
+            deno_lockfile: None,
+            deno_no_lockfile: false,
             repo_root: {
                 if cfg!(debug_assertions) {
                     url::Url::from_file_path(&cwd)
@@ -92,8 +99,7 @@ impl Config {
                         .join(&format!("{}/", cwd.file_name().unwrap().to_string_lossy()))
                         .wrap_err("repo url error")?
                 } else {
-                    const BASE_URL: &str =
-                        "https://raw.githubusercontent.com/metatypedev/metatype/";
+                    const BASE_URL: &str = "https://raw.githubusercontent.com/metatypedev/ghjk/";
                     // repo root url must end in slash due to
                     // how Url::join works
                     let url = BASE_URL.to_owned() + crate::shadow::COMMIT_HASH + "/";
@@ -109,7 +115,7 @@ impl Config {
 
         // we use builtin config-rs File implementation
         // which relies on sync std
-        let config = tokio::task::spawn_blocking(move || {
+        let mut config = tokio::task::spawn_blocking(move || {
             {
                 config
                     .source_global_config(&global_config_path)
@@ -140,9 +146,10 @@ impl Config {
         .await
         .expect_or_log("tokio error")?;
 
+        // create .gitignore
         if let Some(path) = &config.ghjkdir {
             let ignore_path = path.join(".gitignore");
-            if !matches!(tokio::fs::try_exists(&ignore_path).await, Ok(true)) {
+            if !crate::utils::file_exists(&ignore_path).await? {
                 tokio::fs::create_dir_all(path)
                     .await
                     .wrap_err_with(|| format!("error creating ghjkdir at {path:?}"))?;
@@ -155,6 +162,11 @@ hash.json",
                 .wrap_err_with(|| format!("error writing ignore file at {ignore_path:?}"))?;
             }
         }
+        // create deno.json
+        config
+            .setup_deno_json()
+            .await
+            .wrap_err("error setting up deno.json")?;
         Ok(config)
     }
 
@@ -169,13 +181,16 @@ hash.json",
             .wrap_err("error reading config file")?
             .try_deserialize()
             .wrap_err("error deserializing config file")?;
+        let parent = file_path
+            .parent()
+            .ok_or_else(|| ferr!("error getting path to config parent dir"))?;
         if let Some(path) = data_dir {
             self.data_dir =
-                resolve_config_path(&path, file_path).wrap_err("error resolving data_dir")?;
+                resolve_config_path(&path, parent).wrap_err("error resolving data_dir")?;
         }
         if let Some(path) = deno_dir {
             self.deno_dir =
-                resolve_config_path(&path, file_path).wrap_err("error resolving deno_dir")?;
+                resolve_config_path(&path, parent).wrap_err("error resolving deno_dir")?;
         }
         if let Some(path) = repo_root {
             self.repo_root = deno_core::resolve_url_or_path(&path, file_path)
@@ -194,6 +209,8 @@ hash.json",
                     repo_root,
                 },
             deno_lockfile,
+            import_map,
+            deno_json,
         } = config::Config::builder()
             .add_source(config::File::with_name(&file_path.to_string_lossy()).required(false))
             .build()
@@ -201,21 +218,40 @@ hash.json",
             .try_deserialize()
             .wrap_err("error deserializing config file")?;
 
+        let parent = file_path
+            .parent()
+            .ok_or_else(|| ferr!("error getting path to config parent dir"))?;
         if let Some(path) = data_dir {
             self.data_dir =
-                resolve_config_path(&path, file_path).wrap_err("error resolving data_dir")?;
+                resolve_config_path(&path, parent).wrap_err("error resolving data_dir")?;
         }
         if let Some(path) = deno_dir {
             self.deno_dir =
-                resolve_config_path(&path, file_path).wrap_err("error resolving deno_dir")?;
+                resolve_config_path(&path, parent).wrap_err("error resolving deno_dir")?;
+        }
+        if let Some(path) = import_map {
+            // we want to disable the default deno.jsonc if import_map
+            // is set
+            if deno_json.is_none() {
+                self.deno_json = None
+            }
+            self.import_map =
+                Some(resolve_config_path(&path, parent).wrap_err("error resolving import_map")?);
+        }
+        if let Some(path) = deno_json {
+            self.deno_json =
+                Some(resolve_config_path(&path, parent).wrap_err("error resolving deno_json")?);
         }
         if let Some(path) = deno_lockfile {
-            self.deno_lockfile = Some(
-                resolve_config_path(&path, file_path).wrap_err("error resolving deno_lockfile")?,
-            );
+            self.deno_lockfile = if path != "off" {
+                Some(resolve_config_path(&path, parent).wrap_err("error resolving deno_lockfile")?)
+            } else {
+                self.deno_no_lockfile = true;
+                None
+            };
         }
         if let Some(path) = repo_root {
-            self.repo_root = deno_core::resolve_url_or_path(&path, file_path)
+            self.repo_root = deno_core::resolve_url_or_path(&path, parent)
                 .map_err(|err| ferr!(Box::new(err)))
                 .wrap_err("error resolving repo_root")?;
         }
@@ -231,6 +267,8 @@ hash.json",
                     repo_root,
                 },
             deno_lockfile,
+            import_map,
+            deno_json,
         } = config::Config::builder()
             .add_source(config::Environment::with_prefix("GHJK"))
             .build()
@@ -244,10 +282,24 @@ hash.json",
         if let Some(path) = deno_dir {
             self.deno_dir = resolve_config_path(&path, cwd).wrap_err("error resolving deno_dir")?;
         }
+        if let Some(path) = import_map {
+            // we want to disable the default deno.jsonc if import_map
+            // is set
+            if deno_json.is_none() {
+                self.deno_json = None
+            }
+            self.import_map =
+                Some(resolve_config_path(&path, cwd).wrap_err("error resolving import_map")?);
+        }
+        if let Some(path) = deno_json {
+            self.deno_json =
+                Some(resolve_config_path(&path, cwd).wrap_err("error resolving deno_json")?);
+        }
         if let Some(path) = deno_lockfile {
             self.deno_lockfile = if path != "off" {
                 Some(resolve_config_path(&path, cwd).wrap_err("error resolving deno_lockfile")?)
             } else {
+                self.deno_no_lockfile = true;
                 None
             };
         }
@@ -257,6 +309,98 @@ hash.json",
                 .wrap_err("error resolving repo_root")?;
         }
         Ok(())
+    }
+
+    async fn setup_deno_json(&mut self) -> Res<()> {
+        let Some(deno_json_path) = &self.deno_json else {
+            return Ok(());
+        };
+        match tokio::fs::read_to_string(deno_json_path).await {
+            Ok(raw) => {
+                use deno::deno_config::deno_json::{ConfigFile, LockConfig};
+                let config = ConfigFile::new(&raw, "file:///INLINE".parse().unwrap(), &default())
+                    .wrap_err("error parsing deno.json")?;
+
+                let parent = deno_json_path.parent().unwrap();
+
+                // we always give preference to env vars
+                if std::env::var("GHJK_DENO_LOCKFILE").is_err() {
+                    // make sure the lockfile path from deno.json is preferred
+                    match config
+                        .to_lock_config()
+                        .map_err(denort::anyhow_to_eyre!())
+                        .wrap_err("error parsing deno.json lock section")?
+                    {
+                        Some(LockConfig::Object {
+                            path: Some(path), ..
+                        })
+                        | Some(LockConfig::PathBuf(path)) => {
+                            self.deno_lockfile = if path.starts_with("/./") {
+                                // remove the weird prefix
+                                Some(parent.join(path.strip_prefix("/./").unwrap()))
+                            } else {
+                                Some(parent.join(path))
+                            };
+                        }
+                        _ => {
+                            if self.deno_lockfile.is_none() {
+                                self.deno_lockfile = Some(parent.join("deno.lock"))
+                            }
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+            // create the deno.json file if it doesn't exist
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                let parent = deno_json_path
+                    .parent()
+                    .expect_or_log("deno_json path error");
+                tokio::fs::create_dir_all(&parent)
+                    .await
+                    .wrap_err_with(|| format!("error creating ghjkdir at {deno_json_path:?}"))?;
+                let mut deno_json = json!({});
+                if let Some(import_map_path) = &self.import_map {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "importMap": pathdiff::diff_paths(import_map_path, parent)
+                            .unwrap_or_else(|| import_map_path.clone())
+                    }))
+                } else {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "imports": {
+                            "@ghjk/ts/": self.repo_root.join("./src/ghjk_ts/").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ts": self.repo_root.join("./src/ghjk_ts/mod.ts").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ports_wip": self.repo_root.join("./ports/mod.ts").expect_or_log("repo root error").to_string(),
+                            "@ghjk/ports_wip/": self.repo_root.join("./ports/").expect_or_log("repo root error").to_string(),
+                        },
+                    }));
+                }
+                if self.deno_no_lockfile {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": false
+                    }))
+                } else if let Some(deno_lockfile_path) = &self.deno_lockfile {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": pathdiff::diff_paths(deno_lockfile_path, parent)
+                            .unwrap_or_else(|| deno_lockfile_path.clone())
+                    }))
+                } else {
+                    deno_json = deno_json.destructure_into_self(json!({
+                        "lock": "./deno.lock",
+                    }))
+                }
+                tokio::fs::write(
+                    &deno_json_path,
+                    serde_json::to_vec_pretty(&deno_json).expect_or_log("json error"),
+                )
+                .await
+                .wrap_err_with(|| format!("error writing deno_json file at {deno_json_path:?}"))?;
+
+                Ok(())
+            }
+            Err(err) => Err(err.into()),
+        }
     }
 }
 

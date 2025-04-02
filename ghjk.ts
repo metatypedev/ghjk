@@ -1,16 +1,30 @@
-// @ts-nocheck: Ghjkfile based on Deno
+export { sophon } from "./src/ghjk_ts/mod.ts";
+import { file } from "./src/ghjk_ts/mod.ts";
+//
 
-export { sophon } from "./hack.ts";
-import { config, env, install, task } from "./hack.ts";
-import { switchMap } from "./port.ts";
 import * as ports from "./ports/mod.ts";
-import { sedLock } from "./std.ts";
-import { downloadFile, DownloadFileArgs } from "./utils/mod.ts";
-import { unarchive } from "./utils/unarchive.ts";
-import dummy from "./ports/dummy.ts";
+import { sedLock } from "./src/ghjk_ts/std.ts";
+import {
+  downloadFile,
+  DownloadFileArgs,
+  switchMap,
+} from "./src/deno_utils/mod.ts";
 
+const ghjk = file({});
+
+const GHJK_VERSION = "0.3.0";
+const DENO_VERSION = "2.1.2";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.82.0";
+
+ghjk.env("main")
+  // these are used for developing ghjk
+  .install(
+    ports.act(),
+    ports.pipi({ packageName: "pre-commit" })[0],
+    ports.pipi({ packageName: "vale" })[0],
+    ports.deno_ghrel({ version: DENO_VERSION }),
+  );
 
 const installs = {
   rust: ports.rust({
@@ -20,84 +34,72 @@ const installs = {
   }),
 };
 
-config({
+ghjk.config({
   defaultEnv: "dev",
   enableRuntimes: true,
   allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
 });
 
-env("main").vars({
-  RUST_LOG: [
-    "info",
-    Object.entries({
-      "TRACE": [
-        // "denort",
-        // "deno",
-      ],
-      "DEBUG": [
-        // "runtime",
-        // "tokio",
-      ],
-      "INFO": [
-        "deno::npm",
-        "deno::file_fetcher",
-        "swc_ecma_transforms_base",
-        "swc_common",
-        "h2",
-        "rustls",
-        "mio",
-        "hyper_util",
-      ],
-    }).flatMap(([level, modules]) =>
-      modules.map((module) => `${module}=${level.toLowerCase()}`)
-    ),
-  ].join(),
-});
+const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
-env("_rust")
+ghjk.env("_rust")
   .install(
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
     installs.rust,
+    ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
+      ? [ports.mold({
+        version: "v2.4.0",
+        replaceLd: true,
+      })]
+      : []),
   );
 
-const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
-
-env("dev")
+ghjk.env("dev")
   .inherit("_rust")
   .install(ports.cargobi({ crateName: "tokio-console" }))
+  .install(ports.cargobi({ crateName: "cargo-bloat" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
     RUSTY_V8_MIRROR,
   });
 
-if (Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")) {
-  const mold = ports.mold({
-    version: "v2.4.0",
-    replaceLd: true,
-  });
-  env("dev").install(mold);
-}
+ghjk.env("ci")
+  .inherit("_rust");
 
 // these are just for quick testing
-install(
-  ports.asdf({
-    pluginRepo: "https://github.com/lsanwick/asdf-jq",
-    installType: "version",
-  }),
-);
+ghjk.install();
 
-const DENO_VERSION = "2.1.2";
+ghjk.env("main")
+  .vars({
+    RUST_LOG: [
+      "info",
+      Object.entries({
+        "TRACE": [
+          // "denort",
+          // "deno",
+        ],
+        "DEBUG": [
+          "runtime",
+          "tokio",
+        ],
+        "INFO": [
+          "deno::npm",
+          "deno::file_fetcher",
+          "swc_ecma_transforms_base",
+          "swc_common",
+          "h2",
+          "rustls",
+          "mio",
+          "hyper_util",
+        ],
+      }).flatMap(([level, modules]) =>
+        modules.map((module) => `${module}=${level.toLowerCase()}`)
+      ),
+    ].join(),
+  });
 
-// these are used for developing ghjk
-install(
-  ports.act(),
-  ports.pipi({ packageName: "pre-commit" })[0],
-  ports.pipi({ packageName: "vale" })[0],
-  ports.deno_ghrel({ version: DENO_VERSION }),
-);
-
-task(
+ghjk.task(
   "cache-v8",
   {
     desc: "Install the V8 builds to a local cache.",
@@ -124,7 +126,7 @@ task(
                 `librusty_v8_release_${arch}-${os}.a.gz`,
                 `librusty_v8_debug_${arch}-${os}.a.gz`,
               ].map((archiveName) => ({
-                archiveName,
+                name: archiveName,
                 url:
                   `https://github.com/denoland/rusty_v8/releases/download/${version}/${archiveName}`,
                 downloadPath: $.path(RUSTY_V8_MIRROR).join(version).toString(),
@@ -133,7 +135,7 @@ task(
             },
           )
           .filter((args) =>
-            !$.path(args.downloadPath).join(args.archiveName).existsSync()
+            !$.path(args.downloadPath).join(args.name).existsSync()
           )
           .map((args) => downloadFile(args)),
       );
@@ -142,10 +144,9 @@ task(
   },
 );
 
-task(
+ghjk.task(
   "lock-sed",
-  async ($) => {
-    const GHJK_VERSION = "0.3.0-rc.1";
+  async ($) =>
     await sedLock(
       $.path(import.meta.dirname!),
       {
@@ -187,20 +188,12 @@ task(
           // ignore this file to avoid hits on the regexps
           `ghjk.ts`,
           `.git`,
-          // TODO: std function for real ignore handling
-          ...(await $.path(".gitignore").readText())
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((line) => line.length > 0)
-            .map((l) => `${l}${l.endsWith("*") ? "" : "*"}`),
-          ...(await $.path(".ghjk/.gitignore").readText())
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((line) => line.length > 0)
-            .map((l) => `.ghjk/${l}${l.endsWith("*") ? "" : "*"}`),
+        ],
+        ignoreFiles: [
+          ".gitignore",
+          ".ghjk/.gitignore",
         ],
       },
-    );
-  },
-  { inherits: false },
+    ),
+  { inherit: false },
 );

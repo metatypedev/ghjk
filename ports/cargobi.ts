@@ -17,13 +17,13 @@ import {
   std_path,
   thinInstallConfig,
   zod,
-} from "../port.ts";
-import * as std_ports from "../modules/ports/std.ts";
+} from "../src/deno_ports/mod.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 import {
   ghConfValidator,
   GithubReleasesInstConf,
   readGhVars,
-} from "../modules/ports/ghrel.ts";
+} from "../src/sys_deno/ports/ghrel.ts";
 import rust, { RustInstallConf } from "./rust.ts";
 
 const manifest = {
@@ -174,6 +174,13 @@ export class Port extends PortBase {
         throw new Error(`error ${res.code} on cargo-binstall\n${res.combined}`);
       }
     }
+
+    await $.co(
+      (await Array.fromAsync(
+        $.path(args.tmpDirPath).join("bin").walk({ maxDepth: 0 }),
+      ))
+        .map(({ path }) => path.chmod(0o700)),
+    );
 
     await std_fs.move(
       args.tmpDirPath,

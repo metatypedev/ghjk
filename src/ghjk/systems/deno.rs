@@ -40,7 +40,7 @@ pub async fn systems_from_deno(
     let main_module = gcx
         .config
         .repo_root
-        .join("src/deno_systems/bindings.ts")
+        .join("src/sys_deno/bindings.ts")
         .wrap_err("repo url error")?;
 
     let mut ext_conf = crate::ext::ExtConfig::new();
@@ -53,7 +53,6 @@ pub async fn systems_from_deno(
             pub ghjkdir: &'a Path,
             pub data_dir: &'a Path,
             pub deno_dir: &'a Path,
-            pub deno_lockfile: Option<&'a Path>,
             pub repo_root: &'a url::Url,
         }
 
@@ -64,11 +63,16 @@ pub async fn systems_from_deno(
         }
         let crate::config::Config {
             repo_root,
-            ghjkdir: _,
             data_dir,
-            deno_lockfile,
             ghjkfile,
             deno_dir,
+            // explictly ignore fields to avoid
+            // missing additions
+            deno_lockfile: _,
+            ghjkdir: _,
+            deno_json: _,
+            import_map: _,
+            deno_no_lockfile: _,
         } = &gcx.config;
 
         json!(BindingArgs {
@@ -77,7 +81,6 @@ pub async fn systems_from_deno(
                 ghjkfile: ghjkfile.as_ref().map(|path| path.as_path()),
                 ghjkdir: ghjkdir_path,
                 data_dir,
-                deno_lockfile: deno_lockfile.as_ref().map(|path| path.as_path()),
                 deno_dir,
                 repo_root
             },
@@ -126,6 +129,9 @@ pub async fn systems_from_deno(
     let mut active_worker = worker.drive_till_exit().await?;
 
     let manifests = tokio::select! {
+        Some(err) = exception_line.recv() => {
+            return Err(err).wrap_err("error setting up deno systems")
+        }
         res = &mut active_worker.exit_code_rx => {
             let exit_code = res
                 .expect_or_log("channel error")

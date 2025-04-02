@@ -1,6 +1,6 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, genTsGhjkFile, harness, type TaskDef } from "./utils.ts";
-import * as ghjk from "../mod.ts";
+import * as ghjk from "../src/ghjk_ts/mod.ts";
 import * as ports from "../ports/mod.ts";
 
 type CustomE2eTestCase =
@@ -122,8 +122,8 @@ test (cat eddy) = 'ed edd eddy'
   {
     name: "anon",
     ghjkTs: `
-export { sophon } from "$ghjk/hack.ts";
-import { task } from "$ghjk/hack.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { task } from "@ghjk/ts/hack.ts";
 
 task({
   dependsOn: [
@@ -147,12 +147,8 @@ test (cat eddy) = 'ed edd eddy'
   {
     name: "dyn_vars",
     ghjkTs: `
-import { file } from "$ghjk/hack.ts";
-
-const ghjk = file({});
-
-export const sophon = ghjk.sophon;
-const { env, task } = ghjk;
+export { sophon } from "@ghjk/ts/hack.ts";
+import { env, task } from "@ghjk/ts/hack.ts";
 
 env("main")
   .var("A", "A#STATIC")

@@ -1,6 +1,15 @@
 name: test suite
 run-name: test suite for ${{ github.event.pull_request.title || github.ref }}
 on:
+  workflow_dispatch:
+    inputs:
+      tmate_enabled:
+        type: boolean
+        description: |
+          Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate).
+          This disables all but the test-full jobs.
+        required: false
+        default: false
   push:
     branches:
       - main
@@ -42,7 +51,7 @@ jobs:
       # pre commit runs ghjk. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
       # in the CI
-      - run: deno task self envs cook -t lock-sed
+      - run: deno task ghjk envs cook -t lock-sed
       - uses: pre-commit/action@v3.0.1
         env:
           SKIP: ghjk-resolve
@@ -54,16 +63,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux/x86_64
-          - os: custom-arm
+          - os: ubuntu-22.04-arm
             platform: linux/aarch64
-          - os: macos-latest
+          - os: macos-13
             platform: darwin/x86_64
           - os: macos-14
             platform: darwin/aarch64
           # - os: windows-latest
     steps:
+      - name: Setup tmate session
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_enabled }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
       - uses: denoland/setup-deno@v1
@@ -74,17 +88,20 @@ jobs:
         with:
           path: ${{ env.DENO_DIR }}
           key: deno-${{ hashFiles('**/deno.lock') }}
-      - if: "${{ matrix.os == 'ubuntu-latest' || matrix.os == 'custom-arm' }}"
+      - if: "${{ matrix.os == 'ubuntu-22.04' || matrix.os == 'ubuntu-22.04-arm' }}"
         # need coreutils on max for the `timeout` command
         # need cmake to build the rust deps
         run: |
           sudo apt update
           sudo apt install -y --no-install-recommends fish zsh cmake
-      - if: "${{ matrix.os == 'macos-latest' || matrix.os == 'macos-14' }}"
+      - if: "${{ matrix.os == 'macos-13' || matrix.os == 'macos-14' }}"
         # need cmake to build the rust deps
         # need coreutils on max for the `timeout` command
         run: brew install fish zsh coreutils cmake
-      - run: deno task test
+      - run: |
+          deno task test-rust
+          deno task test-doc
+          deno task test
 
   # test-action:
   #   runs-on: ubuntu-latest

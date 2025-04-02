@@ -1,4 +1,4 @@
-import "../setup_logger.ts";
+import "../src/deno_utils/setup_logger.ts";
 import { E2eTestCase, harness } from "./utils.ts";
 
 const posixInteractiveScript = `
@@ -80,8 +80,8 @@ harness(cases.map((testCase) => ({
   ...testCase,
   fs: {
     "ghjk.ts": `
-export { sophon } from "$ghjk/hack.ts";
-import { task, env } from "$ghjk/hack.ts";
+export { sophon } from "@ghjk/ts/hack.ts";
+import { task, env } from "@ghjk/ts/hack.ts";
 
 env("main")
   .onEnter(task($ => $\`/bin/sh -c 'echo remark > marker'\`))

@@ -20,7 +20,7 @@ pub async fn serialize_deno_ghjkfile(
         .gcx
         .config
         .repo_root
-        .join("files/deno/bindings.ts")
+        .join("src/ghjk_ts/bindings.ts")
         .wrap_err("repo url error")?;
 
     let mut ext_conf = crate::ext::ExtConfig::new();

@@ -3,7 +3,7 @@ import type {
   InstallArgs,
   InstallConfigSimple,
   ListAllArgs,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import {
   $,
   ALL_ARCH,
@@ -14,9 +14,9 @@ import {
   PortBase,
   std_fs,
   zod,
-} from "../port.ts";
+} from "../src/deno_ports/mod.ts";
 import node from "./node.ts";
-import * as std_ports from "../modules/ports/std.ts";
+import * as std_ports from "../src/sys_deno/ports/std.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -83,11 +83,14 @@ export class Port extends PortBase {
 
   override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
-    await $.raw`${
-      depExecShimPath(std_ports.node_org, "npm", args.depArts)
-    } install --prefix ${args.tmpDirPath} --no-fund ${conf.packageName}@${args.installVersion}`
+    await $.raw`${depExecShimPath(std_ports.node_org, "npm", args.depArts)
+      // provide prefix flat to avoid looking at package.json in parent dirs
+    } install --prefix ${args.tmpDirPath} --no-update-notifier --no-fund ${conf.packageName}@${args.installVersion}`
       .cwd(args.tmpDirPath)
-      .env(pathsWithDepArts(args.depArts, args.platform.os));
+      .env({
+        ...pathsWithDepArts(args.depArts, args.platform.os),
+        NO_UPDATE_NOTIFIER: "1",
+      });
     await std_fs.move(args.tmpDirPath, args.downloadPath);
   }
 
@@ -139,14 +142,15 @@ export class Port extends PortBase {
       });
     }
     await tmpDirPath.join("bin").ensureDir();
-    for (const [name] of bins) {
-      await tmpDirPath.join("bin", name)
+    await $.co(bins.map(([name]) =>
+      tmpDirPath
+        .join("bin", name)
         .symlinkTo(
           installPath
             .join("node_modules", ".bin", name)
             .toString(),
-        );
-    }
+        )
+    ));
     await $.removeIfExists(installPath);
     await std_fs.move(tmpDirPath.toString(), installPath.toString());
   }
