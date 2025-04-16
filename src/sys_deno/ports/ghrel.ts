@@ -84,6 +84,7 @@ export abstract class GithubReleasePort extends PortBase {
     const metadata: { tag_name: string }[] = [];
 
     for (let page = 1; ; page++) {
+      // deno-lint-ignore no-await-in-loop
       const pageMetadata = await $.withRetries({
         count: 10,
         delay: $.exponentialBackoff(1000),
@@ -92,7 +93,7 @@ export abstract class GithubReleasePort extends PortBase {
             `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=100&page=${page}`,
           )
             .header(ghHeaders(args.config))
-            .json()) as [{ tag_name: string }],
+            .json()) as { tag_name: string }[],
       });
 
       if (!pageMetadata || !pageMetadata.length) {
