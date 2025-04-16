@@ -30,7 +30,7 @@ type HostCtx = {
   lockedFlagSet: boolean;
 };
 
-const GHJK_VERSION = "0.2.1";
+const GHJK_VERSION = "0.2.2";
 
 export async function cli(args: CliArgs) {
   logger().debug(`ghjk CLI`, GHJK_VERSION);
@@ -45,7 +45,9 @@ export async function cli(args: CliArgs) {
   let gcx: GhjkCtx | undefined;
 
   if (!args.ghjkDirPath && args.ghjkfilePath) {
-    args.ghjkDirPath = $.path(args.ghjkfilePath).parentOrThrow().join(".ghjk")
+    args.ghjkDirPath = $.path(args.ghjkfilePath)
+      .parentOrThrow()
+      .join(".ghjk")
       .toString();
   }
 
@@ -73,7 +75,7 @@ export async function cli(args: CliArgs) {
       ghjkfilePath: gcx.ghjkfilePath?.toString(),
     });
 
-    if (!await gcx.ghjkDir.join(".gitignore").exists()) {
+    if (!(await gcx.ghjkDir.join(".gitignore").exists())) {
       gcx.ghjkDir.join(".gitignore").writeText($.dedent`
         envs
         hash.json`);
@@ -88,9 +90,9 @@ export async function cli(args: CliArgs) {
       // so we defer another write out until the end
       defer.push(commands.writeLockFile);
 
-      for (
-        const [cmdName, [cmd, src]] of Object.entries(commands.subCommands)
-      ) {
+      for (const [cmdName, [cmd, src]] of Object.entries(
+        commands.subCommands,
+      )) {
         const conflict = subcmds[cmdName];
         if (conflict) {
           throw new Error(
@@ -109,10 +111,7 @@ export async function cli(args: CliArgs) {
     .action(function () {
       this.showHelp();
     })
-    .command(
-      "completions",
-      new cliffy_cmd.CompletionsCommand(),
-    )
+    .command("completions", new cliffy_cmd.CompletionsCommand())
     .command(
       "deno",
       new cliffy_cmd.Command()
@@ -120,8 +119,10 @@ export async function cli(args: CliArgs) {
         .useRawArgs()
         .action(async function (_, ...args) {
           logger().debug(args);
-          await $.raw`${Deno.execPath()} ${args}`
-            .env("DENO_EXEC_PATH", Deno.execPath());
+          await $.raw`${Deno.execPath()} ${args}`.env(
+            "DENO_EXEC_PATH",
+            Deno.execPath(),
+          );
         }),
     )
     .command(
@@ -173,10 +174,7 @@ export async function cli(args: CliArgs) {
             .description(
               "Print the extracted ans serialized config from the ghjkfile",
             )
-            .option(
-              "--json",
-              `Use json format when printing config.`,
-            )
+            .option("--json", `Use json format when printing config.`)
             .action(function ({ json }) {
               if (!serializedConfig) {
                 throw new Error("no ghjkfile found.");
@@ -221,7 +219,7 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
 
   const lockEntries = {} as Record<string, unknown>;
 
-  const ghjkfileHash = await gcx.ghjkfilePath?.exists()
+  const ghjkfileHash = (await gcx.ghjkfilePath?.exists())
     ? await fileDigestHex(hcx, gcx.ghjkfilePath!)
     : undefined;
 
@@ -241,10 +239,7 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
         );
       }
       const instance: ModuleBase<unknown, unknown> = new mod.ctor();
-      lockEntries[man.id] = await instance.loadLockEntry(
-        gcx,
-        entry as Json,
-      );
+      lockEntries[man.id] = await instance.loadLockEntry(gcx, entry as Json);
     }
   }
 
@@ -258,8 +253,8 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
       // avoid reserializing the config if
       // the ghjkfile and environment is _satisfcatorily_
       // similar. "cache validation"
-      foundLockObj.version == "0" &&
-        await isHashFileValid(hcx, foundLockObj, foundHashObj, ghjkfileHash))
+      (foundLockObj.version == "0" &&
+        (await isHashFileValid(hcx, foundLockObj, foundHashObj, ghjkfileHash))))
   ) {
     configExt = {
       config: foundLockObj.config,
@@ -314,9 +309,9 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
   }
 
   if (
-    !hcx.lockedFlagSet && wasReSerialized && (
-      !foundHashObj || !deep_eql(newHashObj, foundHashObj)
-    )
+    !hcx.lockedFlagSet &&
+    wasReSerialized &&
+    (!foundHashObj || !deep_eql(newHashObj, foundHashObj))
   ) {
     await hashFilePath.writeJsonPretty(newHashObj);
   }
@@ -346,11 +341,10 @@ async function commandsFromConfig(hcx: HostCtx, gcx: GhjkCtx) {
       // e.g. the resolution memo store
       newLockObj.moduleEntries = Object.fromEntries(
         await Array.fromAsync(
-          instances.map(
-            async (
-              [id, instance, pMan],
-            ) => [id, await instance.genLockEntry(gcx, pMan)],
-          ),
+          instances.map(async ([id, instance, pMan]) => [
+            id,
+            await instance.genLockEntry(gcx, pMan),
+          ]),
         ),
       );
       // avoid writing lockfile if nothing's changed
@@ -383,16 +377,14 @@ async function isHashFileValid(
   const cwd = $.path(Deno.cwd());
   const fileHashesMatch = async () => {
     const oldHashes = foundHashFile!.readFileHashes;
-    const newHashes = await fileDigests(hcx, [
-      ...Object.keys(oldHashes),
-    ], cwd);
+    const newHashes = await fileDigests(hcx, [...Object.keys(oldHashes)], cwd);
     return deep_eql(oldHashes, newHashes);
   };
 
   const fileListingsMatch = async () => {
     const oldListed = foundHashFile!.listedFiles;
     for (const path of oldListed) {
-      if (!await cwd.resolve(path).exists()) {
+      if (!(await cwd.resolve(path).exists())) {
         return false;
       }
     }
@@ -401,23 +393,20 @@ async function isHashFileValid(
   // NOTE: these are ordered by the amount effort it takes
   // to check each
   // we only check file hash of the ghjk file if it's present
-  return (ghjkfileHash ? foundHashFile.ghjkfileHash == ghjkfileHash : true) &&
+  return (
+    (ghjkfileHash ? foundHashFile.ghjkfileHash == ghjkfileHash : true) &&
     platformMatch() &&
     envHashesMatch() &&
-    await fileListingsMatch() &&
-    await fileHashesMatch();
+    (await fileListingsMatch()) &&
+    (await fileHashesMatch())
+  );
 }
 
 type DigestsMap = Record<string, string | null | undefined>;
 
-type SerializedConfigExt = Awaited<
-  ReturnType<typeof readGhjkfile>
->;
+type SerializedConfigExt = Awaited<ReturnType<typeof readGhjkfile>>;
 
-async function readGhjkfile(
-  hcx: HostCtx,
-  configPath: Path,
-) {
+async function readGhjkfile(hcx: HostCtx, configPath: Path) {
   switch (configPath.extname()) {
     case "":
       logger().warn("config file has no extension, assuming deno config");
@@ -431,8 +420,9 @@ async function readGhjkfile(
       const envVarHashes = envVarDigests(hcx.curEnvVars, res.accessedEnvKeys);
       const cwd = $.path(Deno.cwd());
       const cwdStr = cwd.toString();
-      const listedFiles = res.listedFiles
-        .map((path) => cwd.resolve(path).toString().replace(cwdStr, "."));
+      const listedFiles = res.listedFiles.map((path) =>
+        cwd.resolve(path).toString().replace(cwdStr, "."),
+      );
       // FIXME: this breaks if the version of the file the config reads
       // has changed by this point
       // consider reading mtime of files when read by the serializer and comparing
@@ -458,10 +448,7 @@ async function readGhjkfile(
   }
 }
 
-function validateRawConfig(
-  raw: unknown,
-  configPath: Path,
-): SerializedConfig {
+function validateRawConfig(raw: unknown, configPath: Path): SerializedConfig {
   try {
     return validators.serializedConfig.parse(raw);
   } catch (err) {
@@ -498,7 +485,7 @@ async function readLockFile(lockFilePath: Path) {
     logger().error(
       `error parsing lockfile from ${lockFilePath}: ${validationError.toString()}`,
     );
-    if (Deno.stderr.isTerminal() && await $.confirm("Discard lockfile?")) {
+    if (Deno.stderr.isTerminal() && (await $.confirm("Discard lockfile?"))) {
       return;
     } else {
       throw validationError;
@@ -529,9 +516,9 @@ async function readHashFile(hashFilePath: Path) {
     return hashObjValidator.parse(rawJson);
   } catch (err) {
     logger().error(
-      `error parsing hashfile from ${hashObjValidator}: ${
-        zod_val_err.fromError(err).toString()
-      }`,
+      `error parsing hashfile from ${hashObjValidator}: ${zod_val_err
+        .fromError(err)
+        .toString()}`,
     );
     logger().warn("discarding invalid hashfile");
     return;
@@ -555,25 +542,24 @@ function envVarDigests(all: Record<string, string>, accessed: string[]) {
 async function fileDigests(hcx: HostCtx, readFiles: string[], cwd: Path) {
   const cwdStr = cwd.toString();
   const readFileHashes = {} as DigestsMap;
-  await Promise.all(readFiles.map(async (pathStr) => {
-    const path = cwd.resolve(pathStr);
-    const relativePath = path
-      .toString()
-      .replace(cwdStr, ".");
-    // FIXME: stream read into hash to improve mem usage
-    const stat = await path.lstat();
-    if (stat) {
-      const contentHash = (stat.isFile || stat.isSymlink)
-        ? await fileDigestHex(hcx, path)
-        : null;
-      readFileHashes[relativePath] = objectHash({
-        ...JSON.parse(JSON.stringify(stat)),
-        contentHash,
-      });
-    } else {
-      readFileHashes[relativePath] = null;
-    }
-  }));
+  await Promise.all(
+    readFiles.map(async (pathStr) => {
+      const path = cwd.resolve(pathStr);
+      const relativePath = path.toString().replace(cwdStr, ".");
+      // FIXME: stream read into hash to improve mem usage
+      const stat = await path.lstat();
+      if (stat) {
+        const contentHash =
+          stat.isFile || stat.isSymlink ? await fileDigestHex(hcx, path) : null;
+        readFileHashes[relativePath] = objectHash({
+          ...JSON.parse(JSON.stringify(stat)),
+          contentHash,
+        });
+      } else {
+        readFileHashes[relativePath] = null;
+      }
+    }),
+  );
   return readFileHashes;
 }
 
@@ -590,8 +576,6 @@ function fileDigestHex(hcx: HostCtx, path: Path) {
   }
   return promise;
   async function inner() {
-    return await bufferHashAsync(
-      await path.readBytes(),
-    );
+    return await bufferHashAsync(await path.readBytes());
   }
 }

@@ -2,7 +2,7 @@
 
 set -e -u
 
-GHJK_VERSION="${GHJK_VERSION:-v0.2.1}"
+GHJK_VERSION="${GHJK_VERSION:-v0.2.2}"
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/metatypedev/ghjk/$GHJK_VERSION/install.ts}"
 GHJK_SHARE_DIR="${GHJK_SHARE_DIR:-$HOME/.local/share/ghjk}"
 DENO_VERSION="${DENO_VERSION:-v1.44.2}"
