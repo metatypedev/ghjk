@@ -1,4 +1,4 @@
-// NOTE: put only type imports here
+// WARN: put only type imports here
 import type { Blackboard, GhjkCtx, ModuleManifest } from "./types.ts";
 import type { ModuleBase } from "./mod.ts";
 import type {
@@ -7,7 +7,7 @@ import type {
   DenoSystemsRoot,
 } from "./types.ts";
 import {
-  // this is an exception
+  // NOTE: despite the warning above, the following is not real import
   Ghjk,
   type Json,
 } from "../ghjk/js/runtime.js";
@@ -27,6 +27,7 @@ globalThis.addEventListener("unhandledrejection", (evt) => {
   }
 });
 
+// FIXME: investigate alternative solutions
 // start an interval to prevent the event loop exiting
 // after loading systems
 setInterval(() => {/* beat */}, 1000);

@@ -582,7 +582,7 @@
                 }
               ]
             },
-            "bciqlzb7cvow3nmr4kwrejkgeh7f4xi3pvh4xiycgond3n5utuculpqi": {
+            "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -592,7 +592,7 @@
                 {
                   "ty": "posix.envVar",
                   "key": "RUSTY_V8_MIRROR",
-                  "val": "/home/yohe/ghjk/.dev/rusty_v8"
+                  "val": "/var/home/asdf/repos/ecma/ghjk/.dev/rusty_v8"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -606,7 +606,7 @@
             "main": "bciqenvipb7pm4gge77liqnjhvdv7nhckd6kqjg3bhc3pc6e4g6o2zwa",
             "_rust": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
             "ci": "bciqm23m6kl7m2mdbjmcjoleysme4gwtkzeeqrbyrpydpm3fvx3bn25a",
-            "dev": "bciqlzb7cvow3nmr4kwrejkgeh7f4xi3pvh4xiycgond3n5utuculpqi"
+            "dev": "bciqddyi4oxhgfvgejlmq5s4psdv3ajzc7unzyc2kq35q6nlix6c4yai"
           }
         }
       }
