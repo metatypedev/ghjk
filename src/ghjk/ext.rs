@@ -11,7 +11,7 @@ mod callbacks;
 pub use callbacks::CallbacksHandle;
 
 /// This extension assumes that deno was launched on top of a tokio::LocalSet
-pub fn extensions(config: ExtConfig) -> Arc<denort::deno::worker::CustomExtensionsCb> {
+pub fn extensions(config: ExtConfig) -> Arc<denort::deno::deno_lib::worker::CustomExtensionsCb> {
     // let atom = std::sync::atomic::AtomicBool::new(false);
     Arc::new(move || {
         // if atom.load(std::sync::atomic::Ordering::SeqCst) {
@@ -129,16 +129,16 @@ pub async fn op_hostcall(
     state: Rc<RefCell<OpState>>,
     #[string] name: String,
     #[serde] args: serde_json::Value,
-) -> anyhow::Result<serde_json::Value> {
+) -> Result<serde_json::Value, OpErr> {
     let ctx = {
         let state = state.borrow();
         let ctx = state.borrow::<ExtContext>();
         ctx.clone()
     };
     let Some(func) = ctx.config.hostcalls.funcs.get(&name[..]) else {
-        anyhow::bail!("no hostcall found under {name}");
+        return Err(OpErr(ferr!("no hostcall found under {name}")));
     };
-    func(args).await.map_err(|err| anyhow::anyhow!(err))
+    func(args).await.map_err(OpErr)
 }
 
 #[deno_core::op2(fast)]
@@ -223,4 +223,61 @@ fn js_error_message(scope: &mut v8::HandleScope, err: v8::Local<v8::Value>) -> S
         "{} ({}:{}:{})",
         evt.message, evt.filename, evt.lineno, evt.colno
     )
+}
+
+use utils::OpErr;
+mod utils {
+    use crate::interlude::*;
+
+    #[derive(Debug)]
+    pub struct OpErr(pub eyre::Report);
+    impl From<eyre::Report> for OpErr {
+        fn from(err: eyre::Report) -> Self {
+            Self(err)
+        }
+    }
+    impl OpErr {
+        pub fn get_error_class(_: &eyre::Report) -> impl Into<std::borrow::Cow<'static, str>> {
+            "Error"
+        }
+        // pub fn map<T: Into<eyre::Report>>() -> fn(T) -> Self {
+        //     |err| OpErr(ferr!(err))
+        // }
+    }
+    impl std::error::Error for OpErr {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            self.0.source()
+        }
+    }
+    impl std::fmt::Display for OpErr {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            std::fmt::Display::fmt(&self.0, f)
+        }
+    }
+    impl deno::deno_error::JsErrorClass for OpErr {
+        fn get_class(&self) -> std::borrow::Cow<'static, str> {
+            Self::get_error_class(&self.0).into()
+        }
+        fn get_message(&self) -> std::borrow::Cow<'static, str> {
+            self.to_string().into()
+        }
+        fn get_additional_properties(
+            &self,
+        ) -> Vec<(
+            std::borrow::Cow<'static, str>,
+            std::borrow::Cow<'static, str>,
+        )> {
+            vec![]
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+    impl std::ops::Deref for OpErr {
+        type Target = eyre::Report;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
 }

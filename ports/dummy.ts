@@ -29,7 +29,7 @@ const confValidator = zod.object({
 
 export type DummyInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(config: DummyInstallConf = {}) {
   return {
@@ -51,7 +51,7 @@ export class Port extends PortBase {
 
   override async download(args: DownloadArgs) {
     const conf = confValidator.parse(args.config);
-    // TODO: windows suport
+    // TODO: #76 windows suport
     await $.path(args.downloadPath).join("bin", "dummy").writeText(
       `#!/bin/sh 
 echo ${conf.output ?? "dummy hey"}`,

@@ -46,7 +46,7 @@ const confValidator = zod.object({
 export type CpythonBsInstallConf =
   & InstallConfigSimple
   & GithubReleasesInstConf
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(
   config: CpythonBsInstallConf = {},

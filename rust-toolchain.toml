@@ -1,6 +1,6 @@
 [toolchain]
 # NOTE: to change this, change the const RUST_VERSION in ghjk.ts and 
 # then use the lock-sed task
-channel = "1.82.0"
+channel = "1.85.0"
 components = ["rustfmt", "clippy"]
-targets = ["wasm32-unknown-unknown", "wasm32-wasi"]
+# targets = ["wasm32-unknown-unknown", "wasm32-wasi"]

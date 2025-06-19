@@ -6,17 +6,17 @@ import getLogger from "../../deno_utils/logger.ts";
 import validators from "./types.ts";
 import type {
   AllowedPortDep,
-  AmbientAccessPortManifestX,
-  DenoWorkerPortManifestX,
+  AmbientAccessPortManifest,
+  DenoWorkerPortManifest,
   DepArts,
   DownloadArtifacts,
   InstallArtifacts,
-  InstallConfigLiteX,
-  InstallConfigResolvedX,
-  InstallSetX,
+  InstallConfigLite,
+  InstallConfigResolved,
+  InstallSet,
   PortArgsBase,
   PortDep,
-  PortManifestX,
+  PortManifest,
 } from "./types.ts";
 import { getInstallHash, getPortRef } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
@@ -34,7 +34,7 @@ import type { GhjkCtx } from "../types.ts";
 
 const logger = getLogger(import.meta);
 
-export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolvedX>>;
+export type ResolutionMemoStore = Map<string, Promise<InstallConfigResolved>>;
 
 export function getResolutionMemo(
   gcx: GhjkCtx,
@@ -280,12 +280,12 @@ export type InstallGraph = Awaited<ReturnType<typeof buildInstallGraph>>;
 // required for installation including the dependency graph
 export async function buildInstallGraph(
   scx: SyncCtx,
-  set: InstallSetX,
+  set: InstallSet,
 ) {
   type GraphInstConf = {
     instId: string;
     portRef: string;
-    config: InstallConfigResolvedX;
+    config: InstallConfigResolved;
   };
   // this is all referring to port dependencies
   const graph = {
@@ -302,9 +302,9 @@ export async function buildInstallGraph(
     // edges from dependent to dependency [depInstId, portName]
     depEdges: {} as Record<string, [string, string][] | undefined>,
     // the manifests of the ports
-    ports: {} as Record<string, PortManifestX | undefined>,
+    ports: {} as Record<string, PortManifest | undefined>,
   };
-  function addPort(manifest: PortManifestX) {
+  function addPort(manifest: PortManifest) {
     const portRef = `${manifest.name}@${manifest.version}`;
 
     const conflict = graph.ports[portRef];
@@ -460,8 +460,8 @@ export async function buildInstallGraph(
 function resolveConfig(
   scx: SyncCtx,
   allowedDeps: Record<string, AllowedPortDep>,
-  manifest: PortManifestX,
-  config: InstallConfigLiteX,
+  manifest: PortManifest,
+  config: InstallConfigLite,
 ) {
   const hash = objectHash(JSON.parse(JSON.stringify(config)));
   let promise = scx.memoStore.get(hash);
@@ -541,7 +541,7 @@ function resolveConfig(
     // TODO: port version dependent portDep resolution
     // e.g. use python-2.7 if foo is resolved to <1.0 or use
     // python-3.x if foo is resolved to >1.0
-    const buildDepConfigs = {} as Record<string, InstallConfigResolvedX>;
+    const buildDepConfigs = {} as Record<string, InstallConfigResolved>;
     for (const dep of manifest.buildDeps ?? []) {
       const { manifest: depMan, config: depConf } = getDepConfig(
         allowedDeps,
@@ -574,8 +574,8 @@ function resolveConfig(
 // No version resolution takes place
 export function getDepConfig(
   allowedBuildDeps: Record<string, AllowedPortDep>,
-  manifest: PortManifestX,
-  config: InstallConfigLiteX,
+  manifest: PortManifest,
+  config: InstallConfigLite,
   depId: PortDep,
   resolutionDep = false,
 ) {
@@ -621,8 +621,8 @@ export function getDepConfig(
 export async function resolveAndInstall(
   scx: SyncCtx,
   allowedDeps: Record<string, AllowedPortDep>,
-  manifest: PortManifestX,
-  configLite: InstallConfigLiteX,
+  manifest: PortManifest,
+  configLite: InstallConfigLite,
 ) {
   const config = await resolveConfig(scx, allowedDeps, manifest, configLite);
   const installId = getInstallHash(config);
@@ -790,7 +790,7 @@ async function shimLinkPaths(
       continue;
     }
     const filePath = std_path.resolve(installPath, file);
-    const fileName = std_path.basename(filePath); // TODO: aliases
+    const fileName = std_path.basename(filePath); // TODO: #71 aliases
     const shimPath = std_path.resolve(shimDir, fileName);
 
     if (shims[fileName]) {
@@ -812,14 +812,14 @@ async function shimLinkPaths(
 }
 
 // instantiates the right Port impl according to manifest.ty
-export function getPortImpl(manifest: PortManifestX) {
+export function getPortImpl(manifest: PortManifest) {
   if (manifest.ty == "denoWorker@v1") {
     return new DenoWorkerPort(
-      manifest as DenoWorkerPortManifestX,
+      manifest as DenoWorkerPortManifest,
     );
   } else if (manifest.ty == "ambientAccess@v1") {
     return new AmbientAccessPort(
-      manifest as AmbientAccessPortManifestX,
+      manifest as AmbientAccessPortManifest,
     );
   } else {
     throw new Error(
@@ -835,8 +835,8 @@ type DownloadStageArgs = {
   installPath: string;
   downloadPath: string;
   tmpPath: string;
-  config: InstallConfigResolvedX;
-  manifest: PortManifestX;
+  config: InstallConfigResolved;
+  manifest: PortManifest;
   depArts: DepArts;
 };
 

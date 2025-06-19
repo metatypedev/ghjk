@@ -88,22 +88,10 @@ function denoFsReadShim() {
       if (!parent.endsWith("/")) {
         parent = path + "/";
       }
-      const oldIteratorFn = old(path)[Symbol.iterator];
-      return {
-        [Symbol.iterator]: () => {
-          const iter = oldIteratorFn();
-          return {
-            throw: iter.throw,
-            return: iter.return,
-            next() {
-              const val = iter.next();
-              if (val.done) return val;
-              listedFiles.add(parent + val.value.name);
-              return val;
-            },
-          };
-        },
-      };
+      return old(path).map((val) => {
+        listedFiles.add(parent + val.name);
+        return val;
+      });
     };
     fsShims.push(["readDirSync", replace]);
   }

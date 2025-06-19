@@ -37,6 +37,10 @@ task("hum", {
 // but anon tasks can't be accessed from the CLI
 const anon = task(() => logger().info("anon"));
 
+task(function thisOneIsNotAnon() {
+  logger().info("the function name is used");
+});
+
 task("hey", {
   dependsOn: ["hii", "ho", anon],
   fn: () => logger().info(`hey`),

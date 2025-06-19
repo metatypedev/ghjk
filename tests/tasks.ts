@@ -32,6 +32,42 @@ const cases: CustomE2eTestCase[] = [
 test (ghjk x greet world) = "Hello world from $PWD!"`,
   },
   {
+    name: "hyphen_values_not_parsed",
+    tasks: [{
+      name: "make",
+      fn: async ($, { argv: [flag, arg] }) => {
+        await $`echo ${flag} ${arg}`;
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `
+test (ghjk x make -a things) = "-a things"`,
+  },
+  {
+    name: "short_flags_not_parsed",
+    tasks: [{
+      name: "make",
+      fn: async ($, { argv: [flag, arg] }) => {
+        await $`echo ${flag} ${arg}`;
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `
+test (ghjk x make -a things) = "-a things"`,
+  },
+  {
+    name: "long_flags_not_parsed",
+    tasks: [{
+      name: "do",
+      fn: async ($, { argv: [flag, arg] }) => {
+        await $`echo ${flag} ${arg}`;
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `
+test (ghjk x do --this thing) = "--this thing"`,
+  },
+  {
     name: "env_vars",
     tasks: [{
       name: "greet",

@@ -17,7 +17,7 @@ pub const WORKER_THREAD_NAME: &str = "denort-worker-thread";
 /// The returned handle will use channels internally to communicate to this worker.
 pub async fn worker(
     flags: deno::args::Flags,
-    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+    custom_extensions_cb: Option<Arc<deno_lib::worker::CustomExtensionsCb>>,
 ) -> Res<DenoWorkerHandle> {
     let cx = WorkerContext::from_config(flags, custom_extensions_cb).await?;
 
@@ -147,7 +147,7 @@ struct WorkerContext {
 impl WorkerContext {
     async fn from_config(
         flags: deno::args::Flags,
-        root_custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+        root_custom_extensions_cb: Option<Arc<deno_lib::worker::CustomExtensionsCb>>,
     ) -> Res<Self> {
         deno_permissions::set_prompt_callbacks(
             Box::new(util::draw_thread::DrawThread::hide),
@@ -185,7 +185,7 @@ impl WorkerContext {
         permissions: &deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
-        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+        custom_extensions_cb: Option<Arc<deno_lib::worker::CustomExtensionsCb>>,
     ) -> Res<ModuleWorkerContext> {
         let desc_parser = self
             .cli_factory
@@ -239,7 +239,7 @@ struct PrepareModuleMsg {
     #[educe(Debug(ignore))]
     stdio: deno_runtime::deno_io::Stdio,
     #[educe(Debug(ignore))]
-    custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+    custom_extensions_cb: Option<Arc<deno_lib::worker::CustomExtensionsCb>>,
 }
 
 #[derive(educe::Educe)]
@@ -296,7 +296,7 @@ impl DenoWorkerHandle {
         permissions: deno_permissions::PermissionsOptions,
         mode: deno_runtime::WorkerExecutionMode,
         stdio: deno_runtime::deno_io::Stdio,
-        custom_extensions_cb: Option<Arc<deno::worker::CustomExtensionsCb>>,
+        custom_extensions_cb: Option<Arc<deno_lib::worker::CustomExtensionsCb>>,
     ) -> Res<ModuleWorkerHandle> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.sender
@@ -450,7 +450,8 @@ impl ModuleWorkerContext {
 
     async fn execute_main_module(&mut self) -> anyhow::Result<()> {
         let id = self.worker.preload_main_module(&self.main_module).await?;
-        self.worker.evaluate_module(id).await
+        self.worker.evaluate_module(id).await?;
+        Ok(())
     }
 }
 

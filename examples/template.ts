@@ -1,6 +1,6 @@
 export { sophon } from "@ghjk/ts";
 import { file } from "@ghjk/ts";
-// import * as ports from "@ghjk/ports_wip"; // template-import
+// import * as ports from "@ghjk/ports_wip";
 
 // This export is necessary for typescript ghjkfiles
 const ghjk = file({

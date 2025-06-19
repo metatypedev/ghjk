@@ -7,6 +7,8 @@ pub struct HashObj {
     pub version: String,
     /// The cli config used during serialization
     pub cli_config: crate::config::Config,
+    // we store the deno.json file directly instead of hashing it
+    pub deno_config: Option<serde_json::Value>,
     /// Hashes of all env vars that were read.
     pub env_var_hashes: indexmap::IndexMap<String, Option<String>>,
     /// Hashes of all files that were read.
@@ -57,6 +59,20 @@ impl HashObj {
             )
             .await?,
             cli_config: hcx.gcx.config.clone(),
+            deno_config: if let Some(path) = hcx.gcx.config.deno_json.as_ref() {
+                let raw = read_file(path)
+                    .await
+                    .map_err(|err| ferr!("error reading deno.json at {path:?}: {err}"))?
+                    .ok_or_else(|| ferr!("error reading deno.json at {path:?}: file not found"))?;
+                let string = std::str::from_utf8(&raw[..])
+                    .map_err(|err| ferr!("utf8 error parsing deno.json at {path:?}: {err}"))?;
+                let val = jsonc_parser::parse_to_serde_value(string, &default())
+                    .map_err(|err| ferr!("error parsing deno.json at {path:?}: {err}"))?
+                    .ok_or_else(|| ferr!("error parsing deno.json at {path:?}: empty??"))?;
+                Some(val)
+            } else {
+                None
+            },
         })
     }
 
@@ -79,6 +95,23 @@ impl HashObj {
             if self.cli_config != hcx.gcx.config {
                 trace!("stale cli config");
                 return Ok(true);
+            }
+        }
+        {
+            if let Some(path) = hcx.gcx.config.deno_json.as_ref() {
+                let raw = read_file(path)
+                    .await
+                    .map_err(|err| ferr!("error reading deno.json at {path:?}: {err}"))?
+                    .ok_or_else(|| ferr!("error reading deno.json at {path:?}: file not found"))?;
+                let string = std::str::from_utf8(&raw[..])
+                    .map_err(|err| ferr!("utf8 error parsing deno.json at {path:?}: {err}"))?;
+                let val = jsonc_parser::parse_to_serde_value(string, &default())
+                    .map_err(|err| ferr!("error parsing deno.json at {path:?}: {err}"))?
+                    .ok_or_else(|| ferr!("error parsing deno.json at {path:?}: empty??"))?;
+                if self.deno_config != Some(val) {
+                    trace!("stale deno.json");
+                    return Ok(true);
+                }
             }
         }
         {
@@ -116,6 +149,22 @@ impl HashObj {
         }
         Ok(false)
     }
+}
+
+async fn read_file(path: &Path) -> Res<Option<Vec<u8>>> {
+    let path = std::path::absolute(path)?;
+    let path = match tokio::fs::canonicalize(path).await {
+        Ok(val) => val,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(None);
+        }
+        Err(err) => return Err(err).wrap_err("error resolving realpath"),
+    };
+    Ok(Some(
+        tokio::fs::read(&path)
+            .await
+            .map_err(|err| ferr!("error file at {path:?}: {err}"))?,
+    ))
 }
 
 fn env_var_digests<'a>(

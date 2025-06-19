@@ -306,7 +306,7 @@ impl GhjkfileSystems {
             if self.hcx.config.locked {
                 unreachable!("code should have early exited");
             }
-            trace!(hashfile_path = ?self.hashfile_path, /* hash_obj= ?self.hash_obj, */ "writing hash.json");
+            debug!(hashfile_path = ?self.hashfile_path, /* hash_obj= ?self.hash_obj, */ "writing hash.json");
             tokio::fs::write(
                 &self.hashfile_path,
                 serde_json::to_vec_pretty(&self.hash_obj)

@@ -60,7 +60,7 @@ tokio-stream = "0.1"
 dashmap = { version = "5.5", features = ["serde"]}
 
 clap = { workspace = true, features = ["derive", "env"] }
-clap_complete = "=4.5.24"
+clap_complete.workspace = true
 shadow-rs.workspace = true
 # TODO: support more config formats
 config = { version = "0.14.1", default-features = false, features = ["async", "json5", "json"] }
@@ -75,6 +75,7 @@ directories = "5.0.1"
 dialoguer = "0.11.0"
 console = "0.15.8"
 console-subscriber = { version = "0.4.1", optional = true }
+jsonc-parser = { version = "0.26.2", features = ["preserve_order", "serde"] }
 
 [build-dependencies]
 shadow-rs.workspace = true

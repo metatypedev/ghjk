@@ -96,21 +96,16 @@ const validators = {
 };
 export default validators;
 
-export type EnvsModuleConfig = zod.input<typeof validators.envsModuleConfig>;
-export type EnvsModuleConfigX = zod.infer<typeof validators.envsModuleConfig>;
+export type EnvsModuleConfig = zod.infer<typeof validators.envsModuleConfig>;
 
-export type Provision = zod.input<typeof validators.provision>;
-export type WellKnownProvision = zod.input<
+export type Provision = zod.infer<typeof validators.provision>;
+export type WellKnownProvision = zod.infer<
   typeof validators.wellKnownProvision
 >;
 
-export type EnvRecipe = zod.input<typeof validators.envRecipe>;
-export type EnvRecipeX = zod.infer<typeof validators.envRecipe>;
+export type EnvRecipe = zod.infer<typeof validators.envRecipe>;
 
-export type WellKnownEnvRecipe = zod.input<
-  typeof validators.wellKnownEnvRecipe
->;
-export type WellKnownEnvRecipeX = zod.infer<
+export type WellKnownEnvRecipe = zod.infer<
   typeof validators.wellKnownEnvRecipe
 >;
 

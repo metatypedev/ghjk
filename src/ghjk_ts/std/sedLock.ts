@@ -33,7 +33,7 @@ export const lockfileValidator = zod.object({
     .nullish(),
 });
 
-export type GrepLockfile = zod.input<typeof lockfileValidator>;
+export type GrepLockfile = zod.infer<typeof lockfileValidator>;
 
 /**
  * Find and replace a set of strings across a directory.

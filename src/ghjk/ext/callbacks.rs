@@ -10,6 +10,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use super::ExtConfig;
 use super::ExtContext;
+use super::OpErr;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CallbackError {
@@ -293,7 +294,7 @@ pub fn op_callbacks_set(
     state: Rc<RefCell<OpState>>,
     #[string] name: String,
     #[global] cb: v8::Global<v8::Function>,
-) -> anyhow::Result<()> {
+) -> Result<(), OpErr> {
     let (ctx, async_work_sender) = {
         let state = state.borrow();
         let ctx = state.borrow::<ExtContext>();
@@ -303,9 +304,9 @@ pub fn op_callbacks_set(
     };
     let Some(callbacks) = ctx.callbacks else {
         warn!("callback set but callback feature is not enabled");
-        anyhow::bail!("callbacks feature is not enabled");
+        return Err(OpErr(ferr!("callbacks feature is not enabled")));
     };
-    debug!(%name, "registering callback");
+    trace!(%name, "registering callback");
     callbacks.store.insert(
         name.into(),
         Callback {

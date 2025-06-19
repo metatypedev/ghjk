@@ -17,17 +17,17 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh" | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.1/install.sh" | bash
 ```
 
-This will install the CLI and add configuration your shell rc files the necessary hooks ghjk needs to function.
+This will install the CLI and add some hooks to your shell rc configurations that ghjk needs to function.
 Installation can be customized through a number of environment variables that can be found [here](./installation-vars.md).
 
 ## `ghjk.ts`
 
 Ghjk is configured through a ghjkfile.
-Currently, a typescript based ghjkfile is available and the rest of this documents will use typescript for configuration.
-Use the following command to create a starter file in the current directory:
+Currently, a typescript based ghjkfile is available and this is what the rest of this document will use.
+You can use the following command to create a starter `ghjk.ts` file in the current directory:
 
 ```bash
 # initialize a `ghjk.ts` file
@@ -39,15 +39,14 @@ Look through the following snippet to understand the basic structure of a `ghjk.
 ```ts
 // all ghjk.ts files are expected to export this special `sophon` object
 export { sophon } from "@ghjk/ts";
-// by default, a `deno.jsonc` file is created in the `.ghjk/` directory
-// which will provide the `ghjk` import alias configured to the CLI's version
-// of ghjk
+// the import sources, like `@ghjk/ts`, is provided by default through a
+// a `deno.jsonc` file created in the `.ghjk/` directory
 import { file } from "@ghjk/ts";
 // import the port for the node program
 import node from "@ghjk/ports_wip/node.ts";
 
-// Create the ghjk object using the file functiono. This modifies 
-// the sophon exported above and may only be called once during 
+// Create the ghjk object using the `file` function. This modifies 
+// the sophon exported above and *MAY* only be called *ONCE* during 
 // serialization.
 const ghjk = file();
 
@@ -66,8 +65,8 @@ One can look at the [examples](../examples/) found in the ghjk repo for an explo
 
 ## `$GHJKDIR`
 
-Once you have a ghjkfile ready to go, the ghjk CLI can be used to access all the features your ghjkfile is using.
-Augmenting the CLI are the hooks that were installed into your shells rc file (startup scripts like `~/.bashrc`). 
+Once you have a ghjkfile ready to go, the ghjk CLI can be used to access most of the features your ghjkfile is using.
+Augmenting the CLI are hooks that were installed into your shells rc file (startup scripts like `~/.bashrc`). 
 These hooks check and modify your shell environment when you create a new one or `cd` (change directory) into a ghjk relevant directory.
 
 What constitutes a ghjk relevant directory?
@@ -113,7 +112,7 @@ Thankfully, through the great sandbox provided through Deno's implementation, th
 - Configuration used by the ghjk cli
 
 This doesn't cover everything though, and the `ghjk.ts` implementation generally assumes a declarative paradigm of programming. 
-You'll generally want to avoid any logic that's not deterministic and depends on inputs like time or RNGs.
+You'll generally want to avoid any conditional logic that's not deterministic and depends on inputs like time or RNGs.
 If you encounter any edge cases or want to force re-serialization, you can remove the hashfile at `.ghjk/hash.json` which contains hashes for change tracking.
 
 ```bash
@@ -122,8 +121,7 @@ $ rm .ghjk/hash.json
 $ ghjk --help
 ```
 
-<!--TODO: does this extend to the node based APIs -->
-<!--TODO: provide `fetch` shim that caches -->
+<!--TODO: #66 provide `fetch` shim that caches -->
 
 #### The Lockfile
 
@@ -414,7 +412,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.0
+ARG GHJK_VERSION=v0.3.1-rc.1
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
@@ -431,7 +429,7 @@ In such scenarios, one can directly `source` the activation script for the targe
 # cooking must be done to make the activations scripts available
 ghjk cook my-env
 # there are scripts for POSIX and fish shells
-# dot command is the preferred alias of source since it's the 
+# dot command is the preferred alias of `source` since it's the 
 # only one supported by POSIX sh
 . .ghjk/envs/my-env/activate.sh
 echo $GHJK_ENV
@@ -456,7 +454,7 @@ RUN . "$GHJK_ACTIVATE" \
     && echo $MY_VAR
 ```
 
-This extra boilerplate can be avoided by using the SHELL command available in some Dockerfile implementations or by using command processors more advanced that POSIX sh.
+This extra boilerplate can be avoided by using the following `SHELL` command, available in some Dockerfile implementations, or by using command processors more advanced that POSIX `sh` like `bash`, `zsh` or `fish`.
 
 ```dockerfile
 # contraption to make sh load the activate script at startup

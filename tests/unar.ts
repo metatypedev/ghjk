@@ -25,7 +25,7 @@ const cases = [
       "mold-2.36.0-x86_64-linux/bin/mold": {
         isFile: true,
       },
-    } as Record<string, Partial<Deno.FileInfo>>,
+    } satisfies Record<string, Partial<Deno.FileInfo>>,
   },
 ] satisfies Array<
   { name: string; expect: Record<string, Partial<Deno.FileInfo>>; url: string }

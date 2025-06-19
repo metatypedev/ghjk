@@ -3,10 +3,10 @@ import { execTask } from "../tasks/exec.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
 import type {
-  EnvRecipeX,
+  EnvRecipe,
   Provision,
   ProvisionReducer,
-  WellKnownEnvRecipeX,
+  WellKnownEnvRecipe,
   WellKnownProvision,
 } from "./types.ts";
 import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
@@ -47,7 +47,7 @@ export function getProvisionReducerStore(
  */
 export async function reduceStrangeProvisions(
   gcx: GhjkCtx,
-  env: EnvRecipeX,
+  env: EnvRecipe,
 ) {
   const reducerStore = getProvisionReducerStore(gcx);
   // Replace by `Object.groupBy` once the types for it are fixed
@@ -89,7 +89,7 @@ export async function reduceStrangeProvisions(
     });
   }
   await promises.finish();
-  const out: WellKnownEnvRecipeX = {
+  const out: WellKnownEnvRecipe = {
     ...env,
     provides: reducedSet,
   };

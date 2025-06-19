@@ -153,7 +153,7 @@ export function genTsGhjkFile(
       return $.dedent`
       ghjk.task({
         ...JSON.parse(\`${stringifiedSection}\`),
-        fn: ${def.fn?.toString()}
+        fn: ${typeof def == "function" ? def.toString() : def.fn?.toString()}
       })`;
     },
   ).join("\n");

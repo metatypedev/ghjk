@@ -28,14 +28,15 @@ export const manifest = {
   name: "node_org",
   version: "0.1.0",
   moduleSpecifier: import.meta.url,
-  // FIXME: tar doens't support windows
+  // FIXME: #23 #76 tar doens't support windows
   // TODO: platform disambiguated deps
+  // FIXME: #76 improve multi platform support story
   buildDeps: [tar_aa_id],
   // NOTE: node supports more archs than deno but we can't include it here
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-// FIXME: improve multi platform support story
+// FIXME: #76 improve multi platform support story
 export default function conf(config: InstallConfigSimple = {}) {
   return {
     ...config,

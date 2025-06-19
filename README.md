@@ -45,8 +45,11 @@ Before anything, make sure the following programs are available on the system.
 
 Install the ghjk cli using the installer scripts like so:
 
+<!-- FIXME: revert to simple pipe on next release -->
 ```bash
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.0/install.sh" | bash
+cd /tmp
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.1/install.sh" > install.sh
+bash install.sh
 ```
 
 Use the following command to create a starter `ghjk.ts` in your project directory:

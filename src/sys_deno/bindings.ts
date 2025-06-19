@@ -1,13 +1,9 @@
-// NOTE: put only type imports here
+// WARN: put only type imports here
 import type { Blackboard, GhjkCtx, ModuleManifest } from "./types.ts";
 import type { ModuleBase } from "./mod.ts";
-import type {
-  CliCommand,
-  CliCommandBindedX,
-  DenoSystemsRoot,
-} from "./types.ts";
+import type { CliCommand, CliCommandBinded, DenoSystemsRoot } from "./types.ts";
 import {
-  // this is an exception
+  // NOTE: despite the warning above, the following is not real import
   Ghjk,
   type Json,
 } from "../ghjk/js/runtime.js";
@@ -27,6 +23,7 @@ globalThis.addEventListener("unhandledrejection", (evt) => {
   }
 });
 
+// FIXME: investigate alternative solutions
 // start an interval to prevent the event loop exiting
 // after loading systems
 setInterval(() => {/* beat */}, 1000);
@@ -151,14 +148,14 @@ function instanceBinding(
       (_) => {
         const commandsRaw = instance.commands();
         return commandsRaw.map((cmd) =>
-          commandBinding(cmd) as CliCommandBindedX
+          commandBinding(cmd) as CliCommandBinded
         );
       },
     ),
   } satisfies InstanceDesc;
 }
 
-function commandBinding(commandRaw: CliCommand): CliCommandBindedX {
+function commandBinding(commandRaw: CliCommand): CliCommandBinded {
   const { action, sub_commands, ...command } = bindingTypes.cliCommand.parse(
     commandRaw,
   );
@@ -178,5 +175,5 @@ function commandBinding(commandRaw: CliCommand): CliCommandBindedX {
         },
       )
       : undefined,
-  } satisfies CliCommandBindedX;
+  } satisfies CliCommandBinded;
 }

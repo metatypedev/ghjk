@@ -37,7 +37,7 @@ const confValidator = zod.object({
 
 export type NpmiInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 const pkjJsonValidator = zod.object({
   bin: zod.union([zod.string(), zod.record(zod.string(), zod.string())])

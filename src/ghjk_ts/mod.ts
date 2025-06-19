@@ -93,7 +93,7 @@ export type FileArgs = {
   /**
    * Tasks to expose to the CLI.
    */
-  tasks?: Record<string, DenoTaskDefArgs>;
+  tasks?: Record<string, Omit<DenoTaskDefArgs, "name"> | TaskFn>;
   /**
    * Different envs availaible to the CLI.
    */
@@ -236,7 +236,11 @@ function setupGhjkts(
     builder.addEnv(env.name, env);
   }
   for (const [name, def] of Object.entries(args.tasks ?? {})) {
-    builder.addTask({ name, ...def, ty: "denoFile@v1" });
+    builder.addTask({
+      name,
+      ...(typeof def == "function" ? { fn: def } : def),
+      ty: "denoFile@v1",
+    });
   }
 
   function task(
@@ -245,16 +249,26 @@ function setupGhjkts(
     argsMaybe?: Omit<DenoTaskDefArgs, "fn" | "name">,
   ) {
     let args: DenoTaskDefArgs;
+    // support for single deet object
     if (typeof nameOrArgsOrFn == "object") {
       args = nameOrArgsOrFn;
-    } else if (typeof nameOrArgsOrFn == "function") {
+    } // support for named functions or anon tasks or func and details
+    else if (typeof nameOrArgsOrFn == "function") {
       args = {
+        ...(
+          // support for named functions only format
+          typeof nameOrArgsOrFn == "function" && nameOrArgsOrFn.name != ""
+            ? { name: nameOrArgsOrFn.name }
+            : {}
+        ),
         ...(argsOrFn ?? {}),
         fn: nameOrArgsOrFn,
       };
-    } else if (typeof argsOrFn == "object") {
+    } // support for first arg being name
+    else if (typeof argsOrFn == "object") {
       args = { ...argsOrFn, name: nameOrArgsOrFn };
-    } else if (argsOrFn) {
+    } // support for name, function, deets
+    else if (argsOrFn) {
       args = {
         ...(argsMaybe ?? {}),
         name: nameOrArgsOrFn,

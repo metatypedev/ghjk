@@ -142,6 +142,11 @@ export const $ = dax.build$(
       },
 
       co: ((values: any[]) => Promise.all(values)) as typeof Promise.all,
+      co2: function co2<T extends any[]>(
+        ...values: { [K in keyof T]: PromiseLike<T[K]> }
+      ) {
+        return Promise.all(values) as Promise<T>;
+      },
       collector: promiseCollector,
 
       pathToString(path: Path) {
@@ -417,17 +422,12 @@ export type OrRetOf<T> = T extends () => infer Inner ? Inner : T;
  * ```
  */
 export function switchMap<
-  K extends string | number | symbol,
-  All extends {
-    [Key in K]?: All[K];
-  },
-> // D = undefined,
-(
+  const All extends Record<string | number | symbol, unknown>,
+  const K extends string | number | symbol = string,
+>(
   val: K,
   branches: All,
-  // def?: (val: K) => D,
-): K extends keyof All ? OrRetOf<All[K]>
-  : OrRetOf<All[keyof All]> | undefined {
+): K extends keyof All ? OrRetOf<All[K]> : undefined {
   const branch = branches[val];
   return typeof branch == "function" ? branch() : branch;
 }

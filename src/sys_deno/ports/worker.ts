@@ -5,7 +5,7 @@ import logger, { setup as setupLogger } from "../../deno_utils/logger.ts";
 import { inWorker } from "../../deno_utils/mod.ts";
 import { PortBase } from "./base.ts";
 import type {
-  DenoWorkerPortManifestX,
+  DenoWorkerPortManifest,
   DownloadArgs,
   ExecEnvArgs,
   InstallArgs,
@@ -150,7 +150,7 @@ type WorkerResp = {
  */
 export class DenoWorkerPort extends PortBase {
   constructor(
-    public manifest: DenoWorkerPortManifestX,
+    public manifest: DenoWorkerPortManifest,
   ) {
     super();
   }
