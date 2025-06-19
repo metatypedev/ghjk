@@ -82,9 +82,7 @@ function denoFsReadShim() {
   }
   {
     const old = Deno.readDirSync;
-    const replace: typeof old = (
-      path: string | URL,
-    ) => {
+    const replace = (path: string | URL) => {
       let parent = typeof path === "string" ? path : path.pathname;
       readFiles.add(parent);
       if (!parent.endsWith("/")) {

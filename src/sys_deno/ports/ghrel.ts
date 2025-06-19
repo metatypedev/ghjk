@@ -70,27 +70,38 @@ export abstract class GithubReleasePort extends PortBase {
       count: 10,
       delay: $.exponentialBackoff(1000),
       action: async () =>
-        await $.request(
+        (await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
         )
           .header(ghHeaders(args.config))
-          .json() as { tag_name: string },
+          .json()) as { tag_name: string },
     });
 
     return metadata.tag_name;
   }
 
   async listAll(args: ListAllArgs) {
-    const metadata = await $.withRetries({
-      count: 10,
-      delay: $.exponentialBackoff(1000),
-      action: async () =>
-        await $.request(
-          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`,
-        )
-          .header(ghHeaders(args.config))
-          .json() as [{ tag_name: string }],
-    });
+    const metadata: { tag_name: string }[] = [];
+
+    for (let page = 1;; page++) {
+      // deno-lint-ignore no-await-in-loop
+      const pageMetadata = await $.withRetries({
+        count: 10,
+        delay: $.exponentialBackoff(1000),
+        action: async () =>
+          (await $.request(
+            `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=100&page=${page}`,
+          )
+            .header(ghHeaders(args.config))
+            .json()) as { tag_name: string }[],
+      });
+
+      if (!pageMetadata || !pageMetadata.length) {
+        break;
+      }
+
+      metadata.push(...pageMetadata);
+    }
 
     return metadata.map((rel) => rel.tag_name).reverse();
   }

@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
-      - uses: denoland/setup-deno@v1
+      - uses: denoland/setup-deno@v2
         with:
           deno-version: ${{ env.DENO_VERSION }}
       # run ghjk once to avoid trigger file changes when
@@ -80,7 +80,7 @@ jobs:
           detached: true
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
-      - uses: denoland/setup-deno@v1
+      - uses: denoland/setup-deno@v2
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - name: Cache deno dir
