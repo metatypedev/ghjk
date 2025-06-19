@@ -19,7 +19,7 @@ on:
 
 jobs:
   check-bump:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.ref_type == 'tag' || ( github.event_name == 'workflow_dispatch' && inputs.checkBump )
     steps:
       - uses: actions/checkout@v4

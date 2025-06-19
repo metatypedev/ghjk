@@ -51,7 +51,7 @@ export type CargobiInstallConf =
   & InstallConfigSimple
   & GithubReleasesInstConf
   & { rustConfOverride?: RustInstallConf }
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(config: CargobiInstallConf) {
   const { rustConfOverride, ...thisConf } = config;

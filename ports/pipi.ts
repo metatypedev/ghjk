@@ -39,7 +39,7 @@ const confValidator = zod.object({
 
 export type PipiInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(config: PipiInstallConf) {
   return [{

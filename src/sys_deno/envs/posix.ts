@@ -1,6 +1,6 @@
 import { std_fs, std_path } from "./deps.ts";
 import {
-  type EnvRecipeX,
+  type EnvRecipe,
   WellKnownProvision,
   wellKnownProvisionTypes,
 } from "./types.ts";
@@ -14,7 +14,7 @@ const logger = getLogger(import.meta);
 export async function cookPosixEnv(
   { gcx, recipe, envKey, envDir, createShellLoaders = false }: {
     gcx: GhjkCtx;
-    recipe: EnvRecipeX;
+    recipe: EnvRecipe;
     envKey: string;
     envDir: string;
     createShellLoaders?: boolean;

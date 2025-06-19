@@ -68,7 +68,7 @@ const confValidator = zod.object({
 
 export type RustInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 /**
  * Uses {@link import("./rustup.ts").conf} to install a rust toolchain.

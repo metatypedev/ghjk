@@ -59,6 +59,7 @@ const cliArg = zod.object({
   hide: zod.boolean().nullish(),
   exclusive: zod.boolean().nullish(),
   trailing_var_arg: zod.boolean().nullish(),
+  allow_hyphen_values: zod.boolean().nullish(),
 
   env: zod.string().nullish(),
 
@@ -84,6 +85,7 @@ const cliCommandBase = zod.object({
 
   hide: zod.boolean().nullish(),
   disable_help_subcommand: zod.boolean().nullish(),
+  allow_external_subcommands: zod.boolean().nullish(),
 
   about: zod.string().nullish(),
   before_help: zod.string().nullish(),
@@ -117,11 +119,11 @@ const cliCommandBindedBase = cliCommandBase.extend({
   action_cb_key: zod.string().nullish(),
 });
 
-const cliCommand: zod.ZodType<CliCommandX> = cliCommandActionBase.extend({
+const cliCommand: zod.ZodType<CliCommand> = cliCommandActionBase.extend({
   sub_commands: zod.lazy(() => zod.array(cliCommand).nullish()),
 });
 
-const cliCommandBinded: zod.ZodType<CliCommandBindedX> = cliCommandBindedBase
+const cliCommandBinded: zod.ZodType<CliCommandBinded> = cliCommandBindedBase
   .extend({
     sub_commands: zod.lazy(() => zod.array(cliCommandBinded).nullish()),
   });
@@ -132,25 +134,16 @@ export type DenoSystemsRoot = {
   systems: Record<string, DenoSystemCtor>;
 };
 
-export type CliCommand = zod.input<typeof cliCommandActionBase> & {
+export type CliCommand = zod.infer<typeof cliCommandActionBase> & {
   sub_commands?: CliCommand[] | null;
 };
-export type CliCommandX = zod.infer<typeof cliCommandActionBase> & {
-  sub_commands?: CliCommandX[] | null;
-};
 
-export type CliCommandBinded = zod.input<typeof cliCommandBindedBase> & {
+export type CliCommandBinded = zod.infer<typeof cliCommandBindedBase> & {
   sub_commands?: CliCommandBinded[] | null;
 };
-export type CliCommandBindedX = zod.infer<typeof cliCommandBindedBase> & {
-  sub_commands?: CliCommandBindedX[] | null;
-};
 
-export type CliFlag = zod.input<typeof cliFlag>;
-export type CliFlagX = zod.infer<typeof cliFlag>;
-
-export type CliArg = zod.input<typeof cliArg>;
-export type CliArgX = zod.infer<typeof cliArg>;
+export type CliFlag = zod.infer<typeof cliFlag>;
+export type CliArg = zod.infer<typeof cliArg>;
 
 export type Blackboard = zod.infer<typeof blackboard>;
 export type ModuleId = zod.infer<typeof moduleId>;

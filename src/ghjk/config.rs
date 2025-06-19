@@ -318,7 +318,7 @@ hash.json",
         match tokio::fs::read_to_string(deno_json_path).await {
             Ok(raw) => {
                 use deno::deno_config::deno_json::{ConfigFile, LockConfig};
-                let config = ConfigFile::new(&raw, "file:///INLINE".parse().unwrap(), &default())
+                let config = ConfigFile::new(&raw, "file:///INLINE".parse().unwrap())
                     .wrap_err("error parsing deno.json")?;
 
                 let parent = deno_json_path.parent().unwrap();

@@ -3,18 +3,18 @@
     ".",
     "ghjk.ts"
   ],
-  "deno.suggest.completeFunctionCalls": true,
-  "deno.inlayHints.variableTypes.enabled": true,
-  "deno.inlayHints.propertyDeclarationTypes.enabled": true,
-  "deno.inlayHints.parameterTypes.enabled": true,
-  "deno.inlayHints.parameterNames.enabled": "all",
-  "deno.inlayHints.parameterNames.suppressWhenArgumentMatchesName": true,
-  "deno.inlayHints.enumMemberValues.enabled": true,
-  "deno.inlayHints.variableTypes.suppressWhenTypeMatchesName": true,
-  "deno.inlayHints.functionLikeReturnTypes.enabled": true,
-  "deno.codeLens.implementations": true,
-  "deno.codeLens.references": true,
-  "deno.codeLens.referencesAllFunctions": true,
+  "typescript.suggest.completeFunctionCalls": true,
+  // "typescript.inlayHints.variableTypes.enabled": true,
+  // "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  // "typescript.inlayHints.parameterTypes.enabled": true,
+  // "typescript.inlayHints.parameterNames.enabled": "all",
+  // "typescript.inlayHints.parameterNames.suppressWhenArgumentMatchesName": true,
+  // "typescript.inlayHints.enumMemberValues.enabled": true,
+  // "typescript.inlayHints.variableTypes.suppressWhenTypeMatchesName": true,
+  // "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  // "deno.codeLens.implementations": true,
+  // "deno.codeLens.references": true,
+  // "deno.codeLens.referencesAllFunctions": true,
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
@@ -37,5 +37,8 @@
     "markdown",
     "latex",
     "plaintext"
-  ]
+  ],
+  "deno.enable": true,
+  "deno.path": "./.ghjk/envs/dev/shims/bin/deno",
+  "rust-analyzer.cachePriming.enable": false
 }

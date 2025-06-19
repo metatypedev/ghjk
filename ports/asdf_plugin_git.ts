@@ -41,7 +41,7 @@ const confValidator = zod.object({
 export type AsdfPluginInstallConf =
   & InstallConfigSimple
   & GithubReleasesInstConf
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 /**
  * WARNING: this is probably no the function you want if you intend

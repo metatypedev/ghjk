@@ -10,7 +10,7 @@ import {
   ALL_OS,
   DownloadArgs,
   InstallArgs,
-  InstallConfigLiteX,
+  InstallConfigLite,
   ListAllArgs,
 } from "../src/sys_deno/ports/types.ts";
 import * as std_ports from "../src/sys_deno/ports/std.ts";
@@ -33,7 +33,7 @@ const confValidator = zod.object({
 
 export type PoetryInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(config: PoetryInstallConf = {}) {
   return {
@@ -42,7 +42,7 @@ export default function conf(config: PoetryInstallConf = {}) {
   };
 }
 
-const toPipiConfig = (config: InstallConfigLiteX) => ({
+const toPipiConfig = (config: InstallConfigLite) => ({
   ...config,
   packageName: "poetry",
   peerDeps: config.plugins,

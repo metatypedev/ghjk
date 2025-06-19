@@ -36,7 +36,7 @@ const confValidator = zod.object({
 export type MetaCliInstallConf =
   & InstallConfigSimple
   & GithubReleasesInstConf
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(
   config: MetaCliInstallConf = {},

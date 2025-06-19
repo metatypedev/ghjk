@@ -9,6 +9,8 @@ pub struct CliCommandDesc {
     pub name: String,
 
     pub hide: Option<bool>,
+    pub disable_help_subcommand: Option<bool>,
+    pub allow_external_subcommands: Option<bool>,
 
     pub aliases: Option<Vec<String>>,
     pub visible_aliases: Option<Vec<String>>,
@@ -20,8 +22,6 @@ pub struct CliCommandDesc {
     pub args: Option<IndexMap<String, CliArgDesc>>,
     pub flags: Option<IndexMap<String, CliFlagDesc>>,
     pub sub_commands: Option<Vec<CliCommandDesc>>,
-
-    pub disable_help_subcommand: Option<bool>,
 
     pub action_cb_key: Option<String>,
 }
@@ -86,6 +86,10 @@ impl CliCommandDesc {
             default()
         };
 
+        if let Some(val) = self.allow_external_subcommands {
+            cmd = cmd.allow_external_subcommands(val)
+        }
+
         let action: Option<CliCommandAction> = if let Some(val) = self.action_cb_key {
             let cb_key = CHeapStr::from(val);
             let flags = self.flags.unwrap_or_default();
@@ -97,7 +101,15 @@ impl CliCommandDesc {
                 let cb_key = cb_key.clone();
                 let flags = flags.clone();
                 let args = args.clone();
-                deno_cb_action(matches, scx.clone(), cb_key, flags, args).boxed()
+                deno_cb_action(
+                    matches,
+                    scx.clone(),
+                    cb_key,
+                    flags,
+                    args,
+                    self.allow_external_subcommands.unwrap_or(false),
+                )
+                .boxed()
             }))
         } else {
             /* if sub_commands.is_empty() {
@@ -121,6 +133,7 @@ async fn deno_cb_action(
     cb_key: CHeapStr,
     flag_descs: Arc<IndexMap<String, CliFlagDesc>>,
     args_descs: Arc<IndexMap<String, CliArgDesc>>,
+    external_subcommands: bool,
 ) -> Res<()> {
     let mut flags = IndexMap::new();
     let mut args = IndexMap::new();
@@ -130,7 +143,21 @@ async fn deno_cb_action(
         .map(|id| id.as_str().to_owned())
         .collect::<Vec<_>>()
         .into_iter();
+    let mut external_collected = false;
+    if external_subcommands {
+        if let Some((subcmd, matches)) = matches.subcommand() {
+            external_collected = true;
+            let subcmd = subcmd.to_string();
+            let ext_args: Vec<_> = std::iter::once(&subcmd)
+                .chain(matches.get_many::<String>("").unwrap())
+                .collect();
+            args.insert("".to_owned(), json!(ext_args));
+        }
+    }
     for id in match_ids {
+        if id.is_empty() && external_collected {
+            unreachable!("external subcommand was collected but unnamed arg was resolved stil");
+        }
         let Some(desc) = flag_descs
             .get(&id)
             .map(|flag| &flag.arg)

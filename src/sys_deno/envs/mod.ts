@@ -10,8 +10,8 @@ import {
 } from "../../deno_utils/mod.ts";
 import validators from "./types.ts";
 import type {
-  EnvRecipeX,
-  EnvsModuleConfigX,
+  EnvRecipe,
+  EnvsModuleConfig,
   WellKnownProvision,
 } from "./types.ts";
 import type { Blackboard, GhjkCtx, ModuleManifest } from "../types.ts";
@@ -30,7 +30,7 @@ import type { CliCommand } from "../types.ts";
 export type EnvsCtx = {
   activeEnv: string;
   keyToName: Record<string, string[] | undefined>;
-  config: EnvsModuleConfigX;
+  config: EnvsModuleConfig;
 };
 
 const lockValidator = zod.object({
@@ -355,7 +355,7 @@ async function reduceAndCookEnv(
 
 async function showableEnv(
   gcx: GhjkCtx,
-  recipe: EnvRecipeX,
+  recipe: EnvRecipe,
   envName: string[],
 ) {
   const printBag = {} as Record<string, any>;

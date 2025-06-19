@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DENO_VERSION: "2.1.2"
+  DENO_VERSION: "2.2.4"
   GHJK_LOG: debug
   GHJK_LOG_PANIC_LEVEL: error
   DENO_DIR: .deno-dir
@@ -32,7 +32,7 @@ env:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       pull-requests: read
     steps:
@@ -40,7 +40,7 @@ jobs:
 
   test-pre-commit:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: dsherret/rust-toolchain-file@v1
@@ -103,17 +103,17 @@ jobs:
           deno task test-doc
           deno task test
 
-  # test-action:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: dsherret/rust-toolchain-file@v1
-  #     - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
-  #       with:
-  #         installer-url: ./install.ts
-  #       env:
-  #         GHJKFILE: ./examples/protoc/ghjk.ts
-  #     - run: |
-  #         cd examples/tasks
-  #         . $(ghjk print share-dir-path)/env.sh
-  #         ghjk x hey
+  test-action:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dsherret/rust-toolchain-file@v1
+      - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
+        with:
+          installer-url: ./install.ts
+        env:
+          GHJKFILE: ./examples/protoc/ghjk.ts
+      - run: |
+          cd examples/tasks
+          . $(ghjk print share-dir-path)/env.sh
+          ghjk x hey

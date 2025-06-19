@@ -40,7 +40,7 @@ const confValidator = zod.object({
 
 export type AsdfInstallConf =
   & InstallConfigSimple
-  & zod.input<typeof confValidator>;
+  & zod.infer<typeof confValidator>;
 
 export default function conf(
   config: AsdfInstallConf,

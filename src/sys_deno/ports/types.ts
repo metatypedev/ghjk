@@ -1,5 +1,3 @@
-//! NOTE: type FooX is a version of Foo after zod processing/transformation
-
 import { semver, zod } from "./deps.ts";
 import moduleValidators from "../types.ts";
 import {
@@ -237,31 +235,17 @@ export default validators;
 export type OsEnum = zod.infer<typeof osEnum>;
 export type ArchEnum = zod.infer<typeof archEnum>;
 
-export type PortManifestBase = zod.input<typeof validators.portManifestBase>;
+export type PortManifestBase = zod.infer<typeof validators.portManifestBase>;
 
-export type DenoWorkerPortManifest = zod.input<
+export type DenoWorkerPortManifest = zod.infer<
   typeof validators.denoWorkerPortManifest
 >;
 
-export type AmbientAccessPortManifest = zod.input<
+export type AmbientAccessPortManifest = zod.infer<
   typeof validators.ambientAccessPortManifest
 >;
 
-export type PortManifest = zod.input<
-  typeof validators.portManifest
->;
-
-export type PortManifestBaseX = zod.infer<typeof validators.portManifestBase>;
-export type DenoWorkerPortManifestX = zod.infer<
-  typeof validators.denoWorkerPortManifest
->;
-export type AmbientAccessPortManifestX = zod.infer<
-  typeof validators.ambientAccessPortManifest
->;
-/**
- * This is the transformed version of PortManifest, ready for consumption
- */
-export type PortManifestX = zod.infer<
+export type PortManifest = zod.infer<
   typeof validators.portManifest
 >;
 
@@ -271,59 +255,38 @@ export type PortManifestX = zod.infer<
 export type PortDep = zod.infer<typeof validators.portDep>;
 export type PortDepFat = zod.infer<typeof validators.portDepFat>;
 
-export type InstallConfigSimple = zod.input<
+export type InstallConfigSimple = zod.infer<
   typeof validators.installConfigSimple
 >;
-export type InstallConfigBaseLite = zod.input<
+export type InstallConfigBaseLite = zod.infer<
   typeof validators.installConfigBaseLite
 >;
-export type InstallConfigBaseFat = zod.input<
+export type InstallConfigBaseFat = zod.infer<
   typeof validators.installConfigBaseFat
 >;
 /**
  * Fat install configs include the port manifest within.
  */
-export type InstallConfigFat = zod.input<typeof validators.installConfigFat>;
-/**
- * Fat install configs include the port manifest within.
- */
-export type InstallConfigFatX = zod.infer<typeof validators.installConfigFat>;
+export type InstallConfigFat = zod.infer<typeof validators.installConfigFat>;
 /**
  * Lite install configs refer to the port they use by name.
  */
-export type InstallConfigLite = zod.input<typeof validators.installConfigLite>;
-/**
- * Lite install configs refer to the port they use by name.
- */
-export type InstallConfigLiteX = zod.infer<typeof validators.installConfigLite>;
+export type InstallConfigLite = zod.infer<typeof validators.installConfigLite>;
 /**
  * Describes a single installation done by a specific plugin.
  */
-export type InstallConfig = zod.input<typeof validators.installConfig>;
-/**
- * Describes a single installation done by a specific plugin.
- */
-export type InstallConfigX = zod.infer<typeof validators.installConfig>;
+export type InstallConfig = zod.infer<typeof validators.installConfig>;
 /**
  * {@link InstallConfig} after the {@link InstallConfig.version} has been deternimed.
  */
-export type InstallConfigResolved = zod.input<
-  typeof validators.installConfigResolved
->;
-/**
- * {@inheritDoc InstallConfigResolved}
- */
-export type InstallConfigResolvedX = zod.infer<
+export type InstallConfigResolved = zod.infer<
   typeof validators.installConfigResolved
 >;
 
 /*
  * Provisions an [`InstallSet`].
  */
-export type InstallSetProvision = zod.input<
-  typeof validators.installSetProvision
->;
-export type InstallSetProvisionX = zod.infer<
+export type InstallSetProvision = zod.infer<
   typeof validators.installSetProvision
 >;
 
@@ -332,35 +295,19 @@ export type InstallProvision = zod.infer<typeof validators.installProvision>;
 /*
  * Provisions an [`InstallSet`] that's been pre-defined in the [`PortsModuleConfigX`].
  */
-export type InstallSetRefProvision = zod.input<
-  typeof validators.installSetRefProvision
->;
-export type InstallSetRefProvisionX = zod.infer<
+export type InstallSetRefProvision = zod.infer<
   typeof validators.installSetRefProvision
 >;
 
-export type AllowedPortDep = zod.input<typeof validators.allowedPortDep>;
-export type AllowedPortDepX = zod.infer<typeof validators.allowedPortDep>;
+export type AllowedPortDep = zod.infer<typeof validators.allowedPortDep>;
 
-export type InstallSet = zod.input<typeof validators.installSet>;
-export type InstallSetX = zod.infer<
-  typeof validators.installSet
->;
+export type InstallSet = zod.infer<typeof validators.installSet>;
 
-export type InstallSetHashed = zod.input<typeof validators.installSetHashed>;
-export type InstallSetHashedX = zod.infer<
-  typeof validators.installSetHashed
->;
+export type InstallSetHashed = zod.infer<typeof validators.installSetHashed>;
 
-export type PortsModuleConfig = zod.input<typeof validators.portsModuleConfig>;
-export type PortsModuleConfigX = zod.infer<
-  typeof validators.portsModuleConfig
->;
+export type PortsModuleConfig = zod.infer<typeof validators.portsModuleConfig>;
 
-export type PortsModuleConfigHashed = zod.input<
-  typeof validators.portsModuleConfigHashed
->;
-export type PortsModuleConfigLiteHashedX = zod.infer<
+export type PortsModuleConfigHashed = zod.infer<
   typeof validators.portsModuleConfigHashed
 >;
 
@@ -384,14 +331,14 @@ export interface PortArgsBase {
   installPath: string;
   depArts: DepArts;
   platform: PlatformInfo;
-  config: InstallConfigLiteX;
-  manifest: PortManifestX;
+  config: InstallConfigLite;
+  manifest: PortManifest;
 }
 
 export interface ListAllArgs {
   depArts: DepArts;
-  manifest: PortManifestX;
-  config: InstallConfigLiteX;
+  manifest: PortManifest;
+  config: InstallConfigLite;
 }
 
 export type ListBinPathsArgs = PortArgsBase;
@@ -446,7 +393,7 @@ export function thinInstallConfig(fat: InstallConfigFat) {
   };
 }
 
-export function getInstallHash(install: InstallConfigResolvedX) {
+export function getInstallHash(install: InstallConfigResolved) {
   const fullHashHex = objectHash(JSON.parse(JSON.stringify(install)));
   return `${install.portRef}!${fullHashHex}`;
 }

@@ -12,6 +12,7 @@ const cases: CustomE2eTestCase[] = [
 __ghjk_get_mtime_ts .ghjk/hash.json > tstamp
 ghjk sync
 test (cat tstamp) = (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
+__ghjk_get_mtime_ts .ghjk/hash.json > tstamp
 ghjk sync
 test (cat tstamp) = (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
 `,
@@ -59,6 +60,20 @@ ghjk print config
 GHJK_DENO_LOCKFILE=deno.lock ghjk sync
 GHJK_DENO_LOCKFILE=deno.lock ghjk print config
 test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
+`,
+  },
+  {
+    name: "invalidated_deno_json_modified",
+    stdin: `
+__ghjk_get_mtime_ts .ghjk/hash.json > tstamp
+ghjk deno eval 'await Deno.writeTextFile(".ghjk/deno.jsonc", JSON.stringify({ ...JSON.parse(await Deno.readTextFile(".ghjk/deno.jsonc")), stuff: 123 }));'
+ghjk sync
+test (cat tstamp) -lt (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 101
+__ghjk_get_mtime_ts .ghjk/hash.json > tstamp
+# note: comments won't trigger a change
+echo '// hey' >> .ghjk/deno.jsonc
+ghjk sync
+test (cat tstamp) = (__ghjk_get_mtime_ts .ghjk/hash.json); or exit 102
 `,
   },
 ];

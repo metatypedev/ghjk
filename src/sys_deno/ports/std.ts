@@ -36,46 +36,68 @@ export const map = Object.freeze(
   ),
 );
 
-export const tar_aa = Object.freeze({
-  name: man_tar_aa.manifest.name,
-} as PortDep);
+export const tar_aa = Object.freeze(
+  {
+    name: man_tar_aa.manifest.name,
+  } satisfies PortDep,
+);
 
-export const zstd_aa = Object.freeze({
-  name: man_zstd_aa.manifest.name,
-} as PortDep);
+export const zstd_aa = Object.freeze(
+  {
+    name: man_zstd_aa.manifest.name,
+  } satisfies PortDep,
+);
 
-export const unzip_aa = Object.freeze({
-  name: man_unzip_aa.manifest.name,
-} as PortDep);
+export const unzip_aa = Object.freeze(
+  {
+    name: man_unzip_aa.manifest.name,
+  } satisfies PortDep,
+);
 
-export const git_aa = Object.freeze({
-  name: man_git_aa.manifest.name,
-} as PortDep);
+export const git_aa = Object.freeze(
+  {
+    name: man_git_aa.manifest.name,
+  } satisfies PortDep,
+);
 
-export const curl_aa = Object.freeze({
-  name: man_curl_aa.manifest.name,
-} as PortDep);
+export const curl_aa = Object.freeze(
+  {
+    name: man_curl_aa.manifest.name,
+  } satisfies PortDep,
+);
 
-export const rustup_rustlang = Object.freeze({
-  name: man_rustup_rustlang.manifest.name,
-} as PortDep);
+export const rustup_rustlang = Object.freeze(
+  {
+    name: man_rustup_rustlang.manifest.name,
+  } satisfies PortDep,
+);
 
-export const rust_rustup = Object.freeze({
-  name: man_rust_rustup.manifest.name,
-} as PortDep);
+export const rust_rustup = Object.freeze(
+  {
+    name: man_rust_rustup.manifest.name,
+  } satisfies PortDep,
+);
 
-export const cbin_ghrel = Object.freeze({
-  name: man_cbin_ghrel.manifest.name,
-} as PortDep);
+export const cbin_ghrel = Object.freeze(
+  {
+    name: man_cbin_ghrel.manifest.name,
+  } satisfies PortDep,
+);
 
-export const node_org = Object.freeze({
-  name: man_node_org.manifest.name,
-} as PortDep);
+export const node_org = Object.freeze(
+  {
+    name: man_node_org.manifest.name,
+  } satisfies PortDep,
+);
 
-export const cpy_bs_ghrel = Object.freeze({
-  name: man_cpy_bs_ghrel.manifest.name,
-} as PortDep);
+export const cpy_bs_ghrel = Object.freeze(
+  {
+    name: man_cpy_bs_ghrel.manifest.name,
+  } satisfies PortDep,
+);
 
-export const asdf_plugin_git = Object.freeze({
-  name: man_asdf_plugin_git.manifest.name,
-} as PortDep);
+export const asdf_plugin_git = Object.freeze(
+  {
+    name: man_asdf_plugin_git.manifest.name,
+  } satisfies PortDep,
+);

@@ -1,5 +1,3 @@
-//! NOTE: type FooX is a version of Foo after zod processing/transformation
-
 import { zod } from "../../deps.ts";
 import envsValidators from "../envs/types.ts";
 
@@ -68,11 +66,8 @@ const validators = {
 };
 export default validators;
 
-export type TaskDef = zod.input<typeof validators.taskDef>;
-export type TaskDefX = zod.infer<typeof validators.taskDef>;
+export type TaskDef = zod.infer<typeof validators.taskDef>;
 
-export type TaskDefHashed = zod.input<typeof validators.taskDefHashed>;
-export type TaskDefHashedX = zod.infer<typeof validators.taskDefHashed>;
+export type TaskDefHashed = zod.infer<typeof validators.taskDefHashed>;
 
-export type TasksModuleConfig = zod.input<typeof validators.tasksModuleConfig>;
-export type TasksModuleConfigX = zod.infer<typeof validators.tasksModuleConfig>;
+export type TasksModuleConfig = zod.infer<typeof validators.tasksModuleConfig>;

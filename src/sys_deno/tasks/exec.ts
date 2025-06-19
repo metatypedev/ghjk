@@ -1,6 +1,6 @@
 import { $ } from "../../deno_utils/mod.ts";
 
-import type { TaskDefHashedX, TasksModuleConfigX } from "./types.ts";
+import type { TaskDefHashed, TasksModuleConfig } from "./types.ts";
 import type { GhjkCtx } from "../types.ts";
 import getLogger from "../../deno_utils/logger.ts";
 import { execTaskDeno } from "./deno.ts";
@@ -14,7 +14,7 @@ export type TaskGraph = Awaited<ReturnType<typeof buildTaskGraph>>;
 
 export function buildTaskGraph(
   _gcx: GhjkCtx,
-  tasksConfig: TasksModuleConfigX,
+  tasksConfig: TasksModuleConfig,
 ) {
   const graph = {
     indie: [] as string[],
@@ -38,7 +38,7 @@ export function buildTaskGraph(
         const testCycle = (
           name: string,
           depHash: string,
-        ): TaskDefHashedX | undefined => {
+        ): TaskDefHashed | undefined => {
           const depTask = tasksConfig.tasks[depHash];
           if (!depTask) {
             throw new Error(`specified dependency task doesn't exist`, {
@@ -85,11 +85,11 @@ export function buildTaskGraph(
 
 export async function execTask(
   gcx: GhjkCtx,
-  tasksConfig: TasksModuleConfigX,
+  tasksConfig: TasksModuleConfig,
   taskGraph: TaskGraph,
   targetKey: string,
   args: string[],
-  // taskEnv: TaskEnvX,
+  // taskEnv: TaskEnv,
   // installGraph: InstallGraph,
 ): Promise<Record<string, unknown>> {
   let workSet = new Set([targetKey]);

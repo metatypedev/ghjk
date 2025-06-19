@@ -114,7 +114,7 @@ Equivalent tools:
 
 - The ports module handles the download and installation of os level programs
   and libraries.
-  - Executables, shared libraries, header files, documentation (TODO) are all in
+  - Executables, shared libraries, header files, documentation (TODO: #70) are all in
     scope.
   - Installations are put in a central location and are shared across all the
     ghjk environments that make use of them.

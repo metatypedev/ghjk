@@ -40,7 +40,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     let deno_cx = {
         // TODO: DENO_FLAGS param simlar to V8_FLAGS
         let flags = denort::deno::args::Flags {
-            unstable_config: denort::deno::args::UnstableConfig {
+            unstable_config: denort::deno::deno_lib::args::UnstableConfig {
                 features: DENO_UNSTABLE_FLAGS
                     .iter()
                     .copied()

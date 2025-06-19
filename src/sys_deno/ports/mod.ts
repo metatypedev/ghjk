@@ -9,7 +9,7 @@ import validators, {
   installSetProvisionTy,
   installSetRefProvisionTy,
 } from "./types.ts";
-import type { InstallSetX, PortsModuleConfigX } from "./types.ts";
+import type { InstallSet, PortsModuleConfig } from "./types.ts";
 import { type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 import {
@@ -25,7 +25,7 @@ import { getPortsCtx } from "./inter.ts";
 import type { CliCommand } from "../types.ts";
 
 export type PortsCtx = {
-  config: PortsModuleConfigX;
+  config: PortsModuleConfig;
 };
 
 const lockValidator = zod.object({
@@ -78,7 +78,7 @@ export class PortsModule extends ModuleBase<PortsLockEnt> {
           unwrapParseCurry(validators.allowedPortDep.safeParse(bb[hash])),
         ]),
       );
-      const set: InstallSetX = {
+      const set: InstallSet = {
         installs,
         allowedBuildDeps,
       };

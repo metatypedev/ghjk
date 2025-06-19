@@ -29,6 +29,7 @@ use deno::deno_runtime::{
     deno_permissions,
     tokio_util::create_and_run_current_thread_with_maybe_metrics,
 };
+use deno::{deno_error, deno_lib};
 
 #[rustfmt::skip]
 use deno_runtime::deno_core as deno_core; // necessary for re-exported macros to work
@@ -61,7 +62,7 @@ pub fn run_sync(
     main_mod: ModuleSpecifier,
     config_file: Option<String>,
     permissions: deno::args::PermissionFlags,
-    custom_extensions: Arc<deno::worker::CustomExtensionsCb>,
+    custom_extensions: Arc<deno_lib::worker::CustomExtensionsCb>,
 ) {
     new_thread_builder()
         .spawn(|| {
@@ -84,13 +85,13 @@ pub async fn run(
     main_module: ModuleSpecifier,
     config_file: Option<String>,
     permissions: deno::args::PermissionFlags,
-    custom_extensions: Arc<deno::worker::CustomExtensionsCb>,
+    custom_extensions: Arc<deno_lib::worker::CustomExtensionsCb>,
 ) -> anyhow::Result<()> {
     // NOTE: avoid using the Run subcommand
     // as it breaks our custom_extensions patch for some reason
     let flags = deno::args::Flags {
         permissions,
-        unstable_config: deno::args::UnstableConfig {
+        unstable_config: deno_lib::args::UnstableConfig {
             features: DEFAULT_UNSTABLE_FLAGS
                 .iter()
                 .copied()
@@ -129,7 +130,7 @@ pub fn test_sync(
     permissions: deno::args::PermissionFlags,
     coverage_dir: Option<String>,
     filter: Option<String>,
-    custom_extensions: Arc<deno::worker::CustomExtensionsCb>,
+    custom_extensions: Arc<deno_lib::worker::CustomExtensionsCb>,
     argv: Vec<String>,
 ) {
     new_thread_builder()
@@ -163,7 +164,7 @@ pub async fn test(
     permissions: deno::args::PermissionFlags,
     coverage_dir: Option<String>,
     filter: Option<String>,
-    custom_extensions: Arc<deno::worker::CustomExtensionsCb>,
+    custom_extensions: Arc<deno_lib::worker::CustomExtensionsCb>,
     argv: Vec<String>,
 ) -> anyhow::Result<()> {
     use deno::tools::test::*;
@@ -207,7 +208,7 @@ pub async fn test(
     };
     let flags = deno::args::Flags {
         permissions,
-        unstable_config: deno::args::UnstableConfig {
+        unstable_config: deno_lib::args::UnstableConfig {
             features: DEFAULT_UNSTABLE_FLAGS
                 .iter()
                 .copied()
@@ -247,7 +248,7 @@ pub async fn test(
     .await?;
 
     if !test_options.permit_no_files && specifiers_with_mode.is_empty() {
-        return Err(deno_core::error::generic_error("No test modules found"));
+        return Err(deno_error::JsErrorBox::generic("No test modules found").into());
     }
     let doc_tests = get_doc_tests(&specifiers_with_mode, file_fetcher).await?;
     let specifiers_for_typecheck_and_test = get_target_specifiers(specifiers_with_mode, &doc_tests);
@@ -261,7 +262,10 @@ pub async fn test(
     main_graph_container
         .check_specifiers(
             &specifiers_for_typecheck_and_test,
-            options.ext_flag().as_ref(),
+            deno::graph_container::CheckSpecifiersOptions {
+                ext_overwrite: options.ext_flag().as_ref(),
+                ..Default::default()
+            },
         )
         .await?;
 

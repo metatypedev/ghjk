@@ -4,7 +4,7 @@ import { zod } from "../../deps.ts";
 import { Json, unwrapZodRes } from "../../deno_utils/mod.ts";
 
 import validators from "./types.ts";
-import type { TasksModuleConfigX } from "./types.ts";
+import type { TasksModuleConfig } from "./types.ts";
 import { Blackboard, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
 
@@ -13,7 +13,7 @@ import { getTasksCtx } from "./inter.ts";
 import type { CliCommand } from "../types.ts";
 
 export type TasksCtx = {
-  config: TasksModuleConfigX;
+  config: TasksModuleConfig;
   taskGraph: TaskGraph;
 };
 const lockValidator = zod.object({
@@ -67,24 +67,27 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
                 name: key,
                 about: def.desc,
                 hide: !namedSet.has(key),
+                allow_external_subcommands: true,
                 args: {
-                  raw: {
+                  // NOTE: allow_external_subcommands will collect
+                  // all a bunch of args under the empty "" key
+                  [""]: {
                     value_name: "TASK ARGS",
                     trailing_var_arg: true,
                     allow_hyphen_values: true,
                     action: "Append",
                   },
                 },
-                action: async ({ args: { raw } }) => {
+                action: async ({ args }) => {
                   await execTask(
                     gcx,
                     tcx.config,
                     tcx.taskGraph,
                     key,
-                    (raw as string[]) ?? [],
+                    (args[""] as string[]) ?? [],
                   );
                 },
-              } as CliCommand;
+              } satisfies CliCommand;
             },
           ),
       ],

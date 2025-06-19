@@ -10,12 +10,18 @@ import {
   switchMap,
 } from "./src/deno_utils/mod.ts";
 
-const ghjk = file({});
+const ghjk = file({
+  tasks: {
+    stuff() {
+      console.log("stuff");
+    },
+  },
+});
 
-const GHJK_VERSION = "0.3.0";
-const DENO_VERSION = "2.1.2";
+const GHJK_VERSION = "0.3.1-rc.1";
+const DENO_VERSION = "2.2.4";
 // keep in sync with the deno repo's ./rust-toolchain.toml
-const RUST_VERSION = "1.82.0";
+const RUST_VERSION = "1.85.0";
 
 ghjk.env("main")
   // these are used for developing ghjk
@@ -37,7 +43,10 @@ const installs = {
 ghjk.config({
   defaultEnv: "dev",
   enableRuntimes: true,
-  allowedBuildDeps: [ports.cpy_bs({ version: "3.13.1" }), installs.rust],
+  allowedBuildDeps: [
+    ports.cpy_bs({ version: "3.13.4", releaseTag: "20250610" }),
+    installs.rust,
+  ],
 });
 
 const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
@@ -59,9 +68,10 @@ ghjk.env("dev")
   .inherit("_rust")
   .install(ports.cargobi({ crateName: "tokio-console" }))
   .install(ports.cargobi({ crateName: "cargo-bloat" }))
+  .install(ports.cargobi({ crateName: "hyperfine" }))
   .vars({
     // V8_FORCE_DEBUG: "true",
-    RUSTY_V8_MIRROR,
+    // RUSTY_V8_MIRROR,
   });
 
 ghjk.env("ci")
@@ -85,7 +95,12 @@ ghjk.env("main")
         ],
         "INFO": [
           "deno::npm",
+          "deno::module_loader",
           "deno::file_fetcher",
+          "deno_npm",
+          "deno_resolver",
+          "import_map",
+          "deno_cache_dir",
           "swc_ecma_transforms_base",
           "swc_common",
           "h2",
@@ -151,9 +166,9 @@ ghjk.task(
       $.path(import.meta.dirname!),
       {
         lines: {
-          "./rust-toolchain.toml": [
-            [/^(channel = ").*(")/, RUST_VERSION],
-          ],
+          // "./rust-toolchain.toml": [
+          //   [/^(channel = ").*(")/, RUST_VERSION],
+          // ],
           "./Cargo.toml": [
             [/^(version = ").*(")/, GHJK_VERSION],
           ],
@@ -166,7 +181,7 @@ ghjk.task(
               GHJK_VERSION,
             ],
             [
-              /(GHJK_VERSION\s*=\s*v)[^\s]*(.*)/,
+              /(ARG GHJK_VERSION=v).*()/,
               GHJK_VERSION,
             ],
           ],
@@ -179,7 +194,7 @@ ghjk.task(
           "**/Cargo.toml": [
             [/^(version = ").+(")/, GHJK_VERSION],
             [
-              /(deno\s*=\s*\{\s*git\s*=\s*"https:\/\/github\.com\/metatypedev\/deno"\s*,\s*branch\s*=\s*"v).+(-embeddable"\s*\})/,
+              /(deno\s*=\s*\{\s*git\s*=\s*"https:\/\/github\.com\/metatypedev\/deno"\s*,\s*branch\s*=\s*"v).+(-embeddable.2"\s*\})/,
               DENO_VERSION,
             ],
           ],
@@ -197,3 +212,7 @@ ghjk.task(
     ),
   { inherit: false },
 );
+
+ghjk.task(function play($) {
+  console.log($.argv);
+});
