@@ -118,8 +118,6 @@ EOF
   fi
 
   if [ -w "${GHJK_INSTALL_EXE_DIR}" ]; then
-    printf "Press enter to continue (or cancel with Ctrl+C):" >&2
-    read -r _throwaway
     mv "$TMP_DIR/$EXE" "$GHJK_INSTALL_EXE_DIR"
     rm -r "$TMP_DIR"
   else
@@ -131,6 +129,17 @@ fi
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/$ORG/$REPO/$VERSION/install.ts}"
 "$GHJK_INSTALL_EXE_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
 
+# Check if SKIP_SHELL is set to skip shell config
+if [ "${SKIP_SHELL:-}" = "1" ]; then
+  printf "\nSkipping shell configuration as SKIP_SHELL=1.\n"
+  exit 0
+fi
+
+# Check if SHELL is set before using it
+if [ -z "${SHELL:-}" ]; then
+  printf "\nCould not detect your shell (\$SHELL is not set). Skipping shell configuration.\n"
+  exit 0
+fi
 
 SHELL_TYPE=$(basename "$SHELL")
 
@@ -147,10 +156,14 @@ esac
 
 if [ -n "$SHELL_CONFIG" ]; then
   printf "\nDetected shell: %s\n" "$SHELL_TYPE"
-  echo "Do you want to append the new PATH to your configuration ($SHELL_CONFIG)? (y/n): " >&2
-  read -r answer
-
-  answer=$(echo "$answer" | tr "[:upper:]" "[:lower:]")
+  # Only use read if stdin is a tty
+  if [ -t 0 ]; then
+    echo "Do you want to append the new PATH to your configuration ($SHELL_CONFIG)? (y/n): " >&2
+    read -r answer
+    answer=$(echo "$answer" | tr "[:upper:]" "[:lower:]")
+  else
+    answer="y"
+  fi
 
   case $SHELL_TYPE in
     bash|zsh|ksh)
