@@ -1,9 +1,12 @@
 import { defaultInstallArgs, install } from "../src/install/mod.ts";
 import { std_async, std_url } from "./deps.ts";
 import { $ } from "../src/deno_utils/mod.ts";
+import loggerFor from "../src/deno_utils/logger.ts";
 import type { DenoTaskDefArgs, FileArgs } from "../src/ghjk_ts/mod.ts";
 import { ALL_ARCH, ALL_OS } from "../src/sys_deno/ports/types/platform.ts";
 export type { EnvDefArgs } from "../src/ghjk_ts/mod.ts";
+
+const logger = loggerFor(import.meta.url);
 
 export const testTargetPlatform = Deno.env.get("DOCKER_PLATFORM") ??
   (Deno.build.os + "/" + Deno.build.arch);
@@ -29,7 +32,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   const { envVars: testEnvs, ePoints, fs } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
-      prefix: "ghjk_le2e_",
+      prefix: "ws ghjk_le2e_",
     }),
   );
   const ghjkDataDir = await tmpDir.join("ghjk").ensureDir();
@@ -82,10 +85,14 @@ exec ${ghjkExePath.resolve().toString()} "$@"`,
     shellsToHook: [],
   });
 
-  await $`ghjk print serialized`
-    .cwd(tmpDir.toString())
-    .clearEnv()
-    .env(env);
+  logger.debug(
+    await $`ghjk print serialized`
+      .cwd(tmpDir.toString())
+      .clearEnv()
+      .env(env)
+      .captureCombined()
+      .text(),
+  );
   await $`ghjk envs cook`
     .cwd(tmpDir.toString())
     .clearEnv()

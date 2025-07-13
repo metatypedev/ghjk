@@ -209,7 +209,7 @@ type CustomE2eTestCase = Omit<E2eTestCase, "ePoints" | "fs"> & {
 // -l: login mode
 // -i: interactive mode
 // we don't want to use the system rcfile
-const bashInteractiveEpoint = `bash --rcfile $BASH_ENV -si`;
+const bashInteractiveEpoint = `bash --rcfile "$BASH_ENV" -si`;
 
 const cases: CustomE2eTestCase[] = [
   {

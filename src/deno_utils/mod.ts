@@ -82,7 +82,7 @@ export function defaultCommandBuilder() {
     .printCommand(true);
   builder.setPrintCommandLogger((cmd) => {
     // clean up the already colorized print command logs
-    return logger().debug("spawning", cmd);
+    return logger().debug(`spawning: ${cmd}`);
   });
   return builder;
 }

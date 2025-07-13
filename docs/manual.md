@@ -136,13 +136,13 @@ One can always remove the `.ghjk/lock.json` to remove the lockfile and recreate 
 But this can not only lead to loss of information, it can take a long time since the ports module must query different package registries to resolve versions and more.
 
 The best way to resolve ghjk merge conflicts is to:
-- Resolve the ghjkfile conflict in a traditional manner
-- Instead of manually resolving the lockfile, just pick one version entirely
-    - In git, easier to remove any changes in the merge and revert to the base/HEAD branch
-- Re-serialize by invoking the ghjk CLI
+- Resolve any conflicts in the ghjkfile in a traditional manner
+- For conflicts in the lockfile, instead of manually resolving each conflict, just pick one version entirely
+    - In the git CLI, easier to remove any incoming changes and revert to the base/HEAD branch
+- Re-serialize by invoking the ghjk CLI to ensure the lockfile is upto date
 
 These simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
-Of course, if the discarded version of the lockfile contained new versions, they'll be re-resolved possibly to a different version.
+Of course, if the discarded patches of the lockfile contained new port version specs, they'll be re-resolved possibly to a different version.
 But generally, if the versions specified in ghjkfile are tight enough, it'll resolve the same values as before.
 If versions are important, it's good to explicitly specify them in your ghjkfile.
 
