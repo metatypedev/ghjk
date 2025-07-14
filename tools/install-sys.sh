@@ -7,16 +7,13 @@ case "$os_release" in
   *Ubuntu*|*Debian*|*Linux\ pop-os*)
     # Debian‐based
     sudo apt update && sudo apt install -y --no-install-recommends \
-    # for libsqlite \
-    libclang-dev
-    # for tests
-    fish zsh bash
+    libclang-dev `# for libsqlite` \
+    fish zsh bash `# for tests`
     ;;
   *Fedora*|*Red\ Hat*|*CentOS*)
     # Red Hat–based
     sudo dnf install -y \
-    clang-devel 
-    # for tests
+    clang-devel \
     fish zsh bash
     ;;
   *)

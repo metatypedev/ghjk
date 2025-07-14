@@ -138,7 +138,7 @@ But this can not only lead to loss of information, it can take a long time since
 The best way to resolve ghjk merge conflicts is to:
 - Resolve any conflicts in the ghjkfile in a traditional manner
 - For conflicts in the lockfile, instead of manually resolving each conflict, just pick one version entirely
-    - In the git CLI, easier to remove any incoming changes and revert to the base/HEAD branch
+  - In the git CLI, easier to remove any incoming changes and revert to the base/HEAD branch
 - Re-serialize by invoking the ghjk CLI to ensure the lockfile is upto date
 
 These simple steps make sure that the _lockfile_ reflect what's in the latest _ghjkfile_ without needing to re-resolve the world.
