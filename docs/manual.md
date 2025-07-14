@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.1/install.sh" | bash
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.2/install.sh" | bash
 ```
 
 This will install the CLI and add some hooks to your shell rc configurations that ghjk needs to function.
@@ -412,7 +412,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.1-rc.1
+ARG GHJK_VERSION=v0.3.1-rc.2
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.github.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
