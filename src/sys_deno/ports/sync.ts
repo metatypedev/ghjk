@@ -119,7 +119,8 @@ export async function installFromGraph(
       const totalDepArts: DepArts = {};
       const depShimsRootPath = await Deno.makeTempDir({
         dir: tmpPath,
-        prefix: `shims_${installId}_`,
+        // NOTE : add whitespace to prefix to flush out whitespace path bugs
+        prefix: `ws shims_${installId}_`,
       });
       await Promise.all((graph.depEdges[installId] ?? []).map(async (
         [depInstallId, depPortName],
@@ -495,7 +496,8 @@ function resolveConfig(
 
     const depShimsRootPath = await Deno.makeTempDir({
       dir: scx.tmpPath,
-      prefix: `shims_resDeps_${manifest.name}_`,
+      // NOTE : add whitespace to prefix to flush out whitespace path bugs
+      prefix: `ws shims_resDeps_${manifest.name}_`,
     });
     const resolutionDepArts = await getShimmedDepArts(
       scx,
@@ -634,7 +636,8 @@ export async function resolveAndInstall(
   } else {
     const depShimsRootPath = await Deno.makeTempDir({
       dir: scx.tmpPath,
-      prefix: `shims_${installId}`,
+      // NOTE : add whitespace to prefix to flush out whitespace path bugs
+      prefix: `ws shims_${installId}`,
     });
     // readies all the exports of the port's deps including
     // shims for their exports
@@ -866,7 +869,8 @@ export async function doDownloadStage(
   logger.info(`downloading ${installId}:${installVersion}`);
   const tmpDirPath = await Deno.makeTempDir({
     dir: tmpPath,
-    prefix: `download_${installId}@${installVersion}_`,
+    // NOTE : add whitespace to prefix to flush out whitespace path bugs
+    prefix: `ws download_${installId}@${installVersion}_`,
   });
   await port.download({
     installPath: installPath,
@@ -923,7 +927,8 @@ export async function doInstallStage(
     logger.info(`installing ${installId}:${installVersion}`);
     const tmpDirPath = await Deno.makeTempDir({
       dir: tmpPath,
-      prefix: `install_${installId}@${installVersion}_`,
+      // NOTE : add whitespace to prefix to flush out whitespace path bugs
+      prefix: `ws install_${installId}@${installVersion}_`,
     });
     await port.install({
       ...baseArgs,

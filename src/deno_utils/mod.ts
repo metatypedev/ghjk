@@ -328,7 +328,7 @@ export async function sameFsTmpRoot(
   // when using the system managed tmp dir, we create a new tmp dir in it
   // we don't care if the sync fails before it cleans as the system will
   // take care of it
-  return $.path(await Deno.makeTempDir({ prefix: "ghjk_sync" }));
+  return $.path(await Deno.makeTempDir({ prefix: "ws ghjk_sync" }));
 }
 
 export type Rc<T> = ReturnType<typeof rc<T>>;

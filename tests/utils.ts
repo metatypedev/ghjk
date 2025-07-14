@@ -32,6 +32,7 @@ export async function localE2eTest(testCase: E2eTestCase) {
   const { envVars: testEnvs, ePoints, fs } = testCase;
   const tmpDir = $.path(
     await Deno.makeTempDir({
+      // NOTE : add whitespace to prefix to flush out whitespace path bugs
       prefix: "ws ghjk_le2e_",
     }),
   );
