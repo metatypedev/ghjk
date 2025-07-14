@@ -180,7 +180,7 @@ export async function install(
         await filterAddContent(
           rcPath,
           new RegExp(args.shellHookMarker, "g"),
-          `. ${ghjkDataDir}/env.${shell} # ${args.shellHookMarker}`,
+          `. "${ghjkDataDir}/env.${shell}" # ${args.shellHookMarker}`,
         );
       }),
   );
