@@ -241,21 +241,10 @@ export class Port extends PortBase {
             // FIXME: this is super inefficient
             // - skip if we detect binary files
             // - consider only just replacing shebangs
-            // - assumes /bin/sh is always avai
             const file = await path.readText();
-            let fixed = file
+            const fixed = file
               .replaceAll(oldVenv, newVenv)
               .replaceAll(shimPyHome, realPyHome);
-            // Force use of exec based shebang if whitespace is detected in newVenv path
-            if (
-              /\s/.test(newVenv) && fixed.startsWith("#!") &&
-              fixed.match(/^#!.*python/mi)
-            ) {
-              const newShebang =
-                `#!/bin/sh\n'''exec' "${realPyExecPath}" \"$0\" \"$@\"\n' '''\n`;
-              const rest = fixed.split("\n").slice(1).join("\n");
-              fixed = newShebang + rest;
-            }
             if (file != fixed) {
               logger().debug("replacing shebangs", path.toString());
               await path.writeText(fixed);
