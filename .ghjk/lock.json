@@ -517,6 +517,18 @@
           "portRef": "cargobi_cratesio@0.1.0",
           "crateName": "hyperfine",
           "specifiedVersion": false
+        },
+        "bciqlbtrpnqpzmi5zkmekn6i3v4j52kstg6nmluservmyhyh2f3niqsi": {
+          "version": "v10.13.1",
+          "buildDepConfigs": {},
+          "portRef": "pnpm_ghrel@0.1.0",
+          "specifiedVersion": false
+        },
+        "bciqpgmk2bjfy4sepf4e3xkitaph7zo5ed4ka3koinkpy25v5r3meb4q": {
+          "version": "v10.6.4",
+          "buildDepConfigs": {},
+          "portRef": "pnpm_ghrel@0.1.0",
+          "specifiedVersion": true
         }
       }
     },
