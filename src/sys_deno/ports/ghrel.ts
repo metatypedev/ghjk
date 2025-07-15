@@ -82,15 +82,20 @@ export abstract class GithubReleasePort extends PortBase {
 
   async listAll(args: ListAllArgs) {
     const metadata: { tag_name: string }[] = [];
-
-    for (let page = 1;; page++) {
+    const MAX_TOTAL = 1000;
+    const PER_PAGE = 100;
+    let fetched = 0;
+    for (let page = 1; fetched < MAX_TOTAL; page++) {
+      // Calculate how many to fetch on this page
+      const remaining = MAX_TOTAL - fetched;
+      const per_page = remaining < PER_PAGE ? remaining : PER_PAGE;
       // deno-lint-ignore no-await-in-loop
       const pageMetadata = await $.withRetries({
         count: 10,
         delay: $.exponentialBackoff(1000),
         action: async () =>
           (await $.request(
-            `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=100&page=${page}`,
+            `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=${per_page}&page=${page}`,
           )
             .header(ghHeaders(args.config))
             .json()) as { tag_name: string }[],
@@ -101,6 +106,11 @@ export abstract class GithubReleasePort extends PortBase {
       }
 
       metadata.push(...pageMetadata);
+      fetched += pageMetadata.length;
+      if (pageMetadata.length < per_page) {
+        // No more pages
+        break;
+      }
     }
 
     return metadata.map((rel) => rel.tag_name).reverse();

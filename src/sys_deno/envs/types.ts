@@ -111,6 +111,9 @@ export type WellKnownEnvRecipe = zod.infer<
 
 /*
  * A function that batch convert strange provisions of a certain kind to well known ones.
+ *
+ * Think of them as type erased service providers.
+ * The service being transforming and implementing environment ingredients.
  */
 export type ProvisionReducer<P extends Provision, O extends Provision> = (
   provisions: P[],

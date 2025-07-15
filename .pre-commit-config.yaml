@@ -1,3 +1,5 @@
+# TODO: shellcheck
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -12,16 +14,6 @@ repos:
       - id: check-case-conflict
       - id: check-executables-have-shebangs
       - id: check-merge-conflict
-      - id: end-of-file-fixer
-        # exclude all generated files
-        exclude: |
-          (?x)^(
-              .ghjk/lock.json|
-              .ghjk/hash.json|
-              .ghjk/deno.lock|
-              deno.lock|
-              gh_action/.*.js
-          )$
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.28.2
     hooks:

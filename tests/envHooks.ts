@@ -3,7 +3,7 @@ import { E2eTestCase, harness } from "./utils.ts";
 
 const posixInteractiveScript = `
 set -eux
-export GHJK_WD=$PWD
+export GHJK_WD="$PWD"
 
 # hook creates a marker file
 [ "$GHJK_ENV" = 'main' ] || exit 111
@@ -17,12 +17,12 @@ pushd ../
 popd
 
 # marker should be avail now
-[ $(cat $GHJK_WD/marker) = 'remark' ] || exit 103
+[ $(cat "$GHJK_WD/marker") = 'remark' ] || exit 103
 `;
 
 const fishScript = `
 set fish_trace 1
-export GHJK_WD=$PWD
+export GHJK_WD="$PWD"
 
 # hook creates a marker file
 test (cat "$GHJK_WD/marker") = 'remark'; or exit 101
@@ -35,7 +35,7 @@ not test -e "$GHJK_WD/marker"; or exit 102
 popd
 
 # marker should be avail now
-test (cat $GHJK_WD/marker) = 'remark'; or exit 103
+test (cat "$GHJK_WD/marker") = 'remark'; or exit 103
 `;
 
 const fishInteractiveScript = [
@@ -60,7 +60,7 @@ const cases: CustomE2eTestCase[] = [
     // -s: read from stdin
     // -l: login mode
     // -i: make it interactive
-    ePoint: `bash --rcfile $BASH_ENV -si`, // we don't want to use the system rcfile
+    ePoint: `bash --rcfile "$BASH_ENV" -si`, // we don't want to use the system rcfile
     stdin: posixInteractiveScript,
   },
   {

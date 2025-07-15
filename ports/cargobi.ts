@@ -124,9 +124,9 @@ export class Port extends PortBase {
     const locked = conf.locked ? `--locked` : "";
 
     const cargoBinstall = () => {
-      return $.raw`${
+      return $.raw`"${
         depExecShimPath(std_ports.cbin_ghrel, "cargo-binstall", args.depArts)
-      } ${conf.crateName} --version ${args.installVersion} --disable-strategies compile --root ${args.tmpDirPath} --no-confirm --no-track ${
+      }" ${conf.crateName} --version ${args.installVersion} --disable-strategies compile --root "${args.tmpDirPath}" --no-confirm --no-track ${
         [
           target,
           locked,
@@ -141,9 +141,9 @@ export class Port extends PortBase {
     };
 
     const cargoInstall = () => {
-      return $.raw`${
+      return $.raw`"${
         depExecShimPath(std_ports.rust_rustup, "cargo", args.depArts)
-      } install ${conf.crateName} --version ${args.installVersion} --root ${args.tmpDirPath} --no-track ${
+      }" install ${conf.crateName} --version ${args.installVersion} --root "${args.tmpDirPath}" --no-track ${
         [
           target,
           noDefaultFeatures,

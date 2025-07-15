@@ -117,7 +117,8 @@ export async function execTask(
 
     // deno-lint-ignore no-await-in-loop
     const taskEnvDir = await Deno.makeTempDir({
-      prefix: `ghjkTaskEnv_${taskKey}_`,
+      // NOTE : add whitespace to prefix to flush out whitespace path bugs
+      prefix: `ws ghjkTaskEnv_${taskKey}_`,
     });
     const envsCx = getEnvsCtx(gcx);
     const recipe = envsCx.config.envs[taskDef.envKey];

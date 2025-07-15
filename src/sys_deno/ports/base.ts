@@ -51,7 +51,7 @@ export abstract class PortBase {
   /// Will default to using the last itemr returned by [`listAll`]
   latestStable(args: ListAllArgs): Promise<string> | string {
     return (async () => {
-      logger().warning(
+      logger().warn(
         `using default implementation of latestStable for port ${args.manifest.name}`,
       );
       const allVers = await this.listAll(args);
