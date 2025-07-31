@@ -1,9 +1,8 @@
-import type { AmbientAccessPortManifestX } from "./mod.ts";
+import { type AmbientAccessPortManifest, PortBase } from "./mod.ts";
 import { $ } from "./mod.ts";
-import { PortBase } from "./base.ts";
 
 export class AmbientAccessPort extends PortBase {
-  constructor(public manifest: AmbientAccessPortManifestX) {
+  constructor(public manifest: AmbientAccessPortManifest) {
     super();
     // dependencies make no sense for ambient ports
     if (manifest.buildDeps && manifest.buildDeps.length > 0) {

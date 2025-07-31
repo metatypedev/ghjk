@@ -39,7 +39,9 @@ export const manifest = {
   platforms: osXarch(["linux", "darwin", "windows"], ["aarch64", "x86_64"]),
 };
 
-export type JdkTemurinInstallConf = InstallConfigSimple & GithubReleasesInstConf;
+export type JdkTemurinInstallConf =
+  & InstallConfigSimple
+  & GithubReleasesInstConf;
 
 export default function conf(config: JdkTemurinInstallConf = {}) {
   return {
@@ -218,9 +220,9 @@ export class Port extends PortBase {
     }
   }
 
-    override async download(args: DownloadArgs) {
+  override async download(args: DownloadArgs) {
     const urls = await this.downloadUrls(args);
-    
+
     await Promise.all(
       urls.map(async (obj) => {
         await downloadFile({

@@ -3,7 +3,7 @@ export * from "./types.ts";
 import { zod } from "../../deps.ts";
 import { Json, unwrapZodRes } from "../../deno_utils/mod.ts";
 
-import validators from "./types.ts";
+import validators, { taskAliasProvisionTy } from "./types.ts";
 import type { TasksModuleConfig } from "./types.ts";
 import { Blackboard, type ModuleManifest } from "../types.ts";
 import { ModuleBase } from "../mod.ts";
@@ -11,6 +11,9 @@ import { ModuleBase } from "../mod.ts";
 import { buildTaskGraph, execTask, type TaskGraph } from "./exec.ts";
 import { getTasksCtx } from "./inter.ts";
 import type { CliCommand } from "../types.ts";
+import { getProvisionReducerStore } from "../envs/reducer.ts";
+import type { Provision, ProvisionReducer } from "../envs/types.ts";
+import { installTaskAliasReducer } from "./reducers.ts";
 
 export type TasksCtx = {
   config: TasksModuleConfig;
@@ -44,6 +47,16 @@ export class TasksModule extends ModuleBase<TasksLockEnt> {
     const tcx = getTasksCtx(this.gcx);
     tcx.config = config;
     tcx.taskGraph = taskGraph;
+
+    // Register task alias reducer
+    const reducerStore = getProvisionReducerStore(this.gcx);
+    reducerStore.set(
+      taskAliasProvisionTy,
+      installTaskAliasReducer(this.gcx) as ProvisionReducer<
+        Provision,
+        Provision
+      >,
+    );
   }
 
   override commands() {

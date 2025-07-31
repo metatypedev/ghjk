@@ -42,6 +42,7 @@ export async function cookPosixEnv(
   } as Record<string, string>;
   const onEnterHooks = [] as [string, string[]][];
   const onExitHooks = [] as [string, string[]][];
+  const aliases = [] as { aliasName: string; command: string[] }[];
   // FIXME: detect shim conflicts
   // FIXME: better support for multi installs
 
@@ -81,6 +82,12 @@ export async function cookPosixEnv(
         break;
       case "ghjk.ports.Install":
         // do nothing
+        break;
+      case "ghjk.shell.Alias":
+        aliases.push({
+          aliasName: wellKnownProv.aliasName,
+          command: wellKnownProv.command,
+        });
         break;
       default:
         throw Error(
@@ -134,6 +141,7 @@ export async function cookPosixEnv(
       pathVars,
       onEnterHooks,
       onExitHooks,
+      aliases,
     );
   }
   return {
@@ -203,6 +211,7 @@ async function writeActivators(
   pathVars: Record<string, string>,
   onEnterHooks: [string, string[]][],
   onExitHooks: [string, string[]][],
+  aliases: { aliasName: string; command: string[] }[],
 ) {
   const ghjkDirVar = "_ghjk_dir";
   const dataDirVar = "_ghjk_data_dir";
@@ -308,6 +317,19 @@ async function writeActivators(
       `# on this shim to improve reliablity`,
       ghjk_sh(gcx, ghjkShimName),
       ``,
+      `# aliases`,
+      ...aliases.map(({ aliasName, command }) => [
+        `${aliasName} () {`,
+        `    ${command.join(" ")} "$@"`,
+        `}`,
+        ``,
+      ]).flat(),
+      ``,
+      `# cleanup task aliases`,
+      ...aliases.map(({ aliasName }) =>
+        `GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f ${aliasName};'`
+      ),
+      ``,
       `# only run the hooks in interactive mode`,
       `case "$-" in`,
       `    *i*) # if the shell variables contain "i"`,
@@ -375,6 +397,19 @@ async function writeActivators(
       `# hooks that want to invoke ghjk are made to rely`,
       `# on this shim to improve to improve reliablity`,
       ghjk_fish(gcx, ghjkShimName),
+      ``,
+      `# aliases`,
+      ...aliases.map(({ aliasName, command }) => [
+        `function ${aliasName}`,
+        `    ${command.join(" ")} $argv`,
+        `end`,
+        ``,
+      ]).flat(),
+      ``,
+      `# cleanup task aliases`,
+      ...aliases.map(({ aliasName }) =>
+        `set --global --append GHJK_CLEANUP_FISH 'functions -e ${aliasName};'`
+      ),
       ``,
       `# only run the hooks in interactive mode`,
       `if status is-interactive;`,

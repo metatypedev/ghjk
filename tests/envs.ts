@@ -156,6 +156,33 @@ test (dummy) = "foo"; or exit 102;
 test (dummy) = "main"; or exit 102;
 `;
 
+const taskAliasTestBody = {
+  posix: `
+set -ex
+ghjk envs cook main
+. .ghjk/envs/main/activate.sh
+greet world
+test "$(greet world)" = "Hello world!" || exit 101
+type greet || exit 102
+ghjk_deactivate
+# alias should be gone after deactivation
+type greet && exit 103
+[ $? -eq 1 ] || exit 104
+`,
+  fish: `
+set fish_trace 1
+ghjk envs cook main
+. .ghjk/envs/main/activate.fish
+greet world
+test (greet world) = "Hello world!"; or exit 101
+type greet; or exit 102
+ghjk_deactivate
+# alias should be gone after deactivation
+type -q greet; and exit 103
+test $status = 1; or exit 104
+`,
+};
+
 const cases: CustomE2eTestCase[] = [
   {
     name: "prov_env_vars_bash",
@@ -177,13 +204,13 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "prov_port_installs_bash",
-    ePoint: `bash -l`,
+    ePoint: `bash -s`,
     envs: installTestEnvs,
     stdin: installTestsPosix,
   },
   {
     name: "prov_port_installs_zsh",
-    ePoint: `zsh -l`,
+    ePoint: `zsh -s`,
     envs: installTestEnvs,
     stdin: installTestsPosix,
   },
@@ -330,6 +357,45 @@ test "$E3" = "3"; or exit 103
 test "$E4" = "4"; or exit 104
 test (dummy) = "e1"; or exit 105
 `, // TODO: test inheritance of more props
+  },
+  {
+    name: "task_aliases_bash",
+    ePoint: `bash -s`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.posix,
+  },
+  {
+    name: "task_aliases_zsh",
+    ePoint: `zsh -s`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.posix,
+  },
+  {
+    name: "task_aliases_fish",
+    ePoint: `fish`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.fish,
   },
 ];
 

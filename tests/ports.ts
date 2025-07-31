@@ -194,7 +194,7 @@ const cases: CustomE2eTestCase[] = [
       enableRuntimes: true,
     },
   },
-  // ~197+ megs  
+  // ~197+ megs
   {
     name: "jdk_temurin",
     installConf: ports.jdk_temurin({ version: "21.0.8+9.0.LTS" }),

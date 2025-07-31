@@ -57,12 +57,21 @@ const tasksModuleConfig = zod.object({
   tasksNamed: taskName.array(),
 });
 
+// Task provision types for environment integration
+export const taskAliasProvisionTy = "ghjk.tasks.Alias";
+const taskAliasProvision = zod.object({
+  ty: zod.literal(taskAliasProvisionTy),
+  taskName: zod.string(),
+  aliasName: zod.string(),
+});
+
 const validators = {
   taskDef,
   taskDefHashed,
   denoWorkerTaskDefHashed,
   denoWorkerTaskDef,
   tasksModuleConfig,
+  taskAliasProvision,
 };
 export default validators;
 
@@ -71,3 +80,7 @@ export type TaskDef = zod.infer<typeof validators.taskDef>;
 export type TaskDefHashed = zod.infer<typeof validators.taskDefHashed>;
 
 export type TasksModuleConfig = zod.infer<typeof validators.tasksModuleConfig>;
+
+export type TaskAliasProvision = zod.infer<
+  typeof validators.taskAliasProvision
+>;

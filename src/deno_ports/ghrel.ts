@@ -1,7 +1,5 @@
-import { $, downloadFile, DownloadFileArgs } from "./mod.ts";
-import { zod } from "./deps.ts";
-import { PortBase } from "./base.ts";
-import type { DownloadArgs, ListAllArgs } from "./types.ts";
+import { $, downloadFile, PortBase, zod } from "./mod.ts";
+import type { DownloadArgs, DownloadFileArgs, ListAllArgs } from "./mod.ts";
 
 export const ghConfValidator = zod.object({
   ghToken: zod.string().nullish(),
