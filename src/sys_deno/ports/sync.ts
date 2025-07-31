@@ -519,7 +519,7 @@ function resolveConfig(
       const allVersions = await port.listAll(listAllArgs);
       // TODO: fuzzy matching
       const match = allVersions.find((version) =>
-        version.match(new RegExp(`^v?${config.version}$`))
+        version == config.version || version == `v` + config.version
       );
       if (!match) {
         throw new Error(

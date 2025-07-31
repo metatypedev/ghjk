@@ -146,7 +146,22 @@ Use the following command to enter a shell where the ghjk CLI is based on the co
 This will setup a separate installation at `.dev`.
 
 ```bash
+# enter dev shell
 $ deno task dev bash/fish/zsh
+# access the ghjk cli (through cargo run)
+$ deno task ghjk --help
+# use direct alias that points at build 
+# at ./target/debug/ghjk
+$ ghjk --help
+```
+
+There's also a nix devshell availaible with the build depenedencies configured.
+
+```bash
+$ nix develop .#fish
+# it provisions deno, rust toolcahin...etc
+$ deno task ghjk --help
+$ ghjk --help
 ```
 
 Run the tests in the repository through the deno tasks:

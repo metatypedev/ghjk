@@ -58,10 +58,8 @@ if [ "${PLATFORM:-x}" = "x" ]; then
 To continue with installation, please choose from one of the following values:
 - aarch64-unknown-linux-gnu
 - x86_64-unknown-linux-gnu
-- x86_64-unknown-linux-musl
 - aarch64-apple-darwin
 - x86_64-apple-darwin
-- x86_64-pc-windows-msvc
 
 Then set the PLATFORM environment variable, and re-run this script:
 $ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl bash
@@ -167,6 +165,7 @@ if [ -n "$SHELL_CONFIG" ]; then
 
   case $SHELL_TYPE in
     bash|zsh|ksh)
+      # FIXME: marker for paths to use during update
       APPEND_CMD="export PATH=\"$GHJK_INSTALL_EXE_DIR:\$PATH\""
       ;;
     fish)

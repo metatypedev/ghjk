@@ -234,8 +234,7 @@ export class EnvsModule extends ModuleBase<EnvsLockEnt> {
         name: "sync",
         about: "Synchronize your shell to what's in your config.",
         before_long_help: `Cooks and activates an environment.
-- If no ENV KEY is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].
-- If the environment is already active, this doesn't launch a new shell.`,
+- If no ENV KEY is specified and no env is currently active, this syncs the configured default env [${ecx.config.defaultEnv}].`,
         flags: {
           ...commonFlags,
         },

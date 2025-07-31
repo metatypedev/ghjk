@@ -32,20 +32,16 @@ ghjk.env("main")
     ports.deno_ghrel({ version: DENO_VERSION }),
   );
 
-const installs = {
-  rust: ports.rust({
-    version: RUST_VERSION,
-    profile: "default",
-    components: ["rust-src"],
-  }),
-};
-
 ghjk.config({
   defaultEnv: "dev",
   enableRuntimes: true,
   allowedBuildDeps: [
     ports.cpy_bs({ version: "3.13.4", releaseTag: "20250610" }),
-    installs.rust,
+    ports.rust({
+      version: RUST_VERSION,
+      profile: "default",
+      components: ["rust-src"],
+    }),
   ],
 });
 
@@ -55,7 +51,6 @@ ghjk.env("_rust")
   .install(
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
-    installs.rust,
     ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
       ? [ports.mold({
         version: "v2.4.0",

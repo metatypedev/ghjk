@@ -73,7 +73,7 @@ ghjk_hook() {
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             if [ "$(__ghjk_get_mtime_ts "$local_ghjk_dir/../ghjk.ts")" -gt "$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")" ]; then
                 if [ "$next_env" = "default" ]; then
-                    printf "\033[0;33m[ghjk] Possible drift from default environment, please sync...\033[0m\n" >&2
+                    printf "\033[0;33m[ghjk] Possible drift from environment, please sync...\033[0m\n" >&2
                 else
                     printf "\033[0;33m[ghjk] Possible drift from active environment (%s), please sync...\033[0m\n" "$next_env" >&2
                 fi
@@ -81,7 +81,7 @@ ghjk_hook() {
             fi
         else
             if [ "$next_env" = "default" ]; then
-                printf "\033[0;31m[ghjk] Default environment not set up, please sync...\033[0m\n" >&2
+                printf "\033[0;31m[ghjk] Environment not set up, please sync...\033[0m\n" >&2
             else
                 printf "\033[0;31m[ghjk] Active environment (%s) not set up, please sync...\033[0m\n" "$next_env" >&2
             fi

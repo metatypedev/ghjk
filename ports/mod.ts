@@ -11,6 +11,7 @@ export { default as earthly } from "./earthly.ts";
 export { default as fx_ghrel } from "./fx_ghrel.ts";
 export { default as git } from "./git.ts";
 export { default as infisical } from "./infisical.ts";
+export { default as jdk_temurin } from "./jdk_temurin.ts";
 export { default as jq_ghrel } from "./jq_ghrel.ts";
 export { default as livekit_cli_ghrel } from "./livekit_cli_ghrel.ts";
 export { default as lade_ghrel } from "./lade_ghrel.port.ts";
