@@ -361,7 +361,7 @@ export class Ghjkfile {
           id: std_modules.tasks,
           config: tasksConfig,
         }, {
-          id: std_modules.envs,
+          id: "envs",
           config: envsConfig,
         }],
       };

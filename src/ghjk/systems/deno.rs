@@ -100,6 +100,57 @@ pub async fn systems_from_deno(
             .boxed()
         }),
     );
+    
+    // Add hostcall for cook_posix_env to expose Rust envs functionality to TypeScript
+    hostcalls.funcs.insert(
+        "cook_posix_env".into(),
+        Box::new(move |args| {
+            async move {
+                let args: crate::systems::envs::CookPosixEnvArgs = serde_json::from_value(args)
+                    .wrap_err("error parsing cook_posix_env args")?;
+                
+                let env_vars = crate::systems::envs::cook_posix_env(
+                    &args.recipe,
+                    &args.env_key,
+                    &args.env_dir,
+                    args.create_shell_loaders,
+                    &args.ghjk_dir,
+                    &args.data_dir,
+                ).await?;
+                
+                Ok(serde_json::to_value(env_vars).wrap_err("error serializing env vars")?)
+            }
+            .boxed()
+        }),
+    );
+    
+    // Add hostcall to get specific recipes by env keys
+    hostcalls.funcs.insert(
+        "get_env_recipes".into(),
+        Box::new(move |args| {
+            async move {
+                let env_keys: Vec<String> = serde_json::from_value(args)
+                    .wrap_err("error parsing env keys")?;
+                
+                let ctx = crate::systems::envs::get_envs_ctx();
+                match ctx {
+                    Some(ctx) => {
+                        let mut recipes = std::collections::HashMap::new();
+                        for env_key in env_keys {
+                            if let Some(recipe) = ctx.config.envs.get(&env_key) {
+                                recipes.insert(env_key, recipe.clone());
+                            }
+                        }
+                        let recipes_json = serde_json::to_value(recipes)
+                            .wrap_err("error serializing recipes")?;
+                        Ok(recipes_json)
+                    }
+                    None => Ok(serde_json::Value::Null)
+                }
+            }
+            .boxed()
+        }),
+    );
     let cb_line = ext_conf.callbacks_handle(&gcx.deno);
     let mut exception_line = ext_conf.exceptions_rx();
 

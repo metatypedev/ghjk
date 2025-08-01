@@ -4136,6 +4136,7 @@ dependencies = [
  "directories",
  "educe",
  "futures",
+ "glob",
  "indexmap 2.9.0",
  "itertools 0.13.0",
  "json-canon",

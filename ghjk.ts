@@ -85,10 +85,10 @@ ghjk.env("main")
           // "deno",
         ],
         "DEBUG": [
-          "runtime",
-          "tokio",
         ],
         "INFO": [
+          "runtime",
+          "tokio",
           "deno::npm",
           "deno::module_loader",
           "deno::file_fetcher",

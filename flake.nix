@@ -17,7 +17,9 @@
 
         rustVersion = "1.85.0";   
 
-        rustChannel = pkgs.rust-bin.stable.${rustVersion}.default;
+        rustChannel = pkgs.rust-bin.stable.${rustVersion}.minimal.override {
+          extensions = [ "rust-src" ];
+        };
 
         ghjkDev = pkgs.writeShellScriptBin "ghjk-dev" ''
           # Use the Nix-provided deno explicitly

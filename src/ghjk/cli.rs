@@ -6,6 +6,7 @@ use clap::builder::styling::AnsiColor;
 
 use crate::config::Config;
 use crate::{host, systems};
+use crate::systems::SystemManifest;
 
 mod init;
 mod print;
@@ -36,6 +37,8 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     let Some(ghjkdir_path) = config.ghjkdir.clone() else {
         quick_err.exit();
     };
+
+    let (sys_envs, envs_ctx) = systems::envs::system(&gcx).await?;
 
     let deno_cx = {
         // TODO: DENO_FLAGS param simlar to V8_FLAGS
@@ -86,6 +89,13 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     )
     .await?;
 
+    // Add the new Rust-based envs system
+    let mut all_systems = systems_deno;
+    all_systems.insert(
+        "envs".into(),
+        SystemManifest::Envs(sys_envs),
+    );
+
     let hcx = host::HostCtx::new(
         gcx.clone(),
         host::Config {
@@ -96,7 +106,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
             locked: false,
             re_serialize: false,
         },
-        systems_deno,
+        all_systems,
     );
 
     let hcx = Arc::new(hcx);

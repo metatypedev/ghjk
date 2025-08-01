@@ -579,7 +579,7 @@
             "play": {
               "ty": "denoFile@v1",
               "key": "play",
-              "envKey": "bciqdjbb4gkamcv6butz4klnynshlcysa5clyjnnjml4hh6hsqjzo7ai"
+              "envKey": "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny"
             },
             "lock-sed": {
               "ty": "denoFile@v1",
@@ -595,7 +595,7 @@
             "stuff": {
               "ty": "denoFile@v1",
               "key": "stuff",
-              "envKey": "bciqdjbb4gkamcv6butz4klnynshlcysa5clyjnnjml4hh6hsqjzo7ai"
+              "envKey": "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny"
             }
           },
           "tasksNamed": [
@@ -666,13 +666,13 @@
                 }
               ]
             },
-            "bciqfn3p6dc6d5phfpbkcis4wrruhrhs2jejeezsvl2txinelbjrpbny": {
+            "bciqczjlbtl4djvzi6xxx2oe5n3qffv4neee5vcxnig3qgdetml6exka": {
               "desc": "the default default environment.",
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.tasks.Alias",
@@ -700,12 +700,12 @@
                 }
               ]
             },
-            "bciqdjbb4gkamcv6butz4klnynshlcysa5clyjnnjml4hh6hsqjzo7ai": {
+            "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.tasks.Alias",
@@ -733,12 +733,12 @@
                 }
               ]
             },
-            "bciqmokrw7x7l6nagv2xtnw2evh5itjpckb7gdkb6auiei47n647kesy": {
+            "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.tasks.Alias",
@@ -766,12 +766,12 @@
                 }
               ]
             },
-            "bciqktr7mbm26nkoagc5mzd4rwbaw5d2l3ebn5hri2h7wnlfh2q5zfwq": {
+            "bciqhsko4lgp3a3k4z3p4sm4wq3olvgabaz6nil2cfd23h7mthkcvr6i": {
               "provides": [
                 {
                   "ty": "posix.envVar",
                   "key": "RUST_LOG",
-                  "val": "info,runtime=debug,tokio=debug,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
+                  "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
                   "ty": "ghjk.tasks.Alias",
@@ -802,10 +802,10 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqfn3p6dc6d5phfpbkcis4wrruhrhs2jejeezsvl2txinelbjrpbny",
-            "_rust": "bciqmokrw7x7l6nagv2xtnw2evh5itjpckb7gdkb6auiei47n647kesy",
-            "ci": "bciqmokrw7x7l6nagv2xtnw2evh5itjpckb7gdkb6auiei47n647kesy",
-            "dev": "bciqktr7mbm26nkoagc5mzd4rwbaw5d2l3ebn5hri2h7wnlfh2q5zfwq"
+            "main": "bciqczjlbtl4djvzi6xxx2oe5n3qffv4neee5vcxnig3qgdetml6exka",
+            "_rust": "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa",
+            "ci": "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa",
+            "dev": "bciqhsko4lgp3a3k4z3p4sm4wq3olvgabaz6nil2cfd23h7mthkcvr6i"
           }
         }
       }

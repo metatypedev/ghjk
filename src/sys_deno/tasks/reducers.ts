@@ -1,4 +1,4 @@
-import type { Provision } from "../envs/types.ts";
+import type { Provision, WellKnownProvision } from "../envs/types.ts";
 import type { GhjkCtx } from "../types.ts";
 import type { TaskAliasProvision } from "./types.ts";
 
@@ -9,7 +9,11 @@ import type { TaskAliasProvision } from "./types.ts";
 
 export function installTaskAliasReducer(_gcx: GhjkCtx) {
   return (provisions: Provision[]) => {
-    const output = [];
+    const output = [{
+      ty: "ghjk.shell.Alias",
+      aliasName: "x",
+      command: ["ghjk", "x"],
+    }] satisfies WellKnownProvision[];
 
     for (const provision of provisions) {
       const taskAliasProv = provision as TaskAliasProvision;

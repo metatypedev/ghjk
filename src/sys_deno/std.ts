@@ -1,11 +1,11 @@
 import type { DenoSystemsRoot } from "./types.ts";
-import { EnvsModule } from "./envs/mod.ts";
+// EnvsModule removed - now implemented in Rust
 import { PortsModule } from "./ports/mod.ts";
 import { TasksModule } from "./tasks/mod.ts";
 
 export const ports = "ports";
 export const tasks = "tasks";
-export const envs = "envs";
+// envs system now implemented in Rust
 
 export const map = {
   [ports as string]: {
@@ -14,9 +14,7 @@ export const map = {
   [tasks as string]: {
     ctor: TasksModule,
   },
-  [envs as string]: {
-    ctor: EnvsModule,
-  },
+  // envs system now implemented in Rust
 };
 
 export default {

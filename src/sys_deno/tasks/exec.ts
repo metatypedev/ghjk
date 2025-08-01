@@ -8,7 +8,7 @@ import { execTaskDeno } from "./deno.ts";
 const logger = getLogger(import.meta);
 
 import { cookPosixEnv } from "../envs/posix.ts";
-import { getEnvsCtx } from "../envs/inter.ts";
+
 
 export type TaskGraph = Awaited<ReturnType<typeof buildTaskGraph>>;
 
@@ -24,13 +24,7 @@ export function buildTaskGraph(
     depEdges: {} as Record<string, string[] | undefined>,
   };
   for (const [hash, task] of Object.entries(tasksConfig.tasks)) {
-    /*
-     * FIXME: find a way to pre-check if task envs are availaible
-     if (task.envKey && !envsCx.has(task.envKey)) {
-      throw new Error(
-        `unable to find env referenced by task "${hash}" under key "${task.envKey}"`,
-      );
-    } */
+    // Note: Environment availability checked during task execution
     if (!task.dependsOn || task.dependsOn.length == 0) {
       graph.indie.push(hash);
     } else {
@@ -120,13 +114,10 @@ export async function execTask(
       // NOTE : add whitespace to prefix to flush out whitespace path bugs
       prefix: `ws ghjkTaskEnv_${taskKey}_`,
     });
-    const envsCx = getEnvsCtx(gcx);
-    const recipe = envsCx.config.envs[taskDef.envKey];
     // deno-lint-ignore no-await-in-loop
     const { env: installEnvs } = await cookPosixEnv(
       {
         gcx,
-        recipe: recipe ?? { provides: [] },
         envKey: taskDef.envKey ?? `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },
