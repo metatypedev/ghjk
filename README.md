@@ -48,7 +48,7 @@ Install the ghjk cli using the installer scripts like so:
 <!-- FIXME: revert to simple pipe on next release -->
 ```bash
 cd /tmp
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.2/install.sh" > install.sh
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.3/install.sh" > install.sh
 bash install.sh
 ```
 

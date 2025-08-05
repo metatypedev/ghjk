@@ -18,7 +18,7 @@ pub struct EnvsCtx {
     ghjkdir_path: PathBuf,
     // FIXME: this hack has two allocations
     #[educe(Debug(ignore))]
-    reduce_callback: Arc<tokio::sync::OnceCell<Box<ReduceCallback>>>,
+    reduce_callback: tokio::sync::OnceCell<Arc<ReduceCallback>>,
     /// Store for provision reducers
     #[educe(Debug(ignore))]
     reducer_store: Arc<ProvisionReducerStore>,
@@ -27,7 +27,7 @@ pub struct EnvsCtx {
 type ReduceCallback =
     dyn Fn(types::EnvRecipe) -> BoxFuture<'static, Res<types::EnvRecipe>> + Send + Sync + 'static;
 impl EnvsCtx {
-    pub async fn set_reduce_callback(&self, cb: Box<ReduceCallback>) {
+    pub async fn set_reduce_callback(&self, cb: Arc<ReduceCallback>) {
         if self.reduce_callback.set(cb).is_err() {
             panic!("reduce_callback already set");
         }
@@ -558,7 +558,7 @@ async fn detect_shell_path() -> Res<String> {
         .await
         .wrap_err("error on ps command")?;
     let path = String::from_utf8(output.stdout).wrap_err("utf8 error on path")?;
-    Ok(path)
+    Ok(path.trim().to_string())
 }
 
 // Helper functions for provision type handling

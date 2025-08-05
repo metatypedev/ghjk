@@ -390,16 +390,16 @@ export GHJK_CLEANUP_POSIX="";
     for (key, val) in env_vars {
         let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
         // this avoids triggering unbound variable if -e is set
-        // by defaulting to a value that's guranteed to
+        // by defaulting to a value that's guaranteed to
         // be differeint than the actual val
         // TODO: avoid invalid key values elsewhere
-        let guranteed_different_val: String = val
+        let guaranteed_different_val: String = val
             .replace("'", "")
             .replace("\"", "")
             .chars()
             .take(2)
             .collect();
-        let safe_comp_key = format!("${{{key}:-_{guranteed_different_val}}}");
+        let safe_comp_key = format!("${{{key}:-_{guaranteed_different_val}}}");
         // single quote the supplied values to avoid
         // any embedded expansion/execution
         // also, single quote the entire test section to avoid

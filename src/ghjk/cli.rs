@@ -31,7 +31,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     debug!("config sourced: {config:?}");
 
-    let quck_res = match try_quick_cli(&config).await? {
+    let quick_res = match try_quick_cli(&config).await? {
         QuickCliResult::Exit(code) => {
             return Ok(code);
         }
@@ -39,7 +39,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     };
 
     let Some(ghjkdir_path) = config.ghjkdir.clone() else {
-        return Ok(quck_res.exit(None));
+        return Ok(quick_res.exit(None));
     };
 
     let deno_cx = {
@@ -121,18 +121,18 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     // initialize the systems according to the config
     let mut systems = {
-        let is_completions = matches!(quck_res, QuickCliResult::Completions(_));
+        let is_completions = matches!(quick_res, QuickCliResult::Completions(_));
         match host::systems_from_ghjkfile(hcx, &ghjkdir_path, is_completions).await {
             Ok(Some(val)) => val,
             Ok(None) => {
                 if !is_completions {
                     warn!("no ghjkfile found");
                 }
-                return Ok(quck_res.exit(None));
+                return Ok(quick_res.exit(None));
             }
             Err(err) => {
                 if is_completions {
-                    return Ok(quck_res.exit(None));
+                    return Ok(quick_res.exit(None));
                 }
                 return Err(err);
             }
@@ -194,7 +194,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     // if it's already known to be a completions request,
     // no need to prase the argv again
-    if let QuickCliResult::Completions(shell) = quck_res {
+    if let QuickCliResult::Completions(shell) = quick_res {
         return Ok(QuickCliResult::Completions(shell).exit(Some(&mut root_cmd)));
     }
 

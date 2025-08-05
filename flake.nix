@@ -31,7 +31,7 @@
           name = "ghjk-devshell-base";
           buildInputs = with pkgs; [
             rustChannel
-            # clang
+            clang
             llvmPackages.libclang
             pkg-config
             sqlite
@@ -44,7 +44,10 @@
 
           shellHook = ''
             export LIBCLANG_PATH=${pkgs.llvmPackages.libclang.lib}/lib
-            export LD_LIBRARY_PATH="$LIBCLANG_PATH:${pkgs.lib.makeLibraryPath [ (pkgs.lib.getLib pkgs.sqlite) pkgs.llvmPackages.libclang.lib ]}"
+            export LD_LIBRARY_PATH="$LIBCLANG_PATH:${pkgs.lib.makeLibraryPath [ 
+              (pkgs.lib.getLib pkgs.sqlite) 
+              pkgs.llvmPackages.libclang.lib 
+            ]}"
             if [ "$(uname -s)" = "Darwin" ]; then
               export DYLD_LIBRARY_PATH="$LD_LIBRARY_PATH"
             fi

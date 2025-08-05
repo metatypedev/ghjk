@@ -216,7 +216,7 @@ pub async fn systems_from_deno(
 
     ecx.set_reduce_callback({
         let callbacks = scx.callbacks.clone();
-        Box::new(move |recipe| {
+        Arc::new(move |recipe| {
             let callbacks = callbacks.clone();
             async move {
                 let res = callbacks

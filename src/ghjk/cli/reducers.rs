@@ -12,18 +12,18 @@ pub fn ghjk_cli_completions_reducer(
     sys_actions: &IndexMap<CHeapStr, crate::cli::sys::SysCmdAction>,
     include_aliases: bool,
 ) -> ProvisionReducer {
-    // Pre-generate scripts AOT and capture them
-    let mut cmd = root_cmd.clone();
-
     let mut bash_completions = vec![];
     let mut zsh_completions = vec![];
     let mut fish_completions = vec![];
+
+    // Pre-generate scripts AOT and capture them
+    let mut root_cmd = root_cmd.clone();
 
     bash_completions.push({
         let mut root_bash: Vec<u8> = Vec::new();
         generate(
             Shell::Bash,
-            &mut cmd.clone(),
+            &mut root_cmd,
             "ghjk".to_string(),
             &mut root_bash,
         );
@@ -31,86 +31,62 @@ pub fn ghjk_cli_completions_reducer(
     });
     zsh_completions.push({
         let mut root_zsh: Vec<u8> = Vec::new();
-        generate(
-            Shell::Zsh,
-            &mut cmd.clone(),
-            "ghjk".to_string(),
-            &mut root_zsh,
-        );
+        generate(Shell::Zsh, &mut root_cmd, "ghjk".to_string(), &mut root_zsh);
         String::from_utf8(root_zsh).expect("non utf8 completions")
     });
     fish_completions.push({
         let mut root_fish: Vec<u8> = Vec::new();
-        generate(Shell::Fish, &mut cmd, "ghjk".to_string(), &mut root_fish);
+        generate(
+            Shell::Fish,
+            &mut root_cmd,
+            "ghjk".to_string(),
+            &mut root_fish,
+        );
         String::from_utf8(root_fish).expect("non utf8 completions")
     });
 
     if include_aliases {
-        if let Some(x_cmd) = sys_cmds.iter().find(|c| c.get_name() == "tasks") {
+        if let Some(mut x_cmd) = sys_cmds.iter().find(|c| c.get_name() == "tasks").cloned() {
             bash_completions.push({
                 let mut x_cmd_bash: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Bash,
-                    &mut x_cmd.clone(),
-                    "x".to_string(),
-                    &mut x_cmd_bash,
-                );
+                generate(Shell::Bash, &mut x_cmd, "x".to_string(), &mut x_cmd_bash);
                 String::from_utf8(x_cmd_bash).expect("non utf8 completions")
             });
             zsh_completions.push({
                 let mut x_cmd_zsh: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Zsh,
-                    &mut x_cmd.clone(),
-                    "x".to_string(),
-                    &mut x_cmd_zsh,
-                );
+                generate(Shell::Zsh, &mut x_cmd, "x".to_string(), &mut x_cmd_zsh);
                 String::from_utf8(x_cmd_zsh).expect("non utf8 completions")
             });
             fish_completions.push({
                 let mut x_cmd_fish: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Fish,
-                    &mut x_cmd.clone(),
-                    "x".to_string(),
-                    &mut x_cmd_fish,
-                );
+                generate(Shell::Fish, &mut x_cmd, "x".to_string(), &mut x_cmd_fish);
                 String::from_utf8(x_cmd_fish).expect("non utf8 completions")
             });
         }
         let task_cmds = sys_actions
             .get("tasks")
-            .map(|c| c.sub_commands.values().map(|c| &c.clap).collect::<Vec<_>>())
+            .map(|c| {
+                c.sub_commands
+                    .values()
+                    .map(|c| c.clap.clone())
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
-        for task_cmd in task_cmds {
+        for mut task_cmd in task_cmds {
+            let name = task_cmd.get_name().to_string();
             bash_completions.push({
                 let mut task_cmd_bash: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Bash,
-                    &mut task_cmd.clone(),
-                    task_cmd.get_name(),
-                    &mut task_cmd_bash,
-                );
+                generate(Shell::Bash, &mut task_cmd, name.clone(), &mut task_cmd_bash);
                 String::from_utf8(task_cmd_bash).expect("non utf8 completions")
             });
             zsh_completions.push({
                 let mut task_cmd_zsh: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Zsh,
-                    &mut task_cmd.clone(),
-                    task_cmd.get_name(),
-                    &mut task_cmd_zsh,
-                );
+                generate(Shell::Zsh, &mut task_cmd, name.clone(), &mut task_cmd_zsh);
                 String::from_utf8(task_cmd_zsh).expect("non utf8 completions")
             });
             fish_completions.push({
                 let mut task_cmd_fish: Vec<u8> = Vec::new();
-                generate(
-                    Shell::Fish,
-                    &mut task_cmd.clone(),
-                    task_cmd.get_name(),
-                    &mut task_cmd_fish,
-                );
+                generate(Shell::Fish, &mut task_cmd, name, &mut task_cmd_fish);
                 String::from_utf8(task_cmd_fish).expect("non utf8 completions")
             });
         }
