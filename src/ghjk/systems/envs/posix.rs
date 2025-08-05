@@ -1,12 +1,14 @@
 use crate::interlude::*;
+use std::fmt::Write;
 
-pub async fn cook_posix_env(
+use super::{types::WellKnownEnvRecipe, types::WellKnownProvision, EnvsCtx};
+
+pub async fn cook(
+    ecx: &EnvsCtx,
     recipe: &WellKnownEnvRecipe,
     env_key: &str,
     env_dir: &Path,
     create_shell_loaders: bool,
-    ghjk_dir: &Path,
-    data_dir: &Path,
 ) -> Res<IndexMap<String, String>> {
     info!(env_key, env_dir = %env_dir.display(), "cooking env");
 
@@ -92,17 +94,16 @@ pub async fn cook_posix_env(
     };
 
     let path_vars = indexmap::indexmap! {
-        "PATH".to_string() => format!("{env_dir}/shims/bin"),
-        "LIBRARY_PATH".to_string() => format!("{env_dir}/shims/lib"),
-        ld_library_env.to_string() => format!("{env_dir}/shims/lib"),
-        "C_INCLUDE_PATH".to_string() => format!("{env_dir}/shims/include"),
-        "CPLUS_INCLUDE_PATH".to_string() => format!("{env_dir}/shims/include"),
+        "PATH".to_string() => env_dir.join("/shims/bin"),
+        "LIBRARY_PATH".to_string() => env_dir.join("/shims/lib"),
+        ld_library_env.to_string() => env_dir.join("/shims/lib"),
+        "C_INCLUDE_PATH".to_string() => env_dir.join("/shims/include"),
+        "CPLUS_INCLUDE_PATH".to_string() => env_dir.join("/shims/include"),
     };
 
     if create_shell_loaders {
         write_activators(
-            ghjk_dir,
-            data_dir,
+            ecx,
             env_dir,
             &vars,
             &path_vars,
@@ -115,7 +116,11 @@ pub async fn cook_posix_env(
 
     // Combine vars and path_vars to return all environment variables
     let mut env_vars = vars;
-    env_vars.extend(path_vars);
+    env_vars.extend(
+        path_vars
+            .into_iter()
+            .map(|(key, val)| (key, val.to_string_lossy().to_string())),
+    );
     Ok(env_vars)
 }
 
@@ -166,11 +171,10 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
 }
 
 async fn write_activators(
-    ghjk_dir: &Path,
-    data_dir: &Path,
+    ecx: &EnvsCtx,
     env_dir: &Path,
     env_vars: &IndexMap<String, String>,
-    path_vars: &IndexMap<String, String>,
+    path_vars: &IndexMap<String, PathBuf>,
     on_enter_hooks: &[(String, Vec<String>)],
     on_exit_hooks: &[(String, Vec<String>)],
     aliases: &[(String, Vec<String>)],
@@ -184,14 +188,16 @@ async fn write_activators(
     let ghjk_dir_var = "_ghjk_dir";
     let data_dir_var = "_ghjk_data_dir";
 
-    let ghjk_dir_str = ghjk_dir.to_string_lossy();
-    let data_dir_str = data_dir.to_string_lossy();
+    let ghjk_dir_str = ecx.ghjkdir_path.to_string_lossy();
+    let data_dir_str = ecx.gcx.config.data_dir.to_string_lossy();
+    let ghjk_exec_path = ecx.gcx.exec_path.to_string_lossy();
 
     let mut path_vars_replaced = IndexMap::new();
     for (k, v) in path_vars {
         path_vars_replaced.insert(
             k.clone(),
-            v.replace(&ghjk_dir_str[..], &format!("${ghjk_dir_var}"))
+            v.to_string_lossy()
+                .replace(&ghjk_dir_str[..], &format!("${ghjk_dir_var}"))
                 .replace(&data_dir_str[..], &format!("${data_dir_var}")),
         );
     }
@@ -225,6 +231,7 @@ async fn write_activators(
         ghjk_dir_var,
         data_dir_var,
         ghjk_shim_name,
+        &ghjk_exec_path,
     )?;
     let fish_script = build_fish_script(
         &ghjk_dir_str,
@@ -237,6 +244,7 @@ async fn write_activators(
         ghjk_dir_var,
         data_dir_var,
         ghjk_shim_name,
+        &ghjk_exec_path,
     )?;
 
     tokio::try_join!(
@@ -254,10 +262,11 @@ fn build_posix_script(
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
-    _aliases: &[(String, Vec<String>)],
+    aliases: &[(String, Vec<String>)],
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
+    ghjk_exec_path: &str,
 ) -> Res<String> {
     let mut posix_script = String::new();
     let buf = &mut posix_script;
@@ -388,7 +397,7 @@ export GHJK_CLEANUP_POSIX="";
         "#
         )?;
     }
-    writeln!(buf, r#"# cleanup task alises"#);
+    writeln!(buf, r#"# cleanup task alises"#)?;
 
     for (alias_name, _) in aliases {
         writeln!(
@@ -448,6 +457,7 @@ fn build_fish_script(
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
+    ghjk_exec_path: &str,
 ) -> Res<String> {
     let mut fish_script = String::new();
     let buf = &mut fish_script;
@@ -522,7 +532,7 @@ set {data_dir_var}="{data_dir_str}"
 # on this shim to improve reliablity
 {ghjk_shim}
 "#
-    );
+    )?;
     writeln!(buf, r#"# aliases"#)?;
     for (alias_name, command) in aliases {
         let safe_command = command
@@ -538,7 +548,7 @@ end
         "#
         )?;
     }
-    writeln!(buf, r#"# cleanup task alises"#);
+    writeln!(buf, r#"# cleanup task alises"#)?;
 
     for (alias_name, _) in aliases {
         writeln!(

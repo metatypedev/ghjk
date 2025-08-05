@@ -7,7 +7,7 @@ import { execTaskDeno } from "./deno.ts";
 
 const logger = getLogger(import.meta);
 
-import { cookPosixEnv } from "../envs/posix.ts";
+import { reduceAndCookEnv } from "../envs/mod.ts";
 
 
 export type TaskGraph = Awaited<ReturnType<typeof buildTaskGraph>>;
@@ -115,9 +115,8 @@ export async function execTask(
       prefix: `ws ghjkTaskEnv_${taskKey}_`,
     });
     // deno-lint-ignore no-await-in-loop
-    const { env: installEnvs } = await cookPosixEnv(
+    const { env: installEnvs } = await reduceAndCookEnv(
       {
-        gcx,
         envKey: taskDef.envKey ?? `taskEnv_${taskKey}`,
         envDir: taskEnvDir,
       },

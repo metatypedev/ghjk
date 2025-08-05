@@ -10,14 +10,14 @@ pub mod envs;
 
 pub enum SystemManifest {
     Deno(deno::DenoSystemManifest),
-    Envs(envs::EnvsSystemInstance),
+    Envs(envs::EnvsSystemManifest),
 }
 
 impl SystemManifest {
     pub async fn init(&self) -> Res<ErasedSystemInstance> {
         match self {
             SystemManifest::Deno(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
-            SystemManifest::Envs(instance) => Ok(ErasedSystemInstance::new(Arc::new(instance.clone()))),
+            SystemManifest::Envs(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
         }
     }
 }

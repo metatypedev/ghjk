@@ -5,8 +5,8 @@ use std::process::ExitCode;
 use clap::builder::styling::AnsiColor;
 
 use crate::config::Config;
-use crate::{host, systems};
 use crate::systems::SystemManifest;
+use crate::{host, systems};
 
 mod init;
 mod print;
@@ -37,8 +37,6 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     let Some(ghjkdir_path) = config.ghjkdir.clone() else {
         quick_err.exit();
     };
-
-    let (sys_envs, envs_ctx) = systems::envs::system(&gcx).await?;
 
     let deno_cx = {
         // TODO: DENO_FLAGS param simlar to V8_FLAGS
@@ -76,11 +74,15 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     let gcx = GhjkCtx {
         config,
         deno: deno_cx.clone(),
+        exec_path: std::env::current_exe()
+            .wrap_err("error trying to resolve path of current exec")?,
     };
     let gcx = Arc::new(gcx);
 
+    let (sys_envs, envs_ctx) = systems::envs::system(gcx.clone(), &ghjkdir_path).await?;
     let (systems_deno, deno_sys_cx) = systems::deno::systems_from_deno(
         &gcx,
+        envs_ctx.clone(),
         &gcx.config
             .repo_root
             .join("src/sys_deno/std.ts")
@@ -91,10 +93,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     // Add the new Rust-based envs system
     let mut all_systems = systems_deno;
-    all_systems.insert(
-        "envs".into(),
-        SystemManifest::Envs(sys_envs),
-    );
+    all_systems.insert("envs".into(), SystemManifest::Envs(sys_envs));
 
     let hcx = host::HostCtx::new(
         gcx.clone(),

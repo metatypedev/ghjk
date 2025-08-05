@@ -3,6 +3,7 @@ mod interlude {
     pub use crate::utils::{default, CHeapStr, DHashMap, JsonExt};
     pub use crate::GhjkCtx;
 
+    pub use std::borrow::Cow;
     pub use std::collections::HashMap;
     pub use std::path::{Path, PathBuf};
     pub use std::sync::Arc;
@@ -69,4 +70,5 @@ shadow!(shadow);
 pub struct GhjkCtx {
     deno: denort::worker::DenoWorkerHandle,
     config: config::Config,
+    exec_path: PathBuf,
 }
