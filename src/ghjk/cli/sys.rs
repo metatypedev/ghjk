@@ -67,6 +67,9 @@ pub async fn action_for_match(
         matches: &'a clap::ArgMatches,
         cmd_path: &mut Vec<String>,
     ) -> Res<(SysCmdAction, &'a clap::ArgMatches)> {
+        if current.action.is_some() {
+            return Ok((current, matches));
+        }
         match matches.subcommand() {
             Some((cmd_name, matches)) => {
                 cmd_path.push(cmd_name.into());

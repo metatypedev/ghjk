@@ -247,7 +247,10 @@ pub async fn systems_from_deno(
             let callbacks = callbacks.clone();
             async move {
                 let res = callbacks
-                    .exec("reduce_strange_provisions".into(), json!(recipe))
+                    .exec(
+                        "reduce_strange_provisions".into(),
+                        json!({ "recipe": recipe }),
+                    )
                     .await?;
                 let res: crate::systems::envs::types::WellKnownEnvRecipe =
                     serde_json::from_value(res).wrap_err("protocol error")?;

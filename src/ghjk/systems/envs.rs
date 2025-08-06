@@ -1,5 +1,6 @@
 use crate::interlude::*;
 
+use clap::{CommandFactory, FromArgMatches};
 use futures::FutureExt;
 use std::collections::HashMap;
 
@@ -130,8 +131,6 @@ impl SystemInstance for EnvsSystemInstance {
     }
 
     async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
-        use clap::{Arg, Command};
-
         fn env_key_args(
             state: &LoadedState,
             task_key: Option<String>,
@@ -139,7 +138,7 @@ impl SystemInstance for EnvsSystemInstance {
         ) -> (String, Option<String>) {
             if let Some(_task_key) = task_key {
                 // TODO: expose task list to rust
-                todo!()
+                todo!("task-key support is current disabled")
             }
             let actual_key = state
                 .config
@@ -155,11 +154,17 @@ impl SystemInstance for EnvsSystemInstance {
             }
         }
 
+        #[derive(clap::Parser)]
+        #[clap(name = "envs")]
+        #[clap(visible_alias = "e")]
+        #[clap(about = "Envs module, reproducible posix shell environments")]
+        struct EnvsCommand {
+            #[command(subcommand)]
+            commands: EnvsCommands,
+        }
         let envs_cmd = SystemCliCommand {
             name: "envs".into(),
-            clap: Command::new("envs")
-                .visible_alias("e")
-                .about("Envs module, reproducible posix shell environments"),
+            clap: EnvsCommand::command(),
             action: {
                 let state = self.ecx.state.clone();
                 let ecx = self.ecx.clone();
@@ -167,7 +172,6 @@ impl SystemInstance for EnvsSystemInstance {
                     let state = state.clone();
                     let ecx = ecx.clone();
                     async move {
-                        use clap::FromArgMatches;
                         let guard = state.read().await;
                         let state = guard.as_ref().unwrap_or_log();
                         match EnvsCommands::from_arg_matches(&matches) {
@@ -199,22 +203,22 @@ impl SystemInstance for EnvsSystemInstance {
             sub_commands: default(),
         };
 
+        #[derive(clap::Parser)]
+        #[clap(name = "sync")]
+        #[clap(about = "Synchronize your shell to what's in your config")]
+        struct SyncCommand {
+            #[arg(value_name = "ENV KEY")]
+            /// The environment to sync
+            ///
+            /// If not provided, this will sync the currently active env.
+            env_key: Option<String>,
+            /// Sync to the environment used by the named task
+            #[arg(short, long, value_name = "TASK NAME", conflicts_with = "env_key")]
+            task_env: Option<String>,
+        }
         let sync_cmd = SystemCliCommand {
             name: "sync".into(),
-            clap: Command::new("sync")
-                .about("Synchronize your shell to what's in your config")
-                .arg(
-                    Arg::new("env_key")
-                        .value_name("ENV KEY")
-                        .help("Environment to sync"),
-                )
-                .arg(
-                    Arg::new("task-env")
-                        .short('t')
-                        .long("task-env")
-                        .value_name("TASK NAME")
-                        .help("Sync to the environment used by the named task"),
-                ),
+            clap: SyncCommand::command(),
             sub_commands: IndexMap::new(),
             action: {
                 let state = self.ecx.state.clone();
@@ -226,10 +230,10 @@ impl SystemInstance for EnvsSystemInstance {
                         let guard = state.read().await;
                         let state = guard.as_ref().unwrap_or_log();
                         let env_key = matches.get_one::<String>("env_key").cloned();
-                        let task_env = matches.get_one::<String>("task-env").cloned();
+                        let task_env = matches.get_one::<String>("task_env").cloned();
                         let (env_key, env_name) = env_key_args(state, task_env, env_key);
                         reduce_and_cook(&ecx, state, env_key.as_str(), env_name.as_deref()).await?;
-                        activate_env( env_key).await?;
+                        activate_env(env_key).await?;
                         eyre::Ok(())
                     }
                     .boxed()
@@ -322,7 +326,7 @@ pub async fn reduce_and_cook_to(
     let env_vars = posix::cook(
         &ecx,
         &reduced_recipe,
-        &env_key,
+        &env_name.unwrap_or(env_key),
         &env_dir,
         create_shell_loaders,
     )

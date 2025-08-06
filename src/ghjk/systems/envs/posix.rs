@@ -10,8 +10,6 @@ pub async fn cook(
     env_dir: &Path,
     create_shell_loaders: bool,
 ) -> Res<IndexMap<String, String>> {
-    info!(env_key, env_dir = %env_dir.display(), "cooking env");
-
     if env_dir.exists() {
         tokio::fs::remove_dir_all(env_dir).await?;
     }
@@ -94,11 +92,11 @@ pub async fn cook(
     };
 
     let path_vars = indexmap::indexmap! {
-        "PATH".to_string() => env_dir.join("/shims/bin"),
-        "LIBRARY_PATH".to_string() => env_dir.join("/shims/lib"),
-        ld_library_env.to_string() => env_dir.join("/shims/lib"),
-        "C_INCLUDE_PATH".to_string() => env_dir.join("/shims/include"),
-        "CPLUS_INCLUDE_PATH".to_string() => env_dir.join("/shims/include"),
+        "PATH".to_string() => env_dir.join("shims/bin"),
+        "LIBRARY_PATH".to_string() => env_dir.join("shims/lib"),
+        ld_library_env.to_string() => env_dir.join("shims/lib"),
+        "C_INCLUDE_PATH".to_string() => env_dir.join("shims/include"),
+        "CPLUS_INCLUDE_PATH".to_string() => env_dir.join("shims/include"),
     };
 
     if create_shell_loaders {
@@ -320,7 +318,7 @@ export GHJK_CLEANUP_POSIX="";
             // we only restore the old $KEY value at cleanup if value of $KEY
             // is the one set by the activate script.
             // This avoids overwriting any values set post-activation
-            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ \"{safe_comp_key}\" = '\\''{safe_val}'\\'' ] && '"#
+            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'[ "{safe_comp_key}" = '\''{safe_val}'\'' ] && '"#
         )?;
         {
             write!(
@@ -341,7 +339,7 @@ export GHJK_CLEANUP_POSIX="";
                 // i.e. export KEY='OLD $VALUE OF KEY'
                 // but $VALUE won't be expanded when the cleanup actually runs
                 // but during activation
-                r#"|| echo 'export {key}='\\'"${{{key}:-unreachable}}""';");"#
+                r#"|| echo 'export {key}='\'"${{{key}:-unreachable}}""';");"#
             )?;
         }
 
@@ -363,7 +361,7 @@ export GHJK_CLEANUP_POSIX="";
         // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
         writeln!(
             buf,
-            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{key}=$(echo "{key}" | tr ":" "\\n" | grep -vE '\\'"^{safe_val}"\\'' | tr "\\n" ":");{key}="${{{key}%:}}";';"#
+            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{key}=$(echo "${key}" | tr ":" "\n" | grep -vE '\'"^{safe_val}"\'' | tr "\n" ":");{key}="${{{key}%:}}";';"#
         )?;
         // FIXME: we're allowing expansion in the value to allow
         // readable $ghjkDirVar usage
@@ -477,8 +475,8 @@ ghjk_deactivate
 
 
 # the following variables are used to make the script more human readable
-set {ghjk_dir_var}="{ghjk_dir_str}"
-set {data_dir_var}="{data_dir_str}"
+set {ghjk_dir_var} "{ghjk_dir_str}"
+set {data_dir_var} "{data_dir_str}"
 
 # env vars
 # we keep track of old values before this script is run
@@ -494,11 +492,11 @@ set {data_dir_var}="{data_dir_str}"
         write!(
             // NOTE: no new line
             buf,
-            r#"set --global --append GHJK_CLEANUP_FISH 'test "${key}" = \\'{safe_val}\\'; and '"#
+            r#"set --global --append GHJK_CLEANUP_FISH 'test "${key}" = \'{safe_val}\'; and '"#
         )?;
         writeln!(
             buf,
-            r#"(if set -q ${key}; echo 'set --global --export {key} \\''"${key}""';"; else; echo 'set -e {key};'; end;);"#
+            r#"(if set -q ${key}; echo 'set --global --export {key} \''"${key}""';"; else; echo 'set -e {key};'; end;);"#
         )?;
         writeln!(buf, r#"set --global --export {key} '{safe_val}';"#)?;
         writeln!(buf)?;
@@ -515,7 +513,7 @@ set {data_dir_var}="{data_dir_str}"
         let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
         writeln!(
             buf,
-            r#"set --global --append GHJK_CLEANUP_FISH 'set --global --export --path {key} (string match --invert --regex \\''"^{safe_val}"'\\' ${key});';"#
+            r#"set --global --append GHJK_CLEANUP_FISH 'set --global --export --path {key} (string match --invert --regex \''"^{safe_val}"'\' ${key});';"#
         )?;
         writeln!(
             buf,
