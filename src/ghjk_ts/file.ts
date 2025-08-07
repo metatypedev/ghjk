@@ -27,7 +27,6 @@ import * as std_ports from "../sys_deno/ports/std.ts";
 import runtime_ports from "../sys_deno/ports/std_runtime.ts";
 // host
 import type { SerializedConfig } from "./types.ts";
-import * as std_modules from "../sys_deno/std.ts";
 // tasks
 // WARN: this module has side-effects and only ever import
 // types from it
@@ -355,10 +354,10 @@ export class Ghjkfile {
       const config: SerializedConfig = {
         blackboard: Object.fromEntries(this.#bb.entries()),
         modules: [{
-          id: std_modules.ports,
+          id: "ports",
           config: portsConfig,
         }, {
-          id: std_modules.tasks,
+          id: "tasks",
           config: tasksConfig,
         }, {
           id: "envs",

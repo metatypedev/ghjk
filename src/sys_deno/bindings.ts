@@ -69,7 +69,7 @@ async function prepareSystems(args: typeof prepareArgs._output) {
     const { reduceStrangeProvisions } = await import("./envs/reducer.ts");
     const { recipe } = args as any;
     
-    return await reduceStrangeProvisions(gcx, recipe);
+    return JSON.parse(JSON.stringify(await reduceStrangeProvisions(gcx, recipe)));
   });
 
   const { default: mod } = await import(args.uri);

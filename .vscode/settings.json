@@ -40,5 +40,5 @@
   ],
   "deno.enable": true,
   "deno.path": "./.ghjk/envs/dev/shims/bin/deno",
-  "rust-analyzer.cachePriming.enable": false
+  "rust-analyzer.cachePriming.enable": false,
 }

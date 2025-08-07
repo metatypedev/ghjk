@@ -91,9 +91,11 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     )
     .await?;
 
-    // Add the new Rust-based envs system
+    // Add the new Rust-based systems
+    let (sys_tasks, _tasks_ctx) = systems::tasks::system(gcx.clone(), envs_ctx.clone()).await?;
     let mut all_systems = systems_deno;
     all_systems.insert("envs".into(), SystemManifest::Envs(sys_envs));
+    all_systems.insert("tasks".into(), SystemManifest::Tasks(sys_tasks));
 
     let hcx = host::HostCtx::new(
         gcx.clone(),

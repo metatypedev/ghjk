@@ -1,4 +1,5 @@
 use crate::interlude::*;
+use futures::future::BoxFuture;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "ty")]
@@ -44,6 +45,22 @@ pub enum WellKnownProvision {
     },
 }
 
+impl WellKnownProvision {
+    /// Get the provision type string for this provision
+    pub fn provision_type(&self) -> &'static str {
+        match self {
+            WellKnownProvision::PosixEnvVar { .. } => "posix.envVar",
+            WellKnownProvision::HookOnEnterPosixExec { .. } => "hook.onEnter.posixExec",
+            WellKnownProvision::HookOnExitPosixExec { .. } => "hook.onExit.posixExec",
+            WellKnownProvision::PosixExec { .. } => "posix.exec",
+            WellKnownProvision::PosixSharedLib { .. } => "posix.sharedLib",
+            WellKnownProvision::PosixHeaderFile { .. } => "posix.headerFile",
+            WellKnownProvision::GhjkPortsInstall { .. } => "ghjk.ports.Install",
+            WellKnownProvision::GhjkShellAlias { .. } => "ghjk.shell.Alias",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WellKnownEnvRecipe {
@@ -73,3 +90,17 @@ pub struct EnvRecipe {
     pub desc: Option<String>,
     pub provides: Vec<Provision>,
 }
+
+/// A function that batch converts strange provisions of a certain kind to well known ones.
+/// 
+/// Think of them as type erased service providers.
+/// The service being transforming and implementing environment ingredients.
+pub type ProvisionReducer = Box<
+    dyn Fn(Vec<Provision>) -> BoxFuture<'static, Res<Vec<WellKnownProvision>>> 
+    + Send 
+    + Sync 
+    + 'static
+>;
+
+/// Store for provision reducers, keyed by provision type string
+pub type ProvisionReducerStore = DHashMap<String, ProvisionReducer>;

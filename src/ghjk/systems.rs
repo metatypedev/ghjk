@@ -7,10 +7,12 @@ use crate::interlude::*;
 
 pub mod deno;
 pub mod envs;
+pub mod tasks;
 
 pub enum SystemManifest {
     Deno(deno::DenoSystemManifest),
     Envs(envs::EnvsSystemManifest),
+    Tasks(tasks::TasksSystemManifest),
 }
 
 impl SystemManifest {
@@ -18,6 +20,9 @@ impl SystemManifest {
         match self {
             SystemManifest::Deno(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
             SystemManifest::Envs(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
+            SystemManifest::Tasks(man) => {
+                Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?)))
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::systems::{ConfigBlackboard, SystemCliCommand, SystemInstance};
 
 pub mod posix;
 pub mod types;
-use types::EnvsModuleConfig;
+use types::{EnvsModuleConfig, ProvisionReducerStore};
 
 /// Context object for managing envs state - similar to TypeScript EnvsCtx
 #[derive(Clone, educe::Educe)]
@@ -18,18 +18,27 @@ pub struct EnvsCtx {
     ghjkdir_path: PathBuf,
     // FIXME: this hack has two allocations
     #[educe(Debug(ignore))]
-    reduce_callback: Arc<tokio::sync::RwLock<Option<Box<ReduceCallback>>>>,
-    state: Arc<tokio::sync::RwLock<Option<LoadedState>>>,
+    reduce_callback: Arc<tokio::sync::OnceCell<Box<ReduceCallback>>>,
+    state: Arc<tokio::sync::OnceCell<LoadedState>>,
+    /// Store for provision reducers
+    #[educe(Debug(ignore))]
+    reducer_store: Arc<ProvisionReducerStore>,
 }
 
-type ReduceCallback = dyn Fn(types::EnvRecipe) -> BoxFuture<'static, Res<types::WellKnownEnvRecipe>>
+type ReduceCallback = dyn Fn(types::EnvRecipe) -> BoxFuture<'static, Res<types::EnvRecipe>>
     + Send
     + Sync
     + 'static;
 impl EnvsCtx {
     pub async fn set_reduce_callback(&self, cb: Box<ReduceCallback>) {
-        let mut guard = self.reduce_callback.write().await;
-        *guard = Some(cb);
+        if self.reduce_callback.set(cb).is_err() {
+            panic!("reduce_callback already set");
+        }
+    }
+
+    /// Register a provision reducer for a specific provision type
+    pub fn register_reducer(&self, ty: String, reducer: types::ProvisionReducer) {
+        self.reducer_store.insert(ty, reducer);
     }
 }
 
@@ -42,7 +51,12 @@ pub async fn system(
         ghjkdir_path: ghjkdir_path.to_path_buf(),
         reduce_callback: default(),
         state: default(),
+        reducer_store: default(),
     });
+    
+    // Register default reducers
+    register_default_reducers(&ecx);
+    
     Ok((EnvsSystemManifest { ecx: ecx.clone() }, ecx))
 }
 
@@ -110,10 +124,7 @@ impl SystemInstance for EnvsSystemInstance {
         };
 
         // Set the instance context
-        {
-            let mut guard = self.ecx.state.write().await;
-            *guard = Some(state);
-        }
+        self.ecx.state.set(state).expect("state already set");
 
         Ok(())
     }
@@ -172,8 +183,7 @@ impl SystemInstance for EnvsSystemInstance {
                     let state = state.clone();
                     let ecx = ecx.clone();
                     async move {
-                        let guard = state.read().await;
-                        let state = guard.as_ref().unwrap_or_log();
+                        let state = state.get().unwrap_or_log();
                         match EnvsCommands::from_arg_matches(&matches) {
                             Ok(EnvsCommands::Ls) => {
                                 list_envs(state).await;
@@ -227,8 +237,7 @@ impl SystemInstance for EnvsSystemInstance {
                     let state = state.clone();
                     let ecx = ecx.clone();
                     async move {
-                        let guard = state.read().await;
-                        let state = guard.as_ref().unwrap_or_log();
+                        let state = state.get().unwrap_or_log();
                         let env_key = matches.get_one::<String>("env_key").cloned();
                         let task_env = matches.get_one::<String>("task_env").cloned();
                         let (env_key, env_name) = env_key_args(state, task_env, env_key);
@@ -296,10 +305,73 @@ async fn reduce_strange_provisions(
     ecx: &EnvsCtx,
     recipe: &types::EnvRecipe,
 ) -> Res<types::WellKnownEnvRecipe> {
-    let guard = ecx.reduce_callback.read().await;
-    let cb = guard.as_ref().expect("no reduce callback set");
-    let reduced_recipe = cb(recipe.clone()).await?;
-    Ok(reduced_recipe)
+    use types::{Provision, WellKnownProvision};
+    
+    // First, try to get TypeScript reduced provisions if callback is available
+    let ts_reduced_provisions =
+        if let Some(cb) = ecx.reduce_callback.get() {
+            let ts_recipe = cb(recipe.clone()).await.wrap_err("error reducing ts provisions")?;
+            ts_recipe.provides
+        } else {
+            recipe.provides.clone()
+        };
+    
+    // Group provisions by type for Rust reduction (similar to TypeScript implementation)
+    let mut bins: HashMap<String, Vec<Provision>> = HashMap::new();
+    for provision in &ts_reduced_provisions {
+        let ty = match provision {
+            Provision::WellKnown(well_known) => well_known.provision_type().to_string(),
+            Provision::Strange(strange) => {
+                // Extract the "ty" field from the JSON value
+                strange
+                    .get("ty")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string()
+            }
+        };
+        bins.entry(ty).or_default().push(provision.clone());
+    }
+
+    let mut reduced_set = Vec::new();
+    
+    for (ty, items) in bins {
+        // Check if this is a well-known provision type
+        if is_well_known_type(&ty) {
+            // Add well-known provisions directly
+            for item in items {
+                match item {
+                    Provision::WellKnown(well_known) => {
+                        reduced_set.push(well_known);
+                    }
+                    Provision::Strange(strange) => {
+                        // Try to parse as well-known provision
+                        let well_known: WellKnownProvision = serde_json::from_value(strange)
+                            .wrap_err_with(|| format!("error parsing well-known provision of type {ty}"))?;
+                        reduced_set.push(well_known);
+                    }
+                }
+            }
+            continue;
+        }
+        
+        // Look for a Rust reducer for this type
+        if let Some(reducer) = ecx.reducer_store.get(&ty) {
+            // Apply the Rust reducer
+            let reduced = reducer(items).await?;
+            reduced_set.extend(reduced);
+        } else {
+            tracing::debug!("No Rust reducer found for type: {}, relying on TypeScript", ty);
+            // If no Rust reducer is found, we rely on TypeScript reduction
+            // The TypeScript side should have handled this provision type
+        }
+    }
+
+
+    Ok(types::WellKnownEnvRecipe {
+        desc: recipe.desc.clone(),
+        provides: reduced_set,
+    })
 }
 
 pub async fn reduce_and_cook_to(
@@ -309,8 +381,7 @@ pub async fn reduce_and_cook_to(
     env_dir: &Path,
     create_shell_loaders: bool,
 ) -> Res<IndexMap<String, String>> {
-    let state = ecx.state.read().await;
-    let state = state.as_ref().unwrap_or_log();
+    let state = ecx.state.get().unwrap_or_log();
 
     let recipe = state.config.envs.get(env_key).ok_or_else(|| {
         if let Some(env_name) = env_name {
@@ -452,4 +523,26 @@ async fn detect_shell_path() -> Res<String> {
         .wrap_err("error on ps command")?;
     let path = String::from_utf8(output.stdout).wrap_err("utf8 error on path")?;
     Ok(path)
+}
+
+// Helper functions for provision type handling
+
+fn is_well_known_type(ty: &str) -> bool {
+    matches!(
+        ty,
+        "posix.envVar"
+            | "hook.onEnter.posixExec"
+            | "hook.onExit.posixExec"
+            | "posix.exec"
+            | "posix.sharedLib"
+            | "posix.headerFile"
+            | "ghjk.ports.Install"
+            | "ghjk.shell.Alias"
+    )
+}
+
+/// Register default provision reducers
+fn register_default_reducers(_ecx: &Arc<EnvsCtx>) {
+    // Note: Task-specific reducers like posix.envVarDyn and ghjk.tasks.Alias
+    // are now registered by the tasks system itself during initialization
 }

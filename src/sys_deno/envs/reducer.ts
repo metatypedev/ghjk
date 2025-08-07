@@ -6,8 +6,6 @@ import type {
   EnvRecipe,
   Provision,
   ProvisionReducer,
-  WellKnownEnvRecipe,
-  WellKnownProvision,
 } from "./types.ts";
 import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
@@ -60,7 +58,7 @@ export async function reduceStrangeProvisions(
     }
     bin.push(item);
   }
-  const reducedSet = [] as WellKnownProvision[];
+  const reducedSet = [] as Provision[];
   const promises = promiseCollector();
   for (const [ty, items] of Object.entries(bins)) {
     if (wellKnownProvisionTypes.includes(ty as any)) {
@@ -71,25 +69,27 @@ export async function reduceStrangeProvisions(
     }
     const reducer = reducerStore.get(ty);
     if (!reducer) {
-      throw new Error(`no provider reducer found for ty: ${ty}`, {
-        cause: items,
+      // throw new Error(`no provider reducer found for ty: ${ty}`, {
+      //   cause: items,
+      // });
+      reducedSet.push(...items);
+    } else {
+      promises.push(async () => {
+        const reduced = await reducer(items);
+        reducedSet.push(
+          ...reduced.map((prov) =>
+            unwrapZodRes(
+              validators.wellKnownProvision.safeParse(prov),
+              { prov },
+              `error parsing reduced provision`,
+            )
+          ),
+        );
       });
     }
-    promises.push(async () => {
-      const reduced = await reducer(items);
-      reducedSet.push(
-        ...reduced.map((prov) =>
-          unwrapZodRes(
-            validators.wellKnownProvision.safeParse(prov),
-            { prov },
-            `error parsing reduced provision`,
-          )
-        ),
-      );
-    });
   }
   await promises.finish();
-  const out: WellKnownEnvRecipe = {
+  const out: EnvRecipe = {
     ...env,
     provides: reducedSet,
   };
