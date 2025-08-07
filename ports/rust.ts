@@ -140,8 +140,8 @@ export class Port extends PortBase {
     const tmpPath = $.path(args.tmpDirPath);
     const host = conf.host ? `--default-host ${conf.host}` : "";
     const profile = conf.profile ? `--profile ${conf.profile}` : "";
-    const components = conf.components ? `-c ${conf.components.join(" ")}` : "";
-    const targets = conf.targets ? `-t ${conf.targets.join(" ")}` : "";
+    const components = conf.components?.map(str => `-c ${str}`).join(" ") ?? "";
+    const targets = conf.targets?.map(str => `-t ${str}`).join(" ") ?? "";
     await $.raw`"${
       depExecShimPath(rustup_rustlang_id, "rustup-init", args.depArts)
     }" -y --no-modify-path --default-toolchain "${args.installVersion}" ${host} ${profile} ${targets} ${components}`

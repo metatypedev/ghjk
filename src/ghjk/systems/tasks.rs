@@ -19,8 +19,6 @@ pub struct TasksLockState {
 pub struct TasksCtx {
     gcx: Arc<GhjkCtx>,
     ecx: Arc<EnvsCtx>,
-    #[educe(Debug(ignore))]
-    state: Arc<tokio::sync::OnceCell<LoadedState>>,
 }
 
 #[derive(Debug)]
@@ -36,15 +34,7 @@ pub async fn system(
     let tcx = Arc::new(TasksCtx {
         gcx,
         ecx: ecx.clone(),
-        state: default(),
     });
-    
-    // Register task-specific reducers with the envs system
-    let task_alias_reducer = reducers::task_alias_reducer();
-    ecx.register_reducer(TASK_ALIAS_PROVISION_TY.to_string(), task_alias_reducer);
-    
-    let dyn_env_reducer = reducers::dyn_env_reducer(tcx.clone());
-    ecx.register_reducer("posix.envVarDyn".to_string(), dyn_env_reducer);
     
     Ok((TasksSystemManifest { tcx: tcx.clone() }, tcx))
 }
@@ -54,15 +44,29 @@ pub struct TasksSystemManifest {
 }
 
 impl TasksSystemManifest {
-    pub async fn ctor(&self) -> Res<TasksSystemInstance> {
-        Ok(TasksSystemInstance {
-            tcx: self.tcx.clone(),
-        })
+    pub async fn ctor(&self, scx: Arc<crate::systems::SystemsCtx>) -> Res<TasksSystemInstance> {
+        // Register reducers here with access to scx
+        let task_alias_reducer = reducers::task_alias_reducer();
+        self.tcx
+            .ecx
+            .register_reducer(TASK_ALIAS_PROVISION_TY.to_string(), task_alias_reducer);
+
+        let dyn_env_reducer = reducers::dyn_env_reducer(self.tcx.clone(), scx.clone());
+        self.tcx
+            .ecx
+            .register_reducer("posix.envVarDyn".to_string(), dyn_env_reducer);
+
+        Ok(TasksSystemInstance { tcx: self.tcx.clone(), scx })
     }
 }
 
 pub struct TasksSystemInstance {
     tcx: Arc<TasksCtx>,
+    scx: Arc<crate::systems::SystemsCtx>,
+}
+
+impl TasksSystemInstance {
+    pub const BB_STATE_KEY: &'static str = "tasks.state";
 }
 
 #[async_trait::async_trait]
@@ -81,7 +85,7 @@ impl SystemInstance for TasksSystemInstance {
         let graph = build_task_graph(&config)?;
 
         let loaded = LoadedState { config, graph };
-        self.tcx.state.set(loaded).expect("state already set");
+        self.scx.insert_bb(Self::BB_STATE_KEY, Arc::new(loaded));
         Ok(())
     }
 
@@ -98,7 +102,7 @@ impl SystemInstance for TasksSystemInstance {
     }
 
     async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
-        let state = self.tcx.state.get().unwrap_or_log();
+        let state: Arc<LoadedState> = self.scx.get_bb(Self::BB_STATE_KEY);
         
         // Get named tasks set for visibility control
         let named_set: std::collections::HashSet<_> = state.config.tasks_named.iter().cloned().collect();
@@ -151,8 +155,10 @@ impl SystemInstance for TasksSystemInstance {
             // Create action for task execution
             let tcx = self.tcx.clone();
             let task_key_clone = task_key.clone();
+            let scx = self.scx.clone();
             let action: crate::systems::CliCommandAction = Box::new(move |matches| {
                 let tcx = tcx.clone();
+                let scx = scx.clone();
                 let task_key = task_key_clone.clone();
                 async move {
                     // Extract arguments
@@ -162,10 +168,11 @@ impl SystemInstance for TasksSystemInstance {
                         .unwrap_or_default();
                     
                     // Execute task
-                    let state = tcx.state.get().unwrap_or_log();
+                    let state: Arc<LoadedState> = scx.get_bb(TasksSystemInstance::BB_STATE_KEY);
                     let _output = exec_task(
                         &tcx.gcx,
                         &tcx.ecx,
+                        &scx,
                         &state.config,
                         &state.graph,
                         &task_key,

@@ -9,6 +9,39 @@ pub mod deno;
 pub mod envs;
 pub mod tasks;
 
+#[derive(Clone, Debug)]
+pub struct SystemsCtx {
+    pub blackboard: crate::utils::DHashMap<CHeapStr, Arc<dyn Any + Send + Sync>>, 
+}
+
+impl SystemsCtx {
+    pub fn new() -> Self {
+        Self { blackboard: default() }
+    }
+
+    pub fn insert_bb<T>(&self, key: impl Into<CHeapStr>, value: Arc<T>)
+    where
+        T: Any + Send + Sync + 'static,
+    {
+        self.blackboard.insert(key.into(), value);
+    }
+
+    pub fn get_bb<T>(&self, key: &str) -> Arc<T>
+    where
+        T: Any + Send + Sync + 'static,
+    {
+        let entry = self
+            .blackboard
+            .get(key)
+            .unwrap_or_log();
+        let arc_any = entry.value().clone();
+        arc_any
+            .downcast::<T>()
+            .map_err(|_| ferr!("blackboard downcast error for key: {key}"))
+            .unwrap_or_log()
+    }
+}
+
 pub enum SystemManifest {
     Deno(deno::DenoSystemManifest),
     Envs(envs::EnvsSystemManifest),
@@ -16,13 +49,11 @@ pub enum SystemManifest {
 }
 
 impl SystemManifest {
-    pub async fn init(&self) -> Res<ErasedSystemInstance> {
+    pub async fn init(&self, scx: Arc<SystemsCtx>) -> Res<ErasedSystemInstance> {
         match self {
-            SystemManifest::Deno(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
-            SystemManifest::Envs(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?))),
-            SystemManifest::Tasks(man) => {
-                Ok(ErasedSystemInstance::new(Arc::new(man.ctor().await?)))
-            }
+            SystemManifest::Deno(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor(scx.clone()).await?))),
+            SystemManifest::Envs(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor(scx.clone()).await?))),
+            SystemManifest::Tasks(man) => Ok(ErasedSystemInstance::new(Arc::new(man.ctor(scx.clone()).await?))),
         }
     }
 }

@@ -70,10 +70,10 @@ pub fn build_task_graph(tasks: &TasksModuleConfig) -> Res<TaskGraph> {
     Ok(graph)
 }
 
-#[tracing::instrument(skip(gcx, ecx, tasks_config, task_graph, args))]
 pub async fn exec_task(
     gcx: &GhjkCtx,
     ecx: &EnvsCtx,
+    scx: &crate::systems::SystemsCtx,
     tasks_config: &TasksModuleConfig,
     task_graph: &TaskGraph,
     target_key: &str,
@@ -143,6 +143,7 @@ pub async fn exec_task(
             // Cook the environment using the envs system
             crate::systems::envs::reduce_and_cook_to(
                 ecx,
+                scx,
                 env_key,
                 None,
                 task_env_dir.path(),

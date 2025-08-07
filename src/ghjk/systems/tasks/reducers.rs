@@ -54,9 +54,10 @@ pub fn task_alias_reducer() -> ProvisionReducer {
 
 /// This reducer executes tasks and uses their output as environment variable values.
 /// It handles `posix.envVarDyn` provisions that specify a task to run.
-pub fn dyn_env_reducer(tcx: Arc<TasksCtx>) -> ProvisionReducer {
+pub fn dyn_env_reducer(tcx: Arc<TasksCtx>, scx: Arc<crate::systems::SystemsCtx>) -> ProvisionReducer {
     Box::new(move |provisions: Vec<Provision>| {
         let tcx = tcx.clone();
+        let scx = scx.clone();
         async move {
             use crate::systems::envs::types::{Provision, WellKnownProvision};
             
@@ -90,7 +91,7 @@ pub fn dyn_env_reducer(tcx: Arc<TasksCtx>) -> ProvisionReducer {
                 };
 
                 // Execute the task to get the environment variable value
-                let val = execute_task_for_env_var(&tcx, &task_key).await.unwrap_or_default();
+                let val = execute_task_for_env_var(&tcx, &scx, &task_key).await.unwrap_or_default();
 
                 output.push(WellKnownProvision::PosixEnvVar { key, val });
             }
@@ -106,16 +107,17 @@ pub fn dyn_env_reducer(tcx: Arc<TasksCtx>) -> ProvisionReducer {
 }
 
 /// Execute a task to get environment variable value using the tasks system
-async fn execute_task_for_env_var(tcx: &TasksCtx, task_key: &str) -> Res<String> {
+async fn execute_task_for_env_var(tcx: &TasksCtx, scx: &crate::systems::SystemsCtx, task_key: &str) -> Res<String> {
     debug!("executing task for env var: {task_key}");
     
     // Get the loaded state from tasks context
-    let state = tcx.state.get().ok_or_else(|| {
-        ferr!("tasks system not loaded")
-    })?;
+    let state: Arc<super::LoadedState> = scx.get_bb(super::TasksSystemInstance::BB_STATE_KEY);
 
     // Find the task in the configuration
-    let target_key = state.config.tasks.iter()
+    let target_key = state
+        .config
+        .tasks
+        .iter()
         .find(|(_, task)| {
             // Extract the key from the task definition
             match task {
@@ -133,10 +135,11 @@ async fn execute_task_for_env_var(tcx: &TasksCtx, task_key: &str) -> Res<String>
     let task_output = exec_task(
         &tcx.gcx,
         &tcx.ecx,
+        scx,
         &state.config,
         &state.graph,
         &target_key,
-        vec![], // No arguments for env var tasks
+        vec![],
     ).await?;
 
     // Extract the value from the task output for this specific task key

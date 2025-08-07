@@ -21,4 +21,3 @@ src/play/*.rs
 /target
 .aider*
 .env
-.env

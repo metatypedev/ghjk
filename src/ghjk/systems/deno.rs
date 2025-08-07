@@ -102,37 +102,6 @@ pub async fn systems_from_deno(
         }),
     );
 
-    // Add hostcall for cook_posix_env to expose Rust envs functionality to TypeScript
-    hostcalls.funcs.insert("reduce_and_cook_env_to".into(), {
-        let ecx = ecx.clone();
-        Box::new(move |args| {
-            let ecx = ecx.clone();
-            async move {
-                #[derive(Debug, Deserialize)]
-                #[serde(rename_all = "camelCase")]
-                struct CookPosixEnvArgs {
-                    env_key: String,
-                    env_dir: PathBuf,
-                    create_shell_loaders: bool,
-                }
-                let args: CookPosixEnvArgs =
-                    serde_json::from_value(args).wrap_err("error parsing cook_posix_env args")?;
-
-                let env_vars = crate::systems::envs::reduce_and_cook_to(
-                    &ecx,
-                    &args.env_key,
-                    None,
-                    &args.env_dir,
-                    args.create_shell_loaders,
-                )
-                .await?;
-
-                Ok(serde_json::to_value(env_vars).expect("json error"))
-            }
-            .boxed()
-        })
-    });
-
     let cb_line = ext_conf.callbacks_handle(&gcx.deno);
     let mut exception_line = ext_conf.exceptions_rx();
 
@@ -235,7 +204,7 @@ pub async fn systems_from_deno(
                 desc.id.clone(),
                 SystemManifest::Deno(DenoSystemManifest {
                     desc,
-                    scx: scx.clone(),
+                    dsx: scx.clone(),
                 }),
             )
         })
@@ -275,15 +244,15 @@ struct ManifestDesc {
 pub struct DenoSystemManifest {
     desc: ManifestDesc,
     #[educe(Debug(ignore))]
-    scx: DenoSystemsContext,
+    dsx: DenoSystemsContext,
 }
 
 impl DenoSystemManifest {
     #[tracing::instrument]
-    pub async fn ctor(&self) -> Res<DenoSystemInstance> {
+    pub async fn ctor(&self, _scx: Arc<crate::systems::SystemsCtx>) -> Res<DenoSystemInstance> {
         trace!("initializing deno system");
         let desc = self
-            .scx
+            .dsx
             .callbacks
             .exec(self.desc.ctor_cb_key.clone(), serde_json::Value::Null)
             .await?;
@@ -294,7 +263,7 @@ impl DenoSystemManifest {
 
         Ok(DenoSystemInstance {
             desc,
-            scx: self.scx.clone(),
+            scx: self.dsx.clone(),
         })
     }
 }

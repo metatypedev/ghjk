@@ -158,6 +158,8 @@ pub async fn systems_from_ghjkfile(
 
     let mut lock_entries = HashMap::new();
 
+    let scx_first = Arc::new(SystemsCtx::new());
+
     if let Some(lock_obj) = &mut lock_obj {
         debug!(?lockfile_path, "loading lockfile");
         for sys_conf in &lock_obj.config.modules {
@@ -173,7 +175,7 @@ pub async fn systems_from_ghjkfile(
                     sys_conf.id
                 );
             };
-            let sys_inst = sys_man.init().await?;
+            let sys_inst = sys_man.init(scx_first.clone()).await?;
             lock_entries.insert(
                 sys_conf.id.clone(),
                 sys_inst.load_lock_entry(sys_lock).await?,
@@ -212,6 +214,7 @@ pub async fn systems_from_ghjkfile(
     debug!("initializing ghjkfile systems");
     let sys_instances = {
         let mut sys_instances = IndexMap::new();
+        let scx_second = Arc::new(SystemsCtx::new());
         for sys_conf in &config.modules {
             let Some(sys_man) = hcx.systems.get(&sys_conf.id) else {
                 eyre::bail!(
@@ -219,7 +222,7 @@ pub async fn systems_from_ghjkfile(
                     sys_conf.id
                 );
             };
-            let sys_inst = sys_man.init().await?;
+            let sys_inst = sys_man.init(scx_second.clone()).await?;
             sys_inst
                 .load_config(
                     sys_conf.config.clone(),

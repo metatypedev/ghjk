@@ -19,7 +19,6 @@ pub struct EnvsCtx {
     // FIXME: this hack has two allocations
     #[educe(Debug(ignore))]
     reduce_callback: Arc<tokio::sync::OnceCell<Box<ReduceCallback>>>,
-    state: Arc<tokio::sync::OnceCell<LoadedState>>,
     /// Store for provision reducers
     #[educe(Debug(ignore))]
     reducer_store: Arc<ProvisionReducerStore>,
@@ -50,7 +49,6 @@ pub async fn system(
         gcx: gcx.clone(),
         ghjkdir_path: ghjkdir_path.to_path_buf(),
         reduce_callback: default(),
-        state: default(),
         reducer_store: default(),
     });
     
@@ -65,10 +63,8 @@ pub struct EnvsSystemManifest {
 }
 
 impl EnvsSystemManifest {
-    pub async fn ctor(&self) -> Res<EnvsSystemInstance> {
-        Ok(EnvsSystemInstance {
-            ecx: self.ecx.clone(),
-        })
+    pub async fn ctor(&self, scx: Arc<crate::systems::SystemsCtx>) -> Res<EnvsSystemInstance> {
+        Ok(EnvsSystemInstance { ecx: self.ecx.clone(), scx })
     }
 }
 
@@ -80,6 +76,11 @@ pub struct EnvsLockState {
 #[derive(Debug)]
 pub struct EnvsSystemInstance {
     ecx: Arc<EnvsCtx>,
+    scx: Arc<crate::systems::SystemsCtx>,
+}
+
+impl EnvsSystemInstance {
+    pub const BB_STATE_KEY: &'static str = "envs.state";
 }
 
 #[async_trait::async_trait]
@@ -123,8 +124,8 @@ impl SystemInstance for EnvsSystemInstance {
             config,
         };
 
-        // Set the instance context
-        self.ecx.state.set(state).expect("state already set");
+        // Store state in global systems blackboard
+        self.scx.insert_bb(Self::BB_STATE_KEY, Arc::new(state));
 
         Ok(())
     }
@@ -173,33 +174,33 @@ impl SystemInstance for EnvsSystemInstance {
             #[command(subcommand)]
             commands: EnvsCommands,
         }
+        let scx = self.scx.clone();
         let envs_cmd = SystemCliCommand {
             name: "envs".into(),
             clap: EnvsCommand::command(),
             action: {
-                let state = self.ecx.state.clone();
                 let ecx = self.ecx.clone();
                 Some(Box::new(move |matches| {
-                    let state = state.clone();
                     let ecx = ecx.clone();
+                    let scx = scx.clone();
                     async move {
-                        let state = state.get().unwrap_or_log();
+                        let state: Arc<LoadedState> = scx.get_bb(EnvsSystemInstance::BB_STATE_KEY);
                         match EnvsCommands::from_arg_matches(&matches) {
                             Ok(EnvsCommands::Ls) => {
-                                list_envs(state).await;
+                                list_envs(&state).await;
                                 Ok(())
                             }
                             Ok(EnvsCommands::Show { env_key, task_env }) => {
-                                let (env_key, env_name) = env_key_args(state, task_env, env_key);
-                                show_env(state, env_key.as_str(), env_name.as_deref())
+                                let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                                show_env(&state, env_key.as_str(), env_name.as_deref())
                             }
                             Ok(EnvsCommands::Activate { env_key, task_env }) => {
-                                let (env_key, _) = env_key_args(state, task_env, env_key);
+                                let (env_key, _) = env_key_args(&state, task_env, env_key);
                                 activate_env(env_key).await
                             }
                             Ok(EnvsCommands::Cook { env_key, task_env }) => {
-                                let (env_key, env_name) = env_key_args(state, task_env, env_key);
-                                reduce_and_cook(&ecx, state, env_key.as_str(), env_name.as_deref())
+                                let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                                reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref())
                                     .await
                             }
                             Err(err) => {
@@ -226,22 +227,22 @@ impl SystemInstance for EnvsSystemInstance {
             #[arg(short, long, value_name = "TASK NAME", conflicts_with = "env_key")]
             task_env: Option<String>,
         }
+        let scx = self.scx.clone();
         let sync_cmd = SystemCliCommand {
             name: "sync".into(),
             clap: SyncCommand::command(),
             sub_commands: IndexMap::new(),
             action: {
-                let state = self.ecx.state.clone();
                 let ecx = self.ecx.clone();
                 Some(Box::new(move |matches| {
-                    let state = state.clone();
                     let ecx = ecx.clone();
+                    let scx = scx.clone();
                     async move {
-                        let state = state.get().unwrap_or_log();
+                        let state: Arc<LoadedState> = scx.get_bb(EnvsSystemInstance::BB_STATE_KEY);
                         let env_key = matches.get_one::<String>("env_key").cloned();
                         let task_env = matches.get_one::<String>("task_env").cloned();
-                        let (env_key, env_name) = env_key_args(state, task_env, env_key);
-                        reduce_and_cook(&ecx, state, env_key.as_str(), env_name.as_deref()).await?;
+                        let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                        reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref()).await?;
                         activate_env(env_key).await?;
                         eyre::Ok(())
                     }
@@ -376,12 +377,13 @@ async fn reduce_strange_provisions(
 
 pub async fn reduce_and_cook_to(
     ecx: &EnvsCtx,
+    scx: &crate::systems::SystemsCtx,
     env_key: &str,
     env_name: Option<&str>,
     env_dir: &Path,
     create_shell_loaders: bool,
 ) -> Res<IndexMap<String, String>> {
-    let state = ecx.state.get().unwrap_or_log();
+    let state: Arc<LoadedState> = scx.get_bb("envs.state");
 
     let recipe = state.config.envs.get(env_key).ok_or_else(|| {
         if let Some(env_name) = env_name {
@@ -407,6 +409,7 @@ pub async fn reduce_and_cook_to(
 
 async fn reduce_and_cook(
     ecx: &EnvsCtx,
+    scx: &crate::systems::SystemsCtx,
     state: &LoadedState,
     env_key: &str,
     env_name: Option<&str>,
@@ -414,7 +417,7 @@ async fn reduce_and_cook(
     let envs_dir = ecx.ghjkdir_path.join("envs");
     let env_dir = envs_dir.join(&env_key);
 
-    reduce_and_cook_to(ecx, env_key, env_name, &env_dir, true).await?;
+    reduce_and_cook_to(ecx, scx, env_key, env_name, &env_dir, true).await?;
 
     // Create symlink for default environment if this is the default
     if env_key == state.config.default_env {
