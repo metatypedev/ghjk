@@ -3,6 +3,8 @@ use std::fmt::Write;
 
 use super::{types::WellKnownEnvRecipe, types::WellKnownProvision, EnvsCtx};
 
+type AliasSpec = (String, Vec<String>, Option<String>, Option<Vec<String>>);
+
 pub async fn cook(
     ecx: &EnvsCtx,
     recipe: &WellKnownEnvRecipe,
@@ -34,7 +36,7 @@ pub async fn cook(
     vars.insert("GHJK_ENV".to_string(), env_key.to_string());
     let mut on_enter_hooks: Vec<(String, Vec<String>)> = vec![];
     let mut on_exit_hooks: Vec<(String, Vec<String>)> = vec![];
-    let mut aliases: Vec<(String, Vec<String>, Option<String>, Option<Vec<String>>)> = vec![];
+    let mut aliases: Vec<AliasSpec> = vec![];
 
     for item in &recipe.provides {
         match item {
@@ -75,6 +77,9 @@ pub async fn cook(
                     wraps.clone(),
                 ));
             }
+            WellKnownProvision::GhjkCliCompletionBash { .. }
+            | WellKnownProvision::GhjkCliCompletionZsh { .. }
+            | WellKnownProvision::GhjkCliCompletionFish { .. } => {}
         }
     }
 
@@ -109,6 +114,7 @@ pub async fn cook(
     if create_shell_loaders {
         write_activators(
             ecx,
+            recipe,
             env_dir,
             &vars,
             &path_vars,
@@ -175,14 +181,16 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
     Ok(())
 }
 
-    async fn write_activators(
+#[allow(clippy::too_many_arguments)]
+async fn write_activators(
     ecx: &EnvsCtx,
+    reduced_recipe: &WellKnownEnvRecipe,
     env_dir: &Path,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, PathBuf>,
     on_enter_hooks: &[(String, Vec<String>)],
     on_exit_hooks: &[(String, Vec<String>)],
-        aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>) ],
+    aliases: &[AliasSpec],
 ) -> Res<()> {
     let ghjk_dir_var = "_ghjk_dir";
     let data_dir_var = "_ghjk_data_dir";
@@ -222,6 +230,7 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
     let posix_script = build_posix_script(
         &ghjk_dir_str,
         &data_dir_str,
+        reduced_recipe,
         env_vars,
         &path_vars_replaced,
         &on_enter_hooks_escaped,
@@ -235,6 +244,7 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
     let fish_script = build_fish_script(
         &ghjk_dir_str,
         &data_dir_str,
+        reduced_recipe,
         env_vars,
         &path_vars_replaced,
         &on_enter_hooks_escaped,
@@ -254,14 +264,16 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_posix_script(
     ghjk_dir_str: &str,
     data_dir_str: &str,
+    reduced_recipe: &WellKnownEnvRecipe,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
-    aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>)],
+    aliases: &[AliasSpec],
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
@@ -275,7 +287,10 @@ fn build_posix_script(
         r#"
 # shellcheck shell=sh
 # shellcheck disable=SC2016
+# shellcheck disable=SC1003
 # SC2016: disabled because single quoted expressions are used for the cleanup scripts
+# SC1003: disabled because we sometimes double escale single quotes resulting things 
+#         like '\''\\'\'''\'' which trigger the lint
 
 # this file must be sourced from an existing sh/bash/zsh session using the `source` command
 # it should be executed directly
@@ -378,18 +393,33 @@ export GHJK_CLEANUP_POSIX="";
 # hooks that want to invoke ghjk are made to rely
 # on this shim to improve reliablity
 {ghjk_shim}
+
 "#
     )?;
 
-    writeln!(buf, r#"# aliases"#)?;
+    // (aliases will be emitted inside the interactive-only block below)
+    writeln!(
+        buf,
+        r#"
+
+# only run the hooks and aliases in interactive mode
+case "$-" in
+    *i*) # if the shell variables contain "i"
+
+    # aliases
+"#
+    )?;
 
     // POSIX reserved words and common builtins to avoid as function names
     fn is_reserved_posix(name: &str) -> bool {
         // From POSIX sh reserved words plus common builtins that would be confusing
         const RESERVED: &[&str] = &[
-            "!","case","do","done","elif","else","esac","fi","for","if","in","then","until","while","{","}","time","function",
+            "!", "case", "do", "done", "elif", "else", "esac", "fi", "for", "if", "in", "then",
+            "until", "while", "{", "}", "time", "function",
+            //
             // common builtins
-            "test","[","echo","printf","read","cd","alias","unalias","type","hash","true","false","pwd","export","unset","shift","getopts","times","umask","ulimit",
+            "test", "[", "echo", "printf", "read", "cd", "alias", "unalias", "type", "hash", "true",
+            "false", "pwd", "export", "unset", "shift", "getopts", "times", "umask", "ulimit",
             // high-risk external/common commands to avoid overshadowing
             "sudo",
         ];
@@ -408,54 +438,39 @@ export GHJK_CLEANUP_POSIX="";
 
     for (alias_name, command, _desc, _wraps) in aliases {
         if is_reserved_posix(alias_name) {
-            writeln!(buf, "# skipped alias '{alias_name}': reserved posix name")?;
+            writeln!(
+                buf,
+                "        # skipped alias '{alias_name}': reserved posix name"
+            )?;
             continue;
         }
         if !is_valid_posix_fn_name(alias_name) {
-            writeln!(buf, "# skipped alias '{alias_name}': invalid posix function name")?;
+            writeln!(
+                buf,
+                "        # skipped alias '{alias_name}': invalid posix function name"
+            )?;
             continue;
         }
         let mut cmd_vec = command.clone();
         if let Some(first) = cmd_vec.get_mut(0) {
-            if first == "ghjk" { *first = ghjk_shim_name.to_string(); }
+            if first == "ghjk" {
+                *first = ghjk_shim_name.to_string();
+            }
         }
-        // Argument safety: build a snippet that preserves argv boundaries.
-        // We export each token quoted and then eval "$@" style forwarding.
-        // Since we cannot easily rehydrate arrays in POSIX from static text, we rely on "$@".
         let safe_command = cmd_vec
             .into_iter()
             .map(|t| t.replace("\\", "\\\\").replace("'", "'\\''"))
             .map(|t| format!("'{}'", t))
             .collect::<Vec<_>>()
             .join(" ");
-        writeln!(
-            buf,
-            r#"
-{alias_name}() {{
-    eval {safe_command} "$@"
-}}
-        "#
-        )?;
+        writeln!(buf, "        {alias_name}() {{")?;
+        writeln!(buf, "            {safe_command} \"$@\"")?;
+        writeln!(buf, "        }}")?;
     }
-    writeln!(buf, r#"# cleanup task alises"#)?;
 
-    for (alias_name, _, _, _) in aliases {
-        if is_reserved_posix(alias_name) || !is_valid_posix_fn_name(alias_name) { 
-            continue; 
-        }
-        writeln!(
-            buf,
-            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f {alias_name};';"#
-        )?;
-    }
     writeln!(
         buf,
         r#"
-
-# only run the hooks in interactive mode
-case "$-" in
-    *i*) # if the shell variables contain "i"
-
     # on enter hooks
 "#
     )?;
@@ -468,12 +483,62 @@ case "$-" in
     # on exit hooks
 "#
     )?;
+    for (alias_name, _, _, _) in aliases {
+        if is_reserved_posix(alias_name) || !is_valid_posix_fn_name(alias_name) {
+            continue;
+        }
+        writeln!(
+            buf,
+            r#"        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f {alias_name};';"#
+        )?;
+    }
     for line in on_exit_hooks {
         writeln!(
             buf,
             "        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{line};';"
         )?;
     }
+    // completions: only in interactive mode, gate by detected shell
+    let mut bash_comp = String::new();
+    let mut zsh_comp = String::new();
+    for prov in &reduced_recipe.provides {
+        match prov {
+            WellKnownProvision::GhjkCliCompletionBash { script } => {
+                bash_comp.push('\n');
+                bash_comp.push_str(script);
+            }
+            WellKnownProvision::GhjkCliCompletionZsh { script } => {
+                zsh_comp.push('\n');
+                zsh_comp.push_str(script);
+            }
+            _ => {}
+        }
+    }
+    // Use heredocs with source /dev/stdin to avoid eval and escaping issues,
+    // especially for zsh where line continuations (\\) are significant.
+    writeln!(
+        buf,
+        r#"
+        # ghjk completions
+        if [ "${{GHJK_COMPLETIONS:-activators}}" != "off" ]; then
+            if [ -n "${{BASH_VERSION-}}" ]; then
+                if command -v complete >/dev/null 2>&1; then
+                    source /dev/stdin <<'__GHJK_BASH_COMPLETIONS__'
+{bash_comp}
+__GHJK_BASH_COMPLETIONS__
+                fi
+            elif [ -n "${{ZSH_VERSION-}}" ]; then
+                # Only proceed if zsh completion system (compsys) is initialized.
+                # Checking for _comps parameter is a reliable indicator that compinit has run.
+                if typeset -p _comps >/dev/null 2>&1; then
+                    source /dev/stdin <<'__GHJK_ZSH_COMPLETIONS__'
+{zsh_comp}
+__GHJK_ZSH_COMPLETIONS__
+                fi
+            fi
+        fi
+        "#
+    )?;
     writeln!(
         buf,
         r#"
@@ -489,14 +554,16 @@ esac
     Ok(posix_script)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_fish_script(
     ghjk_dir_str: &str,
     data_dir_str: &str,
+    reduced_recipe: &WellKnownEnvRecipe,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
-    aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>)],
+    aliases: &[AliasSpec],
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
@@ -541,7 +608,7 @@ set {data_dir_var} "{data_dir_str}"
         )?;
         writeln!(
             buf,
-            r#"(if set -q ${key}; echo 'set --global --export {key} \''"${key}""';"; else; echo 'set -e {key};'; end;);"#
+            r#"(if set -q {key}; echo 'set --global --export {key} \''"${key}""';"; else; echo 'set -e {key};'; end;);"#
         )?;
         writeln!(buf, r#"set --global --export {key} '{safe_val}';"#)?;
         writeln!(buf)?;
@@ -582,11 +649,43 @@ set {data_dir_var} "{data_dir_str}"
     fn is_reserved_fish(name: &str) -> bool {
         const RESERVED: &[&str] = &[
             // Provided list
-            "[","_","and","argparse","begin","break","builtin","case","command","continue","else","end","eval","exec","for","function","if","not","or","read","return","set","status","string","switch","test","time","while",
+            "[",
+            "_",
+            "and",
+            "argparse",
+            "begin",
+            "break",
+            "builtin",
+            "case",
+            "command",
+            "continue",
+            "else",
+            "end",
+            "eval",
+            "exec",
+            "for",
+            "function",
+            "if",
+            "not",
+            "or",
+            "read",
+            "return",
+            "set",
+            "status",
+            "string",
+            "switch",
+            "test",
+            "time",
+            "while",
             // some additional builtins/keywords
-            "source","alias","functions","set_color","commandline","emit",
+            "source",
+            "alias",
+            "functions",
+            "set_color",
+            "commandline",
+            "emit",
             // avoid overshadowing common commands
-            "sudo"
+            "sudo",
         ];
         RESERVED.iter().any(|w| *w == name)
     }
@@ -605,17 +704,22 @@ set {data_dir_var} "{data_dir_str}"
     }
 
     for (alias_name, command, description, wraps) in aliases {
-        if is_reserved_fish(alias_name) { 
+        if is_reserved_fish(alias_name) {
             writeln!(buf, "# skipped alias '{alias_name}': reserved fish name")?;
             continue;
         }
         if !is_valid_fish_fn_name(alias_name) {
-            writeln!(buf, "# skipped alias '{alias_name}': invalid fish function name")?;
+            writeln!(
+                buf,
+                "# skipped alias '{alias_name}': invalid fish function name"
+            )?;
             continue;
         }
         let mut cmd_vec = command.clone();
         if let Some(first) = cmd_vec.get_mut(0) {
-            if first == "ghjk" { *first = ghjk_shim_name.to_string(); }
+            if first == "ghjk" {
+                *first = ghjk_shim_name.to_string();
+            }
         }
         let safe_command = cmd_vec
             .join(" ")
@@ -629,10 +733,15 @@ set {data_dir_var} "{data_dir_str}"
             _ => String::new(),
         };
         let wraps_flags = match wraps {
-            Some(list) if !list.is_empty() => list.iter().map(|w| {
-                let w = w.replace("\\", "\\\\").replace("'", "'\\''");
-                format!(" --wraps={w}")
-            }).collect::<String>(),
+            Some(list) if !list.is_empty() => {
+                let mut s = String::new();
+                for w in list.iter() {
+                    let w = w.replace("\\", "\\\\").replace("'", "'\\''");
+                    s.push_str(" --wraps=");
+                    s.push_str(&w);
+                }
+                s
+            }
             _ => String::new(),
         };
         writeln!(
@@ -647,7 +756,9 @@ end
     writeln!(buf, r#"# cleanup task alises"#)?;
 
     for (alias_name, _, _, _) in aliases {
-        if is_reserved_fish(alias_name) || !is_valid_fish_fn_name(alias_name) { continue; }
+        if is_reserved_fish(alias_name) || !is_valid_fish_fn_name(alias_name) {
+            continue;
+        }
         writeln!(
             buf,
             r#"set --global --append GHJK_CLEANUP_FISH 'functions -e {alias_name};'"#
@@ -677,12 +788,31 @@ if status is-interactive;
             "    set --global --append GHJK_CLEANUP_FISH '{line};';"
         )?;
     }
+    // embed fish completion script only for interactive sessions
+    // and only when GHJK_COMPLETIONS is not set to "off"
+    let mut fish_comp = String::new();
+    for prov in &reduced_recipe.provides {
+        if let WellKnownProvision::GhjkCliCompletionFish { script } = prov {
+            fish_comp.push_str(script);
+        }
+    }
+    if !fish_comp.is_empty() {
+        writeln!(buf, "    # ghjk fish completions")?;
+        writeln!(buf, "    if test \"$GHJK_COMPLETIONS\" != \"off\";")?;
+        writeln!(buf, "        if type -q complete;")?;
+        for line in fish_comp.lines() {
+            writeln!(buf, "            {line}")?;
+        }
+        writeln!(buf, "        end")?;
+        writeln!(buf, "    end")?;
+    }
     writeln!(
         buf,
         r#"
 end
     "#
     )?;
+    // (completions were embedded above inside the interactive block)
     Ok(fish_script)
 }
 

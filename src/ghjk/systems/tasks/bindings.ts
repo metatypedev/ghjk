@@ -45,4 +45,3 @@ async function execTask(args: typeof execTaskArgs._output) {
   const ret = await mod.sophon.execTask(args.payload);
   return { data: ret ?? null };
 }
-

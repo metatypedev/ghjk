@@ -84,8 +84,7 @@ ghjk.env("main")
           // "denort",
           // "deno",
         ],
-        "DEBUG": [
-        ],
+        "DEBUG": [],
         "INFO": [
           "runtime",
           "tokio",

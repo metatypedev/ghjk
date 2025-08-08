@@ -24,10 +24,8 @@ pub struct EnvsCtx {
     reducer_store: Arc<ProvisionReducerStore>,
 }
 
-type ReduceCallback = dyn Fn(types::EnvRecipe) -> BoxFuture<'static, Res<types::EnvRecipe>>
-    + Send
-    + Sync
-    + 'static;
+type ReduceCallback =
+    dyn Fn(types::EnvRecipe) -> BoxFuture<'static, Res<types::EnvRecipe>> + Send + Sync + 'static;
 impl EnvsCtx {
     pub async fn set_reduce_callback(&self, cb: Box<ReduceCallback>) {
         if self.reduce_callback.set(cb).is_err() {
@@ -51,10 +49,10 @@ pub async fn system(
         reduce_callback: default(),
         reducer_store: default(),
     });
-    
+
     // Register default reducers
     register_default_reducers(&ecx);
-    
+
     Ok((EnvsSystemManifest { ecx: ecx.clone() }, ecx))
 }
 
@@ -64,7 +62,10 @@ pub struct EnvsSystemManifest {
 
 impl EnvsSystemManifest {
     pub async fn ctor(&self, scx: Arc<crate::systems::SystemsCtx>) -> Res<EnvsSystemInstance> {
-        Ok(EnvsSystemInstance { ecx: self.ecx.clone(), scx })
+        Ok(EnvsSystemInstance {
+            ecx: self.ecx.clone(),
+            scx,
+        })
     }
 }
 
@@ -200,8 +201,14 @@ impl SystemInstance for EnvsSystemInstance {
                             }
                             Ok(EnvsCommands::Cook { env_key, task_env }) => {
                                 let (env_key, env_name) = env_key_args(&state, task_env, env_key);
-                                reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref())
-                                    .await
+                                reduce_and_cook(
+                                    &ecx,
+                                    &scx,
+                                    &state,
+                                    env_key.as_str(),
+                                    env_name.as_deref(),
+                                )
+                                .await
                             }
                             Err(err) => {
                                 err.exit();
@@ -242,7 +249,8 @@ impl SystemInstance for EnvsSystemInstance {
                         let env_key = matches.get_one::<String>("env_key").cloned();
                         let task_env = matches.get_one::<String>("task_env").cloned();
                         let (env_key, env_name) = env_key_args(&state, task_env, env_key);
-                        reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref()).await?;
+                        reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref())
+                            .await?;
                         activate_env(env_key).await?;
                         eyre::Ok(())
                     }
@@ -307,16 +315,17 @@ async fn reduce_strange_provisions(
     recipe: &types::EnvRecipe,
 ) -> Res<types::WellKnownEnvRecipe> {
     use types::{Provision, WellKnownProvision};
-    
+
     // First, try to get TypeScript reduced provisions if callback is available
-    let ts_reduced_provisions =
-        if let Some(cb) = ecx.reduce_callback.get() {
-            let ts_recipe = cb(recipe.clone()).await.wrap_err("error reducing ts provisions")?;
-            ts_recipe.provides
-        } else {
-            recipe.provides.clone()
-        };
-    
+    let ts_reduced_provisions = if let Some(cb) = ecx.reduce_callback.get() {
+        let ts_recipe = cb(recipe.clone())
+            .await
+            .wrap_err("error reducing ts provisions")?;
+        ts_recipe.provides
+    } else {
+        recipe.provides.clone()
+    };
+
     // Group provisions by type for Rust reduction (similar to TypeScript implementation)
     let mut bins: HashMap<String, Vec<Provision>> = HashMap::new();
     for provision in &ts_reduced_provisions {
@@ -335,7 +344,7 @@ async fn reduce_strange_provisions(
     }
 
     let mut reduced_set = Vec::new();
-    
+
     for (ty, items) in bins {
         // Check if this is a well-known provision type
         if is_well_known_type(&ty) {
@@ -348,26 +357,30 @@ async fn reduce_strange_provisions(
                     Provision::Strange(strange) => {
                         // Try to parse as well-known provision
                         let well_known: WellKnownProvision = serde_json::from_value(strange)
-                            .wrap_err_with(|| format!("error parsing well-known provision of type {ty}"))?;
+                            .wrap_err_with(|| {
+                                format!("error parsing well-known provision of type {ty}")
+                            })?;
                         reduced_set.push(well_known);
                     }
                 }
             }
             continue;
         }
-        
+
         // Look for a Rust reducer for this type
         if let Some(reducer) = ecx.reducer_store.get(&ty) {
             // Apply the Rust reducer
             let reduced = reducer(items).await?;
             reduced_set.extend(reduced);
         } else {
-            tracing::debug!("No Rust reducer found for type: {}, relying on TypeScript", ty);
+            tracing::debug!(
+                "No Rust reducer found for type: {}, relying on TypeScript",
+                ty
+            );
             // If no Rust reducer is found, we rely on TypeScript reduction
             // The TypeScript side should have handled this provision type
         }
     }
-
 
     Ok(types::WellKnownEnvRecipe {
         desc: recipe.desc.clone(),
@@ -397,10 +410,10 @@ pub async fn reduce_and_cook_to(
 
     // Cook the environment
     let env_vars = posix::cook(
-        &ecx,
+        ecx,
         &reduced_recipe,
-        &env_name.unwrap_or(env_key),
-        &env_dir,
+        env_name.unwrap_or(env_key),
+        env_dir,
         create_shell_loaders,
     )
     .await?;
@@ -415,7 +428,7 @@ async fn reduce_and_cook(
     env_name: Option<&str>,
 ) -> Res<()> {
     let envs_dir = ecx.ghjkdir_path.join("envs");
-    let env_dir = envs_dir.join(&env_key);
+    let env_dir = envs_dir.join(env_key);
 
     reduce_and_cook_to(ecx, scx, env_key, env_name, &env_dir, true).await?;
 
@@ -430,7 +443,7 @@ async fn reduce_and_cook(
 
     // Create symlinks for named environments
     for (name, key) in &state.config.envs_named {
-        if key == &env_key {
+        if key == env_key {
             let named_dir = envs_dir.join(name);
             if named_dir.exists() {
                 tokio::fs::remove_file(&named_dir).await.ok(); // Ignore errors
@@ -516,7 +529,7 @@ fn show_env(state: &LoadedState, env_key: &str, env_name: Option<&str>) -> Res<(
 }
 
 async fn detect_shell_path() -> Res<String> {
-    if let Some(path) = std::env::var("SHELL").ok() {
+    if let Ok(path) = std::env::var("SHELL") {
         return Ok(path);
     }
     let output = tokio::process::Command::new("ps")
@@ -541,6 +554,9 @@ fn is_well_known_type(ty: &str) -> bool {
             | "posix.headerFile"
             | "ghjk.ports.Install"
             | "ghjk.shell.Alias"
+            | "posix.shell.Completion.bash"
+            | "posix.shell.Completion.zsh"
+            | "posix.shell.Completion.fish"
     )
 }
 

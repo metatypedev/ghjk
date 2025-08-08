@@ -269,10 +269,10 @@ struct ExecTaskArgs<'a> {
 }
 
 /// Execute a deno task following the exact pattern from host/deno.rs
-async fn exec_task_deno<'a>(
+async fn exec_task_deno(
     gcx: &GhjkCtx,
     ghjkfile_uri: &str,
-    payload: &ExecTaskArgs<'a>,
+    payload: &ExecTaskArgs<'_>,
 ) -> Res<serde_json::Value> {
     let main_module = gcx
         .config

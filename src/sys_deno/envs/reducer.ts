@@ -2,11 +2,7 @@ import { promiseCollector, unwrapZodRes } from "../../deno_utils/mod.ts";
 import { execTask } from "../tasks/exec.ts";
 import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
-import type {
-  EnvRecipe,
-  Provision,
-  ProvisionReducer,
-} from "./types.ts";
+import type { EnvRecipe, Provision, ProvisionReducer } from "./types.ts";
 import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 

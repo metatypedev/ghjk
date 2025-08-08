@@ -11,6 +11,19 @@ pub struct Config {
     pub import_map: Option<PathBuf>,
     pub repo_root: url::Url,
     pub deno_no_lockfile: bool,
+    /// How ghjk CLI completions are provided
+    /// - activators: embed completions into activation scripts (default)
+    /// - off: disable completions generation/embedding
+    pub completions: CompletionsMode,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CompletionsMode {
+    #[serde(alias = "on", alias = "activator", alias = "activators")]
+    Activators,
+    #[serde(alias = "disabled", alias = "no", alias = "false")]
+    Off,
 }
 
 #[derive(Deserialize)]
@@ -18,6 +31,7 @@ struct GlobalConfigFile {
     data_dir: Option<PathBuf>,
     deno_dir: Option<PathBuf>,
     repo_root: Option<String>,
+    completions: Option<CompletionsMode>,
 }
 
 #[derive(Deserialize)]
@@ -92,6 +106,7 @@ impl Config {
             import_map: None,
             deno_lockfile: None,
             deno_no_lockfile: false,
+            completions: CompletionsMode::Activators,
             repo_root: {
                 if cfg!(debug_assertions) {
                     url::Url::from_file_path(&cwd)
@@ -175,6 +190,7 @@ hash.json",
             deno_dir,
             data_dir,
             repo_root,
+            completions,
         } = config::Config::builder()
             .add_source(config::File::with_name(&file_path.to_string_lossy()[..]).required(false))
             .build()
@@ -197,6 +213,9 @@ hash.json",
                 .map_err(|err| ferr!(Box::new(err)))
                 .wrap_err("error resolving repo_root")?;
         }
+        if let Some(mode) = completions {
+            self.completions = mode;
+        }
         Ok(())
     }
 
@@ -207,6 +226,7 @@ hash.json",
                     data_dir,
                     deno_dir,
                     repo_root,
+                    completions,
                 },
             deno_lockfile,
             import_map,
@@ -255,6 +275,9 @@ hash.json",
                 .map_err(|err| ferr!(Box::new(err)))
                 .wrap_err("error resolving repo_root")?;
         }
+        if let Some(mode) = completions {
+            self.completions = mode;
+        }
         Ok(())
     }
 
@@ -265,6 +288,7 @@ hash.json",
                     data_dir,
                     deno_dir,
                     repo_root,
+                    completions,
                 },
             deno_lockfile,
             import_map,
@@ -307,6 +331,9 @@ hash.json",
             self.repo_root = deno_core::resolve_url_or_path(&path, cwd)
                 .map_err(|err| ferr!(Box::new(err)))
                 .wrap_err("error resolving repo_root")?;
+        }
+        if let Some(mode) = completions {
+            self.completions = mode;
         }
         Ok(())
     }

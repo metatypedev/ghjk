@@ -664,6 +664,8 @@ export class Ghjkfile {
           ...hooks,
           // task aliases - expanded later via reducer using state
           { ty: "ghjk.tasks.Alias" as const },
+          // CLI completions - expanded later into per-shell scripts
+          { ty: "ghjk.cli.Completions" as const },
         ],
       };
 

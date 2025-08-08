@@ -10,6 +10,7 @@ use crate::{host, systems};
 
 mod init;
 mod print;
+mod reducers;
 mod sys;
 
 const DENO_UNSTABLE_FLAGS: &[&str] = &["worker-options", "kv"];
@@ -30,12 +31,15 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 
     debug!("config sourced: {config:?}");
 
-    let Some(quick_err) = try_quick_cli(&config).await? else {
-        return Ok(ExitCode::SUCCESS);
+    let quck_err = match try_quick_cli(&config).await? {
+        QuickCliResult::Continue => {
+            return Ok(ExitCode::SUCCESS);
+        }
+        val => val,
     };
 
     let Some(ghjkdir_path) = config.ghjkdir.clone() else {
-        quick_err.exit();
+        return Ok(quck_err.exit(None));
     };
 
     let deno_cx = {
@@ -79,23 +83,26 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     };
     let gcx = Arc::new(gcx);
 
-    let (sys_envs, envs_ctx) = systems::envs::system(gcx.clone(), &ghjkdir_path).await?;
-    let (systems_deno, deno_sys_cx) = systems::deno::systems_from_deno(
-        &gcx,
-        envs_ctx.clone(),
-        &gcx.config
-            .repo_root
-            .join("src/sys_deno/std.ts")
-            .wrap_err("repo url error")?,
-        &ghjkdir_path,
-    )
-    .await?;
+    // ready system contexts
+    let (system_manifests, envs_ctx, deno_sys_cx) = {
+        let (sys_envs, envs_ctx) = systems::envs::system(gcx.clone(), &ghjkdir_path).await?;
+        let (sys_tasks, _tasks_ctx) = systems::tasks::system(gcx.clone(), envs_ctx.clone()).await?;
+        let (systems_deno, deno_sys_cx) = systems::deno::systems_from_deno(
+            &gcx,
+            envs_ctx.clone(),
+            &gcx.config
+                .repo_root
+                .join("src/sys_deno/std.ts")
+                .wrap_err("repo url error")?,
+            &ghjkdir_path,
+        )
+        .await?;
 
-    // Add the new Rust-based systems
-    let (sys_tasks, _tasks_ctx) = systems::tasks::system(gcx.clone(), envs_ctx.clone()).await?;
-    let mut all_systems = systems_deno;
-    all_systems.insert("envs".into(), SystemManifest::Envs(sys_envs));
-    all_systems.insert("tasks".into(), SystemManifest::Tasks(sys_tasks));
+        let mut manifests = systems_deno;
+        manifests.insert("envs".into(), SystemManifest::Envs(sys_envs));
+        manifests.insert("tasks".into(), SystemManifest::Tasks(sys_tasks));
+        (manifests, envs_ctx, deno_sys_cx)
+    };
 
     let hcx = host::HostCtx::new(
         gcx.clone(),
@@ -107,14 +114,29 @@ pub async fn cli() -> Res<std::process::ExitCode> {
             locked: false,
             re_serialize: false,
         },
-        all_systems,
+        system_manifests,
     );
 
     let hcx = Arc::new(hcx);
 
-    let Some(mut systems) = host::systems_from_ghjkfile(hcx, &ghjkdir_path).await? else {
-        warn!("no ghjkfile found");
-        quick_err.exit()
+    // initialize the systems according to the config
+    let mut systems = {
+        let is_completions = matches!(quck_err, QuickCliResult::Completions(_));
+        match host::systems_from_ghjkfile(hcx, &ghjkdir_path, is_completions).await {
+            Ok(Some(val)) => val,
+            Ok(None) => {
+                if !is_completions {
+                    warn!("no ghjkfile found");
+                }
+                return Ok(quck_err.exit(None));
+            }
+            Err(err) => {
+                if is_completions {
+                    return Ok(quck_err.exit(None));
+                }
+                return Err(err);
+            }
+        }
     };
 
     // let conf_json = serde_json::to_string_pretty(&systems.config)?;
@@ -123,6 +145,15 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     use clap::*;
 
     let mut root_cmd = Cli::command();
+
+    // TODO: support environment-activated completions for performance
+    // Optional: support environment-activated completions for performance
+    // Only enable when completions are not disabled
+    // if matches!(gcx.config.completions, crate::config::CompletionsMode::Activators) {
+    //     let _ = clap_complete::env::CompleteEnv::with_factory(|| Cli::command())
+    //         .bin("ghjk")
+    //         .complete();
+    // }
 
     debug!("collecting system commands");
 
@@ -138,6 +169,27 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         root_cmd = root_cmd.subcommand(cmd);
     }
 
+    // Register CLI completion reducer on envs with the fully-built root_cmd
+    // FIXME: this means completions are always generated even if we're not
+    // writing activator scripts
+    {
+        let reducer = match gcx.config.completions {
+            crate::config::CompletionsMode::Activators => {
+                crate::cli::reducers::ghjk_cli_completions_reducer(&root_cmd)
+            }
+            crate::config::CompletionsMode::Off => {
+                crate::cli::reducers::ghjk_cli_completions_noop_reducer()
+            }
+        };
+        envs_ctx.register_reducer("ghjk.cli.Completions".to_string(), reducer);
+    }
+
+    // if it's already known to be a completions request,
+    // no need to prase the argv again
+    if let QuickCliResult::Completions(shell) = quck_err {
+        return Ok(QuickCliResult::Completions(shell).exit(Some(&mut root_cmd)));
+    }
+
     debug!("checking argv matches");
 
     let matches = match root_cmd.try_get_matches() {
@@ -148,15 +200,18 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         }
     };
 
-    match QuickComands::from_arg_matches(&matches) {
-        Ok(QuickComands::Print { commands }) => {
+    match QuickCommands::from_arg_matches(&matches) {
+        Ok(QuickCommands::Print { commands }) => {
             _ = commands.action(&gcx.config, Some(&systems.config))?;
             return Ok(ExitCode::SUCCESS);
         }
-        Ok(QuickComands::Init { .. }) => {
+        Ok(QuickCommands::Completions { .. }) => {
+            unreachable!("do_completions will prevent this")
+        }
+        Ok(QuickCommands::Init { .. }) => {
             unreachable!("quick_cli will prevent this")
         }
-        Ok(QuickComands::Deno { .. }) => {
+        Ok(QuickCommands::Deno { .. }) => {
             unreachable!("deno_quick_cli will prevent this")
         }
         Err(err) => {
@@ -201,8 +256,41 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     res.map(|()| ExitCode::SUCCESS)
 }
 
+enum QuickCliResult {
+    ClapErr(clap::Error),
+    Completions(CompletionShell),
+    Continue,
+}
+impl QuickCliResult {
+    fn exit(self, cmd: Option<&mut clap::Command>) -> ExitCode {
+        use clap::CommandFactory;
+        use clap_complete::aot::{generate, Shell};
+        match self {
+            QuickCliResult::ClapErr(err) => err.exit(),
+            QuickCliResult::Completions(shell) => {
+                let mut stdout = std::io::stdout();
+                let generator = match shell {
+                    CompletionShell::Bash => Shell::Bash,
+                    CompletionShell::Elvish => Shell::Elvish,
+                    CompletionShell::Fish => Shell::Fish,
+                    CompletionShell::PowerShell => Shell::PowerShell,
+                    CompletionShell::Zsh => Shell::Zsh,
+                };
+                generate(
+                    generator,
+                    cmd.unwrap_or(&mut Cli::command()),
+                    "ghjk".to_string(),
+                    &mut stdout,
+                );
+                ExitCode::SUCCESS
+            }
+            QuickCliResult::Continue => unreachable!("can't happen"),
+        }
+    }
+}
+
 /// Sections of the CLI do not require loading a ghjkfile.
-pub async fn try_quick_cli(config: &Config) -> Res<Option<clap::Error>> {
+async fn try_quick_cli(config: &Config) -> Res<QuickCliResult> {
     use clap::*;
 
     let cli = match Cli::try_parse() {
@@ -215,25 +303,31 @@ pub async fn try_quick_cli(config: &Config) -> Res<Option<clap::Error>> {
                 || kind == ErrorKind::DisplayHelp
                 || kind == ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
             {
-                return Ok(Some(err));
+                return Ok(QuickCliResult::ClapErr(err));
             }
             err.exit();
         }
     };
 
     match cli.quick_commands {
-        QuickComands::Print { commands } => {
+        QuickCommands::Print { commands } => {
             if !commands.action(config, None)? {
-                return Ok(Some(clap::error::Error::new(
+                return Ok(QuickCliResult::ClapErr(clap::error::Error::new(
                     clap::error::ErrorKind::DisplayHelp,
                 )));
             }
         }
-        QuickComands::Init { commands } => commands.action(config).await?,
-        QuickComands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
+        QuickCommands::Completions { shell } => {
+            // this won't be part of the quick cli
+            // since we want completions for the full
+            // dynamic cli
+            return Ok(QuickCliResult::Completions(shell));
+        }
+        QuickCommands::Init { commands } => commands.action(config).await?,
+        QuickCommands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
     }
 
-    Ok(None)
+    Ok(QuickCliResult::Continue)
 }
 
 const CLAP_STYLE: clap::builder::Styles = clap::builder::Styles::styled()
@@ -250,15 +344,43 @@ const CLAP_STYLE: clap::builder::Styles = clap::builder::Styles::styled()
 )]
 struct Cli {
     #[command(subcommand)]
-    quick_commands: QuickComands,
+    quick_commands: QuickCommands,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum CompletionShell {
+    Bash,
+    Elvish,
+    Fish,
+    #[value(name = "powershell")]
+    PowerShell,
+    Zsh,
+}
+
+impl std::fmt::Display for CompletionShell {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CompletionShell::Bash => write!(f, "bash"),
+            CompletionShell::Elvish => write!(f, "elvish"),
+            CompletionShell::Fish => write!(f, "fish"),
+            CompletionShell::PowerShell => write!(f, "powershell"),
+            CompletionShell::Zsh => write!(f, "zsh"),
+        }
+    }
 }
 
 #[derive(clap::Subcommand, Debug)]
-enum QuickComands {
+enum QuickCommands {
     /// Print different discovered or built values to stdout
     Print {
         #[command(subcommand)]
         commands: print::PrintCommands,
+    },
+    /// Generate shell completions for ghjk
+    Completions {
+        /// Target shell
+        #[arg(value_enum)]
+        shell: CompletionShell,
     },
     /// Setup your working directory for ghjk usage
     Init {

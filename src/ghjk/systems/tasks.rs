@@ -35,7 +35,7 @@ pub async fn system(
         gcx,
         ecx: ecx.clone(),
     });
-    
+
     Ok((TasksSystemManifest { tcx: tcx.clone() }, tcx))
 }
 
@@ -56,7 +56,10 @@ impl TasksSystemManifest {
             .ecx
             .register_reducer("posix.envVarDyn".to_string(), dyn_env_reducer);
 
-        Ok(TasksSystemInstance { tcx: self.tcx.clone(), scx })
+        Ok(TasksSystemInstance {
+            tcx: self.tcx.clone(),
+            scx,
+        })
     }
 }
 
@@ -103,20 +106,21 @@ impl SystemInstance for TasksSystemInstance {
 
     async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
         let state: Arc<LoadedState> = self.scx.get_bb(Self::BB_STATE_KEY);
-        
+
         // Get named tasks set for visibility control
-        let named_set: std::collections::HashSet<_> = state.config.tasks_named.iter().cloned().collect();
-        
+        let named_set: std::collections::HashSet<_> =
+            state.config.tasks_named.iter().cloned().collect();
+
         // Create task subcommands sorted by key
         let mut task_commands = IndexMap::new();
         for (task_key, task_def) in state.config.tasks.iter() {
             let is_named = named_set.contains(task_key);
-            
+
             // Get basic description from task definition
             let mut description = match task_def {
                 TaskDefHashed::DenoFileV1(d) => d.desc.clone().unwrap_or_default(),
             };
-            
+
             // Add dependency information to description
             let deps = match task_def {
                 TaskDefHashed::DenoFileV1(d) => d.depends_on.as_deref().unwrap_or(&[]),
@@ -129,7 +133,7 @@ impl SystemInstance for TasksSystemInstance {
                     description = format!("{}\nDepends on: {}", description, deps_str);
                 }
             }
-            
+
             // Create command for this task
             let mut task_cmd = clap::Command::new(task_key.clone())
                 .disable_help_subcommand(true)
@@ -139,19 +143,19 @@ impl SystemInstance for TasksSystemInstance {
                         .num_args(..)
                         .trailing_var_arg(true)
                         .allow_hyphen_values(true)
-                        .action(clap::ArgAction::Append)
+                        .action(clap::ArgAction::Append),
                 );
-            
+
             // Set description if available
             if !description.is_empty() {
                 task_cmd = task_cmd.about(description);
             }
-            
+
             // Hide task if not named
             if !is_named {
                 task_cmd = task_cmd.hide(true);
             }
-            
+
             // Create action for task execution
             let tcx = self.tcx.clone();
             let task_key_clone = task_key.clone();
@@ -166,7 +170,7 @@ impl SystemInstance for TasksSystemInstance {
                         .get_many::<String>("args")
                         .map(|v| v.cloned().collect())
                         .unwrap_or_default();
-                    
+
                     // Execute task
                     let state: Arc<LoadedState> = scx.get_bb(TasksSystemInstance::BB_STATE_KEY);
                     let _output = exec_task(
@@ -179,12 +183,12 @@ impl SystemInstance for TasksSystemInstance {
                         args,
                     )
                     .await?;
-                    
+
                     Ok(())
                 }
                 .boxed()
             });
-            
+
             task_commands.insert(
                 task_key.clone().into(),
                 SystemCliCommand {
@@ -192,10 +196,10 @@ impl SystemInstance for TasksSystemInstance {
                     clap: task_cmd,
                     sub_commands: IndexMap::new(),
                     action: Some(action),
-                }
+                },
             );
         }
-        
+
         // Create main tasks command with task subcommands
         let tasks_cmd = SystemCliCommand {
             name: "tasks".into(),
@@ -207,7 +211,7 @@ impl SystemInstance for TasksSystemInstance {
             sub_commands: task_commands,
             action: None,
         };
-        
+
         Ok(vec![tasks_cmd])
     }
 }

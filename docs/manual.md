@@ -532,6 +532,12 @@ The following snippet shows the current config set, their defafults, and an expl
   // of the ghjk implementation from.
   // *supports global configuration*
   "repo_root": "<url to ghjk git repo under the ref used to build the current cli>",
+
+  // Controls how CLI completions are provided by ghjk.
+  // - "activators" (default): embed completions into activation scripts for bash/zsh/fish.
+  // - "off": do not generate/embed completions via activators.
+  // Can also be set via $GHJK_COMPLETIONS.
+  "completions": "activators"
 }
 ```
 

@@ -51,7 +51,6 @@ const prepareArgs = zod.object({
 
 const args = prepareArgs.parse(Ghjk.blackboard.get("args"));
 
-
 await prepareSystems(args);
 
 async function prepareSystems(args: typeof prepareArgs._output) {
@@ -68,8 +67,10 @@ async function prepareSystems(args: typeof prepareArgs._output) {
   Ghjk.callbacks.set("reduce_strange_provisions", async (args: Json) => {
     const { reduceStrangeProvisions } = await import("./envs/reducer.ts");
     const { recipe } = args as any;
-    
-    return JSON.parse(JSON.stringify(await reduceStrangeProvisions(gcx, recipe)));
+
+    return JSON.parse(
+      JSON.stringify(await reduceStrangeProvisions(gcx, recipe)),
+    );
   });
 
   const { default: mod } = await import(args.uri);

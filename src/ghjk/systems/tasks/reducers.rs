@@ -2,9 +2,8 @@ use crate::interlude::*;
 
 use futures::FutureExt;
 
-use crate::systems::envs::types::{Provision, WellKnownProvision, ProvisionReducer};
-use super::{TasksCtx, exec_task};
-
+use super::{exec_task, TasksCtx};
+use crate::systems::envs::types::{Provision, ProvisionReducer, WellKnownProvision};
 
 /// This reducer expands a single ghjk.tasks.Alias trigger into shell aliases for all tasks,
 /// allowing tasks to be available as shell aliases when environments are activated.
@@ -19,11 +18,12 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                     command: vec!["ghjk".to_string(), "x".to_string()],
                     description: Some("Run ghjk tasks by name".to_string()),
                     wraps: Some(vec!["ghjk".to_string(), "x".to_string()]),
-                }
+                },
             ];
             // If there is at least one trigger, expand aliases for all tasks
             if !provisions.is_empty() {
-                let state: Arc<super::LoadedState> = scx.get_bb(super::TasksSystemInstance::BB_STATE_KEY);
+                let state: Arc<super::LoadedState> =
+                    scx.get_bb(super::TasksSystemInstance::BB_STATE_KEY);
                 // map local key to final visible key
                 for (task_key, task_def) in state.config.tasks.iter() {
                     let (alias_name, desc) = match task_def {
@@ -35,7 +35,8 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                                     if description.is_empty() {
                                         description = format!("Depends on: {}", deps_str);
                                     } else {
-                                        description = format!("{}\nDepends on: {}", description, deps_str);
+                                        description =
+                                            format!("{}\nDepends on: {}", description, deps_str);
                                     }
                                 }
                             }
@@ -59,13 +60,16 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
 
 /// This reducer executes tasks and uses their output as environment variable values.
 /// It handles `posix.envVarDyn` provisions that specify a task to run.
-pub fn dyn_env_reducer(tcx: Arc<TasksCtx>, scx: Arc<crate::systems::SystemsCtx>) -> ProvisionReducer {
+pub fn dyn_env_reducer(
+    tcx: Arc<TasksCtx>,
+    scx: Arc<crate::systems::SystemsCtx>,
+) -> ProvisionReducer {
     Box::new(move |provisions: Vec<Provision>| {
         let tcx = tcx.clone();
         let scx = scx.clone();
         async move {
             use crate::systems::envs::types::{Provision, WellKnownProvision};
-            
+
             let mut output = Vec::new();
             let mut bad_provisions = Vec::new();
 
@@ -74,13 +78,15 @@ pub fn dyn_env_reducer(tcx: Arc<TasksCtx>, scx: Arc<crate::systems::SystemsCtx>)
                 // { "ty": "posix.envVarDyn", "key": "ENV_VAR_NAME", "taskKey": "task_name" }
                 let (key, task_key) = match &provision {
                     Provision::Strange(strange) => {
-                        let key = strange.get("key")
+                        let key = strange
+                            .get("key")
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
-                        let task_key = strange.get("taskKey")
+                        let task_key = strange
+                            .get("taskKey")
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
-                        
+
                         match (key, task_key) {
                             (Some(key), Some(task_key)) => (key, task_key),
                             _ => {
@@ -96,7 +102,9 @@ pub fn dyn_env_reducer(tcx: Arc<TasksCtx>, scx: Arc<crate::systems::SystemsCtx>)
                 };
 
                 // Execute the task to get the environment variable value
-                let val = execute_task_for_env_var(&tcx, &scx, &task_key).await.unwrap_or_default();
+                let val = execute_task_for_env_var(&tcx, &scx, &task_key)
+                    .await
+                    .unwrap_or_default();
 
                 output.push(WellKnownProvision::PosixEnvVar { key, val });
             }
@@ -112,9 +120,13 @@ pub fn dyn_env_reducer(tcx: Arc<TasksCtx>, scx: Arc<crate::systems::SystemsCtx>)
 }
 
 /// Execute a task to get environment variable value using the tasks system
-async fn execute_task_for_env_var(tcx: &TasksCtx, scx: &crate::systems::SystemsCtx, task_key: &str) -> Res<String> {
+async fn execute_task_for_env_var(
+    tcx: &TasksCtx,
+    scx: &crate::systems::SystemsCtx,
+    task_key: &str,
+) -> Res<String> {
     debug!("executing task for env var: {task_key}");
-    
+
     // Get the loaded state from tasks context
     let state: Arc<super::LoadedState> = scx.get_bb(super::TasksSystemInstance::BB_STATE_KEY);
 
@@ -132,9 +144,7 @@ async fn execute_task_for_env_var(tcx: &TasksCtx, scx: &crate::systems::SystemsC
             }
         })
         .map(|(k, _)| k.clone())
-        .ok_or_else(|| {
-            ferr!("task with key '{task_key}' not found")
-        })?;
+        .ok_or_else(|| ferr!("task with key '{task_key}' not found"))?;
 
     // Execute the task and get its output
     let task_output = exec_task(
@@ -145,7 +155,8 @@ async fn execute_task_for_env_var(tcx: &TasksCtx, scx: &crate::systems::SystemsC
         &state.graph,
         &target_key,
         vec![],
-    ).await?;
+    )
+    .await?;
 
     // Extract the value from the task output for this specific task key
     if let Some(output_value) = task_output.get(task_key) {

@@ -55,6 +55,7 @@ impl HostCtx {
 pub async fn systems_from_ghjkfile(
     hcx: Arc<HostCtx>,
     ghjkdir_path: &Path,
+    avoid_serialization: bool,
 ) -> Res<Option<GhjkfileSystems>> {
     let (hashfile_path, lockfile_path) = (
         ghjkdir_path.join("hash.json"),
@@ -110,6 +111,15 @@ pub async fn systems_from_ghjkfile(
         }
     }
 
+    if avoid_serialization {
+        if hash_obj.is_none() {
+            return Ok(None);
+        }
+        if lock_obj.is_none() {
+            return Ok(None);
+        }
+    }
+
     let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.config.ghjkfile {
         (
             crate::utils::file_exists(path).await?,
@@ -153,8 +163,6 @@ pub async fn systems_from_ghjkfile(
             eyre::bail!("unsupported hashfile version: {:?}", obj.version);
         }
     }
-    // TODO:
-    // if hcx.re_resolve {}
 
     let mut lock_entries = HashMap::new();
 
@@ -191,6 +199,9 @@ pub async fn systems_from_ghjkfile(
         // Assumes that a hashfile tags the specific serialized version of the ghjkfile
         // and it's context put in the lockfile
         (lock_obj.config.clone(), hash_obj)
+    } else if avoid_serialization {
+        // we avoid serialiation if unable to recover a non-stale lock obj
+        return Ok(None);
     } else if let Some(ghjkfile_path) = &hcx.gcx.config.ghjkfile {
         if !ghjkfile_exists {
             eyre::bail!("no file found at ghjkfile path {ghjkfile_path:?}");

@@ -49,6 +49,12 @@ pub enum WellKnownProvision {
         #[serde(skip_serializing_if = "Option::is_none")]
         wraps: Option<Vec<String>>,
     },
+    #[serde(rename = "posix.shell.Completion.bash")]
+    GhjkCliCompletionBash { script: String },
+    #[serde(rename = "posix.shell.Completion.zsh")]
+    GhjkCliCompletionZsh { script: String },
+    #[serde(rename = "posix.shell.Completion.fish")]
+    GhjkCliCompletionFish { script: String },
 }
 
 impl WellKnownProvision {
@@ -63,6 +69,9 @@ impl WellKnownProvision {
             WellKnownProvision::PosixHeaderFile { .. } => "posix.headerFile",
             WellKnownProvision::GhjkPortsInstall { .. } => "ghjk.ports.Install",
             WellKnownProvision::GhjkShellAlias { .. } => "ghjk.shell.Alias",
+            WellKnownProvision::GhjkCliCompletionBash { .. } => "posix.shell.Completion.bash",
+            WellKnownProvision::GhjkCliCompletionZsh { .. } => "posix.shell.Completion.zsh",
+            WellKnownProvision::GhjkCliCompletionFish { .. } => "posix.shell.Completion.fish",
         }
     }
 }
@@ -98,14 +107,14 @@ pub struct EnvRecipe {
 }
 
 /// A function that batch converts strange provisions of a certain kind to well known ones.
-/// 
+///
 /// Think of them as type erased service providers.
 /// The service being transforming and implementing environment ingredients.
 pub type ProvisionReducer = Box<
-    dyn Fn(Vec<Provision>) -> BoxFuture<'static, Res<Vec<WellKnownProvision>>> 
-    + Send 
-    + Sync 
-    + 'static
+    dyn Fn(Vec<Provision>) -> BoxFuture<'static, Res<Vec<WellKnownProvision>>>
+        + Send
+        + Sync
+        + 'static,
 >;
 
 /// Store for provision reducers, keyed by provision type string

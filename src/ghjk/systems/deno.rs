@@ -1,7 +1,10 @@
 //! This module implements support for systems written in typescript
 //! running on top of deno.
 
-use crate::{interlude::*, systems::envs::{types::EnvRecipe, EnvsCtx}};
+use crate::{
+    interlude::*,
+    systems::envs::{types::EnvRecipe, EnvsCtx},
+};
 
 use super::{SystemCliCommand, SystemId, SystemInstance, SystemManifest};
 
@@ -74,6 +77,7 @@ pub async fn systems_from_deno(
             deno_json: _,
             import_map: _,
             deno_no_lockfile: _,
+            completions: _,
         } = &gcx.config;
 
         json!(BindingArgs {
@@ -221,8 +225,7 @@ pub async fn systems_from_deno(
                         json!({ "recipe": recipe }),
                     )
                     .await?;
-                let res: EnvRecipe =
-                    serde_json::from_value(res).wrap_err("protocol error")?;
+                let res: EnvRecipe = serde_json::from_value(res).wrap_err("protocol error")?;
                 Ok(res)
             }
             .boxed()

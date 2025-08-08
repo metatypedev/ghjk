@@ -579,23 +579,23 @@
             "test": {
               "ty": "denoFile@v1",
               "key": "test",
-              "envKey": "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei"
+              "envKey": "bciqonerdglss7wgwanl5kmaobd65m62hhjbttwhi6kdy5sqf6us6b4a"
             },
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqagrsdy32j624e5hdok7wrbvz62cvabt4kncvvrf6je7wtiefkwdq"
+              "envKey": "bciqlle52eawulvhl4awqlqknoior3xbu7am7odisybx3hvkczenr6ba"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
               "key": "cache-v8",
               "desc": "Install the V8 builds to a local cache.",
-              "envKey": "bciqlsjtr5tp3oiuekk5vyxoipeiddr2n2zx7xmpnwjon2uqhewmt6qq"
+              "envKey": "bciqeilftprl5r3bh55t2tf5pwfiij2jdr2cmmrvibtqrmhwujo7pm7q"
             },
             "stuff": {
               "ty": "denoFile@v1",
               "key": "stuff",
-              "envKey": "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei"
+              "envKey": "bciqonerdglss7wgwanl5kmaobd65m62hhjbttwhi6kdy5sqf6us6b4a"
             }
           },
           "tasksNamed": [
@@ -610,10 +610,13 @@
         "id": "envs",
         "config": {
           "envs": {
-            "bciqagrsdy32j624e5hdok7wrbvz62cvabt4kncvvrf6je7wtiefkwdq": {
+            "bciqlle52eawulvhl4awqlqknoior3xbu7am7odisybx3hvkczenr6ba": {
               "provides": [
                 {
                   "ty": "ghjk.tasks.Alias"
+                },
+                {
+                  "ty": "ghjk.cli.Completions"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -621,10 +624,13 @@
                 }
               ]
             },
-            "bciqlsjtr5tp3oiuekk5vyxoipeiddr2n2zx7xmpnwjon2uqhewmt6qq": {
+            "bciqeilftprl5r3bh55t2tf5pwfiij2jdr2cmmrvibtqrmhwujo7pm7q": {
               "provides": [
                 {
                   "ty": "ghjk.tasks.Alias"
+                },
+                {
+                  "ty": "ghjk.cli.Completions"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -632,7 +638,7 @@
                 }
               ]
             },
-            "bciqgdcp6frmtzm2vxvvvyb4hs7fndm4uddmyyesnghs6cot4ciqcp2a": {
+            "bciqlu7g45b7do37g47cyaavw3udrfnag4yfbsnp5e7ujlbwyv66gney": {
               "desc": "the default default environment.",
               "provides": [
                 {
@@ -644,12 +650,15 @@
                   "ty": "ghjk.tasks.Alias"
                 },
                 {
+                  "ty": "ghjk.cli.Completions"
+                },
+                {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
                 }
               ]
             },
-            "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei": {
+            "bciqonerdglss7wgwanl5kmaobd65m62hhjbttwhi6kdy5sqf6us6b4a": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -660,12 +669,15 @@
                   "ty": "ghjk.tasks.Alias"
                 },
                 {
+                  "ty": "ghjk.cli.Completions"
+                },
+                {
                   "ty": "ghjk.ports.InstallSetRef",
                   "setId": "ghjkEnvProvInstSet___main"
                 }
               ]
             },
-            "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy": {
+            "bciqlt5eytsb2ojh7hrsxxvzr7m4n3gaeitdrtnzemjmqq4fhq643aha": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -674,6 +686,9 @@
                 },
                 {
                   "ty": "ghjk.tasks.Alias"
+                },
+                {
+                  "ty": "ghjk.cli.Completions"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -681,7 +696,7 @@
                 }
               ]
             },
-            "bciqd2a7wzmxqnnvw7ubmn7qfhzva653jdctr7njzvsdi4xuazxtcffq": {
+            "bciqhznepuqezykpxttx7q5vjdkhlpxlo3j2pxt2gd55d5kg7npikgya": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -690,6 +705,9 @@
                 },
                 {
                   "ty": "ghjk.tasks.Alias"
+                },
+                {
+                  "ty": "ghjk.cli.Completions"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -700,10 +718,10 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqgdcp6frmtzm2vxvvvyb4hs7fndm4uddmyyesnghs6cot4ciqcp2a",
-            "_rust": "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy",
-            "ci": "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy",
-            "dev": "bciqd2a7wzmxqnnvw7ubmn7qfhzva653jdctr7njzvsdi4xuazxtcffq"
+            "main": "bciqlu7g45b7do37g47cyaavw3udrfnag4yfbsnp5e7ujlbwyv66gney",
+            "_rust": "bciqlt5eytsb2ojh7hrsxxvzr7m4n3gaeitdrtnzemjmqq4fhq643aha",
+            "ci": "bciqlt5eytsb2ojh7hrsxxvzr7m4n3gaeitdrtnzemjmqq4fhq643aha",
+            "dev": "bciqhznepuqezykpxttx7q5vjdkhlpxlo3j2pxt2gd55d5kg7npikgya"
           }
         }
       }
