@@ -576,30 +576,30 @@
         "id": "tasks",
         "config": {
           "tasks": {
-            "play": {
+            "test": {
               "ty": "denoFile@v1",
-              "key": "play",
-              "envKey": "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny"
+              "key": "test",
+              "envKey": "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei"
             },
             "lock-sed": {
               "ty": "denoFile@v1",
               "key": "lock-sed",
-              "envKey": "bciqhisb45tggrepvmq5ftp6xys3u3djsbonm2yjzroe2wiy6tujs4ci"
+              "envKey": "bciqagrsdy32j624e5hdok7wrbvz62cvabt4kncvvrf6je7wtiefkwdq"
             },
             "cache-v8": {
               "ty": "denoFile@v1",
               "key": "cache-v8",
               "desc": "Install the V8 builds to a local cache.",
-              "envKey": "bciqgyaadzvdw5ximvmhq5tdtxaooiep6fqcxtqdmsn4spwtn4xezkzq"
+              "envKey": "bciqlsjtr5tp3oiuekk5vyxoipeiddr2n2zx7xmpnwjon2uqhewmt6qq"
             },
             "stuff": {
               "ty": "denoFile@v1",
               "key": "stuff",
-              "envKey": "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny"
+              "envKey": "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei"
             }
           },
           "tasksNamed": [
-            "play",
+            "test",
             "lock-sed",
             "cache-v8",
             "stuff"
@@ -610,27 +610,10 @@
         "id": "envs",
         "config": {
           "envs": {
-            "bciqhisb45tggrepvmq5ftp6xys3u3djsbonm2yjzroe2wiy6tujs4ci": {
+            "bciqagrsdy32j624e5hdok7wrbvz62cvabt4kncvvrf6je7wtiefkwdq": {
               "provides": [
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -638,27 +621,10 @@
                 }
               ]
             },
-            "bciqgyaadzvdw5ximvmhq5tdtxaooiep6fqcxtqdmsn4spwtn4xezkzq": {
+            "bciqlsjtr5tp3oiuekk5vyxoipeiddr2n2zx7xmpnwjon2uqhewmt6qq": {
               "provides": [
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -666,7 +632,7 @@
                 }
               ]
             },
-            "bciqczjlbtl4djvzi6xxx2oe5n3qffv4neee5vcxnig3qgdetml6exka": {
+            "bciqgdcp6frmtzm2vxvvvyb4hs7fndm4uddmyyesnghs6cot4ciqcp2a": {
               "desc": "the default default environment.",
               "provides": [
                 {
@@ -675,24 +641,7 @@
                   "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -700,7 +649,7 @@
                 }
               ]
             },
-            "bciqnai5wtxoiq7iy7iyf5ypzzofmhmpozq3nlqcysk6esfvehv54dny": {
+            "bciqklstwst2hjz4jqzl2el2tfyuexwydarruljueenou4nc6letouei": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -708,24 +657,7 @@
                   "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -733,7 +665,7 @@
                 }
               ]
             },
-            "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa": {
+            "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -741,24 +673,7 @@
                   "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -766,7 +681,7 @@
                 }
               ]
             },
-            "bciqhsko4lgp3a3k4z3p4sm4wq3olvgabaz6nil2cfd23h7mthkcvr6i": {
+            "bciqd2a7wzmxqnnvw7ubmn7qfhzva653jdctr7njzvsdi4xuazxtcffq": {
               "provides": [
                 {
                   "ty": "posix.envVar",
@@ -774,24 +689,7 @@
                   "val": "info,runtime=info,tokio=info,deno::npm=info,deno::module_loader=info,deno::file_fetcher=info,deno_npm=info,deno_resolver=info,import_map=info,deno_cache_dir=info,swc_ecma_transforms_base=info,swc_common=info,h2=info,rustls=info,mio=info,hyper_util=info"
                 },
                 {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "stuff",
-                  "aliasName": "stuff"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "cache-v8",
-                  "aliasName": "cache-v8"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "lock-sed",
-                  "aliasName": "lock-sed"
-                },
-                {
-                  "ty": "ghjk.tasks.Alias",
-                  "taskName": "play",
-                  "aliasName": "play"
+                  "ty": "ghjk.tasks.Alias"
                 },
                 {
                   "ty": "ghjk.ports.InstallSetRef",
@@ -802,10 +700,10 @@
           },
           "defaultEnv": "dev",
           "envsNamed": {
-            "main": "bciqczjlbtl4djvzi6xxx2oe5n3qffv4neee5vcxnig3qgdetml6exka",
-            "_rust": "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa",
-            "ci": "bciqbwac7lg6vpjndzujmnrdzbt6fvokga5icfi34oq6dctth2q3zxpa",
-            "dev": "bciqhsko4lgp3a3k4z3p4sm4wq3olvgabaz6nil2cfd23h7mthkcvr6i"
+            "main": "bciqgdcp6frmtzm2vxvvvyb4hs7fndm4uddmyyesnghs6cot4ciqcp2a",
+            "_rust": "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy",
+            "ci": "bciqmab7hcwbg4s3g6cjr2qrql2h3d5qemqfuqoihngb6lpehsvutovy",
+            "dev": "bciqd2a7wzmxqnnvw7ubmn7qfhzva653jdctr7njzvsdi4xuazxtcffq"
           }
         }
       }

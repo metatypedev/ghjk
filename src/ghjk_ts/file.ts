@@ -662,17 +662,8 @@ export class Ghjkfile {
           }),
           // env hooks
           ...hooks,
-          // task aliases - make all tasks available as aliases
-          ...Array.from(this.#tasks.keys()).map((taskKey) => {
-            const task = this.#tasks.get(taskKey)!;
-            const taskName = task.name || taskKey;
-            const prov = {
-              ty: "ghjk.tasks.Alias" as const,
-              taskName: taskKey,
-              aliasName: taskName,
-            };
-            return prov;
-          }),
+          // task aliases - expanded later via reducer using state
+          { ty: "ghjk.tasks.Alias" as const },
         ],
       };
 

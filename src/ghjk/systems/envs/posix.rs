@@ -34,7 +34,7 @@ pub async fn cook(
     vars.insert("GHJK_ENV".to_string(), env_key.to_string());
     let mut on_enter_hooks: Vec<(String, Vec<String>)> = vec![];
     let mut on_exit_hooks: Vec<(String, Vec<String>)> = vec![];
-    let mut aliases: Vec<(String, Vec<String>)> = vec![];
+    let mut aliases: Vec<(String, Vec<String>, Option<String>, Option<Vec<String>>)> = vec![];
 
     for item in &recipe.provides {
         match item {
@@ -65,8 +65,15 @@ pub async fn cook(
             WellKnownProvision::GhjkShellAlias {
                 alias_name,
                 command,
+                description,
+                wraps,
             } => {
-                aliases.push((alias_name.clone(), command.clone()));
+                aliases.push((
+                    alias_name.clone(),
+                    command.clone(),
+                    description.clone(),
+                    wraps.clone(),
+                ));
             }
         }
     }
@@ -168,21 +175,15 @@ async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
     Ok(())
 }
 
-async fn write_activators(
+    async fn write_activators(
     ecx: &EnvsCtx,
     env_dir: &Path,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, PathBuf>,
     on_enter_hooks: &[(String, Vec<String>)],
     on_exit_hooks: &[(String, Vec<String>)],
-    aliases: &[(String, Vec<String>)],
+        aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>) ],
 ) -> Res<()> {
-    // Log the environment variables being written
-    tracing::info!(
-        "Writing activators with {} env_vars, {} path_vars",
-        env_vars.len(),
-        path_vars.len()
-    );
     let ghjk_dir_var = "_ghjk_dir";
     let data_dir_var = "_ghjk_data_dir";
 
@@ -260,7 +261,7 @@ fn build_posix_script(
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
-    aliases: &[(String, Vec<String>)],
+    aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>)],
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
@@ -381,23 +382,67 @@ export GHJK_CLEANUP_POSIX="";
     )?;
 
     writeln!(buf, r#"# aliases"#)?;
-    for (alias_name, command) in aliases {
-        let safe_command = command
-            .join(" ")
-            .replace("\\", "\\\\")
-            .replace("'", "'\\''");
+
+    // POSIX reserved words and common builtins to avoid as function names
+    fn is_reserved_posix(name: &str) -> bool {
+        // From POSIX sh reserved words plus common builtins that would be confusing
+        const RESERVED: &[&str] = &[
+            "!","case","do","done","elif","else","esac","fi","for","if","in","then","until","while","{","}","time","function",
+            // common builtins
+            "test","[","echo","printf","read","cd","alias","unalias","type","hash","true","false","pwd","export","unset","shift","getopts","times","umask","ulimit",
+            // high-risk external/common commands to avoid overshadowing
+            "sudo",
+        ];
+        RESERVED.iter().any(|w| *w == name)
+    }
+
+    // Validate that alias names are valid POSIX function names
+    fn is_valid_posix_fn_name(name: &str) -> bool {
+        let mut chars = name.chars();
+        match chars.next() {
+            Some(c) if (c == '_' || c.is_ascii_alphabetic()) => {}
+            _ => return false,
+        }
+        chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+    }
+
+    for (alias_name, command, _desc, _wraps) in aliases {
+        if is_reserved_posix(alias_name) {
+            writeln!(buf, "# skipped alias '{alias_name}': reserved posix name")?;
+            continue;
+        }
+        if !is_valid_posix_fn_name(alias_name) {
+            writeln!(buf, "# skipped alias '{alias_name}': invalid posix function name")?;
+            continue;
+        }
+        let mut cmd_vec = command.clone();
+        if let Some(first) = cmd_vec.get_mut(0) {
+            if first == "ghjk" { *first = ghjk_shim_name.to_string(); }
+        }
+        // Argument safety: build a snippet that preserves argv boundaries.
+        // We export each token quoted and then eval "$@" style forwarding.
+        // Since we cannot easily rehydrate arrays in POSIX from static text, we rely on "$@".
+        let safe_command = cmd_vec
+            .into_iter()
+            .map(|t| t.replace("\\", "\\\\").replace("'", "'\\''"))
+            .map(|t| format!("'{}'", t))
+            .collect::<Vec<_>>()
+            .join(" ");
         writeln!(
             buf,
             r#"
 {alias_name}() {{
-    {safe_command} "$@"
+    eval {safe_command} "$@"
 }}
         "#
         )?;
     }
     writeln!(buf, r#"# cleanup task alises"#)?;
 
-    for (alias_name, _) in aliases {
+    for (alias_name, _, _, _) in aliases {
+        if is_reserved_posix(alias_name) || !is_valid_posix_fn_name(alias_name) { 
+            continue; 
+        }
         writeln!(
             buf,
             r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f {alias_name};';"#
@@ -451,7 +496,7 @@ fn build_fish_script(
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
-    aliases: &[(String, Vec<String>)],
+    aliases: &[(String, Vec<String>, Option<String>, Option<Vec<String>>)],
     ghjk_dir_var: &str,
     data_dir_var: &str,
     ghjk_shim_name: &str,
@@ -532,15 +577,68 @@ set {data_dir_var} "{data_dir_str}"
 "#
     )?;
     writeln!(buf, r#"# aliases"#)?;
-    for (alias_name, command) in aliases {
-        let safe_command = command
+
+    // Fish reserved words and common builtins to avoid as function names
+    fn is_reserved_fish(name: &str) -> bool {
+        const RESERVED: &[&str] = &[
+            // Provided list
+            "[","_","and","argparse","begin","break","builtin","case","command","continue","else","end","eval","exec","for","function","if","not","or","read","return","set","status","string","switch","test","time","while",
+            // some additional builtins/keywords
+            "source","alias","functions","set_color","commandline","emit",
+            // avoid overshadowing common commands
+            "sudo"
+        ];
+        RESERVED.iter().any(|w| *w == name)
+    }
+
+    // Basic validation for fish function names
+    // - must start with a letter or underscore
+    // - subsequent characters may be letters, digits, underscores or hyphens
+    // - dots are disallowed here to avoid ambiguity
+    fn is_valid_fish_fn_name(name: &str) -> bool {
+        let mut chars = name.chars();
+        match chars.next() {
+            Some(c) if c == '_' || c.is_ascii_alphabetic() => {}
+            _ => return false,
+        }
+        chars.all(|c| c == '_' || c == '-' || c.is_ascii_alphanumeric())
+    }
+
+    for (alias_name, command, description, wraps) in aliases {
+        if is_reserved_fish(alias_name) { 
+            writeln!(buf, "# skipped alias '{alias_name}': reserved fish name")?;
+            continue;
+        }
+        if !is_valid_fish_fn_name(alias_name) {
+            writeln!(buf, "# skipped alias '{alias_name}': invalid fish function name")?;
+            continue;
+        }
+        let mut cmd_vec = command.clone();
+        if let Some(first) = cmd_vec.get_mut(0) {
+            if first == "ghjk" { *first = ghjk_shim_name.to_string(); }
+        }
+        let safe_command = cmd_vec
             .join(" ")
             .replace("\\", "\\\\")
             .replace("'", "'\\''");
+        let desc_flag = match description {
+            Some(d) if !d.is_empty() => {
+                let d = d.replace("\\", "\\\\").replace("'", "'\\''");
+                format!(" --description '{d}'")
+            }
+            _ => String::new(),
+        };
+        let wraps_flags = match wraps {
+            Some(list) if !list.is_empty() => list.iter().map(|w| {
+                let w = w.replace("\\", "\\\\").replace("'", "'\\''");
+                format!(" --wraps={w}")
+            }).collect::<String>(),
+            _ => String::new(),
+        };
         writeln!(
             buf,
             r#"
-function {alias_name}
+function {alias_name}{wraps_flags}{desc_flag}
     {safe_command} $argv
 end
         "#
@@ -548,7 +646,8 @@ end
     }
     writeln!(buf, r#"# cleanup task alises"#)?;
 
-    for (alias_name, _) in aliases {
+    for (alias_name, _, _, _) in aliases {
+        if is_reserved_fish(alias_name) || !is_valid_fish_fn_name(alias_name) { continue; }
         writeln!(
             buf,
             r#"set --global --append GHJK_CLEANUP_FISH 'functions -e {alias_name};'"#

@@ -42,6 +42,12 @@ pub enum WellKnownProvision {
         #[serde(rename = "aliasName")]
         alias_name: String,
         command: Vec<String>,
+        /// Optional human readable description (used by fish)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+        /// Optional list of wrapped commands (used by fish)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        wraps: Option<Vec<String>>,
     },
 }
 

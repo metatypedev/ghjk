@@ -208,6 +208,6 @@ ghjk.task(
   { inherit: false },
 );
 
-ghjk.task(function play($) {
+ghjk.task(function test($) {
   console.log($.argv);
 });

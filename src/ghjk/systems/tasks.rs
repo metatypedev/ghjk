@@ -46,7 +46,7 @@ pub struct TasksSystemManifest {
 impl TasksSystemManifest {
     pub async fn ctor(&self, scx: Arc<crate::systems::SystemsCtx>) -> Res<TasksSystemInstance> {
         // Register reducers here with access to scx
-        let task_alias_reducer = reducers::task_alias_reducer();
+        let task_alias_reducer = reducers::task_alias_reducer(scx.clone());
         self.tcx
             .ecx
             .register_reducer(TASK_ALIAS_PROVISION_TY.to_string(), task_alias_reducer);

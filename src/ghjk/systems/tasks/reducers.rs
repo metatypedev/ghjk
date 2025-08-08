@@ -3,47 +3,52 @@ use crate::interlude::*;
 use futures::FutureExt;
 
 use crate::systems::envs::types::{Provision, WellKnownProvision, ProvisionReducer};
-use super::types::TaskAliasProvision;
 use super::{TasksCtx, exec_task};
 
 
-/// This reducer converts task alias provisions to shell alias provisions,
+/// This reducer expands a single ghjk.tasks.Alias trigger into shell aliases for all tasks,
 /// allowing tasks to be available as shell aliases when environments are activated.
-pub fn task_alias_reducer() -> ProvisionReducer {
+pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionReducer {
     Box::new(move |provisions: Vec<Provision>| {
+        let scx = scx.clone();
         async move {
             let mut output = vec![
                 // Always add the base "x" alias that maps to "ghjk x"
                 WellKnownProvision::GhjkShellAlias {
                     alias_name: "x".to_string(),
                     command: vec!["ghjk".to_string(), "x".to_string()],
+                    description: Some("Run ghjk tasks by name".to_string()),
+                    wraps: Some(vec!["ghjk".to_string(), "x".to_string()]),
                 }
             ];
-
-            for provision in provisions {
-                // Extract task alias provision data
-                let task_alias = match &provision {
-                    Provision::Strange(strange) => {
-                        // Parse the task alias provision
-                        let task_alias: TaskAliasProvision = serde_json::from_value(strange.clone())
-                            .wrap_err("error parsing task alias provision")?;
-                        task_alias
-                    }
-                    _ => {
-                        return Err(eyre::eyre!("expected task alias provision, got: {:?}", provision));
-                    }
-                };
-
-                // Convert task alias provision to shell alias provision
-                // This will be handled by the environment system to generate shell functions
-                output.push(WellKnownProvision::GhjkShellAlias {
-                    alias_name: task_alias.alias_name,
-                    command: vec![
-                        "ghjk".to_string(),
-                        "x".to_string(),
-                        task_alias.task_name,
-                    ],
-                });
+            // If there is at least one trigger, expand aliases for all tasks
+            if !provisions.is_empty() {
+                let state: Arc<super::LoadedState> = scx.get_bb(super::TasksSystemInstance::BB_STATE_KEY);
+                // map local key to final visible key
+                for (task_key, task_def) in state.config.tasks.iter() {
+                    let (alias_name, desc) = match task_def {
+                        crate::systems::tasks::types::TaskDefHashed::DenoFileV1(def) => {
+                            let mut description = def.desc.clone().unwrap_or_default();
+                            if let Some(deps) = def.depends_on.as_ref() {
+                                if !deps.is_empty() {
+                                    let deps_str = deps.join(", ");
+                                    if description.is_empty() {
+                                        description = format!("Depends on: {}", deps_str);
+                                    } else {
+                                        description = format!("{}\nDepends on: {}", description, deps_str);
+                                    }
+                                }
+                            }
+                            (task_key.clone(), description)
+                        }
+                    };
+                    output.push(WellKnownProvision::GhjkShellAlias {
+                        alias_name,
+                        command: vec!["ghjk".to_string(), "x".to_string(), task_key.clone()],
+                        description: if desc.is_empty() { None } else { Some(desc) },
+                        wraps: Some(vec!["ghjk".to_string(), "x".to_string()]),
+                    });
+                }
             }
 
             Ok(output)

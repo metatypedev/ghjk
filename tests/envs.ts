@@ -180,6 +180,13 @@ ghjk_deactivate
 # alias should be gone after deactivation
 type -q greet; and exit 103
 test $status = 1; or exit 104
+ # invalid/unsafe alias names should be skipped
+ type -q say-hello; and exit 105
+ test $status = 1; or exit 106
+ type -q 1bad; and exit 107
+ test $status = 1; or exit 108
+ type -q a.b; and exit 109
+ test $status = 1; or exit 110
 `,
 };
 
@@ -367,9 +374,27 @@ test (dummy) = "e1"; or exit 105
         greet: {
           fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
         },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
       },
     },
-    stdin: taskAliasTestBody.posix,
+    stdin: `
+${taskAliasTestBody.posix}
+# invalid/unsafe alias names should be skipped
+type say-hello && exit 105
+[ $? -eq 1 ] || exit 106
+type 1bad && exit 107
+[ $? -eq 1 ] || exit 108
+type a.b && exit 109
+[ $? -eq 1 ] || exit 110
+`,
   },
   {
     name: "task_aliases_zsh",
@@ -380,9 +405,27 @@ test (dummy) = "e1"; or exit 105
         greet: {
           fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
         },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
       },
     },
-    stdin: taskAliasTestBody.posix,
+    stdin: `
+${taskAliasTestBody.posix}
+# invalid/unsafe alias names should be skipped
+type say-hello && exit 105
+[ $? -eq 1 ] || exit 106
+type 1bad && exit 107
+[ $? -eq 1 ] || exit 108
+type a.b && exit 109
+[ $? -eq 1 ] || exit 110
+`,
   },
   {
     name: "task_aliases_fish",
@@ -393,9 +436,27 @@ test (dummy) = "e1"; or exit 105
         greet: {
           fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
         },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
       },
     },
-    stdin: taskAliasTestBody.fish,
+    stdin: `
+${taskAliasTestBody.fish}
+# invalid/unsafe alias names should be skipped
+type -q say-hello; and exit 105
+test $status = 1; or exit 106
+type -q 1bad; and exit 107
+test $status = 1; or exit 108
+type -q a.b; and exit 109
+test $status = 1; or exit 110
+`,
   },
 ];
 
