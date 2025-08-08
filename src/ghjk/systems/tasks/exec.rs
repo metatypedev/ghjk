@@ -127,17 +127,20 @@ pub async fn exec_task(
             TaskDefHashed::DenoFileV1(def) => (&def.env_key, def),
         };
 
-        // Use tempfile crate as approved to manage a scoped temp dir for env cooking
-        let task_env_dir = {
-            let tmpdir = ::tempfile::Builder::new()
-                .prefix(&format!(
-                    "ws_ghjkTaskEnv_{}_",
-                    task_key.replace(['/', '\\', ':'], "_")
-                ))
-                .tempdir()
-                .wrap_err("error creating temp dir for task env")?;
-            tmpdir
-        };
+        // Create a temporary directory using tempfile inside spawn_blocking
+        let task_env_dir = tokio::task::spawn_blocking({
+            let task_key_for_prefix = task_key.clone();
+            move || {
+                ::tempfile::Builder::new()
+                    .prefix(&format!(
+                        "ws_ghjkTaskEnv_{}_",
+                        task_key_for_prefix.replace(['/', '\\', ':'], "_")
+                    ))
+                    .tempdir()
+            }
+        })
+        .await
+        .wrap_err("error joining tempdir create")??;
 
         let env_vars: IndexMap<String, String> = {
             // Cook the environment using the envs system
@@ -216,7 +219,8 @@ pub async fn exec_task(
             }
         }
 
-        // Clean-up tempdir (auto by tempfile)
+        // Clean up the tempdir using spawn_blocking to avoid blocking the async runtime
+        let _ = tokio::task::spawn_blocking(move || drop(task_env_dir)).await;
 
         // Mark as completed
         work_set.remove(&task_key);
