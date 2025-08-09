@@ -66,6 +66,7 @@ async function prepareSystems(args: typeof prepareArgs._output) {
   // Set up callback for reduceStrangeProvisions to be called from Rust
   Ghjk.callbacks.set("reduce_strange_provisions", async (args: Json) => {
     const { reduceStrangeProvisions } = await import("./envs/reducer.ts");
+    // deno-lint-ignore no-explicit-any
     const { recipe } = args as any;
 
     return JSON.parse(
@@ -139,6 +140,7 @@ function instanceBinding(
     load_lock_entry_cb_key: Ghjk.callbacks.set(
       `sys_load_lock_entry_${instanceId}`,
       async (args: Json) => {
+        // deno-lint-ignore no-explicit-any
         const { raw } = args as any;
         const state = await instance.loadLockEntry(raw);
         const stateKey = `sys_state_${instanceId}`;

@@ -48,10 +48,14 @@ export async function reduceStrangeProvisions(
     }
     bin.push(item);
   }
+  // only reduce what one can here
+  // the rust side will reduce the rest
+  // and throw an error if there's a strange
+  // one left at the end
   const reducedSet = [] as Provision[];
   const promises = promiseCollector();
   for (const [ty, items] of Object.entries(bins)) {
-    if (wellKnownProvisionTypes.includes(ty as any)) {
+    if ((wellKnownProvisionTypes as readonly string[]).includes(ty)) {
       reducedSet.push(
         ...items.map((item) => validators.wellKnownProvision.parse(item)),
       );
@@ -59,9 +63,6 @@ export async function reduceStrangeProvisions(
     }
     const reducer = reducerStore.get(ty);
     if (!reducer) {
-      // throw new Error(`no provider reducer found for ty: ${ty}`, {
-      //   cause: items,
-      // });
       reducedSet.push(...items);
     } else {
       promises.push(async () => {

@@ -12,6 +12,7 @@ type GhjkNs = {
     set: (key: string, fn: (arg: Json) => Json | Promise<Json>) => string;
   };
   hostcall: (key: string, args: Json) => Promise<Json>;
+  // deno-lint-ignore no-explicit-any
   dispatchException: (exception: any) => boolean;
 };
 export const Ghjk: GhjkNs;

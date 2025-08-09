@@ -518,9 +518,9 @@ function resolveConfig(
       logger.info("resolving given version", config);
       const allVersions = await port.listAll(listAllArgs);
       // TODO: fuzzy matching
-      const match = allVersions.find((version) =>
-        version == config.version || version == `v` + config.version
-      );
+      const norm = (s: string) => s.replace(/^v/i, "");
+      const wanted = norm(config.version);
+      const match = allVersions.find((v) => norm(v) === wanted);
       if (!match) {
         throw new Error(
           `error resolving verison ${config.version}: not found, available versions: [${
@@ -826,6 +826,7 @@ export function getPortImpl(manifest: PortManifest) {
     );
   } else {
     throw new Error(
+      // deno-lint-ignore no-explicit-any
       `unsupported port type "${(manifest as unknown as any).ty}": ${
         $.inspect(manifest)
       }`,

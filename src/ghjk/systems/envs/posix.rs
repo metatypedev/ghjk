@@ -213,17 +213,39 @@ async fn write_activators(
     let on_enter_hooks_escaped: Vec<String> = on_enter_hooks
         .iter()
         .map(|(cmd, args)| {
-            let cmd = if cmd == "ghjk" { ghjk_shim_name } else { cmd };
-            let safe_args = args.join(" ");
-            format!("{cmd} {safe_args}").replace('\'', "'\\''")
+            let mut parts = std::iter::once(cmd.clone())
+                .chain(args.clone())
+                .collect::<Vec<_>>();
+            if let Some(first) = parts.get_mut(0) {
+                if first == "ghjk" {
+                    *first = ghjk_shim_name.to_string();
+                }
+            }
+            parts
+                .into_iter()
+                .map(|t| t.replace("\\", "\\\\").replace("'", "'\\''"))
+                .map(|t| format!("'{}'", t))
+                .collect::<Vec<_>>()
+                .join(" ")
         })
         .collect();
     let on_exit_hooks_escaped: Vec<String> = on_exit_hooks
         .iter()
         .map(|(cmd, args)| {
-            let cmd = if cmd == "ghjk" { ghjk_shim_name } else { cmd };
-            let safe_args = args.join(" ");
-            format!("{cmd} {safe_args}").replace('\'', "'\\''")
+            let mut parts = std::iter::once(cmd.clone())
+                .chain(args.clone())
+                .collect::<Vec<_>>();
+            if let Some(first) = parts.get_mut(0) {
+                if first == "ghjk" {
+                    *first = ghjk_shim_name.to_string();
+                }
+            }
+            parts
+                .into_iter()
+                .map(|t| t.replace("\\", "\\\\").replace("'", "'\\''"))
+                .map(|t| format!("'{}'", t))
+                .collect::<Vec<_>>()
+                .join(" ")
         })
         .collect();
 

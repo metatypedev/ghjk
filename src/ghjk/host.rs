@@ -225,6 +225,11 @@ pub async fn systems_from_ghjkfile(
     debug!("initializing ghjkfile systems");
     let sys_instances = {
         let mut sys_instances = IndexMap::new();
+        // we start with a fresh system context here
+        // this allows us to flush out any issues with global
+        // state that might be stored store there
+        // all state must go through the lock entries generated
+        // above
         let scx_second = Arc::new(SystemsCtx::new());
         for sys_conf in &config.modules {
             let Some(sys_man) = hcx.systems.get(&sys_conf.id) else {

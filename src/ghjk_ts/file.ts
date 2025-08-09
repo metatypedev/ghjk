@@ -89,6 +89,7 @@ export type TaskFnArgs = {
 export type TaskFn = (
   $: ReturnType<typeof task$>,
   args: TaskFnArgs,
+  // deno-lint-ignore no-explicit-any
 ) => Promise<any> | any;
 
 /**

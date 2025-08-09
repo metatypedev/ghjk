@@ -68,7 +68,7 @@
         // "ban-untagged-todo"
       ],
       "exclude": [
-        "no-explicit-any"
+        // "no-explicit-any"
       ]
     }
   }

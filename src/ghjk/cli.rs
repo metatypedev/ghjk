@@ -32,8 +32,8 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     debug!("config sourced: {config:?}");
 
     let quck_err = match try_quick_cli(&config).await? {
-        QuickCliResult::Continue => {
-            return Ok(ExitCode::SUCCESS);
+        QuickCliResult::Exit(code) => {
+            return Ok(code);
         }
         val => val,
     };
@@ -267,7 +267,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
 enum QuickCliResult {
     ClapErr(clap::Error),
     Completions(CompletionShell),
-    Continue,
+    Exit(ExitCode),
 }
 impl QuickCliResult {
     fn exit(self, cmd: Option<&mut clap::Command>) -> ExitCode {
@@ -292,7 +292,7 @@ impl QuickCliResult {
                 );
                 ExitCode::SUCCESS
             }
-            QuickCliResult::Continue => unreachable!("can't happen"),
+            QuickCliResult::Exit(_) => unreachable!("can't happen"),
         }
     }
 }
@@ -335,7 +335,7 @@ async fn try_quick_cli(config: &Config) -> Res<QuickCliResult> {
         QuickCommands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
     }
 
-    Ok(QuickCliResult::Continue)
+    Ok(QuickCliResult::Exit(ExitCode::SUCCESS))
 }
 
 const CLAP_STYLE: clap::builder::Styles = clap::builder::Styles::styled()

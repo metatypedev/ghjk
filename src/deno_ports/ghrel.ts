@@ -62,8 +62,7 @@ export abstract class GithubReleasePort extends PortBase {
       urls.map((item) => {
         const mergedHeaders = {
           ...ghHeaders(args.config),
-          ...(args as any).headers,
-          ...(item as any).headers,
+          ...item.headers,
         } as Record<string, string>;
         return downloadFile({ ...args, headers: mergedHeaders, ...item });
       }),

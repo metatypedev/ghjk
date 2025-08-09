@@ -91,6 +91,7 @@ let requestBuilder;
 try {
   requestBuilder = new dax.RequestBuilder()
     .showProgress(Deno.stderr.isTerminal())
+    // deno-lint-ignore no-explicit-any
     .timeout(Deno.env.get("GHJK_REQ_TIMEOUT") as any ?? "5m");
 } catch (err) {
   throw new Error(
@@ -141,7 +142,9 @@ export const $ = dax.build$(
         });
       },
 
+      // deno-lint-ignore no-explicit-any
       co: ((values: any[]) => Promise.all(values)) as typeof Promise.all,
+      // deno-lint-ignore no-explicit-any
       co2: function co2<T extends any[]>(
         ...values: { [K in keyof T]: PromiseLike<T[K]> }
       ) {
@@ -381,6 +384,7 @@ export type AsyncRc<T> = ReturnType<typeof asyncRc<T>>;
  * if ((val + 0) != 0) throw new Error("impossible")
  * ```
  */
+// deno-lint-ignore no-explicit-any
 export function asyncRc<T>(val: T, onDrop: (val: T) => Promise<any>) {
   const rc = {
     counter: 1,

@@ -363,12 +363,14 @@ export const file = Object.freeze(function file(
 interface Bind {
   cb?: (file: string) => string;
 }
+// deno-lint-ignore no-explicit-any
 function getCaller(this: Bind | any, levelUp = 3) {
   const err = new Error();
   const stack = err.stack?.split("\n")[levelUp];
   if (stack) {
     return getFile.bind(this)(stack);
   }
+  // deno-lint-ignore no-explicit-any
   function getFile(this: Bind | any, stack: string): string {
     stack = stack.substring(stack.indexOf("at ") + 3);
     if (!stack.startsWith("file://")) {
@@ -382,8 +384,8 @@ function getCaller(this: Bind | any, levelUp = 3) {
       file = `${path[0]}:${path[1]}`;
     }
 
-    if ((this as Bind)?.cb) {
-      const cb = (this as Bind).cb as any;
+    const cb = (this as Bind)?.cb;
+    if (cb) {
       file = cb(file);
     }
     return file;

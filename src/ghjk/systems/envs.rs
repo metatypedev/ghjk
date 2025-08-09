@@ -395,12 +395,7 @@ async fn reduce_strange_provisions(
             let reduced = reducer(items).await?;
             reduced_set.extend(reduced);
         } else {
-            tracing::debug!(
-                "No Rust reducer found for type: {}, relying on TypeScript",
-                ty
-            );
-            // If no Rust reducer is found, we rely on TypeScript reduction
-            // The TypeScript side should have handled this provision type
+            eyre::bail!("No reducer found for type: {ty}");
         }
     }
 
