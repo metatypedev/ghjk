@@ -20,7 +20,7 @@ import type {
 } from "./types.ts";
 import { getInstallHash, getPortRef } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
-import { AmbientAccessPort } from "./ambient.ts";
+import { AmbientAccessPort } from "../../deno_ports/ambient.ts";
 import {
   $,
   AVAIL_CONCURRENCY,

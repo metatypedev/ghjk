@@ -14,9 +14,7 @@ import logger from "../deno_utils/logger.ts";
 import { $ } from "../deno_utils/mod.ts";
 import { EnvBuilder, Ghjkfile, stdDeps } from "./file.ts";
 import type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./file.ts";
-// WARN: following module has side-effects and only ever import
-// types from it
-import type { ExecTaskArgs } from "../sys_deno/tasks/deno.ts";
+import type { ExecTaskArgs } from "../sys_deno/tasks/types.ts";
 
 export type { DenoTaskDefArgs, EnvDefArgs, TaskFn } from "./file.ts";
 export { $, logger, stdDeps };

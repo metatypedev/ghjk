@@ -3,7 +3,7 @@ use crate::interlude::*;
 pub const TASK_ALIAS_PROVISION_TY: &str = "ghjk.tasks.Alias";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TaskAliasProvision {
     pub ty: String,
     pub task_name: String,
@@ -11,7 +11,7 @@ pub struct TaskAliasProvision {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TasksModuleConfig {
     pub tasks: IndexMap<String, TaskDefHashed>,
     pub tasks_named: Vec<String>,
@@ -25,7 +25,7 @@ pub enum TaskDefHashed {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct DenoWorkerTaskDefHashed {
     pub desc: Option<String>,
     pub working_dir: Option<String>,

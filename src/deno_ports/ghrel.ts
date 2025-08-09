@@ -20,7 +20,9 @@ export function readGhVars() {
 
 export function ghHeaders(conf: Record<string | number | symbol, unknown>) {
   const res = ghConfValidator.parse(conf);
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "User-Agent": "ghjk (github.com/metatypedev/ghjk)",
+  };
   if (res.ghToken) {
     headers["Authorization"] = `Bearer ${res.ghToken}`;
   }
@@ -57,9 +59,14 @@ export abstract class GithubReleasePort extends PortBase {
       );
     }
     await Promise.all(
-      urls.map((item) =>
-        downloadFile({ ...args, headers: ghHeaders(args.config), ...item })
-      ),
+      urls.map((item) => {
+        const mergedHeaders = {
+          ...ghHeaders(args.config),
+          ...(args as any).headers,
+          ...(item as any).headers,
+        } as Record<string, string>;
+        return downloadFile({ ...args, headers: mergedHeaders, ...item });
+      }),
     );
   }
 
@@ -79,16 +86,37 @@ export abstract class GithubReleasePort extends PortBase {
   }
 
   async listAll(args: ListAllArgs) {
-    const metadata = await $.withRetries({
-      count: 10,
-      delay: $.exponentialBackoff(1000),
-      action: async () =>
-        await $.request(
-          `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases`,
-        )
-          .header(ghHeaders(args.config))
-          .json() as [{ tag_name: string }],
-    });
+    const metadata: { tag_name: string }[] = [];
+    const MAX_TOTAL = 1000;
+    const PER_PAGE = 100;
+    let fetched = 0;
+    for (let page = 1; fetched < MAX_TOTAL; page++) {
+      // Calculate how many to fetch on this page
+      const remaining = MAX_TOTAL - fetched;
+      const per_page = remaining < PER_PAGE ? remaining : PER_PAGE;
+      // deno-lint-ignore no-await-in-loop
+      const pageMetadata = await $.withRetries({
+        count: 10,
+        delay: $.exponentialBackoff(1000),
+        action: async () =>
+          await $.request(
+            `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=${per_page}&page=${page}`,
+          )
+            .header(ghHeaders(args.config))
+            .json() as { tag_name: string }[],
+      });
+
+      if (!pageMetadata || !pageMetadata.length) {
+        break;
+      }
+
+      metadata.push(...pageMetadata);
+      fetched += pageMetadata.length;
+      if (pageMetadata.length < per_page) {
+        // No more pages
+        break;
+      }
+    }
 
     return metadata.map((rel) => rel.tag_name).reverse();
   }

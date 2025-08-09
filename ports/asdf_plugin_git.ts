@@ -18,7 +18,7 @@ import {
   ghConfValidator,
   type GithubReleasesInstConf,
   readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+} from "../src/deno_ports/ghrel.ts";
 
 const git_aa_id = {
   name: "git_aa",

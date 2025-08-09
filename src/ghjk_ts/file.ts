@@ -28,10 +28,11 @@ import runtime_ports from "../sys_deno/ports/std_runtime.ts";
 // host
 import type { SerializedConfig } from "./types.ts";
 // tasks
-// WARN: this module has side-effects and only ever import
-// types from it
-import type { ExecTaskArgs } from "../sys_deno/tasks/deno.ts";
-import { TaskDefHashed, TasksModuleConfig } from "../sys_deno/tasks/types.ts";
+import type {
+  ExecTaskArgs,
+  TaskDefHashed,
+  TasksModuleConfig,
+} from "../sys_deno/tasks/types.ts";
 // envs
 import {
   type EnvRecipe,

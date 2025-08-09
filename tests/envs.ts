@@ -163,7 +163,7 @@ ghjk envs cook main
 . .ghjk/envs/main/activate.sh
 echo WE ARE ACTIVATED
 greet world
-test "$(greet world)" = "Hello world!" || exit 101
+test "$(greet world)" = 'Hello world!' || exit 101
 type greet || exit 102
 ghjk_deactivate
 # alias should be gone after deactivation
@@ -182,7 +182,7 @@ set fish_trace 1
 ghjk envs cook main
 . .ghjk/envs/main/activate.fish
 greet world
-test (greet world) = "Hello world!"; or exit 101
+test (greet world) = 'Hello world!'; or exit 101
 type greet; or exit 102
 ghjk_deactivate
 # alias should be gone after deactivation

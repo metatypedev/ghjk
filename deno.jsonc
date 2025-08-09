@@ -29,6 +29,7 @@
       "install.ts",
       "./src/sys_deno/bindings.ts",
       "./src/ghjk_ts/bindings.ts",
+      "./src/ghjk/systems/tasks/bindings.ts",
       "./src/ghjk/js"
     ]
   },

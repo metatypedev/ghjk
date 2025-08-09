@@ -20,7 +20,7 @@ import {
   ghHeaders,
   GithubReleasesInstConf,
   readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+} from "../src/deno_ports/ghrel.ts";
 
 const tar_aa_id = {
   name: "tar_aa",

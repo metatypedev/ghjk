@@ -10,10 +10,7 @@ import {
   std_fs,
   std_path,
 } from "../src/deno_ports/mod.ts";
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 import * as std_ports from "../src/sys_deno/ports/std.ts";
 
 const manifest = {

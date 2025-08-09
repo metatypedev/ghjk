@@ -1,10 +1,5 @@
 import { zod } from "../../deps.ts";
-
-// Local definition of envRecipe to avoid dependency on envs module
-const envRecipe = zod.object({
-  desc: zod.string().nullish(),
-  provides: zod.array(zod.any()), // Using any for now since we don't need the full provision type
-});
+import envsValidators from "../envs/types.ts";
 
 const taskName = zod.string().regex(/[^\s]/);
 
@@ -16,7 +11,7 @@ const taskDefBase = zod.object({
 });
 
 const taskDefFullBase = taskDefBase.merge(zod.object({
-  env: envRecipe.nullish(),
+  env: envsValidators.envRecipe.nullish(),
 }));
 
 const taskDefHashedBase = taskDefBase.merge(zod.object({
@@ -89,3 +84,10 @@ export type TasksModuleConfig = zod.infer<typeof validators.tasksModuleConfig>;
 export type TaskAliasProvision = zod.infer<
   typeof validators.taskAliasProvision
 >;
+
+export type ExecTaskArgs = {
+  key: string;
+  argv: string[];
+  workingDir: string;
+  envVars: Record<string, string>;
+};

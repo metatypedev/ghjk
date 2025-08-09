@@ -23,11 +23,11 @@ pub async fn cook(
     let include_shim_dir = shim_dir.join("include");
 
     // Create all shim directories concurrently
-    let (_, _, _) = tokio::join!(
+    let (_, _, _) = tokio::try_join!(
         tokio::fs::create_dir_all(&bin_shim_dir),
         tokio::fs::create_dir_all(&lib_shim_dir),
         tokio::fs::create_dir_all(&include_shim_dir)
-    );
+    )?;
 
     let mut bin_paths = vec![];
     let mut lib_paths = vec![];
@@ -371,7 +371,12 @@ export GHJK_CLEANUP_POSIX="";
         // by defaulting to a value that's guranteed to
         // be differeint than the actual val
         // TODO: avoid invalid key values elsewhere
-        let guranteed_different_val = &val.replace("'", "").replace("\"", "")[0..2];
+        let guranteed_different_val: String = val
+            .replace("'", "")
+            .replace("\"", "")
+            .chars()
+            .take(2)
+            .collect();
         let safe_comp_key = format!("${{{key}:-_{guranteed_different_val}}}");
         // single quote the supplied values to avoid
         // any embedded expansion/execution

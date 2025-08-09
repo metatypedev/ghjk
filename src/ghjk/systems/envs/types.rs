@@ -3,7 +3,7 @@ use futures::future::BoxFuture;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "ty")]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum WellKnownProvision {
     #[serde(rename = "posix.envVar")]
     PosixEnvVar { key: String, val: String },
@@ -77,14 +77,14 @@ impl WellKnownProvision {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WellKnownEnvRecipe {
     pub desc: Option<String>,
     pub provides: Vec<WellKnownProvision>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvsModuleConfig {
     pub default_env: String,
     pub envs: IndexMap<String, EnvRecipe>,
@@ -92,7 +92,7 @@ pub struct EnvsModuleConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum Provision {
     WellKnown(WellKnownProvision),
     /// It must have a ty field that's a string
@@ -100,7 +100,7 @@ pub enum Provision {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EnvRecipe {
     pub desc: Option<String>,
     pub provides: Vec<Provision>,

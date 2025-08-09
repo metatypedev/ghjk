@@ -22,7 +22,7 @@ pub struct TasksCtx {
 }
 
 #[derive(Debug)]
-struct LoadedState {
+pub struct LoadedState {
     pub config: TasksModuleConfig,
     pub graph: TaskGraph,
 }
@@ -140,7 +140,7 @@ impl SystemInstance for TasksSystemInstance {
                 .arg(
                     clap::Arg::new("args")
                         .value_name("TASK ARGS")
-                        .num_args(..)
+                        .num_args(0..)
                         .trailing_var_arg(true)
                         .allow_hyphen_values(true)
                         .action(clap::ArgAction::Append),
@@ -182,7 +182,8 @@ impl SystemInstance for TasksSystemInstance {
                         &task_key,
                         args,
                     )
-                    .await?;
+                    .await
+                    .wrap_err_with(|| format!("error executing task {task_key}"))?;
 
                     Ok(())
                 }

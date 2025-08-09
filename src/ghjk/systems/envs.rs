@@ -146,24 +146,44 @@ impl SystemInstance for EnvsSystemInstance {
     async fn commands(&self) -> Res<Vec<SystemCliCommand>> {
         fn env_key_args(
             state: &LoadedState,
+            scx: &crate::systems::SystemsCtx,
             task_key: Option<String>,
             env_key: Option<String>,
-        ) -> (String, Option<String>) {
-            if let Some(_task_key) = task_key {
-                // TODO: expose task list to rust
-                todo!("task-key support is current disabled")
+        ) -> Res<(String, Option<String>)> {
+            if let Some(task_name) = task_key {
+                // Resolve the task by its declared key and fetch its env key
+                let tasks_state: Arc<crate::systems::tasks::LoadedState> =
+                    scx.get_bb(crate::systems::tasks::TasksSystemInstance::BB_STATE_KEY);
+                let env_key = tasks_state
+                    .config
+                    .tasks
+                    .get(&task_name)
+                    .map(|task| match task {
+                        crate::systems::tasks::types::TaskDefHashed::DenoFileV1(def) => {
+                            def.env_key.clone()
+                        }
+                    })
+                    .ok_or_else(|| ferr!("task with key '{task_name}' not found"))?;
+
+                // If this env key has a friendly name, pass it along
+                let env_name = state
+                    .key_to_name
+                    .get(&env_key)
+                    .and_then(|v| v.first().cloned());
+                return Ok((env_key, env_name));
             }
+
             let actual_key = state
                 .config
                 .envs_named
                 .get(env_key.as_deref().unwrap_or(&state.active_env));
             if let Some(actual_key) = actual_key {
-                (
+                Ok((
                     actual_key.clone(),
                     Some(env_key.unwrap_or_else(|| state.active_env.clone())),
-                )
+                ))
             } else {
-                (env_key.unwrap_or_else(|| state.active_env.clone()), None)
+                Ok((env_key.unwrap_or_else(|| state.active_env.clone()), None))
             }
         }
 
@@ -192,15 +212,17 @@ impl SystemInstance for EnvsSystemInstance {
                                 Ok(())
                             }
                             Ok(EnvsCommands::Show { env_key, task_env }) => {
-                                let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                                let (env_key, env_name) =
+                                    env_key_args(&state, &scx, task_env, env_key)?;
                                 show_env(&state, env_key.as_str(), env_name.as_deref())
                             }
                             Ok(EnvsCommands::Activate { env_key, task_env }) => {
-                                let (env_key, _) = env_key_args(&state, task_env, env_key);
+                                let (env_key, _) = env_key_args(&state, &scx, task_env, env_key)?;
                                 activate_env(env_key).await
                             }
                             Ok(EnvsCommands::Cook { env_key, task_env }) => {
-                                let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                                let (env_key, env_name) =
+                                    env_key_args(&state, &scx, task_env, env_key)?;
                                 reduce_and_cook(
                                     &ecx,
                                     &scx,
@@ -248,7 +270,7 @@ impl SystemInstance for EnvsSystemInstance {
                         let state: Arc<LoadedState> = scx.get_bb(EnvsSystemInstance::BB_STATE_KEY);
                         let env_key = matches.get_one::<String>("env_key").cloned();
                         let task_env = matches.get_one::<String>("task_env").cloned();
-                        let (env_key, env_name) = env_key_args(&state, task_env, env_key);
+                        let (env_key, env_name) = env_key_args(&state, &scx, task_env, env_key)?;
                         reduce_and_cook(&ecx, &scx, &state, env_key.as_str(), env_name.as_deref())
                             .await?;
                         activate_env(env_key).await?;

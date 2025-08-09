@@ -49,6 +49,7 @@ const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
 ghjk.env("_rust")
   .install(
+    // install rust using rustup or nix (there's a flake.nix file)
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
     ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
