@@ -165,7 +165,7 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         }
     };
 
-    for cmd in sys_cmds {
+    for cmd in &sys_cmds {
         root_cmd = root_cmd.subcommand(cmd);
     }
 
@@ -173,15 +173,23 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     // FIXME: this means completions are always generated even if we're not
     // writing activator scripts
     {
-        let reducer = match gcx.config.completions {
-            crate::config::CompletionsMode::Activators => {
-                crate::cli::reducers::ghjk_cli_completions_reducer(&root_cmd)
-            }
-            crate::config::CompletionsMode::Off => {
-                crate::cli::reducers::ghjk_cli_completions_noop_reducer()
-            }
-        };
-        envs_ctx.register_reducer("ghjk.cli.Completions".to_string(), reducer);
+        envs_ctx.register_reducer(
+            "ghjk.cli.Completions".to_string(),
+            match gcx.config.completions {
+                crate::config::CompletionsMode::Activators => {
+                    crate::cli::reducers::ghjk_cli_completions_reducer(
+                        &root_cmd,
+                        &sys_cmds,
+                        &sys_actions,
+                        // TODO: optional_aliases
+                        true,
+                    )
+                }
+                crate::config::CompletionsMode::Off => {
+                    crate::cli::reducers::ghjk_cli_completions_noop_reducer()
+                }
+            },
+        );
     }
 
     // if it's already known to be a completions request,

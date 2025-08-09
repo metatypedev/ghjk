@@ -161,6 +161,7 @@ const taskAliasTestBody = {
 set -ex
 ghjk envs cook main
 . .ghjk/envs/main/activate.sh
+echo WE ARE ACTIVATED
 greet world
 test "$(greet world)" = "Hello world!" || exit 101
 type greet || exit 102
@@ -168,6 +169,13 @@ ghjk_deactivate
 # alias should be gone after deactivation
 type greet && exit 103
 [ $? -eq 1 ] || exit 104
+# invalid/unsafe alias names should be skipped
+type say-hello && exit 105
+[ $? -eq 1 ] || exit 106
+type 1bad && exit 107
+[ $? -eq 1 ] || exit 108
+type a.b && exit 109
+[ $? -eq 1 ] || exit 110
 `,
   fish: `
 set fish_trace 1
@@ -367,7 +375,7 @@ test (dummy) = "e1"; or exit 105
   },
   {
     name: "task_aliases_bash",
-    ePoint: `bash -s`,
+    ePoint: `bash -si`,
     envs: [],
     secureConfig: {
       tasks: {
@@ -385,16 +393,7 @@ test (dummy) = "e1"; or exit 105
         },
       },
     },
-    stdin: `
-${taskAliasTestBody.posix}
-# invalid/unsafe alias names should be skipped
-type say-hello && exit 105
-[ $? -eq 1 ] || exit 106
-type 1bad && exit 107
-[ $? -eq 1 ] || exit 108
-type a.b && exit 109
-[ $? -eq 1 ] || exit 110
-`,
+    stdin: taskAliasTestBody.posix,
   },
   {
     name: "task_aliases_zsh",
@@ -418,13 +417,6 @@ type a.b && exit 109
     },
     stdin: `
 ${taskAliasTestBody.posix}
-# invalid/unsafe alias names should be skipped
-type say-hello && exit 105
-[ $? -eq 1 ] || exit 106
-type 1bad && exit 107
-[ $? -eq 1 ] || exit 108
-type a.b && exit 109
-[ $? -eq 1 ] || exit 110
 `,
   },
   {

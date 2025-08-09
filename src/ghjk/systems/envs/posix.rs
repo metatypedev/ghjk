@@ -227,10 +227,57 @@ async fn write_activators(
         })
         .collect();
 
+    // Collect completion scripts and write them next to activators
+    let mut bash_comp = String::new();
+    let mut zsh_comp = String::new();
+    let mut fish_comp = String::new();
+    for prov in &reduced_recipe.provides {
+        match prov {
+            WellKnownProvision::GhjkCliCompletionBash { script } => {
+                bash_comp.push('\n');
+                bash_comp.push_str(script);
+            }
+            WellKnownProvision::GhjkCliCompletionZsh { script } => {
+                zsh_comp.push('\n');
+                zsh_comp.push_str(script);
+            }
+            WellKnownProvision::GhjkCliCompletionFish { script } => {
+                fish_comp.push_str(script);
+            }
+            _ => {}
+        }
+    }
+    let bash_comp_path = if !bash_comp.is_empty() {
+        let p = env_dir.join("completions.bash");
+        tokio::fs::write(&p, bash_comp).await?;
+        Some(p)
+    } else {
+        None
+    };
+    let zsh_comp_path = if !zsh_comp.is_empty() {
+        let p = env_dir.join("completions.zsh");
+        tokio::fs::write(&p, zsh_comp).await?;
+        Some(p)
+    } else {
+        None
+    };
+    let fish_comp_path = if !fish_comp.is_empty() {
+        let p = env_dir.join("completions.fish");
+        tokio::fs::write(&p, fish_comp).await?;
+        Some(p)
+    } else {
+        None
+    };
+
     let posix_script = build_posix_script(
         &ghjk_dir_str,
         &data_dir_str,
-        reduced_recipe,
+        bash_comp_path
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
+        zsh_comp_path
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
         env_vars,
         &path_vars_replaced,
         &on_enter_hooks_escaped,
@@ -244,7 +291,6 @@ async fn write_activators(
     let fish_script = build_fish_script(
         &ghjk_dir_str,
         &data_dir_str,
-        reduced_recipe,
         env_vars,
         &path_vars_replaced,
         &on_enter_hooks_escaped,
@@ -254,6 +300,9 @@ async fn write_activators(
         data_dir_var,
         ghjk_shim_name,
         &ghjk_exec_path,
+        fish_comp_path
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string()),
     )?;
 
     tokio::try_join!(
@@ -268,7 +317,8 @@ async fn write_activators(
 fn build_posix_script(
     ghjk_dir_str: &str,
     data_dir_str: &str,
-    reduced_recipe: &WellKnownEnvRecipe,
+    bash_comp_path: Option<String>,
+    zsh_comp_path: Option<String>,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
@@ -410,32 +460,6 @@ case "$-" in
 "#
     )?;
 
-    // POSIX reserved words and common builtins to avoid as function names
-    fn is_reserved_posix(name: &str) -> bool {
-        // From POSIX sh reserved words plus common builtins that would be confusing
-        const RESERVED: &[&str] = &[
-            "!", "case", "do", "done", "elif", "else", "esac", "fi", "for", "if", "in", "then",
-            "until", "while", "{", "}", "time", "function",
-            //
-            // common builtins
-            "test", "[", "echo", "printf", "read", "cd", "alias", "unalias", "type", "hash", "true",
-            "false", "pwd", "export", "unset", "shift", "getopts", "times", "umask", "ulimit",
-            // high-risk external/common commands to avoid overshadowing
-            "sudo",
-        ];
-        RESERVED.iter().any(|w| *w == name)
-    }
-
-    // Validate that alias names are valid POSIX function names
-    fn is_valid_posix_fn_name(name: &str) -> bool {
-        let mut chars = name.chars();
-        match chars.next() {
-            Some(c) if (c == '_' || c.is_ascii_alphabetic()) => {}
-            _ => return false,
-        }
-        chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
-    }
-
     for (alias_name, command, _desc, _wraps) in aliases {
         if is_reserved_posix(alias_name) {
             writeln!(
@@ -498,47 +522,40 @@ case "$-" in
             "        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{line};';"
         )?;
     }
-    // completions: only in interactive mode, gate by detected shell
-    let mut bash_comp = String::new();
-    let mut zsh_comp = String::new();
-    for prov in &reduced_recipe.provides {
-        match prov {
-            WellKnownProvision::GhjkCliCompletionBash { script } => {
-                bash_comp.push('\n');
-                bash_comp.push_str(script);
-            }
-            WellKnownProvision::GhjkCliCompletionZsh { script } => {
-                zsh_comp.push('\n');
-                zsh_comp.push_str(script);
-            }
-            _ => {}
-        }
-    }
-    // Use heredocs with source /dev/stdin to avoid eval and escaping issues,
-    // especially for zsh where line continuations (\\) are significant.
+    // completions: only in interactive mode, gate by detected shell, source external files
+    writeln!(buf, "        # completions")?;
     writeln!(
         buf,
-        r#"
-        # ghjk completions
-        if [ "${{GHJK_COMPLETIONS:-activators}}" != "off" ]; then
-            if [ -n "${{BASH_VERSION-}}" ]; then
-                if command -v complete >/dev/null 2>&1; then
-                    source /dev/stdin <<'__GHJK_BASH_COMPLETIONS__'
-{bash_comp}
-__GHJK_BASH_COMPLETIONS__
-                fi
-            elif [ -n "${{ZSH_VERSION-}}" ]; then
-                # Only proceed if zsh completion system (compsys) is initialized.
-                # Checking for _comps parameter is a reliable indicator that compinit has run.
-                if typeset -p _comps >/dev/null 2>&1; then
-                    source /dev/stdin <<'__GHJK_ZSH_COMPLETIONS__'
-{zsh_comp}
-__GHJK_ZSH_COMPLETIONS__
-                fi
-            fi
-        fi
-        "#
+        "        if [ \"${{GHJK_COMPLETIONS:-activators}}\" != \"off\" ]; then"
     )?;
+    writeln!(buf, "            if [ -n \"${{BASH_VERSION-}}\" ]; then")?;
+    writeln!(
+        buf,
+        "                if command -v complete >/dev/null 2>&1; then"
+    )?;
+    if let Some(path) = &bash_comp_path {
+        let safe_path = path.replace("\\", "\\\\").replace("'", "'\\''");
+        writeln!(
+            buf,
+            "                    [ -s '{safe_path}' ] && . '{safe_path}'"
+        )?;
+    }
+    writeln!(buf, "                fi")?;
+    writeln!(buf, "            elif [ -n \"${{ZSH_VERSION-}}\" ]; then")?;
+    writeln!(
+        buf,
+        "                if typeset -p _comps >/dev/null 2>&1; then"
+    )?;
+    if let Some(path) = &zsh_comp_path {
+        let safe_path = path.replace("\\", "\\\\").replace("'", "'\\''");
+        writeln!(
+            buf,
+            "                    [ -s '{safe_path}' ] && . '{safe_path}'"
+        )?;
+    }
+    writeln!(buf, "                fi")?;
+    writeln!(buf, "            fi")?;
+    writeln!(buf, "        fi")?;
     writeln!(
         buf,
         r#"
@@ -558,7 +575,6 @@ esac
 fn build_fish_script(
     ghjk_dir_str: &str,
     data_dir_str: &str,
-    reduced_recipe: &WellKnownEnvRecipe,
     env_vars: &IndexMap<String, String>,
     path_vars: &IndexMap<String, String>,
     on_enter_hooks: &[String],
@@ -568,6 +584,7 @@ fn build_fish_script(
     data_dir_var: &str,
     ghjk_shim_name: &str,
     ghjk_exec_path: &str,
+    fish_comp_path: Option<String>,
 ) -> Res<String> {
     let mut fish_script = String::new();
     let buf = &mut fish_script;
@@ -645,64 +662,6 @@ set {data_dir_var} "{data_dir_str}"
     )?;
     writeln!(buf, r#"# aliases"#)?;
 
-    // Fish reserved words and common builtins to avoid as function names
-    fn is_reserved_fish(name: &str) -> bool {
-        const RESERVED: &[&str] = &[
-            // Provided list
-            "[",
-            "_",
-            "and",
-            "argparse",
-            "begin",
-            "break",
-            "builtin",
-            "case",
-            "command",
-            "continue",
-            "else",
-            "end",
-            "eval",
-            "exec",
-            "for",
-            "function",
-            "if",
-            "not",
-            "or",
-            "read",
-            "return",
-            "set",
-            "status",
-            "string",
-            "switch",
-            "test",
-            "time",
-            "while",
-            // some additional builtins/keywords
-            "source",
-            "alias",
-            "functions",
-            "set_color",
-            "commandline",
-            "emit",
-            // avoid overshadowing common commands
-            "sudo",
-        ];
-        RESERVED.iter().any(|w| *w == name)
-    }
-
-    // Basic validation for fish function names
-    // - must start with a letter or underscore
-    // - subsequent characters may be letters, digits, underscores or hyphens
-    // - dots are disallowed here to avoid ambiguity
-    fn is_valid_fish_fn_name(name: &str) -> bool {
-        let mut chars = name.chars();
-        match chars.next() {
-            Some(c) if c == '_' || c.is_ascii_alphabetic() => {}
-            _ => return false,
-        }
-        chars.all(|c| c == '_' || c == '-' || c.is_ascii_alphanumeric())
-    }
-
     for (alias_name, command, description, wraps) in aliases {
         if is_reserved_fish(alias_name) {
             writeln!(buf, "# skipped alias '{alias_name}': reserved fish name")?;
@@ -733,16 +692,17 @@ set {data_dir_var} "{data_dir_str}"
             _ => String::new(),
         };
         let wraps_flags = match wraps {
+            None => String::new(),
             Some(list) if !list.is_empty() => {
-                let mut s = String::new();
-                for w in list.iter() {
-                    let w = w.replace("\\", "\\\\").replace("'", "'\\''");
-                    s.push_str(" --wraps=");
-                    s.push_str(&w);
-                }
-                s
+                format!(
+                    " --wraps='{}'",
+                    list.iter()
+                        .map(|w| w.replace("\\", "\\\\").replace("'", "'\\''"))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )
             }
-            _ => String::new(),
+            Some(_) => eyre::bail!("wraps has empty array for alias {alias_name}"),
         };
         writeln!(
             buf,
@@ -788,24 +748,17 @@ if status is-interactive;
             "    set --global --append GHJK_CLEANUP_FISH '{line};';"
         )?;
     }
-    // embed fish completion script only for interactive sessions
+    // source fish completion script only for interactive sessions
     // and only when GHJK_COMPLETIONS is not set to "off"
-    let mut fish_comp = String::new();
-    for prov in &reduced_recipe.provides {
-        if let WellKnownProvision::GhjkCliCompletionFish { script } = prov {
-            fish_comp.push_str(script);
-        }
-    }
-    if !fish_comp.is_empty() {
-        writeln!(buf, "    # ghjk fish completions")?;
-        writeln!(buf, "    if test \"$GHJK_COMPLETIONS\" != \"off\";")?;
-        writeln!(buf, "        if type -q complete;")?;
-        for line in fish_comp.lines() {
-            writeln!(buf, "            {line}")?;
-        }
+    writeln!(buf, "    # ghjk fish completions")?;
+    writeln!(buf, "    if test \"$GHJK_COMPLETIONS\" != \"off\";")?;
+    if let Some(path) = &fish_comp_path {
+        let safe_path = path.replace("\\", "\\\\").replace("'", "'\\''");
+        writeln!(buf, "        if test -s '{safe_path}';")?;
+        writeln!(buf, "            source '{safe_path}'")?;
         writeln!(buf, "        end")?;
-        writeln!(buf, "    end")?;
     }
+    writeln!(buf, "    end")?;
     writeln!(
         buf,
         r#"
@@ -838,4 +791,87 @@ function {function_name}
     {ghjk_exec_path} $argv
 end"#,
     )
+}
+
+// Validate that alias names are valid POSIX function names
+fn is_valid_posix_fn_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(c) if (c == '_' || c.is_ascii_alphabetic()) => {}
+        _ => return false,
+    }
+    chars.all(|c| c == '_' || c.is_ascii_alphanumeric())
+}
+
+// POSIX reserved words and common builtins to avoid as function names
+fn is_reserved_posix(name: &str) -> bool {
+    // From POSIX sh reserved words plus common builtins that would be confusing
+    const RESERVED: &[&str] = &[
+        "!", "case", "do", "done", "elif", "else", "esac", "fi", "for", "if", "in", "then",
+        "until", "while", "{", "}", "time", "function", //
+        // common builtins
+        "test", "[", "echo", "printf", "read", "cd", "alias", "unalias", "type", "hash", "true",
+        "false", "pwd", "export", "unset", "shift", "getopts", "times", "umask", "ulimit",
+        // high-risk external/common commands to avoid overshadowing
+        "sudo",
+    ];
+    RESERVED.iter().any(|w| *w == name)
+}
+
+// Basic validation for fish function names
+// - must start with a letter or underscore
+// - subsequent characters may be letters, digits, underscores or hyphens
+// - dots are disallowed here to avoid ambiguity
+fn is_valid_fish_fn_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(c) if c == '_' || c.is_ascii_alphabetic() => {}
+        _ => return false,
+    }
+    chars.all(|c| c == '_' || c == '-' || c.is_ascii_alphanumeric())
+}
+
+// Fish reserved words and common builtins to avoid as function names
+fn is_reserved_fish(name: &str) -> bool {
+    const RESERVED: &[&str] = &[
+        // Provided list
+        "[",
+        "_",
+        "and",
+        "argparse",
+        "begin",
+        "break",
+        "builtin",
+        "case",
+        "command",
+        "continue",
+        "else",
+        "end",
+        "eval",
+        "exec",
+        "for",
+        "function",
+        "if",
+        "not",
+        "or",
+        "read",
+        "return",
+        "set",
+        "status",
+        "string",
+        "switch",
+        "test",
+        "time",
+        "while",
+        // some additional builtins/keywords
+        "source",
+        "alias",
+        "functions",
+        "set_color",
+        "commandline",
+        "emit",
+        // avoid overshadowing common commands
+        "sudo",
+    ];
+    RESERVED.iter().any(|w| *w == name)
 }

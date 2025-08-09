@@ -17,7 +17,7 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                     alias_name: "x".to_string(),
                     command: vec!["ghjk".to_string(), "x".to_string()],
                     description: Some("Run ghjk tasks by name".to_string()),
-                    wraps: Some(vec!["ghjk".to_string(), "x".to_string()]),
+                    wraps: None,
                 },
             ];
             // If there is at least one trigger, expand aliases for all tasks
@@ -47,9 +47,11 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                         alias_name,
                         command: vec!["ghjk".to_string(), "x".to_string(), task_key.clone()],
                         description: if desc.is_empty() { None } else { Some(desc) },
-                        wraps: Some(vec!["ghjk".to_string(), "x".to_string()]),
+                        wraps: None,
                     });
                 }
+
+                // alias completions are added via task_alias_reducer_with_cmd registered in cli
             }
 
             Ok(output)

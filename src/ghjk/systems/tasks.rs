@@ -46,15 +46,15 @@ pub struct TasksSystemManifest {
 impl TasksSystemManifest {
     pub async fn ctor(&self, scx: Arc<crate::systems::SystemsCtx>) -> Res<TasksSystemInstance> {
         // Register reducers here with access to scx
-        let task_alias_reducer = reducers::task_alias_reducer(scx.clone());
-        self.tcx
-            .ecx
-            .register_reducer(TASK_ALIAS_PROVISION_TY.to_string(), task_alias_reducer);
+        self.tcx.ecx.register_reducer(
+            TASK_ALIAS_PROVISION_TY.to_string(),
+            reducers::task_alias_reducer(scx.clone()),
+        );
 
-        let dyn_env_reducer = reducers::dyn_env_reducer(self.tcx.clone(), scx.clone());
-        self.tcx
-            .ecx
-            .register_reducer("posix.envVarDyn".to_string(), dyn_env_reducer);
+        self.tcx.ecx.register_reducer(
+            "posix.envVarDyn".to_string(),
+            reducers::dyn_env_reducer(self.tcx.clone(), scx.clone()),
+        );
 
         Ok(TasksSystemInstance {
             tcx: self.tcx.clone(),
