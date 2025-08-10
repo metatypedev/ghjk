@@ -62,7 +62,7 @@ To continue with installation, please choose from one of the following values:
 - x86_64-apple-darwin
 
 Then set the PLATFORM environment variable, and re-run this script:
-$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl bash
+$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-gnu bash
 EOF
     exit 1
   fi
@@ -133,56 +133,99 @@ if [ "${SKIP_SHELL:-}" = "1" ]; then
   exit 0
 fi
 
-# Check if SHELL is set before using it
-if [ -z "${SHELL:-}" ]; then
-  printf "\nCould not detect your shell (\$SHELL is not set). Skipping shell configuration.\n"
+# Minimal multi-shell hooking using a single line with a marker
+has_sed=0; has_grep=0
+if command -v sed >/dev/null 2>&1; then has_sed=1; fi
+if command -v grep >/dev/null 2>&1; then has_grep=1; fi
+
+MARKER="# ghjk-path-default"
+DIR="$GHJK_INSTALL_EXE_DIR"
+
+# Build list of shells to consider
+HOOK_SHELLS_INPUT="${GHJK_INSTALL_HOOK_SHELLS:-}"
+if [ -n "$HOOK_SHELLS_INPUT" ]; then
+  HOOK_SHELLS_INPUT=$(printf "%s" "$HOOK_SHELLS_INPUT" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+else
+  HOOK_SHELLS_INPUT="bash,zsh,ksh,fish"
+fi
+
+
+# Gather candidate rc files per requested shells
+PAIRS=""
+add_pair() {
+  pair="$1"; file_path=${pair#*:}
+  for existing in $PAIRS; do
+    [ "${existing#*:}" = "$file_path" ] && return 0
+  done
+  PAIRS="$PAIRS $pair"
+}
+
+OLD_IFS=$IFS; IFS=,; set -- $HOOK_SHELLS_INPUT; IFS=$OLD_IFS
+for shell_name in "$@"; do
+  case "$shell_name" in
+    bash)
+      [ -f "$HOME/.bashrc" ] && add_pair "bash:$HOME/.bashrc"
+      ;;
+    zsh)
+      [ -f "$HOME/.zshrc" ] && add_pair "zsh:$HOME/.zshrc"
+      ;;
+    ksh)
+      [ -f "$HOME/.kshrc" ] && add_pair "ksh:$HOME/.kshrc"
+      ;;
+    fish)
+      [ -f "$HOME/.config/fish/config.fish" ] && add_pair "fish:$HOME/.config/fish/config.fish"
+      ;;
+  esac
+done
+
+
+if [ -z "$PAIRS" ]; then
+  printf "\nNo shell rc files discovered. You may add %s to your PATH manually.\n" "$DIR"
   exit 0
 fi
 
-SHELL_TYPE=$(basename "$SHELL")
+printf "\nPreparing to update the following rc files to add %s to your PATH:\n" "$DIR"
+for pair in $PAIRS; do echo " - ${pair#*:}"; done
 
-case $SHELL_TYPE in
-  bash|zsh|ksh)
-    SHELL_CONFIG="$HOME/.$SHELL_TYPE"rc
-    ;;
-  fish)
-    SHELL_CONFIG="$HOME/.config/fish/config.fish"
-    ;;
-  *)
-    SHELL_CONFIG=""
-esac
+answer="y"
+if [ -t 0 ]; then
+  printf "Do you want to proceed? (y/n): " >&2
+  read -r answer
+  answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
+fi
 
-if [ -n "$SHELL_CONFIG" ]; then
-  printf "\nDetected shell: %s\n" "$SHELL_TYPE"
-  # Only use read if stdin is a tty
-  if [ -t 0 ]; then
-    echo "Do you want to append the new PATH to your configuration ($SHELL_CONFIG)? (y/n): " >&2
-    read -r answer
-    answer=$(echo "$answer" | tr "[:upper:]" "[:lower:]")
-  else
-    answer="y"
+if [ "$answer" != "y" ] && [ "$answer" != "yes" ]; then
+  printf "\nSkipped modifying shell configuration.\n"
+  exit 0
+fi
+
+update_rc_file() {
+  shell_type="$1"; rc_file="$2"
+  rc_dir=$(dirname "$rc_file"); [ -d "$rc_dir" ] || mkdir -p "$rc_dir"
+
+  # Remove existing marker if possible; else skip if marker found with grep; else append anyway
+  if [ -f "$rc_file" ] && [ $has_sed -eq 1 ]; then
+    tmp_file=$(mktemp)
+    if sed -e "/$MARKER/d" "$rc_file" > "$tmp_file"; then mv "$tmp_file" "$rc_file"; else rm -f "$tmp_file"; fi
+  elif [ -f "$rc_file" ] && [ $has_grep -eq 1 ]; then
+    if grep -Fq "$MARKER" "$rc_file"; then return 0; fi
   fi
 
-  case $SHELL_TYPE in
+  case "$shell_type" in
     bash|zsh|ksh)
-      # FIXME: marker for paths to use during update
-      APPEND_CMD="export PATH=\"$GHJK_INSTALL_EXE_DIR:\$PATH\""
+      printf '%s\n' "export PATH=\"$DIR:\$PATH\" $MARKER" >> "$rc_file"
       ;;
     fish)
-      APPEND_CMD="fish_add_path $GHJK_INSTALL_EXE_DIR"
+      printf '%s\n' "fish_add_path \"$DIR\" $MARKER" >> "$rc_file"
       ;;
   esac
+}
 
-  if [ "$answer" = "y" ] || [ "$answer" = "yes" ]; then
-    echo "$APPEND_CMD" >> "$SHELL_CONFIG"
-    printf "Path added to %s\nRun 'source %s' to apply changes." "$SHELL_CONFIG" "$SHELL_CONFIG"
-  else
-    cat <<EOF
+for pair in $PAIRS; do
+  shell_type=${pair%%:*}; rc_file=${pair#*:}
+  update_rc_file "$shell_type" "$rc_file"
+  printf "Updated %s\n" "$rc_file"
+done
 
-Consider adding $GHJK_INSTALL_EXE_DIR to your PATH if it is not already configured.
-$ $APPEND_CMD
-EOF
-  fi
-else
-  printf "\nConsider adding %s to your PATH if it is not already configured." "$GHJK_INSTALL_EXE_DIR"
-fi
+printf "\nTo apply changes now, run:\n"
+for pair in $PAIRS; do rc_file=${pair#*:}; printf " - source %s\n" "$rc_file"; done

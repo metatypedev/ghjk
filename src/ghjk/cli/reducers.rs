@@ -27,7 +27,7 @@ pub fn ghjk_cli_completions_reducer(
             "ghjk".to_string(),
             &mut root_bash,
         );
-        String::from_utf8(root_bash).unwrap_or_default()
+        String::from_utf8(root_bash).expect("non utf8 completions")
     });
     zsh_completions.push({
         let mut root_zsh: Vec<u8> = Vec::new();
@@ -37,12 +37,12 @@ pub fn ghjk_cli_completions_reducer(
             "ghjk".to_string(),
             &mut root_zsh,
         );
-        String::from_utf8(root_zsh).unwrap_or_default()
+        String::from_utf8(root_zsh).expect("non utf8 completions")
     });
     fish_completions.push({
         let mut root_fish: Vec<u8> = Vec::new();
         generate(Shell::Fish, &mut cmd, "ghjk".to_string(), &mut root_fish);
-        String::from_utf8(root_fish).unwrap_or_default()
+        String::from_utf8(root_fish).expect("non utf8 completions")
     });
 
     if include_aliases {
@@ -55,7 +55,7 @@ pub fn ghjk_cli_completions_reducer(
                     "x".to_string(),
                     &mut x_cmd_bash,
                 );
-                String::from_utf8(x_cmd_bash).unwrap_or_default()
+                String::from_utf8(x_cmd_bash).expect("non utf8 completions")
             });
             zsh_completions.push({
                 let mut x_cmd_zsh: Vec<u8> = Vec::new();
@@ -65,7 +65,7 @@ pub fn ghjk_cli_completions_reducer(
                     "x".to_string(),
                     &mut x_cmd_zsh,
                 );
-                String::from_utf8(x_cmd_zsh).unwrap_or_default()
+                String::from_utf8(x_cmd_zsh).expect("non utf8 completions")
             });
             fish_completions.push({
                 let mut x_cmd_fish: Vec<u8> = Vec::new();
@@ -75,7 +75,7 @@ pub fn ghjk_cli_completions_reducer(
                     "x".to_string(),
                     &mut x_cmd_fish,
                 );
-                String::from_utf8(x_cmd_fish).unwrap_or_default()
+                String::from_utf8(x_cmd_fish).expect("non utf8 completions")
             });
         }
         let task_cmds = sys_actions
@@ -91,7 +91,7 @@ pub fn ghjk_cli_completions_reducer(
                     task_cmd.get_name(),
                     &mut task_cmd_bash,
                 );
-                String::from_utf8(task_cmd_bash).unwrap_or_default()
+                String::from_utf8(task_cmd_bash).expect("non utf8 completions")
             });
             zsh_completions.push({
                 let mut task_cmd_zsh: Vec<u8> = Vec::new();
@@ -101,7 +101,7 @@ pub fn ghjk_cli_completions_reducer(
                     task_cmd.get_name(),
                     &mut task_cmd_zsh,
                 );
-                String::from_utf8(task_cmd_zsh).unwrap_or_default()
+                String::from_utf8(task_cmd_zsh).expect("non utf8 completions")
             });
             fish_completions.push({
                 let mut task_cmd_fish: Vec<u8> = Vec::new();
@@ -111,7 +111,7 @@ pub fn ghjk_cli_completions_reducer(
                     task_cmd.get_name(),
                     &mut task_cmd_fish,
                 );
-                String::from_utf8(task_cmd_fish).unwrap_or_default()
+                String::from_utf8(task_cmd_fish).expect("non utf8 completions")
             });
         }
     }
@@ -135,17 +135,21 @@ pub fn ghjk_cli_completions_reducer(
                 out.extend(
                     bash_completions
                         .iter()
-                        .map(|s| WellKnownProvision::GhjkCliCompletionBash { script: s.clone() }),
+                        .map(|s| WellKnownProvision::PosixShellCompletionBash {
+                            script: s.clone(),
+                        }),
                 );
                 out.extend(
                     zsh_completions
                         .iter()
-                        .map(|s| WellKnownProvision::GhjkCliCompletionZsh { script: s.clone() }),
+                        .map(|s| WellKnownProvision::PosixShellCompletionZsh { script: s.clone() }),
                 );
                 out.extend(
                     fish_completions
                         .iter()
-                        .map(|s| WellKnownProvision::GhjkCliCompletionFish { script: s.clone() }),
+                        .map(|s| WellKnownProvision::PosixShellCompletionFish {
+                            script: s.clone(),
+                        }),
                 );
             }
             Ok(out)
@@ -156,7 +160,5 @@ pub fn ghjk_cli_completions_reducer(
 
 /// Reducer that ignores CLI completion provisions (used when completions are disabled)
 pub fn ghjk_cli_completions_noop_reducer() -> ProvisionReducer {
-    use crate::systems::envs::types::Provision;
-    use futures::FutureExt;
     Box::new(move |_provisions: Vec<Provision>| async move { Ok(Vec::new()) }.boxed())
 }

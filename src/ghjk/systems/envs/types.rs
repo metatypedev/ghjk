@@ -50,11 +50,11 @@ pub enum WellKnownProvision {
         wraps: Option<Vec<String>>,
     },
     #[serde(rename = "posix.shell.Completion.bash")]
-    GhjkCliCompletionBash { script: String },
+    PosixShellCompletionBash { script: String },
     #[serde(rename = "posix.shell.Completion.zsh")]
-    GhjkCliCompletionZsh { script: String },
+    PosixShellCompletionZsh { script: String },
     #[serde(rename = "posix.shell.Completion.fish")]
-    GhjkCliCompletionFish { script: String },
+    PosixShellCompletionFish { script: String },
 }
 
 impl WellKnownProvision {
@@ -69,9 +69,9 @@ impl WellKnownProvision {
             WellKnownProvision::PosixHeaderFile { .. } => "posix.headerFile",
             WellKnownProvision::GhjkPortsInstall { .. } => "ghjk.ports.Install",
             WellKnownProvision::GhjkShellAlias { .. } => "ghjk.shell.Alias",
-            WellKnownProvision::GhjkCliCompletionBash { .. } => "posix.shell.Completion.bash",
-            WellKnownProvision::GhjkCliCompletionZsh { .. } => "posix.shell.Completion.zsh",
-            WellKnownProvision::GhjkCliCompletionFish { .. } => "posix.shell.Completion.fish",
+            WellKnownProvision::PosixShellCompletionBash { .. } => "posix.shell.Completion.bash",
+            WellKnownProvision::PosixShellCompletionZsh { .. } => "posix.shell.Completion.zsh",
+            WellKnownProvision::PosixShellCompletionFish { .. } => "posix.shell.Completion.fish",
         }
     }
 }

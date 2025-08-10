@@ -20,9 +20,7 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum CompletionsMode {
-    #[serde(alias = "on", alias = "activator", alias = "activators")]
     Activators,
-    #[serde(alias = "disabled", alias = "no", alias = "false")]
     Off,
 }
 

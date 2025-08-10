@@ -57,7 +57,7 @@ export class Port extends GithubReleasePort {
     return [
       this.releaseArtifactUrl(
         installVersion,
-        `jq-${os}-${arch}${os == "windows" ? "exe" : ""}`,
+        `jq-${os}-${arch}${os == "windows" ? ".exe" : ""}`,
       ),
     ]
       .map(dwnUrlOut)

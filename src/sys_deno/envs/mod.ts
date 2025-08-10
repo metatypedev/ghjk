@@ -9,7 +9,7 @@ export async function reduceAndCookEnv(
     envDir: string;
     createShellLoaders?: boolean;
   },
-) {
+): Promise<{ env: Record<string, string> }> {
   logger.debug("cooking env", envKey, { envDir });
 
   const envVars = await Ghjk.hostcall("reduce_and_cook_env_to", {

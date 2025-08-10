@@ -50,9 +50,6 @@ pub async fn system(
         reducer_store: default(),
     });
 
-    // Register default reducers
-    register_default_reducers(&ecx);
-
     Ok((EnvsSystemManifest { ecx: ecx.clone() }, ecx))
 }
 
@@ -449,13 +446,15 @@ async fn reduce_and_cook(
 
     reduce_and_cook_to(ecx, scx, env_key, env_name, &env_dir, true).await?;
 
-    // Create symlink for default environment if this is the default
-    if env_key == state.config.default_env {
-        let default_env_dir = envs_dir.join("default");
-        if default_env_dir.exists() {
-            tokio::fs::remove_file(&default_env_dir).await.ok(); // Ignore errors
+    // Create symlink for default environment if this cooked env is the configured default
+    if let Some(env_name) = env_name {
+        if env_name == state.config.default_env {
+            let default_env_dir = envs_dir.join("default");
+            if default_env_dir.exists() {
+                tokio::fs::remove_file(&default_env_dir).await.ok(); // Ignore errors
+            }
+            tokio::fs::symlink(&env_dir, &default_env_dir).await?;
         }
-        tokio::fs::symlink(&env_dir, &default_env_dir).await?;
     }
 
     // Create symlinks for named environments
@@ -505,13 +504,11 @@ async fn activate_env(env_key: String) -> Res<()> {
         tokio::fs::write(nextfile, env_key).await?;
     } else {
         let shell = detect_shell_path().await.wrap_err(
-            "unable to detct shell in use. Use `$SHELL env var to explicitly pass shell command.",
+            "unable to detct shell in use. Use `$SHELL env var to explicitly pass shell path.",
         )?;
         use std::os::unix::process::CommandExt;
         tokio::task::spawn_blocking(move || {
-            let shell_cmds = shell.split_whitespace().collect::<Vec<_>>();
-            std::process::Command::new(shell_cmds[0])
-                .args(&shell_cmds[1..])
+            std::process::Command::new(shell)
                 .env("GHJK_ENV", env_key)
                 .exec()
         })
@@ -549,8 +546,14 @@ async fn detect_shell_path() -> Res<String> {
     if let Ok(path) = std::env::var("SHELL") {
         return Ok(path);
     }
+
     let output = tokio::process::Command::new("ps")
-        .args(["-p", std::process::id().to_string().as_str(), "-o", "comm="])
+        .args([
+            "-p",
+            nix::unistd::getppid().to_string().as_ref(),
+            "-o",
+            "comm=",
+        ])
         .output()
         .await
         .wrap_err("error on ps command")?;
@@ -575,10 +578,4 @@ fn is_well_known_type(ty: &str) -> bool {
             | "posix.shell.Completion.zsh"
             | "posix.shell.Completion.fish"
     )
-}
-
-/// Register default provision reducers
-fn register_default_reducers(_ecx: &Arc<EnvsCtx>) {
-    // Note: Task-specific reducers like posix.envVarDyn and ghjk.tasks.Alias
-    // are now registered by the tasks system itself during initialization
 }

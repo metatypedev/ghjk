@@ -85,7 +85,7 @@ impl SystemInstance for TasksSystemInstance {
         let config: TasksModuleConfig =
             serde_json::from_value(config).wrap_err("error parsing tasks module config")?;
 
-        let graph = build_task_graph(&config)?;
+        let graph = build_task_graph(&config).wrap_err("error building task graph")?;
 
         let loaded = LoadedState { config, graph };
         self.scx.insert_bb(Self::BB_STATE_KEY, Arc::new(loaded));
@@ -117,9 +117,10 @@ impl SystemInstance for TasksSystemInstance {
             let is_named = named_set.contains(task_key);
 
             // Get basic description from task definition
-            let mut description = match task_def {
+            let mut long_desc = match task_def {
                 TaskDefHashed::DenoFileV1(d) => d.desc.clone().unwrap_or_default(),
             };
+            let desc = long_desc.clone();
 
             // Add dependency information to description
             let deps = match task_def {
@@ -127,10 +128,10 @@ impl SystemInstance for TasksSystemInstance {
             };
             if !deps.is_empty() {
                 let deps_str = deps.join(", ");
-                if description.is_empty() {
-                    description = format!("Depends on: {}", deps_str);
+                if long_desc.is_empty() {
+                    long_desc = format!("Depends on: {}", deps_str);
                 } else {
-                    description = format!("{}\nDepends on: {}", description, deps_str);
+                    long_desc = format!("{}\nDepends on: {}", long_desc, deps_str);
                 }
             }
 
@@ -147,8 +148,11 @@ impl SystemInstance for TasksSystemInstance {
                 );
 
             // Set description if available
-            if !description.is_empty() {
-                task_cmd = task_cmd.about(description);
+            if !long_desc.is_empty() {
+                task_cmd = task_cmd.about(desc);
+            }
+            if !long_desc.is_empty() {
+                task_cmd = task_cmd.long_about(long_desc);
             }
 
             // Hide task if not named
@@ -200,6 +204,7 @@ impl SystemInstance for TasksSystemInstance {
                 },
             );
         }
+        task_commands.sort_unstable_keys();
 
         // Create main tasks command with task subcommands
         let tasks_cmd = SystemCliCommand {

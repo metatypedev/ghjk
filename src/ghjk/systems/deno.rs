@@ -34,7 +34,7 @@ impl DenoSystemsContext {
     }
 }
 
-#[tracing::instrument(skip(gcx))]
+#[tracing::instrument(skip(gcx, ecx))]
 pub async fn systems_from_deno(
     gcx: &GhjkCtx,
     ecx: Arc<EnvsCtx>,

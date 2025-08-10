@@ -1,0 +1,3 @@
+[[rules.allowlist]]
+description = "Hashes are not secrets"
+paths = [".ghjk/lock.json"]

@@ -115,7 +115,7 @@ export type DenoTaskDefArgs = TaskDefArgs & {
    */
   fn?: TaskFn;
   /**
-   * In order to key the right task when ghjk is requesting
+   * In order to key the right task when ghjk host is requesting
    * execution of a specific task, we identify each using a hash.
    * The {@field fn} is `toString`ed in the hash input.
    * If a ghjkfile is produing identical anonymous tasks for
@@ -283,7 +283,7 @@ export class Ghjkfile {
       env.onEnter(...args.onEnter);
     }
     if (args.onExit) {
-      env.onEnter(...args.onExit);
+      env.onExit(...args.onExit);
     }
     return env;
   }
@@ -497,7 +497,7 @@ export class Ghjkfile {
         swapJobs.push([ii, taskToEnvMap[parentKey]] as const);
       } else {
         throw new Error(
-          `env "${childKey}" inherits from "${parentKey} but no env or task found under key"`,
+          `env "${childKey}" inherits from "${parentKey}" but no env or task found under key`,
         );
       }
     }

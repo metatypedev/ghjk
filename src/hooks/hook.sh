@@ -21,6 +21,8 @@ ghjk_hook() {
 
     # precedence is given to argv over GHJK_ENV
     # which's usually the current active env
+    # we all back to `default` which is a symlink
+    # to the defaultEnv param.
     next_env="${1:-${GHJK_ENV:-default}}";
 
     if [ -n "${GHJK_CLEANUP_POSIX+x}" ]; then
@@ -73,17 +75,17 @@ ghjk_hook() {
             # FIXME: this assumes ghjkfile is of kind ghjk.ts
             if [ "$(__ghjk_get_mtime_ts "$local_ghjk_dir/../ghjk.ts")" -gt "$(__ghjk_get_mtime_ts "$next_env_dir/activate.sh")" ]; then
                 if [ "$next_env" = "default" ]; then
-                    printf "\033[0;33m[ghjk] Possible drift from environment, please sync...\033[0m\n" >&2
+                    printf "\033[0;33m[ghjk] Possible drift from environment, please re-cook...\033[0m\n" >&2
                 else
-                    printf "\033[0;33m[ghjk] Possible drift from active environment (%s), please sync...\033[0m\n" "$next_env" >&2
+                    printf "\033[0;33m[ghjk] Possible drift from active environment (%s), please re-cook...\033[0m\n" "$next_env" >&2
                 fi
 
             fi
         else
             if [ "$next_env" = "default" ]; then
-                printf "\033[0;31m[ghjk] Environment not set up, please sync...\033[0m\n" >&2
+                printf "\033[0;31m[ghjk] Environment not found, please cook...\033[0m\n" >&2
             else
-                printf "\033[0;31m[ghjk] Active environment (%s) not set up, please sync...\033[0m\n" "$next_env" >&2
+                printf "\033[0;31m[ghjk] Active environment (%s) not set up, please cook...\033[0m\n" "$next_env" >&2
             fi
         fi
     fi

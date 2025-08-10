@@ -188,13 +188,13 @@ ghjk_deactivate
 # alias should be gone after deactivation
 type -q greet; and exit 103
 test $status = 1; or exit 104
- # invalid/unsafe alias names should be skipped
- type -q say-hello; and exit 105
- test $status = 1; or exit 106
- type -q 1bad; and exit 107
- test $status = 1; or exit 108
- type -q a.b; and exit 109
- test $status = 1; or exit 110
+# invalid/unsafe alias names should be skipped
+type -q say-hello; and exit 105
+test $status = 1; or exit 106
+type -q 1bad; and exit 107
+test $status = 1; or exit 108
+type -q a.b; and exit 109
+test $status = 1; or exit 110
 `,
 };
 
@@ -415,9 +415,7 @@ test (dummy) = "e1"; or exit 105
         },
       },
     },
-    stdin: `
-${taskAliasTestBody.posix}
-`,
+    stdin: taskAliasTestBody.posix,
   },
   {
     name: "task_aliases_fish",
@@ -439,16 +437,7 @@ ${taskAliasTestBody.posix}
         },
       },
     },
-    stdin: `
-${taskAliasTestBody.fish}
-# invalid/unsafe alias names should be skipped
-type -q say-hello; and exit 105
-test $status = 1; or exit 106
-type -q 1bad; and exit 107
-test $status = 1; or exit 108
-type -q a.b; and exit 109
-test $status = 1; or exit 110
-`,
+    stdin: taskAliasTestBody.fish,
   },
 ];
 

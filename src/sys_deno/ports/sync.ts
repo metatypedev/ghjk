@@ -523,7 +523,7 @@ function resolveConfig(
       const match = allVersions.find((v) => norm(v) === wanted);
       if (!match) {
         throw new Error(
-          `error resolving verison ${config.version}: not found, available versions: [${
+          `error resolving version ${config.version}: not found, available versions: [${
             allVersions.join(", ")
           }]`,
           {

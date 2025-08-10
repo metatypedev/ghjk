@@ -7,9 +7,9 @@ export const ghConfValidator = zod.object({
 
 export type GithubReleasesInstConf = zod.infer<typeof ghConfValidator>;
 
-/// Use this to add the read and add GithubReleasesInstConf values to
-// an InstallConfig
-export function readGhVars() {
+/// Helper to read GitHub-related environment variables and add them
+/// to an InstallConfig.
+export function readGhVars(): Partial<GithubReleasesInstConf> {
   // TODO: extract token from `$HOME/.git-credentials` or `$HOME/.config/gh/hosts.yml`
   const ghToken = Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GH_TOKEN");
   const out: GithubReleasesInstConf = {

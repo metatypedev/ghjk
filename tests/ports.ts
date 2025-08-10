@@ -162,12 +162,11 @@ const cases: CustomE2eTestCase[] = [
   },
   // 70 megs + 16 megs
   {
-    name: "meta-cli-and-wasmedge",
+    name: "meta-cli",
     installConf: [
       ports.meta_cli_ghrel({ full: true }),
-      ports.wasmedge(),
     ],
-    ePoint: `which meta && wasmedge --version`,
+    ePoint: ` meta --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
   // 80 meg

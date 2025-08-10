@@ -499,7 +499,7 @@ Additionally, most of these values can be configured through environment variabl
 So for the `repo_root` config, this would be resolved from the `$GHJK_REPO_ROOT` env var.
 Some of the values can be configured globally thorugh a file looked for at `$XDG_CONFIG_PATH/ghjk/config.json`.
 
-The following snippet shows the current config set, their defafults, and an explanation of their purpose.
+The following snippet shows the current config set, their defaults, and an explanation of their purpose.
 
 ```jsonc
 {

@@ -11,15 +11,8 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
     Box::new(move |provisions: Vec<Provision>| {
         let scx = scx.clone();
         async move {
-            let mut output = vec![
-                // Always add the base "x" alias that maps to "ghjk x"
-                WellKnownProvision::GhjkShellAlias {
-                    alias_name: "x".to_string(),
-                    command: vec!["ghjk".to_string(), "x".to_string()],
-                    description: Some("Run ghjk tasks by name".to_string()),
-                    wraps: None,
-                },
-            ];
+            let mut output = vec![];
+            let mut x_task_exists = false;
             // If there is at least one trigger, expand aliases for all tasks
             if !provisions.is_empty() {
                 let state: Arc<super::LoadedState> =
@@ -43,6 +36,7 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                             (task_key.clone(), description)
                         }
                     };
+                    x_task_exists = x_task_exists || alias_name == "x";
                     output.push(WellKnownProvision::GhjkShellAlias {
                         alias_name,
                         command: vec!["ghjk".to_string(), "x".to_string(), task_key.clone()],
@@ -52,6 +46,14 @@ pub fn task_alias_reducer(scx: Arc<crate::systems::SystemsCtx>) -> ProvisionRedu
                 }
 
                 // alias completions are added via task_alias_reducer_with_cmd registered in cli
+            }
+            if !x_task_exists {
+                output.push(WellKnownProvision::GhjkShellAlias {
+                    alias_name: "x".to_string(),
+                    command: vec!["ghjk".to_string(), "x".to_string()],
+                    description: Some("Run ghjk tasks by name".to_string()),
+                    wraps: None,
+                });
             }
 
             Ok(output)
@@ -106,7 +108,7 @@ pub fn dyn_env_reducer(
                 // Execute the task to get the environment variable value
                 let val = execute_task_for_env_var(&tcx, &scx, &task_key)
                     .await
-                    .unwrap_or_default();
+                    .wrap_err_with(|| ferr!("error executing task for env var: {key}"))?;
 
                 output.push(WellKnownProvision::PosixEnvVar { key, val });
             }

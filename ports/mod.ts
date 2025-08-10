@@ -32,5 +32,4 @@ export { default as temporal_cli } from "./temporal_cli.ts";
 export { default as terraform } from "./terraform.ts";
 export { default as terragrunt_ghrel } from "./terragrunt_ghrel.port.ts";
 export { default as unzip } from "./unzip.ts";
-export { default as wasmedge } from "./wasmedge.ts";
 export { default as zstd } from "./zstd.ts";

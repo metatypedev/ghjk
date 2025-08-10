@@ -111,6 +111,8 @@ pub async fn systems_from_ghjkfile(
         }
     }
 
+    // if we can't recover from the lockfile,
+    // we can't avoid serialization
     if avoid_serialization {
         if hash_obj.is_none() {
             return Ok(None);
@@ -160,7 +162,7 @@ pub async fn systems_from_ghjkfile(
     if let Some(obj) = &mut lock_obj {
         // TODO: version migrator
         if obj.version != "0" {
-            eyre::bail!("unsupported hashfile version: {:?}", obj.version);
+            eyre::bail!("unsupported lockfile version: {:?}", obj.version);
         }
     }
 
@@ -200,7 +202,7 @@ pub async fn systems_from_ghjkfile(
         // and it's context put in the lockfile
         (lock_obj.config.clone(), hash_obj)
     } else if avoid_serialization {
-        // we avoid serialiation if unable to recover a non-stale lock obj
+        // we avoid serialization if unable to recover a non-stale lock obj
         return Ok(None);
     } else if let Some(ghjkfile_path) = &hcx.gcx.config.ghjkfile {
         if !ghjkfile_exists {
@@ -390,7 +392,7 @@ impl LockObj {
         let raw = match tokio::fs::read(path).await {
             Ok(val) => val,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(LockfileError::Other(ferr!("error reading hashfile: {err}"))),
+            Err(err) => return Err(LockfileError::Other(ferr!("error reading lockfile: {err}"))),
         };
         serde_json::from_slice(&raw).map_err(LockfileError::Serialization)
     }

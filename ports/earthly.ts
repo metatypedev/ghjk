@@ -51,7 +51,7 @@ export class Port extends GithubReleasePort {
           installVersion,
           `${this.repoName}-${os}-${arch}${os == "windows" ? ".exe" : ""}`,
         ),
-        name: this.repoName,
+        name: this.repoName + os == "windows" ? ".exe" : "",
         mode: 0o700,
       },
     ];

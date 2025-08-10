@@ -70,5 +70,6 @@ shadow!(shadow);
 pub struct GhjkCtx {
     deno: denort::worker::DenoWorkerHandle,
     config: config::Config,
+    /// Used to generate shims and aliases to the ghjk cli
     exec_path: PathBuf,
 }

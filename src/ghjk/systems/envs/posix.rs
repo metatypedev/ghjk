@@ -77,9 +77,9 @@ pub async fn cook(
                     wraps.clone(),
                 ));
             }
-            WellKnownProvision::GhjkCliCompletionBash { .. }
-            | WellKnownProvision::GhjkCliCompletionZsh { .. }
-            | WellKnownProvision::GhjkCliCompletionFish { .. } => {}
+            WellKnownProvision::PosixShellCompletionBash { .. }
+            | WellKnownProvision::PosixShellCompletionZsh { .. }
+            | WellKnownProvision::PosixShellCompletionFish { .. } => {}
         }
     }
 
@@ -255,15 +255,15 @@ async fn write_activators(
     let mut fish_comp = String::new();
     for prov in &reduced_recipe.provides {
         match prov {
-            WellKnownProvision::GhjkCliCompletionBash { script } => {
+            WellKnownProvision::PosixShellCompletionBash { script } => {
                 bash_comp.push('\n');
                 bash_comp.push_str(script);
             }
-            WellKnownProvision::GhjkCliCompletionZsh { script } => {
+            WellKnownProvision::PosixShellCompletionZsh { script } => {
                 zsh_comp.push('\n');
                 zsh_comp.push_str(script);
             }
-            WellKnownProvision::GhjkCliCompletionFish { script } => {
+            WellKnownProvision::PosixShellCompletionFish { script } => {
                 fish_comp.push_str(script);
             }
             _ => {}
@@ -361,11 +361,11 @@ fn build_posix_script(
 # shellcheck disable=SC2016
 # shellcheck disable=SC1003
 # SC2016: disabled because single quoted expressions are used for the cleanup scripts
-# SC1003: disabled because we sometimes double escale single quotes resulting things 
+# SC1003: disabled because we sometimes double escape single quotes strings
 #         like '\''\\'\'''\'' which trigger the lint
 
 # this file must be sourced from an existing sh/bash/zsh session using the `source` command
-# it should be executed directly
+# it should not be executed directly
 
 ghjk_deactivate () {{
     if [ -n "${{GHJK_CLEANUP_POSIX+x}}" ]; then
@@ -426,7 +426,7 @@ export GHJK_CLEANUP_POSIX="";
             )?;
             writeln!(
                 buf,
-                // otherwise, capture the current (at time of acivation)
+                // otherwise, capture the current (at time of activation)
                 // $key value and recover it on cleanup
                 // that needs to be wrapped wwith double quotes unlike the rest
                 // i.e. export KEY='OLD $VALUE OF KEY'
@@ -468,22 +468,18 @@ export GHJK_CLEANUP_POSIX="";
         r#"
 
 # hooks that want to invoke ghjk are made to rely
-# on this shim to improve reliablity
+# on this shim to improve reliability
 {ghjk_shim}
 
 "#
     )?;
 
-    // (aliases will be emitted inside the interactive-only block below)
+    // aliases are available in both interactive and non-interactive shells
     writeln!(
         buf,
         r#"
 
-# only run the hooks and aliases in interactive mode
-case "$-" in
-    *i*) # if the shell variables contain "i"
-
-    # aliases
+# aliases
 "#
     )?;
 
@@ -514,10 +510,31 @@ case "$-" in
             .map(|t| format!("'{}'", t))
             .collect::<Vec<_>>()
             .join(" ");
-        writeln!(buf, "        {alias_name}() {{")?;
-        writeln!(buf, "            {safe_command} \"$@\"")?;
-        writeln!(buf, "        }}")?;
+        writeln!(buf, "{alias_name}() {{")?;
+        writeln!(buf, "    {safe_command} \"$@\"")?;
+        writeln!(buf, "}}")?;
     }
+
+    // ensure aliases are cleaned up by ghjk_deactivate
+    for (alias_name, _, _, _) in aliases {
+        if is_reserved_posix(alias_name) || !is_valid_posix_fn_name(alias_name) {
+            continue;
+        }
+        writeln!(
+            buf,
+            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f {alias_name};';"#
+        )?;
+    }
+    writeln!(
+        buf,
+        r#"
+
+# only run the hooks in interactive mode
+case "$-" in
+    *i*) # if the shell variables contain "i"
+
+"#
+    )?;
 
     writeln!(
         buf,
@@ -534,15 +551,6 @@ case "$-" in
     # on exit hooks
 "#
     )?;
-    for (alias_name, _, _, _) in aliases {
-        if is_reserved_posix(alias_name) || !is_valid_posix_fn_name(alias_name) {
-            continue;
-        }
-        writeln!(
-            buf,
-            r#"        GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'unset -f {alias_name};';"#
-        )?;
-    }
     for line in on_exit_hooks {
         writeln!(
             buf,
@@ -683,7 +691,7 @@ set {data_dir_var} "{data_dir_str}"
         r#"
 
 # hooks that want to invoke ghjk are made to rely
-# on this shim to improve reliablity
+# on this shim to improve reliability
 {ghjk_shim}
 "#
     )?;
@@ -740,7 +748,7 @@ end
         "#
         )?;
     }
-    writeln!(buf, r#"# cleanup task alises"#)?;
+    writeln!(buf, r#"# cleanup task aliases"#)?;
 
     for (alias_name, _, _, _) in aliases {
         if is_reserved_fish(alias_name) || !is_valid_fish_fn_name(alias_name) {

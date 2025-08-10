@@ -74,7 +74,7 @@ export class Port extends GithubReleasePort {
         ext = "zip";
         break;
       default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported arch: ${platform.os}`);
     }
     return [
       this.releaseArtifactUrl(

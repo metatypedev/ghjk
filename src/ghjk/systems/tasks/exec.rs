@@ -156,7 +156,7 @@ pub async fn exec_task(
             .wrap_err("error cooking environment for task")?
         };
 
-        // Merge environment with current process env and PATH handling like TS side
+        // Merge environment with current process env and PATH handling
         let mut merged_env: IndexMap<String, String> = std::env::vars().collect();
         for (k, mut v) in env_vars {
             if k.contains("PATH") {
