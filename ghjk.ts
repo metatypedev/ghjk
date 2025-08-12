@@ -18,7 +18,7 @@ const ghjk = file({
   },
 });
 
-const GHJK_VERSION = "0.3.1-rc.3";
+const GHJK_VERSION = "0.3.1";
 const DENO_VERSION = "2.2.4";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.85.0";

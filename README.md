@@ -11,7 +11,7 @@ ghjk /gk/ is a set of tools for managing developer environments and an attempt a
 
 ## Introduction
 
-ghjk offers a unified abstraction to manage package managers (e.g. cargo, pnpm, poetry), languages runtimes (e.g. nightly rust, node@18, python@latest) and developer tools (e.g. pre-commit, eslint, protoc). 
+ghjk offers a unified abstraction to manage package managers (e.g. cargo, pnpm, poetry), languages runtimes (e.g. nightly rust, node, python) and developer tools (e.g. pre-commit, eslint, protoc). 
 It enables you to define a consistent environment across your dev environments, CI/CD pipelines and containers keeping everything well-defined in your repo and providing a great DX. 
 This makes it especially convenient for mono-repos and long-lived projects. See [Metatype](https://github.com/metatypedev/metatype) and its [ghjkfile](https://github.com/metatypedev/metatype/blob/main/ghjk.ts) for a real world example.
 
@@ -25,7 +25,7 @@ This makes it especially convenient for mono-repos and long-lived projects. See 
   - [npm](./ports/npmi.ts)
   - [pypi](./ports/pipi.ts)
   - [crates.io](./ports/cargobi.ts)
-  - [TBD] [Github releases](https://github.com/metatypedev/ghjk/issues/79)
+  - Write your own in your own repo.
 - Tasks written in typescript
   - Ergonomically powered by [`dax`](https://github.com/dsherret/dax).
   - Built on Deno, most dependencies are [an import away](https://docs.deno.com/runtime/fundamentals/modules/#importing-third-party-modules-and-libraries).
@@ -48,7 +48,7 @@ Install the ghjk cli using the installer scripts like so:
 <!-- FIXME: revert to simple pipe on next release -->
 ```bash
 cd /tmp
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1-rc.3/install.sh" > install.sh
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1/install.sh" > install.sh
 bash install.sh
 ```
 
