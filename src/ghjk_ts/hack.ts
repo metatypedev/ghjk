@@ -36,7 +36,7 @@ function firstCallerCheck<F extends (...args: any[]) => any>(fn: F): F {
     const caller = getCaller();
     if (!caller) {
       logger(import.meta).error(
-        `unable to detect \`hack.ts\` caller, no stack traces availaible`,
+        `unable to detect \`hack.ts\` caller, no stack traces available`,
       );
       // prefer exit of throw here since malicious user might catch it otherwise
       exitFn(1);

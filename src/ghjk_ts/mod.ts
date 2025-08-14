@@ -93,7 +93,7 @@ export type FileArgs = {
    */
   tasks?: Record<string, Omit<DenoTaskDefArgs, "name"> | TaskFn>;
   /**
-   * Different envs availaible to the CLI.
+   * Different envs available to the CLI.
    */
   envs?: EnvDefArgs[];
 };
