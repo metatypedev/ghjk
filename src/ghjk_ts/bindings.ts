@@ -34,6 +34,7 @@ async function serialize(args: typeof serializeArgs._output) {
       `no sophon found on exported ghjk object from ghjk.ts: ${args.uri}`,
     );
   }
+  // FIXME: show warning on more than one export
   const rawConfig = await mod.sophon.getConfig(args.uri, mod.secureConfig);
   const config = JSON.parse(JSON.stringify(rawConfig));
   return {

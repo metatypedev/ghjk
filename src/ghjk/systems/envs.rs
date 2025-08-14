@@ -504,7 +504,7 @@ async fn activate_env(env_key: String) -> Res<()> {
         tokio::fs::write(nextfile, env_key).await?;
     } else {
         let shell = detect_shell_path().await.wrap_err(
-            "unable to detct shell in use. Use `$SHELL env var to explicitly pass shell path.",
+            "unable to detect shell in use. Use `$SHELL env var to explicitly pass shell path.",
         )?;
         use std::os::unix::process::CommandExt;
         tokio::task::spawn_blocking(move || {

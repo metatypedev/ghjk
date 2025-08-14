@@ -48,7 +48,7 @@ Install the ghjk cli using the installer scripts like so:
 <!-- FIXME: revert to simple pipe on next release -->
 ```bash
 cd /tmp
-curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.1/install.sh" > install.sh
+curl -fsSL "https://raw.github.com/metatypedev/ghjk/v0.3.2/install.sh" > install.sh
 bash install.sh
 ```
 
@@ -155,7 +155,7 @@ $ deno task ghjk --help
 $ ghjk --help
 ```
 
-There's also a nix devshell availaible with the build depenedencies configured.
+There's also a nix devshell available with the build depenedencies configured.
 
 ```bash
 $ nix develop .#fish

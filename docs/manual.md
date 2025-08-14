@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/v0.3.1/install.sh" | bash
+curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/v0.3.2/install.sh" | bash
 ```
 
 This will install the CLI and add some hooks to your shell rc configurations that ghjk needs to function.
@@ -412,7 +412,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.1
+ARG GHJK_VERSION=v0.3.2
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
@@ -468,7 +468,7 @@ The ghjk shell hooks provide the shell side support needed to use the `ghjk envs
 In addition, they monitor the `$PWD` to do auto-activation on changes.
 They are intended for usage for interactive shells are generally non-functional in non-interactive sessions.
 
-<--! TODO: shell scripts are not data but programs -->
+<!-- TODO: shell scripts are not data but programs -->
 The shell hooks themselves are placed in `$(ghjk print data-dir-path)/env.$shell` during installation. 
 There are variations for `bash`, `fish`, `zsh` and `sh`.
 The installation script tries to add a line to `source` the hooks to the standard rc files of the supported shells.
