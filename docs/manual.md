@@ -17,7 +17,7 @@ There are installer scripts available in the repo.
 
 ```bash
 # stable
-curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/v0.3.1-rc.2/install.sh" | bash
+curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/v0.3.1/install.sh" | bash
 ```
 
 This will install the CLI and add some hooks to your shell rc configurations that ghjk needs to function.
@@ -207,8 +207,8 @@ ghjk.env("my-env")
   // we can return strings from typescript functions for dynamic
   // variables
   .var("MY_VAR_DYN", () => `Entered at ${new Date().toJSON()}`)
-  .onEnter(task(($) => console.log(`entering my-env`)))
-  .onExit(task(($) => console.log(`entering my-env`)))
+  .onEnter(ghjk.task(($) => console.log(`entering my-env`)))
+  .onExit(ghjk.task(($) => console.log(`entering my-env`)))
   ;
 ```
 
@@ -265,7 +265,7 @@ $ echo $MY_VAR
 ```
 
 Note that the CLI activate command depends on the the ghjk shell hooks being available.
-If not in an interactive shell, look at the CI section of this document for what options are available.
+If not in an interactive shell, look at the [CI](#ci) section of this document for what options are available.
 
 #### `sync`
 
@@ -412,7 +412,7 @@ Namely, it's good practice to:
 
 ```dockerfile
 # sample of how one would install ghjk for use in a Dockerfile
-ARG GHJK_VERSION=v0.3.1-rc.2
+ARG GHJK_VERSION=v0.3.1
 # /usr/bin is available in $PATH by default making ghjk immediately avail
 RUN curl -fsSL "https://raw.githubusercontent.com/metatypedev/ghjk/${GHJK_VERSION}/install.sh" \
     | GHJK_INSTALL_EXE_DIR=/usr/bin sh
@@ -454,13 +454,42 @@ RUN . "$GHJK_ACTIVATE" \
     && echo $MY_VAR
 ```
 
-This extra boilerplate can be avoided by using the following `SHELL` command, available in some Dockerfile implementations, or by using command processors more advanced that POSIX `sh` like `bash`, `zsh` or `fish`.
+This extra boilerplate can be avoided by using the following `SHELL` command, available in some Dockerfile implementations, or by using features available in command processors more advanced that POSIX `sh` like `bash`, `zsh` or `fish`.
 
 ```dockerfile
 # contraption to make sh load the activate script at startup
 SHELL ["/bin/sh", "-c", ". .ghjk/envs/my-env/activate.sh; sh -c \"$*\"", "sh"]
 RUN echo $MY_VAR
 ```
+
+### `ghjk_hook`
+
+The ghjk shell hooks provide the shell side support needed to use the `ghjk envs activate` and `ghjk sync` commands. 
+In addition, they monitor the `$PWD` to do auto-activation on changes.
+They are intended for usage for interactive shells are generally non-functional in non-interactive sessions.
+
+<--! TODO: shell scripts are not data but programs -->
+The shell hooks themselves are placed in `$(ghjk print data-dir-path)/env.$shell` during installation. 
+There are variations for `bash`, `fish`, `zsh` and `sh`.
+The installation script tries to add a line to `source` the hooks to the standard rc files of the supported shells.
+
+After the `env.$shell` scripts are sourced, the `ghjk_hook` command is added to support activation features.
+While it's invoked automatically due to `$PWD` changes or using `ghjk envs activate`, it can also be manually invoked to re-check the ghjk context and activate environments if necessary.
+This is necessary if using base POSIX sh as it doesn't support any of the auto-activation features.
+Note that `ghjk_hook` is also immediately run whenever the `env.$shell` are sourced provided the shell is interactive and `$GHJK_AUTO_HOOK` is not set to `false`.
+
+Shells like `bash` and `zsh` do not auto-source their rcfiles for non-interactive sessions.
+For such usage, besides manually `source`-ing the `env.$shell`, some shells provide different mechanisms to run scripts at startup.
+
+- `sh` (posix): no known mechanism exists to auto-load scripts for non-interactive sessions besides using giving explicit arguments. Look at the `Dockerfile` snippet above for ideas.
+- `bash`: besides the `--rcfile` flag, the `$BASH_ENV` env var can be used to indicate a file that must be loaded at startup. Beware, `$BASH_ENV` is an env variable meaning it's inheritd possibly leading to unintended inderct shell hooking.
+- `zsh`: while `.zshrc` files are only sourced for interactive shells, zsh supports a similar `.zshenv` file that's loaded for all contexts. Besides modifying the system `.zshenv`, the ghjk data directory contains such a file and setting `$ZDOTDIR` to it's path should have zsh source that file and make sure the hook is available. Beware, `$ZDOTDIR` is also an env var.
+- `fish`: fish will always load it's `config.fish` file interactive or not so. One can also use the `fish --init-command 'source my.fish'` flag to do advanced loading.
+
+Note that, again, this requires `$GHJK_AUTO_HOOK` to be set to auto-run `ghjk_hook` on `source`. 
+Caution is advised when using this feature since any child shell that inherits this env var will also try to auto-activate if the `ghjk_hook` is also loaded for any reason.
+Since many programs shell out for various reasons, this can lead to indirect unintended execution of the hooks in some cases, possibly breaking some programs.
+While `ghjk envs activate`, `ghjk sync` and `$PWD` based activation **don't** work in non-interactive shell sessions, auto-activation on shell startup can be useful in some situations though it requires some work to make this happen.
 
 ### Github action
 
@@ -469,16 +498,12 @@ For users of Github CI, there's an action available on the [marketplace](https:/
 - Caches the ghjk share directory
 - Cooks the `$GHJK_ENV` or default environment
 
-Note that the default shell used by github workflows is POSIX `sh`.
-It's necessary to switch over to the `bash` shell to have the hooks auto activate your environment.
-Otherwise, it's necessary to use the approach described in the section above.
-
 ```yaml
   my-job:
     steps:
       - uses: metatypedev/setup-ghjk@v1
-      - shell: bash # must use bash shell for auto activation
-        run: |
+      - run: |
+          . .ghjk/envs/main/activate.sh
           echo $GHJK_ENV
 ```
 
@@ -499,7 +524,7 @@ Additionally, most of these values can be configured through environment variabl
 So for the `repo_root` config, this would be resolved from the `$GHJK_REPO_ROOT` env var.
 Some of the values can be configured globally thorugh a file looked for at `$XDG_CONFIG_PATH/ghjk/config.json`.
 
-The following snippet shows the current config set, their defafults, and an explanation of their purpose.
+The following snippet shows the current config set, their defaults, and an explanation of their purpose.
 
 ```jsonc
 {
@@ -532,6 +557,12 @@ The following snippet shows the current config set, their defafults, and an expl
   // of the ghjk implementation from.
   // *supports global configuration*
   "repo_root": "<url to ghjk git repo under the ref used to build the current cli>",
+
+  // Controls how CLI completions are provided by ghjk.
+  // - "activators" (default): embed completions into activation scripts for bash/zsh/fish.
+  // - "off": do not generate/embed completions via activators.
+  // Can also be set via $GHJK_COMPLETIONS.
+  "completions": "activators"
 }
 ```
 

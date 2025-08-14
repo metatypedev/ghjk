@@ -2,7 +2,7 @@ import {
   ghHeaders,
   GithubReleasesInstConf,
   readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+} from "../src/deno_ports/ghrel.ts";
 import { PortArgsBase } from "../src/sys_deno/ports/types.ts";
 import {
   $,

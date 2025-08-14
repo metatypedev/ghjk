@@ -1,4 +1,6 @@
 #!/bin/sh
+# shellcheck disable=SC2016
+# shellcheck disable=SC2028
 
 set -e -u
 
@@ -58,13 +60,11 @@ if [ "${PLATFORM:-x}" = "x" ]; then
 To continue with installation, please choose from one of the following values:
 - aarch64-unknown-linux-gnu
 - x86_64-unknown-linux-gnu
-- x86_64-unknown-linux-musl
 - aarch64-apple-darwin
 - x86_64-apple-darwin
-- x86_64-pc-windows-msvc
 
 Then set the PLATFORM environment variable, and re-run this script:
-$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-musl bash
+$ curl -fsSL $INSTALLER_URL | PLATFORM=x86_64-unknown-linux-gnu bash
 EOF
     exit 1
   fi
@@ -128,62 +128,76 @@ fi
 
 GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/$ORG/$REPO/$VERSION/install.ts}"
 "$GHJK_INSTALL_EXE_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
+# Print shell-specific commands for the user to run manually, with the
+# current shell shown last for convenience. We do not modify any files.
 
-# Check if SKIP_SHELL is set to skip shell config
-if [ "${SKIP_SHELL:-}" = "1" ]; then
-  printf "\nSkipping shell configuration as SKIP_SHELL=1.\n"
-  exit 0
-fi
-
-# Check if SHELL is set before using it
-if [ -z "${SHELL:-}" ]; then
-  printf "\nCould not detect your shell (\$SHELL is not set). Skipping shell configuration.\n"
-  exit 0
-fi
-
-SHELL_TYPE=$(basename "$SHELL")
-
-case $SHELL_TYPE in
-  bash|zsh|ksh)
-    SHELL_CONFIG="$HOME/.$SHELL_TYPE"rc
-    ;;
-  fish)
-    SHELL_CONFIG="$HOME/.config/fish/config.fish"
-    ;;
-  *)
-    SHELL_CONFIG=""
+current_shell=$(basename "${SHELL:-}")
+case "$current_shell" in
+  bash|zsh|ksh|fish) : ;; # supported
+  *) current_shell="" ;;  # unknown; no special ordering
 esac
 
-if [ -n "$SHELL_CONFIG" ]; then
-  printf "\nDetected shell: %s\n" "$SHELL_TYPE"
-  # Only use read if stdin is a tty
-  if [ -t 0 ]; then
-    echo "Do you want to append the new PATH to your configuration ($SHELL_CONFIG)? (y/n): " >&2
-    read -r answer
-    answer=$(echo "$answer" | tr "[:upper:]" "[:lower:]")
-  else
-    answer="y"
-  fi
+shells="bash zsh ksh fish"
+ordered_shells=""
+for sh in $shells; do
+  [ "$sh" != "$current_shell" ] && ordered_shells="$ordered_shells $sh"
+done
+[ -n "$current_shell" ] && ordered_shells="$ordered_shells $current_shell"
 
-  case $SHELL_TYPE in
-    bash|zsh|ksh)
-      APPEND_CMD="export PATH=\"$GHJK_INSTALL_EXE_DIR:\$PATH\""
+echo
+echo "Add $GHJK_INSTALL_EXE_DIR to your PATH by running the appropriate command for your shell:"
+for sh in $ordered_shells; do
+  case "$sh" in
+    bash)
+      echo
+      echo "- Bash (~/.bashrc):"
+      echo '```sh'
+      echo '# remove any path mods from previous installation'
+      echo "sed -i.bak -e '/# ghjk-path-default/d' ~/.bashrc && rm ~/.bashrc.bak"
+      echo '# add ghjk to the PATH with marker'
+      echo "printf '\nexport PATH=\"${GHJK_INSTALL_EXE_DIR}:"'$PATH'"\" # ghjk-path-default\n' >> ~/.bashrc"
+      echo '# source the file to update the current shell'
+      echo ". ~/.bashrc"
+      echo '```'
+      ;;
+    zsh)
+      echo
+      echo "- Zsh (~/.zshrc):"
+      echo '```sh'
+      echo '# remove any path mods from previous installation'
+      echo "sed -i.bak -e '/# ghjk-path-default/d' ~/.zshrc && rm ~/.zshrc.bak"
+      echo '# add ghjk to the PATH with marker'
+      echo "printf '\nexport PATH=\"${GHJK_INSTALL_EXE_DIR}:"'$PATH'"\" # ghjk-path-default\n' >> ~/.zshrc"
+      echo '# source the file to update the current shell'
+      echo ". ~/.zshrc"
+      echo '```'
+      ;;
+    ksh)
+      echo
+      echo "- Ksh (~/.kshrc):"
+      echo '```sh'
+      echo '# remove any path mods from previous installation'
+      echo "sed -i.bak -e '/# ghjk-path-default/d' ~/.kshrc && rm ~/.kshrc.bak"
+      echo '# add ghjk to the PATH with marker'
+      echo "printf '\nexport PATH=\"${GHJK_INSTALL_EXE_DIR}:"'$PATH'"\" # ghjk-path-default\n' >> ~/.kshrc"
+      echo '# source the file to update the current shell'
+      echo ". ~/.kshrc"
+      echo '```'
       ;;
     fish)
-      APPEND_CMD="fish_add_path $GHJK_INSTALL_EXE_DIR"
+      echo
+      echo "- Fish (~/.config/fish/config.fish):"
+      echo '```sh'
+      echo '# remove any path mods from previous installation'
+      echo "sed -i.bak -e '/# ghjk-path-default/d' ~/.config/fish/config.fish && rm ~/.config/fish/config.fish.bak"
+      echo '# add ghjk to the PATH with marker'
+      echo "printf '\nfish_add_path \"${GHJK_INSTALL_EXE_DIR}\" # ghjk-path-default\n' >> ~/.config/fish/config.fish"
+      echo '# source the file to update the current shell'
+      echo ". ~/.config/fish/config.fish"
+      echo '```'
       ;;
   esac
-
-  if [ "$answer" = "y" ] || [ "$answer" = "yes" ]; then
-    echo "$APPEND_CMD" >> "$SHELL_CONFIG"
-    printf "Path added to %s\nRun 'source %s' to apply changes." "$SHELL_CONFIG" "$SHELL_CONFIG"
-  else
-    cat <<EOF
-
-Consider adding $GHJK_INSTALL_EXE_DIR to your PATH if it is not already configured.
-$ $APPEND_CMD
-EOF
-  fi
-else
-  printf "\nConsider adding %s to your PATH if it is not already configured." "$GHJK_INSTALL_EXE_DIR"
-fi
+done
+echo
+echo "ghjk has been installed to $GHJK_INSTALL_EXE_DIR"
+echo "Add $GHJK_INSTALL_EXE_DIR to your PATH by running one of the commands shown above."

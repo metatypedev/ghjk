@@ -156,6 +156,48 @@ test (dummy) = "foo"; or exit 102;
 test (dummy) = "main"; or exit 102;
 `;
 
+const taskAliasTestBody = {
+  posix: `
+set -ex
+ghjk envs cook main
+. .ghjk/envs/main/activate.sh
+echo WE ARE ACTIVATED
+greet world
+test "$(greet world)" = 'Hello world!' || exit 101
+type greet || exit 102
+ghjk_deactivate
+# alias should be gone after deactivation
+type greet && exit 103
+[ $? -eq 1 ] || exit 104
+# invalid/unsafe alias names should be skipped
+type say-hello && exit 105
+[ $? -eq 1 ] || exit 106
+type 1bad && exit 107
+[ $? -eq 1 ] || exit 108
+type a.b && exit 109
+[ $? -eq 1 ] || exit 110
+`,
+  fish: `
+set fish_trace 1
+ghjk envs cook main
+. .ghjk/envs/main/activate.fish
+greet world
+test (greet world) = 'Hello world!'; or exit 101
+type greet; or exit 102
+ghjk_deactivate
+# alias should be gone after deactivation
+type -q greet; and exit 103
+test $status = 1; or exit 104
+# invalid/unsafe alias names should be skipped
+type -q say-hello; and exit 105
+test $status = 1; or exit 106
+type -q 1bad; and exit 107
+test $status = 1; or exit 108
+type -q a.b; and exit 109
+test $status = 1; or exit 110
+`,
+};
+
 const cases: CustomE2eTestCase[] = [
   {
     name: "prov_env_vars_bash",
@@ -177,13 +219,13 @@ const cases: CustomE2eTestCase[] = [
   },
   {
     name: "prov_port_installs_bash",
-    ePoint: `bash -l`,
+    ePoint: `bash -s`,
     envs: installTestEnvs,
     stdin: installTestsPosix,
   },
   {
     name: "prov_port_installs_zsh",
-    ePoint: `zsh -l`,
+    ePoint: `zsh -s`,
     envs: installTestEnvs,
     stdin: installTestsPosix,
   },
@@ -330,6 +372,72 @@ test "$E3" = "3"; or exit 103
 test "$E4" = "4"; or exit 104
 test (dummy) = "e1"; or exit 105
 `, // TODO: test inheritance of more props
+  },
+  {
+    name: "task_aliases_bash",
+    ePoint: `bash -si`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.posix,
+  },
+  {
+    name: "task_aliases_zsh",
+    ePoint: `zsh -s`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.posix,
+  },
+  {
+    name: "task_aliases_fish",
+    ePoint: `fish`,
+    envs: [],
+    secureConfig: {
+      tasks: {
+        greet: {
+          fn: ($, { argv: [name] }) => $`echo Hello ${name}!`,
+        },
+        "say-hello": {
+          fn: ($, { argv: [name] }) => $`echo Hi ${name}`,
+        },
+        "1bad": {
+          fn: ($, { argv: [name] }) => $`echo Bad ${name}`,
+        },
+        "a.b": {
+          fn: ($, { argv: [name] }) => $`echo Dot ${name}`,
+        },
+      },
+    },
+    stdin: taskAliasTestBody.fish,
   },
 ];
 

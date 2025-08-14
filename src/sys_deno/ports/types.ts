@@ -362,7 +362,7 @@ export function reduceAllowedDeps(
   deps: (AllowedPortDep | InstallConfigFat)[],
 ): AllowedPortDep[] {
   return deps.map(
-    (dep: any) => {
+    (dep) => {
       {
         const res = allowedPortDep.safeParse(dep);
         if (res.success) return res.data;

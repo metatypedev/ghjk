@@ -67,6 +67,13 @@ pub async fn action_for_match(
         matches: &'a clap::ArgMatches,
         cmd_path: &mut Vec<String>,
     ) -> Res<(SysCmdAction, &'a clap::ArgMatches)> {
+        // convention is that if current has action
+        // we return early with the action
+        // any subcommands it may have, it's own action
+        // is resposbile for moderating them
+        if current.action.is_some() {
+            return Ok((current, matches));
+        }
         match matches.subcommand() {
             Some((cmd_name, matches)) => {
                 cmd_path.push(cmd_name.into());

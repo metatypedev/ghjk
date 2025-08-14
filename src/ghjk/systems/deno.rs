@@ -1,7 +1,10 @@
 //! This module implements support for systems written in typescript
 //! running on top of deno.
 
-use crate::interlude::*;
+use crate::{
+    interlude::*,
+    systems::envs::{types::EnvRecipe, EnvsCtx},
+};
 
 use super::{SystemCliCommand, SystemId, SystemInstance, SystemManifest};
 
@@ -31,9 +34,10 @@ impl DenoSystemsContext {
     }
 }
 
-#[tracing::instrument(skip(gcx))]
+#[tracing::instrument(skip(gcx, ecx))]
 pub async fn systems_from_deno(
     gcx: &GhjkCtx,
+    ecx: Arc<EnvsCtx>,
     source_uri: &url::Url,
     ghjkdir_path: &Path,
 ) -> Res<(HashMap<SystemId, SystemManifest>, DenoSystemsContext)> {
@@ -73,6 +77,7 @@ pub async fn systems_from_deno(
             deno_json: _,
             import_map: _,
             deno_no_lockfile: _,
+            completions: _,
         } = &gcx.config;
 
         json!(BindingArgs {
@@ -100,6 +105,7 @@ pub async fn systems_from_deno(
             .boxed()
         }),
     );
+
     let cb_line = ext_conf.callbacks_handle(&gcx.deno);
     let mut exception_line = ext_conf.exceptions_rx();
 
@@ -202,11 +208,30 @@ pub async fn systems_from_deno(
                 desc.id.clone(),
                 SystemManifest::Deno(DenoSystemManifest {
                     desc,
-                    scx: scx.clone(),
+                    dsx: scx.clone(),
                 }),
             )
         })
         .collect();
+
+    ecx.set_reduce_callback({
+        let callbacks = scx.callbacks.clone();
+        Arc::new(move |recipe| {
+            let callbacks = callbacks.clone();
+            async move {
+                let res = callbacks
+                    .exec(
+                        "reduce_strange_provisions".into(),
+                        json!({ "recipe": recipe }),
+                    )
+                    .await?;
+                let res: EnvRecipe = serde_json::from_value(res).wrap_err("protocol error")?;
+                Ok(res)
+            }
+            .boxed()
+        })
+    })
+    .await;
 
     Ok((manifests, scx))
 }
@@ -222,15 +247,15 @@ struct ManifestDesc {
 pub struct DenoSystemManifest {
     desc: ManifestDesc,
     #[educe(Debug(ignore))]
-    scx: DenoSystemsContext,
+    dsx: DenoSystemsContext,
 }
 
 impl DenoSystemManifest {
     #[tracing::instrument]
-    pub async fn ctor(&self) -> Res<DenoSystemInstance> {
+    pub async fn ctor(&self, _scx: Arc<crate::systems::SystemsCtx>) -> Res<DenoSystemInstance> {
         trace!("initializing deno system");
         let desc = self
-            .scx
+            .dsx
             .callbacks
             .exec(self.desc.ctor_cb_key.clone(), serde_json::Value::Null)
             .await?;
@@ -241,7 +266,7 @@ impl DenoSystemManifest {
 
         Ok(DenoSystemInstance {
             desc,
-            scx: self.scx.clone(),
+            scx: self.dsx.clone(),
         })
     }
 }

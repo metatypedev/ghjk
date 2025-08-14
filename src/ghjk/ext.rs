@@ -69,7 +69,7 @@ deno_core::extension!(
         op_blackboard_set,
         callbacks::op_callbacks_set,
         op_hostcall,
-        op_dispatch_exception2
+        op_dispatch_exception2,
     ],
     options = { config: ExtConfig },
     state = |state, opt| {
@@ -226,7 +226,7 @@ fn js_error_message(scope: &mut v8::HandleScope, err: v8::Local<v8::Value>) -> S
 }
 
 use utils::OpErr;
-mod utils {
+pub mod utils {
     use crate::interlude::*;
 
     #[derive(Debug)]

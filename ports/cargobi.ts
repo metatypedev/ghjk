@@ -23,7 +23,7 @@ import {
   ghConfValidator,
   GithubReleasesInstConf,
   readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+} from "../src/deno_ports/ghrel.ts";
 import rust, { RustInstallConf } from "./rust.ts";
 
 const manifest = {

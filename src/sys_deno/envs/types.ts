@@ -21,6 +21,11 @@ export const installProvisionTypes = [
   installProvisionTy,
 ] as const;
 
+export const shellAliasProvisionTy = "ghjk.shell.Alias";
+export const shellAliasProvisionTypes = [
+  shellAliasProvisionTy,
+] as const;
+
 export const envVarDynTy = "posix.envVarDyn";
 
 // we separate the posix file types in a separate
@@ -30,6 +35,7 @@ export const wellKnownProvisionTypes = [
   ...posixFileProvisionTypes,
   ...hookProvisionTypes,
   ...installProvisionTypes,
+  ...shellAliasProvisionTypes,
 ] as const;
 
 const wellKnownProvision = zod.discriminatedUnion(
@@ -56,6 +62,16 @@ const wellKnownProvision = zod.discriminatedUnion(
           {
             ty: zod.literal(ty),
             instId: zod.string(),
+          },
+        ),
+    ),
+    ...shellAliasProvisionTypes.map(
+      (ty) =>
+        zod.object(
+          {
+            ty: zod.literal(ty),
+            aliasName: zod.string(),
+            command: zod.string().array(),
           },
         ),
     ),

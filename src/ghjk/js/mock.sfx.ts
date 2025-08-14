@@ -10,6 +10,7 @@ Object.assign(Ghjk, {
   },
   hostcall: () => Promise.resolve({}),
   blackboard: {
+    // deno-lint-ignore no-explicit-any
     set: (key: string, value: any) => {
       const old = bb.get(key);
       bb.set(key, value);

@@ -1,7 +1,4 @@
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 import {
   $,
   DownloadArgs,
@@ -54,7 +51,7 @@ export class Port extends GithubReleasePort {
           installVersion,
           `${this.repoName}-${os}-${arch}${os == "windows" ? ".exe" : ""}`,
         ),
-        name: this.repoName,
+        name: this.repoName + (os == "windows" ? ".exe" : ""),
         mode: 0o700,
       },
     ];

@@ -1,6 +1,5 @@
-import type { AmbientAccessPortManifest } from "./types.ts";
-import { $ } from "../../deno_utils/mod.ts";
-import { PortBase } from "./base.ts";
+import { type AmbientAccessPortManifest, PortBase } from "./mod.ts";
+import { $ } from "./mod.ts";
 
 export class AmbientAccessPort extends PortBase {
   constructor(public manifest: AmbientAccessPortManifest) {

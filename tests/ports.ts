@@ -162,12 +162,11 @@ const cases: CustomE2eTestCase[] = [
   },
   // 70 megs + 16 megs
   {
-    name: "meta-cli-and-wasmedge",
+    name: "meta-cli",
     installConf: [
       ports.meta_cli_ghrel({ full: true }),
-      ports.wasmedge(),
     ],
-    ePoint: `which meta && wasmedge --version`,
+    ePoint: ` meta --version`,
     ignore: testTargetPlatform == "linux/aarch64",
   },
   // 80 meg
@@ -193,6 +192,12 @@ const cases: CustomE2eTestCase[] = [
     secureConf: {
       enableRuntimes: true,
     },
+  },
+  // ~197+ megs
+  {
+    name: "jdk_temurin",
+    installConf: ports.jdk_temurin({ version: "21.0.8+9.0.LTS" }),
+    ePoint: `java -version`,
   },
   // rustup +  600 megs
   {

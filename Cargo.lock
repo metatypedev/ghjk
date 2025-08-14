@@ -888,6 +888,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e3040c8291884ddf39445dc033c70abc2bc44a42f0a3a00571a0f483a83f0cd"
 dependencies = [
  "clap",
+ "clap_lex",
+ "is_executable",
+ "shlex",
 ]
 
 [[package]]
@@ -1360,9 +1363,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.13"
+version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33480d6946193aa8033910124896ca395333cae7e2d1113d1fef6c3272217df2"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -1397,9 +1400,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.20"
+version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
+checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crossterm"
@@ -3012,7 +3015,7 @@ dependencies = [
 
 [[package]]
 name = "denort"
-version = "0.3.1-rc.2"
+version = "0.3.1-rc.3"
 dependencies = [
  "anyhow",
  "color-eyre",
@@ -4116,7 +4119,7 @@ dependencies = [
 
 [[package]]
 name = "ghjk"
-version = "0.3.1-rc.2"
+version = "0.3.1-rc.3"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4136,6 +4139,7 @@ dependencies = [
  "directories",
  "educe",
  "futures",
+ "glob",
  "indexmap 2.9.0",
  "itertools 0.13.0",
  "json-canon",
@@ -4153,6 +4157,7 @@ dependencies = [
  "shadow-rs",
  "smallvec",
  "smartstring",
+ "tempfile",
  "thiserror 1.0.69",
  "time",
  "tokio",
@@ -5144,6 +5149,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06d198e9919d9822d5f7083ba8530e04de87841eaf21ead9af8f2304efd57c89"
 
 [[package]]
+name = "is_executable"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4a1b5bad6f9072935961dfbf1cced2f3d129963d091b6f69f007fe04e758ae2"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5428,7 +5442,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e310b3a6b5907f99202fcdb4960ff45b93735d7c7d96b760fcff8db2dc0e103d"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -6569,7 +6583,7 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "play"
-version = "0.3.1-rc.2"
+version = "0.3.1-rc.3"
 dependencies = [
  "clap",
  "color-eyre",
@@ -7317,9 +7331,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.17"
+version = "0.23.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f1a745511c54ba6d4465e8d5dfbd81b45791756de28d4981af70d6dca128f1e"
+checksum = "47796c98c480fce5406ef69d1c76378375492c3b0a0de587be0c1d9feb12f395"
 dependencies = [
  "log",
  "once_cell",
@@ -10280,7 +10294,7 @@ checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
 
 [[package]]
 name = "xtask"
-version = "0.3.1-rc.2"
+version = "0.3.1-rc.3"
 dependencies = [
  "clap",
  "color-eyre",

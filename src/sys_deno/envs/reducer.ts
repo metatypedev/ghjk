@@ -1,15 +1,7 @@
 import { promiseCollector, unwrapZodRes } from "../../deno_utils/mod.ts";
-import { execTask } from "../tasks/exec.ts";
-import { getTasksCtx } from "../tasks/inter.ts";
 import type { GhjkCtx } from "../types.ts";
-import type {
-  EnvRecipe,
-  Provision,
-  ProvisionReducer,
-  WellKnownEnvRecipe,
-  WellKnownProvision,
-} from "./types.ts";
-import { envVarDynTy, wellKnownProvisionTypes } from "./types.ts";
+import type { EnvRecipe, Provision, ProvisionReducer } from "./types.ts";
+import { wellKnownProvisionTypes } from "./types.ts";
 import validators from "./types.ts";
 
 export type ProvisionReducerStore = Map<
@@ -33,10 +25,6 @@ export function getProvisionReducerStore(
     store = new Map();
     gcx.blackboard.set(id, store);
   }
-  store?.set(
-    envVarDynTy,
-    installDynEnvReducer(gcx) as ProvisionReducer<Provision, Provision>,
-  );
   return store;
 }
 
@@ -60,10 +48,14 @@ export async function reduceStrangeProvisions(
     }
     bin.push(item);
   }
-  const reducedSet = [] as WellKnownProvision[];
+  // only reduce what one can here
+  // the rust side will reduce the rest
+  // and throw an error if there's a strange
+  // one left at the end
+  const reducedSet = [] as Provision[];
   const promises = promiseCollector();
   for (const [ty, items] of Object.entries(bins)) {
-    if (wellKnownProvisionTypes.includes(ty as any)) {
+    if ((wellKnownProvisionTypes as readonly string[]).includes(ty)) {
       reducedSet.push(
         ...items.map((item) => validators.wellKnownProvision.parse(item)),
       );
@@ -71,63 +63,26 @@ export async function reduceStrangeProvisions(
     }
     const reducer = reducerStore.get(ty);
     if (!reducer) {
-      throw new Error(`no provider reducer found for ty: ${ty}`, {
-        cause: items,
+      reducedSet.push(...items);
+    } else {
+      promises.push(async () => {
+        const reduced = await reducer(items);
+        reducedSet.push(
+          ...reduced.map((prov) =>
+            unwrapZodRes(
+              validators.wellKnownProvision.safeParse(prov),
+              { prov },
+              `error parsing reduced provision`,
+            )
+          ),
+        );
       });
     }
-    promises.push(async () => {
-      const reduced = await reducer(items);
-      reducedSet.push(
-        ...reduced.map((prov) =>
-          unwrapZodRes(
-            validators.wellKnownProvision.safeParse(prov),
-            { prov },
-            `error parsing reduced provision`,
-          )
-        ),
-      );
-    });
   }
   await promises.finish();
-  const out: WellKnownEnvRecipe = {
+  const out: EnvRecipe = {
     ...env,
     provides: reducedSet,
   };
   return out;
-}
-
-export function installDynEnvReducer(gcx: GhjkCtx) {
-  return async (provisions: Provision[]) => {
-    const output = [];
-    const badProvisions = [];
-    const taskCtx = getTasksCtx(gcx);
-
-    for (const provision of provisions) {
-      const ty = "posix.envVar";
-      const key = provision.taskKey as string;
-
-      const taskGraph = taskCtx.taskGraph;
-      const taskConf = taskCtx.config;
-
-      const targetKey = Object.entries(taskConf.tasks)
-        .filter(([_, task]) => task.key == key)
-        .shift()?.[0];
-
-      if (targetKey) {
-        // console.log("key", key, " maps to target ", targetKey);
-        // deno-lint-ignore no-await-in-loop
-        const results = await execTask(gcx, taskConf, taskGraph, targetKey, []);
-        output.push({ ...provision, ty, val: results[key] as any ?? "" });
-      } else {
-        badProvisions.push(provision);
-      }
-    }
-
-    if (badProvisions.length >= 1) {
-      throw new Error("cannot deduce task from keys", {
-        cause: { badProvisions },
-      });
-    }
-    return output;
-  };
 }

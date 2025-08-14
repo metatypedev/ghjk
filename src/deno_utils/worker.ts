@@ -46,6 +46,7 @@ function denoFsReadShim() {
         opts: Deno.ReadFileOptions | Deno.OpenOptions | undefined,
       ) => {
         readFiles.add(typeof path == "string" ? path : path.pathname);
+        // deno-lint-ignore no-explicit-any
         return (old as any)(path, opts);
       };
       return [old.name, replace] as const;

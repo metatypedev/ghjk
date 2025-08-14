@@ -27,12 +27,12 @@ import * as std_ports from "../sys_deno/ports/std.ts";
 import runtime_ports from "../sys_deno/ports/std_runtime.ts";
 // host
 import type { SerializedConfig } from "./types.ts";
-import * as std_modules from "../sys_deno/std.ts";
 // tasks
-// WARN: this module has side-effects and only ever import
-// types from it
-import type { ExecTaskArgs } from "../sys_deno/tasks/deno.ts";
-import { TaskDefHashed, TasksModuleConfig } from "../sys_deno/tasks/types.ts";
+import type {
+  ExecTaskArgs,
+  TaskDefHashed,
+  TasksModuleConfig,
+} from "../sys_deno/tasks/types.ts";
 // envs
 import {
   type EnvRecipe,
@@ -89,6 +89,7 @@ export type TaskFnArgs = {
 export type TaskFn = (
   $: ReturnType<typeof task$>,
   args: TaskFnArgs,
+  // deno-lint-ignore no-explicit-any
 ) => Promise<any> | any;
 
 /**
@@ -114,7 +115,7 @@ export type DenoTaskDefArgs = TaskDefArgs & {
    */
   fn?: TaskFn;
   /**
-   * In order to key the right task when ghjk is requesting
+   * In order to key the right task when ghjk host is requesting
    * execution of a specific task, we identify each using a hash.
    * The {@field fn} is `toString`ed in the hash input.
    * If a ghjkfile is produing identical anonymous tasks for
@@ -282,7 +283,7 @@ export class Ghjkfile {
       env.onEnter(...args.onEnter);
     }
     if (args.onExit) {
-      env.onEnter(...args.onExit);
+      env.onExit(...args.onExit);
     }
     return env;
   }
@@ -355,13 +356,13 @@ export class Ghjkfile {
       const config: SerializedConfig = {
         blackboard: Object.fromEntries(this.#bb.entries()),
         modules: [{
-          id: std_modules.ports,
+          id: "ports",
           config: portsConfig,
         }, {
-          id: std_modules.tasks,
+          id: "tasks",
           config: tasksConfig,
         }, {
-          id: std_modules.envs,
+          id: "envs",
           config: envsConfig,
         }],
       };
@@ -496,7 +497,7 @@ export class Ghjkfile {
         swapJobs.push([ii, taskToEnvMap[parentKey]] as const);
       } else {
         throw new Error(
-          `env "${childKey}" inherits from "${parentKey} but no env or task found under key"`,
+          `env "${childKey}" inherits from "${parentKey}" but no env or task found under key`,
         );
       }
     }
@@ -663,6 +664,10 @@ export class Ghjkfile {
           }),
           // env hooks
           ...hooks,
+          // task aliases - expanded later via reducer using state
+          { ty: "ghjk.tasks.Alias" as const },
+          // CLI completions - expanded later into per-shell scripts
+          { ty: "ghjk.cli.Completions" as const },
         ],
       };
 

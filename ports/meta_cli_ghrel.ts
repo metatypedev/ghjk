@@ -12,10 +12,7 @@ import {
   zod,
 } from "../src/deno_ports/mod.ts";
 import * as std_ports from "../src/sys_deno/ports/std.ts";
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,

@@ -1,7 +1,5 @@
-import { $, downloadFile, DownloadFileArgs } from "../../deno_utils/mod.ts";
-import { zod } from "./deps.ts";
-import { PortBase } from "./base.ts";
-import type { DownloadArgs, ListAllArgs } from "./types.ts";
+import { $, downloadFile, PortBase, zod } from "./mod.ts";
+import type { DownloadArgs, DownloadFileArgs, ListAllArgs } from "./mod.ts";
 
 export const ghConfValidator = zod.object({
   ghToken: zod.string().nullish(),
@@ -9,9 +7,9 @@ export const ghConfValidator = zod.object({
 
 export type GithubReleasesInstConf = zod.infer<typeof ghConfValidator>;
 
-/// Use this to add the read and add GithubReleasesInstConf values to
-// an InstallConfig
-export function readGhVars() {
+/// Helper to read GitHub-related environment variables and add them
+/// to an InstallConfig.
+export function readGhVars(): Partial<GithubReleasesInstConf> {
   // TODO: extract token from `$HOME/.git-credentials` or `$HOME/.config/gh/hosts.yml`
   const ghToken = Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GH_TOKEN");
   const out: GithubReleasesInstConf = {
@@ -22,7 +20,9 @@ export function readGhVars() {
 
 export function ghHeaders(conf: Record<string | number | symbol, unknown>) {
   const res = ghConfValidator.parse(conf);
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "User-Agent": "ghjk (github.com/metatypedev/ghjk)",
+  };
   if (res.ghToken) {
     headers["Authorization"] = `Bearer ${res.ghToken}`;
   }
@@ -59,9 +59,13 @@ export abstract class GithubReleasePort extends PortBase {
       );
     }
     await Promise.all(
-      urls.map((item) =>
-        downloadFile({ ...args, headers: ghHeaders(args.config), ...item })
-      ),
+      urls.map((item) => {
+        const mergedHeaders = {
+          ...ghHeaders(args.config),
+          ...item.headers,
+        } as Record<string, string>;
+        return downloadFile({ ...args, headers: mergedHeaders, ...item });
+      }),
     );
   }
 
@@ -70,11 +74,11 @@ export abstract class GithubReleasePort extends PortBase {
       count: 10,
       delay: $.exponentialBackoff(1000),
       action: async () =>
-        (await $.request(
+        await $.request(
           `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases/latest`,
         )
           .header(ghHeaders(args.config))
-          .json()) as { tag_name: string },
+          .json() as { tag_name: string },
     });
 
     return metadata.tag_name;
@@ -94,11 +98,11 @@ export abstract class GithubReleasePort extends PortBase {
         count: 10,
         delay: $.exponentialBackoff(1000),
         action: async () =>
-          (await $.request(
+          await $.request(
             `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/releases?per_page=${per_page}&page=${page}`,
           )
             .header(ghHeaders(args.config))
-            .json()) as { tag_name: string }[],
+            .json() as { tag_name: string }[],
       });
 
       if (!pageMetadata || !pageMetadata.length) {

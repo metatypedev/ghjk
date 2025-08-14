@@ -69,6 +69,10 @@ if (Deno.args.length) {
     cmd = $`fish --init-command 'source ${
       ghjkDataDir.join("env.fish").toString()
     }'`;
+  } else if (Deno.args[0] == "zsh" && Deno.args.length == 1) {
+    // TODO: run ghjk_hook again after startup or initil hook won't
+    // load completions
+    cmd = $`${Deno.args}`;
   } else {
     cmd = $`${Deno.args}`;
   }

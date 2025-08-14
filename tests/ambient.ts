@@ -1,6 +1,6 @@
 import "../src/deno_utils/setup_logger.ts";
 import { std_assert } from "./deps.ts";
-import { AmbientAccessPort } from "../src/sys_deno/ports/ambient.ts";
+import { AmbientAccessPort } from "../src/deno_ports/ambient.ts";
 import validators, {} from "../src/sys_deno/ports/types.ts";
 
 import * as tar from "../ports/tar.ts";

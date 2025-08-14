@@ -8,10 +8,7 @@ import {
   osXarch,
   serializePlatform,
 } from "../src/deno_ports/mod.ts";
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -60,7 +57,7 @@ export class Port extends GithubReleasePort {
     return [
       this.releaseArtifactUrl(
         installVersion,
-        `jq-${os}-${arch}${os == "windows" ? "exe" : ""}`,
+        `jq-${os}-${arch}${os == "windows" ? ".exe" : ""}`,
       ),
     ]
       .map(dwnUrlOut)

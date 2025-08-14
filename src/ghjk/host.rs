@@ -55,6 +55,7 @@ impl HostCtx {
 pub async fn systems_from_ghjkfile(
     hcx: Arc<HostCtx>,
     ghjkdir_path: &Path,
+    avoid_serialization: bool,
 ) -> Res<Option<GhjkfileSystems>> {
     let (hashfile_path, lockfile_path) = (
         ghjkdir_path.join("hash.json"),
@@ -110,6 +111,17 @@ pub async fn systems_from_ghjkfile(
         }
     }
 
+    // if we can't recover from the lockfile,
+    // we can't avoid serialization
+    if avoid_serialization {
+        if hash_obj.is_none() {
+            return Ok(None);
+        }
+        if lock_obj.is_none() {
+            return Ok(None);
+        }
+    }
+
     let (ghjkfile_exists, ghjkfile_hash) = if let Some(path) = &hcx.gcx.config.ghjkfile {
         (
             crate::utils::file_exists(path).await?,
@@ -150,13 +162,13 @@ pub async fn systems_from_ghjkfile(
     if let Some(obj) = &mut lock_obj {
         // TODO: version migrator
         if obj.version != "0" {
-            eyre::bail!("unsupported hashfile version: {:?}", obj.version);
+            eyre::bail!("unsupported lockfile version: {:?}", obj.version);
         }
     }
-    // TODO:
-    // if hcx.re_resolve {}
 
     let mut lock_entries = HashMap::new();
+
+    let scx_first = Arc::new(SystemsCtx::new());
 
     if let Some(lock_obj) = &mut lock_obj {
         debug!(?lockfile_path, "loading lockfile");
@@ -173,7 +185,7 @@ pub async fn systems_from_ghjkfile(
                     sys_conf.id
                 );
             };
-            let sys_inst = sys_man.init().await?;
+            let sys_inst = sys_man.init(scx_first.clone()).await?;
             lock_entries.insert(
                 sys_conf.id.clone(),
                 sys_inst.load_lock_entry(sys_lock).await?,
@@ -189,6 +201,9 @@ pub async fn systems_from_ghjkfile(
         // Assumes that a hashfile tags the specific serialized version of the ghjkfile
         // and it's context put in the lockfile
         (lock_obj.config.clone(), hash_obj)
+    } else if avoid_serialization {
+        // we avoid serialization if unable to recover a non-stale lock obj
+        return Ok(None);
     } else if let Some(ghjkfile_path) = &hcx.gcx.config.ghjkfile {
         if !ghjkfile_exists {
             eyre::bail!("no file found at ghjkfile path {ghjkfile_path:?}");
@@ -212,6 +227,12 @@ pub async fn systems_from_ghjkfile(
     debug!("initializing ghjkfile systems");
     let sys_instances = {
         let mut sys_instances = IndexMap::new();
+        // we start with a fresh system context here
+        // this allows us to flush out any issues with global
+        // state that might be stored store there
+        // all state must go through the lock entries generated
+        // above
+        let scx_second = Arc::new(SystemsCtx::new());
         for sys_conf in &config.modules {
             let Some(sys_man) = hcx.systems.get(&sys_conf.id) else {
                 eyre::bail!(
@@ -219,7 +240,7 @@ pub async fn systems_from_ghjkfile(
                     sys_conf.id
                 );
             };
-            let sys_inst = sys_man.init().await?;
+            let sys_inst = sys_man.init(scx_second.clone()).await?;
             sys_inst
                 .load_config(
                     sys_conf.config.clone(),
@@ -371,7 +392,7 @@ impl LockObj {
         let raw = match tokio::fs::read(path).await {
             Ok(val) => val,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(err) => return Err(LockfileError::Other(ferr!("error reading hashfile: {err}"))),
+            Err(err) => return Err(LockfileError::Other(ferr!("error reading lockfile: {err}"))),
         };
         serde_json::from_slice(&raw).map_err(LockfileError::Serialization)
     }

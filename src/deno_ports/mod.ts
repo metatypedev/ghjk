@@ -9,7 +9,7 @@ export * from "../sys_deno/ports/mod.ts";
 export * from "../deno_utils/mod.ts";
 export * from "./unar/deps.ts";
 export { default as logger } from "../deno_utils/logger.ts";
-export { GithubReleasePort } from "../sys_deno/ports/ghrel.ts";
+export { GithubReleasePort } from "./ghrel.ts";
 export { PortBase } from "../sys_deno/ports/base.ts";
 export * from "./unar/mod.ts";
 export { default as portsValidators } from "../sys_deno/ports/types.ts";

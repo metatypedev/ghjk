@@ -11,10 +11,7 @@ import {
   std_path,
   unarchive,
 } from "../src/deno_ports/mod.ts";
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -77,7 +74,7 @@ export class Port extends GithubReleasePort {
         ext = "zip";
         break;
       default:
-        throw new Error(`unsupported arch: ${platform.arch}`);
+        throw new Error(`unsupported arch: ${platform.os}`);
     }
     return [
       this.releaseArtifactUrl(

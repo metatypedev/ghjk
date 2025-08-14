@@ -18,7 +18,7 @@ const ghjk = file({
   },
 });
 
-const GHJK_VERSION = "0.3.1-rc.2";
+const GHJK_VERSION = "0.3.1";
 const DENO_VERSION = "2.2.4";
 // keep in sync with the deno repo's ./rust-toolchain.toml
 const RUST_VERSION = "1.85.0";
@@ -32,20 +32,16 @@ ghjk.env("main")
     ports.deno_ghrel({ version: DENO_VERSION }),
   );
 
-const installs = {
-  rust: ports.rust({
-    version: RUST_VERSION,
-    profile: "default",
-    components: ["rust-src"],
-  }),
-};
-
 ghjk.config({
   defaultEnv: "dev",
   enableRuntimes: true,
   allowedBuildDeps: [
     ports.cpy_bs({ version: "3.13.4", releaseTag: "20250610" }),
-    installs.rust,
+    ports.rust({
+      version: RUST_VERSION,
+      profile: "default",
+      components: ["rust-src"],
+    }),
   ],
 });
 
@@ -53,9 +49,9 @@ const RUSTY_V8_MIRROR = `${import.meta.dirname}/.dev/rusty_v8`;
 
 ghjk.env("_rust")
   .install(
+    // install rust using rustup or nix (there's a flake.nix file)
     ports.protoc(),
     ports.pipi({ packageName: "cmake" })[0],
-    installs.rust,
     ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
       ? [ports.mold({
         version: "v2.4.0",
@@ -89,11 +85,10 @@ ghjk.env("main")
           // "denort",
           // "deno",
         ],
-        "DEBUG": [
+        "DEBUG": [],
+        "INFO": [
           "runtime",
           "tokio",
-        ],
-        "INFO": [
           "deno::npm",
           "deno::module_loader",
           "deno::file_fetcher",
@@ -213,6 +208,6 @@ ghjk.task(
   { inherit: false },
 );
 
-ghjk.task(function play($) {
+ghjk.task(function test($) {
   console.log($.argv);
 });

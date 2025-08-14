@@ -20,7 +20,7 @@ import type {
 } from "./types.ts";
 import { getInstallHash, getPortRef } from "./types.ts";
 import { DenoWorkerPort } from "./worker.ts";
-import { AmbientAccessPort } from "./ambient.ts";
+import { AmbientAccessPort } from "../../deno_ports/ambient.ts";
 import {
   $,
   AVAIL_CONCURRENCY,
@@ -518,12 +518,12 @@ function resolveConfig(
       logger.info("resolving given version", config);
       const allVersions = await port.listAll(listAllArgs);
       // TODO: fuzzy matching
-      const match = allVersions.find((version) =>
-        version.match(new RegExp(`^v?${config.version}$`))
-      );
+      const norm = (s: string) => s.replace(/^v/i, "");
+      const wanted = norm(config.version);
+      const match = allVersions.find((v) => norm(v) === wanted);
       if (!match) {
         throw new Error(
-          `error resolving verison ${config.version}: not found, available versions: [${
+          `error resolving version ${config.version}: not found, available versions: [${
             allVersions.join(", ")
           }]`,
           {
@@ -826,6 +826,7 @@ export function getPortImpl(manifest: PortManifest) {
     );
   } else {
     throw new Error(
+      // deno-lint-ignore no-explicit-any
       `unsupported port type "${(manifest as unknown as any).ty}": ${
         $.inspect(manifest)
       }`,

@@ -9,10 +9,7 @@ import {
   std_path,
   unarchive,
 } from "../src/deno_ports/mod.ts";
-import {
-  GithubReleasesInstConf,
-  readGhVars,
-} from "../src/sys_deno/ports/ghrel.ts";
+import { GithubReleasesInstConf, readGhVars } from "../src/deno_ports/ghrel.ts";
 
 const manifest = {
   ty: "denoWorker@v1" as const,
@@ -53,7 +50,7 @@ export class Port extends GithubReleasePort {
         os = "apple-darwin";
         break;
       default:
-        throw new Error(`unsupported: ${platform}`);
+        throw new Error(`unsupported: ${platform.os}`);
     }
     return [
       this.releaseArtifactUrl(
