@@ -47,8 +47,15 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: ${{ env.DENO_VERSION }}
-      # run ghjk once to avoid trigger file changes when
-      # pre commit runs ghjk. We'll always see changes
+      # run clippy first to fail on issues with
+      # stale lockfile
+      # necessary since we cook before running
+      # the rest of the hooks
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: -a clippy
+      # cook ghjk once to avoid trigger file changes when
+      # pre commit runs ghjk itself. We'll always see changes
       # to lock.json since GITHUB_TOKEN is different
       # in the CI
       - run: deno task ghjk envs cook -t lock-sed
