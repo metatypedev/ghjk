@@ -426,7 +426,8 @@ pub async fn reduce_and_cook_to(
     let env_vars = posix::cook(
         ecx,
         &reduced_recipe,
-        env_name.unwrap_or(env_key),
+        env_key,
+        env_name,
         env_dir,
         create_shell_loaders,
     )

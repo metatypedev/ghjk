@@ -6,6 +6,7 @@ import {
   harness,
 } from "./utils.ts";
 import dummy from "../ports/dummy.ts";
+import dup from "../ports/dup_test.ts";
 import type { FileArgs } from "../src/ghjk_ts/mod.ts";
 
 type CustomE2eTestCase =
@@ -204,6 +205,35 @@ const cases: CustomE2eTestCase[] = [
     ePoint: `bash -s`,
     envs: envVarTestEnvs,
     stdin: envVarTestsPosix,
+  },
+  {
+    name: "prov_exec_spillover_bash",
+    ePoint: `bash -s`,
+    envs: [
+      {
+        name: "main",
+        installs: [dup({ output: "one" }), dup({ output: "two" })],
+      },
+    ],
+    stdin: `
+set -ex
+ghjk envs cook main
+. .ghjk/envs/main/activate.sh
+# Expect one dup at bin/dup and another at bin2/dup
+[ -x .ghjk/envs/main/shims/bin/dup ] || exit 101
+[ -x .ghjk/envs/main/shims/bin2/dup ] || exit 102
+
+# PATH should include both (don't rely on hashed env dir)
+echo "PATH: $PATH"
+[[ "$PATH" == *"shims/bin:"* ]] || exit 103
+[[ "$PATH" == *"shims/bin2:"* ]] || exit 104
+
+# Alias symlinks should exist and work
+[ -x .ghjk/envs/main/shims/bin/dup-main-1 ] || exit 105
+[ -x .ghjk/envs/main/shims/bin/dup-main-2 ] || exit 106
+[ "$(.ghjk/envs/main/shims/bin/dup-main-1)" = "one" ] || exit 107
+[ "$(.ghjk/envs/main/shims/bin/dup-main-2)" = "two" ] || exit 108
+`,
   },
   {
     name: "prov_env_vars_zsh",
