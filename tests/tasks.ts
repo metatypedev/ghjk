@@ -199,6 +199,30 @@ cat output.txt
 test (cat output.txt) = 'A#STATIC, B#DYNAMIC'
 `,
   },
+  {
+    name: "posix_working_dir",
+    tasks: [{
+      name: "test",
+      workingDir: "./src",
+      fn: async ($) => {
+        // Write both views to a file for robust assertion
+        const posix = await $`/bin/sh -c 'pwd'`.text();
+        const deno = Deno.cwd();
+        await $.path("wd_check.txt").writeText(
+          `POSIX:${posix.trim()}\nDENO:${deno}\n`,
+        );
+      },
+    }],
+    ePoint: `fish`,
+    stdin: `
+mkdir -p src
+$GHJK_DATA_DIR/ghjk x test
+set -l posix (cat src/wd_check.txt | string match 'POSIX:*')
+set -l deno (cat src/wd_check.txt | string match 'DENO:*')
+test (string match -r '.*/src$' $posix) != ''
+test (string match -r '.*/src$' $deno) != ''
+`,
+  },
 ];
 
 harness(cases.map((testCase) => ({

@@ -177,7 +177,7 @@ pub async fn exec_task(
             merged_env.insert(k, v);
         }
 
-        // Execute task via Deno worker
+        // Execute task via subprocess to ensure POSIX cwd/env isolation
         match task_def {
             TaskDefHashed::DenoFileV1(def) => {
                 let ghjkfile = gcx
@@ -191,31 +191,85 @@ pub async fn exec_task(
                     ghjkfile.parent().unwrap_or(Path::new(".")).to_path_buf()
                 };
 
-                // Prepare payload like TS execTaskDeno expects
-
-                let payload = ExecTaskArgs {
-                    key: &def.key,
-                    argv: &args,
-                    working_dir: working_dir.to_string_lossy().to_string(),
-                    env_vars: &merged_env,
-                };
-
-                // Execute via our JS bindings module:
-                // - module: src/ghjk/systems/tasks/bindings.ts
-                // - export: execTaskDeno(ghjkfileUri, payload)
+                // Prepare request JSON for plumbing exec-deno-task
                 let ghjkfile_canon_path: std::path::PathBuf =
                     ghjkfile.canonicalize().unwrap_or(ghjkfile.clone());
-                let ghjkfile_uri = url::Url::from_file_path(&ghjkfile_canon_path)
-                    .map_err(|_| ferr!("invalid ghjkfile path for file URL"))?
-                    .to_string();
 
-                // Call exec_task_deno to execute the task
-                let task_output = exec_task_deno(gcx, &ghjkfile_uri, &payload)
+                #[derive(Serialize)]
+                #[serde(rename_all = "camelCase")]
+                struct Req<'a> {
+                    ghjkfile: &'a std::path::Path,
+                    payload: ReqPayload<'a>,
+                    result_file: &'a std::path::Path,
+                }
+                #[derive(Serialize)]
+                #[serde(rename_all = "camelCase")]
+                struct ReqPayload<'a> {
+                    key: &'a str,
+                    argv: &'a [String],
+                    working_dir: &'a str,
+                    env_vars: &'a IndexMap<String, String>,
+                }
+
+                let result_file_path = task_env_dir.path().join("result.json");
+                let request_file_path = task_env_dir.path().join("request.json");
+                let working_dir_string = working_dir.to_string_lossy().to_string();
+                let req = Req {
+                    ghjkfile: &ghjkfile_canon_path,
+                    payload: ReqPayload {
+                        key: &def.key,
+                        argv: &args,
+                        working_dir: &working_dir_string,
+                        env_vars: &merged_env,
+                    },
+                    result_file: &result_file_path,
+                };
+
+                let req_bytes = serde_json::to_vec_pretty(&req).expect_or_log("json error");
+                tokio::fs::write(&request_file_path, req_bytes)
                     .await
-                    .wrap_err("error executing deno task")?;
+                    .wrap_err("error writing exec-deno-task request json")?;
 
-                // Store the task output
-                output.insert(deno_task.key.clone(), task_output);
+                // Spawn subprocess: ghjk plumbing exec-deno-task <request.json>
+                let mut cmd = tokio::process::Command::new(&gcx.exec_path);
+                cmd.arg("plumbing")
+                    .arg("exec-deno-task")
+                    .arg(&request_file_path)
+                    .current_dir(&working_dir);
+                // Inherit current env and override with merged task env
+                for (k, v) in &merged_env {
+                    cmd.env(k, v);
+                }
+                // Put child in its own process group/session (unix only)
+                // Note: process group/session isolation disabled to avoid signal issues in tests
+                let status = cmd
+                    .status()
+                    .await
+                    .wrap_err("error running plumbing exec-deno-task")?;
+                if !status.success() {
+                    eyre::bail!(
+                        "exec-deno-task subprocess failed with status {:?}",
+                        status.code()
+                    );
+                }
+
+                // Read result
+                let result_raw = tokio::fs::read(&result_file_path)
+                    .await
+                    .wrap_err("error reading exec-deno-task result file")?;
+                let resp: serde_json::Value = serde_json::from_slice(&result_raw)
+                    .wrap_err("error parsing exec-deno-task result json")?;
+
+                // Expect either { data } or { error }
+                if let Some(error) = resp.get("error") {
+                    eyre::bail!(
+                        "task execution failed: {}",
+                        serde_json::to_string_pretty(error)
+                            .unwrap_or_else(|_| format!("{:?}", error))
+                    );
+                }
+                let data = resp.get("data").cloned().unwrap_or(serde_json::Value::Null);
+                output.insert(deno_task.key.clone(), data);
             }
         }
 
@@ -259,40 +313,56 @@ pub async fn exec_task(
     Ok(output)
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ExecTaskArgs<'a> {
-    key: &'a str,
-    argv: &'a [String],
+struct ExecTaskArgsCli {
+    key: String,
+    argv: Vec<String>,
     working_dir: String,
-    env_vars: &'a IndexMap<String, String>,
+    env_vars: IndexMap<String, String>,
 }
 
-/// Execute a deno task following the exact pattern from host/deno.rs
-async fn exec_task_deno(
-    gcx: &GhjkCtx,
-    ghjkfile_uri: &str,
-    payload: &ExecTaskArgs<'_>,
-) -> Res<serde_json::Value> {
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecDenoTaskRequestCli {
+    ghjkfile: std::path::PathBuf,
+    payload: ExecTaskArgsCli,
+    result_file: std::path::PathBuf,
+}
+
+/// Execute a deno task from a JSON request file (plumbing command backend)
+pub async fn exec_deno_task_from_json(gcx: &GhjkCtx, json_path: &std::path::Path) -> Res<()> {
+    let raw = tokio::fs::read(json_path).await?;
+    let req: ExecDenoTaskRequestCli =
+        serde_json::from_slice(&raw).wrap_err("error parsing exec-deno-task json request")?;
+
+    // Build module URL for the bindings
     let main_module = gcx
         .config
         .repo_root
         .join("src/ghjk/systems/tasks/bindings.ts")
         .wrap_err("repo url error")?;
 
-    let mut ext_conf = crate::ext::ExtConfig::new();
+    // Prepare blackboard payload
+    let ghjkfile_canon_path: std::path::PathBuf =
+        req.ghjkfile.canonicalize().unwrap_or(req.ghjkfile.clone());
+    let ghjkfile_uri = url::Url::from_file_path(&ghjkfile_canon_path)
+        .map_err(|_| ferr!("invalid ghjkfile path for file URL"))?
+        .to_string();
 
-    ext_conf.blackboard = [
-        // blackboard is used as communication means
-        // with the deno side of the code
-        (
-            "args".into(),
-            json!({
-                "uri": ghjkfile_uri,
-                "payload": payload,
-            }),
-        ),
-    ]
+    let mut ext_conf = crate::ext::ExtConfig::new();
+    ext_conf.blackboard = [(
+        "args".into(),
+        json!({
+            "uri": ghjkfile_uri,
+            "payload": {
+                "key": req.payload.key,
+                "argv": req.payload.argv,
+                "workingDir": req.payload.working_dir,
+                "envVars": req.payload.env_vars,
+            },
+        }),
+    )]
     .into_iter()
     .collect::<crate::utils::DHashMap<_, _>>()
     .into();
@@ -327,27 +397,33 @@ async fn exec_task_deno(
         .run()
         .await
         .wrap_err("error on run of task deno worker")?;
-    if exit_code != 0 {
-        eyre::bail!("non-zero exit code running deno task execution module");
+
+    let resp_json = if exit_code == 0 {
+        let (_, resp) = bb.remove("resp").expect_or_log("resp missing");
+        resp
+    } else {
+        json!({
+            "error": {
+                "message": "non-zero exit code running deno task execution module",
+                "code": exit_code,
+            }
+        })
+    };
+
+    // Write response JSON to the result file path
+    let data = serde_json::to_vec_pretty(&resp_json).unwrap_or_else(|_| b"null".to_vec());
+    if let Some(parent) = req.result_file.parent() {
+        tokio::fs::create_dir_all(parent).await.ok();
     }
+    tokio::fs::write(&req.result_file, data)
+        .await
+        .wrap_err("error writing result_file")?;
 
-    let (_, resp) = bb.remove("resp").expect_or_log("resp missing");
-
-    #[derive(Deserialize)]
-    #[serde(untagged, rename_all = "lowercase")]
-    enum TaskResult {
-        Ok { data: serde_json::Value },
-        Err { error: serde_json::Value },
+    // Return non-zero if it was an error shape
+    if resp_json.get("error").is_some() {
+        eyre::bail!("task execution failed (see result file)");
     }
-
-    let result: TaskResult =
-        serde_json::from_value(resp).wrap_err("error deserializing task result")?;
-
-    match result {
-        TaskResult::Ok { data } => Ok(data),
-        TaskResult::Err { error } => Err(ferr!(
-            "task execution failed: {}",
-            serde_json::to_string_pretty(&error).unwrap_or_else(|_| format!("{:?}", error))
-        )),
-    }
+    Ok(())
 }
+
+// (old in-process exec helpers removed; subprocess plumbing path is now used exclusively)

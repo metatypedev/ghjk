@@ -2,6 +2,9 @@
 # shellcheck disable=SC2016
 # shellcheck disable=SC2028
 
+# FIXME: move to .local/bin only after install.ts succeeds
+# FIXME: when detecting nixos, advise appropriately
+
 set -e -u
 
 if ! command -v curl >/dev/null; then
@@ -126,7 +129,7 @@ EOF
   fi
 fi
 
-GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.github.com/$ORG/$REPO/$VERSION/install.ts}"
+GHJK_INSTALLER_URL="${GHJK_INSTALLER_URL:-https://raw.githubusercontent.com/$ORG/$REPO/$VERSION/install.ts}"
 "$GHJK_INSTALL_EXE_DIR/$EXE" deno run -A "$GHJK_INSTALLER_URL"
 # Print shell-specific commands for the user to run manually, with the
 # current shell shown last for convenience. We do not modify any files.
