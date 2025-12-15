@@ -17,6 +17,7 @@ import {
   zod,
   zod_val_err,
 } from "./deps.ts";
+export { std_fs } from "./deps.ts";
 import logger, { isColorfulTty } from "./logger.ts";
 // NOTE: only use type imports only when getting stuff from "./sys_deno"
 import type { OsEnum } from "../sys_deno/ports/types.ts";

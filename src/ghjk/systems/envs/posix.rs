@@ -9,6 +9,7 @@ pub async fn cook(
     ecx: &EnvsCtx,
     recipe: &WellKnownEnvRecipe,
     env_key: &str,
+    env_name: Option<&str>,
     env_dir: &Path,
     create_shell_loaders: bool,
 ) -> Res<IndexMap<String, String>> {
@@ -33,7 +34,9 @@ pub async fn cook(
     let mut lib_paths = vec![];
     let mut include_paths = vec![];
     let mut vars: IndexMap<String, String> = IndexMap::new();
-    vars.insert("GHJK_ENV".to_string(), env_key.to_string());
+    // Prefer env_name for GHJK_ENV if provided, else use env_key
+    let ghjk_env_val = env_name.unwrap_or(env_key).to_string();
+    vars.insert("GHJK_ENV".to_string(), ghjk_env_val);
     let mut on_enter_hooks: Vec<(String, Vec<String>)> = vec![];
     let mut on_exit_hooks: Vec<(String, Vec<String>)> = vec![];
     let mut aliases: Vec<AliasSpec> = vec![];
@@ -83,10 +86,25 @@ pub async fn cook(
         }
     }
 
-    tokio::try_join!(
-        shim_link_paths(&bin_paths, &bin_shim_dir),
-        shim_link_paths(&lib_paths, &lib_shim_dir),
-        shim_link_paths(&include_paths, &include_shim_dir),
+    // Build alias label for execs: prefer env_name, else truncated env_key (first 6 chars)
+    fn sanitize_label(s: &str) -> String {
+        s.chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect()
+    }
+    let short_key: String = env_key.chars().take(6).collect();
+    let env_label = sanitize_label(env_name.unwrap_or(&short_key));
+
+    let (bin_levels, lib_levels, include_levels, _) = tokio::try_join!(
+        shim_link_paths(&bin_paths, &bin_shim_dir, Some(env_label.as_str())),
+        shim_link_paths(&lib_paths, &lib_shim_dir, None),
+        shim_link_paths(&include_paths, &include_shim_dir, None),
         async {
             tokio::fs::write(
                 env_dir.join("recipe.json"),
@@ -103,13 +121,29 @@ pub async fn cook(
         _ => eyre::bail!("unsupported os {}", std::env::consts::OS),
     };
 
-    let path_vars = indexmap::indexmap! {
-        "PATH".to_string() => env_dir.join("shims/bin"),
-        "LIBRARY_PATH".to_string() => env_dir.join("shims/lib"),
-        ld_library_env.to_string() => env_dir.join("shims/lib"),
-        "C_INCLUDE_PATH".to_string() => env_dir.join("shims/include"),
-        "CPLUS_INCLUDE_PATH".to_string() => env_dir.join("shims/include"),
+    // Build path_vars including spillover directories for each category
+    let mut path_vars: IndexMap<String, Vec<PathBuf>> = IndexMap::new();
+    let dirs_for = |base: &str, levels: usize| -> Vec<PathBuf> {
+        let mut v = Vec::new();
+        let mut i = 1;
+        while i <= levels.max(1) {
+            let name = if i == 1 {
+                base.to_string()
+            } else {
+                format!("{}{}", base, i)
+            };
+            v.push(env_dir.join("shims").join(name));
+            i += 1;
+        }
+        v
     };
+    path_vars.insert("PATH".to_string(), dirs_for("bin", bin_levels));
+    let lib_dirs = dirs_for("lib", lib_levels);
+    path_vars.insert("LIBRARY_PATH".to_string(), lib_dirs.clone());
+    path_vars.insert(ld_library_env.to_string(), lib_dirs);
+    let include_dirs = dirs_for("include", include_levels);
+    path_vars.insert("C_INCLUDE_PATH".to_string(), include_dirs.clone());
+    path_vars.insert("CPLUS_INCLUDE_PATH".to_string(), include_dirs);
 
     if create_shell_loaders {
         write_activators(
@@ -127,58 +161,95 @@ pub async fn cook(
 
     // Combine vars and path_vars to return all environment variables
     let mut env_vars = vars;
-    env_vars.extend(
-        path_vars
+    for (k, vals) in path_vars.into_iter() {
+        let joined = vals
             .into_iter()
-            .map(|(key, val)| (key, val.to_string_lossy().to_string())),
-    );
+            .map(|p| p.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join(":");
+        env_vars.insert(k, joined);
+    }
     Ok(env_vars)
 }
 
-async fn shim_link_paths(target_paths: &[PathBuf], shim_dir: &Path) -> Res<()> {
-    let mut shims: HashMap<String, PathBuf> = HashMap::new();
-
+async fn shim_link_paths(
+    target_paths: &[PathBuf],
+    shim_dir: &Path,
+    alias_env_label: Option<&str>,
+) -> Res<usize> {
+    // Expand globs
+    let mut expanded: Vec<PathBuf> = Vec::new();
     for path in target_paths {
         let path_str = path.to_str().ok_or_else(|| ferr!("invalid path"))?;
         if path_str.contains('*') {
             for entry in glob::glob(path_str)? {
-                let entry = entry?;
-                let file_name = entry
-                    .file_name()
-                    .ok_or_else(|| ferr!("no file name"))?
-                    .to_str()
-                    .unwrap()
-                    .to_string();
-                if shims.contains_key(&file_name) {
-                    eyre::bail!("duplicate shim found for file: {}", file_name);
-                }
-                let shim_path = shim_dir.join(&file_name);
-                if tokio::fs::try_exists(&shim_path).await? {
-                    tokio::fs::remove_file(&shim_path).await?;
-                }
-                tokio::fs::symlink(&entry, &shim_path).await?;
-                shims.insert(file_name, shim_path);
+                expanded.push(entry?);
             }
         } else {
-            let file_name = path
-                .file_name()
-                .ok_or_else(|| ferr!("no file name"))?
-                .to_str()
-                .unwrap()
-                .to_string();
-            if shims.contains_key(&file_name) {
-                eyre::bail!("duplicate shim found for file: {}", file_name);
-            }
-            let shim_path = shim_dir.join(&file_name);
-            if tokio::fs::try_exists(&shim_path).await? {
-                tokio::fs::remove_file(&shim_path).await?;
-            }
-            tokio::fs::symlink(path, &shim_path).await?;
-            shims.insert(file_name, shim_path);
+            expanded.push(path.clone());
         }
     }
 
-    Ok(())
+    // Group by basename
+    let mut by_name: HashMap<String, Vec<PathBuf>> = HashMap::new();
+    for entry in expanded {
+        let file_name = entry
+            .file_name()
+            .ok_or_else(|| ferr!("no file name"))?
+            .to_string_lossy()
+            .to_string();
+        by_name.entry(file_name).or_default().push(entry);
+    }
+
+    // Determine category from shim_dir name and shims root
+    let cat = shim_dir
+        .file_name()
+        .ok_or_else(|| ferr!("invalid shim dir"))?
+        .to_string_lossy()
+        .to_string();
+    let shims_root = shim_dir
+        .parent()
+        .ok_or_else(|| ferr!("invalid shims root"))?;
+
+    let mut max_level = 1usize;
+
+    for (name, entries) in by_name {
+        for (i, entry) in entries.iter().enumerate() {
+            let level = i + 1; // 1-based
+            if level > max_level {
+                max_level = level;
+            }
+            let target_dir = if level == 1 {
+                shim_dir.to_path_buf()
+            } else {
+                let dname = format!("{}{}", &cat, level);
+                let dpath = shims_root.join(dname);
+                if !tokio::fs::try_exists(&dpath).await? {
+                    tokio::fs::create_dir_all(&dpath).await?;
+                }
+                dpath
+            };
+            let shim_path = target_dir.join(&name);
+            if tokio::fs::try_exists(&shim_path).await? {
+                tokio::fs::remove_file(&shim_path).await?;
+            }
+            tokio::fs::symlink(entry, &shim_path).await?;
+
+            // Always create alias symlink in base bin dir if requested
+            if cat == "bin" {
+                if let Some(label) = alias_env_label {
+                    let alias_name = format!("{}-{}-{}", &name, label, level);
+                    let alias_path = shim_dir.join(alias_name);
+                    if tokio::fs::try_exists(&alias_path).await? {
+                        tokio::fs::remove_file(&alias_path).await?;
+                    }
+                    tokio::fs::symlink(entry, &alias_path).await?;
+                }
+            }
+        }
+    }
+
+    Ok(max_level)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -187,7 +258,7 @@ async fn write_activators(
     reduced_recipe: &WellKnownEnvRecipe,
     env_dir: &Path,
     env_vars: &IndexMap<String, String>,
-    path_vars: &IndexMap<String, PathBuf>,
+    path_vars: &IndexMap<String, Vec<PathBuf>>,
     on_enter_hooks: &[(String, Vec<String>)],
     on_exit_hooks: &[(String, Vec<String>)],
     aliases: &[AliasSpec],
@@ -199,14 +270,26 @@ async fn write_activators(
     let data_dir_str = ecx.gcx.config.data_dir.to_string_lossy();
     let ghjk_exec_path = ecx.gcx.exec_path.to_string_lossy();
 
-    let mut path_vars_replaced = IndexMap::new();
-    for (k, v) in path_vars {
-        path_vars_replaced.insert(
-            k.clone(),
-            v.to_string_lossy()
-                .replace(&ghjk_dir_str[..], &format!("${ghjk_dir_var}"))
-                .replace(&data_dir_str[..], &format!("${data_dir_var}")),
-        );
+    // Build separate replacements for POSIX and fish to match their var syntaxes
+    let mut path_vars_replaced_posix: IndexMap<String, Vec<String>> = IndexMap::new();
+    let mut path_vars_replaced_fish: IndexMap<String, Vec<String>> = IndexMap::new();
+    for (k, vals) in path_vars {
+        let posix_vals = vals
+            .iter()
+            .map(|v| v.to_string_lossy().to_string())
+            .map(|s| {
+                s.replace(&ghjk_dir_str[..], &format!("${{{}}}", ghjk_dir_var))
+                    .replace(&data_dir_str[..], &format!("${{{}}}", data_dir_var))
+            })
+            .collect::<Vec<_>>();
+        // For fish, avoid variable references inside regex cleanup strings.
+        // Use fully resolved absolute paths instead to prevent parse errors.
+        let fish_vals = vals
+            .iter()
+            .map(|v| v.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+        path_vars_replaced_posix.insert(k.clone(), posix_vals);
+        path_vars_replaced_fish.insert(k.clone(), fish_vals);
     }
 
     let ghjk_shim_name = "__ghjk_shim";
@@ -301,7 +384,7 @@ async fn write_activators(
             .as_ref()
             .map(|p| p.to_string_lossy().to_string()),
         env_vars,
-        &path_vars_replaced,
+        &path_vars_replaced_posix,
         &on_enter_hooks_escaped,
         &on_exit_hooks_escaped,
         aliases,
@@ -314,7 +397,7 @@ async fn write_activators(
         &ghjk_dir_str,
         &data_dir_str,
         env_vars,
-        &path_vars_replaced,
+        &path_vars_replaced_fish,
         &on_enter_hooks_escaped,
         &on_exit_hooks_escaped,
         aliases,
@@ -342,7 +425,7 @@ fn build_posix_script(
     bash_comp_path: Option<String>,
     zsh_comp_path: Option<String>,
     env_vars: &IndexMap<String, String>,
-    path_vars: &IndexMap<String, String>,
+    path_vars: &IndexMap<String, Vec<String>>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
     aliases: &[AliasSpec],
@@ -447,19 +530,20 @@ export GHJK_CLEANUP_POSIX="";
 "#
     )?;
 
-    for (key, val) in path_vars {
-        let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
-
-        // double quote the path vars for expansion
-        // single quote GHJK_CLEANUP additions to avoid expansion/exec before eval
-        writeln!(
-            buf,
-            r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{key}=$(echo "${key}" | tr ":" "\n" | grep -vE '\'"^{safe_val}"\'' | tr "\n" ":");{key}="${{{key}%:}}";';"#
-        )?;
-        // FIXME: we're allowing expansion in the value to allow
-        // readable $ghjkDirVar usage
-        // (for now safe since all paths are created within ghjk)
-        writeln!(buf, r#"export {key}="{safe_val}:${{{key}-}}";"#)?;
+    for (key, values) in path_vars {
+        // cleanup each entry individually (exact match)
+        for val in values {
+            let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
+            writeln!(
+                buf,
+                r#"GHJK_CLEANUP_POSIX=$GHJK_CLEANUP_POSIX'{key}=$(echo "${key}" | tr ":" "\n" | grep -vE '\''"^{safe_val}$"'\'' | tr "\n" ":");{key}="${{{key}%:}}";';"#
+            )?;
+        }
+        // prepend entries in order (bin first, then bin2, ...)
+        for val in values.iter().rev() {
+            let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
+            writeln!(buf, r#"export {key}="{safe_val}:${{{key}-}}";"#)?;
+        }
         writeln!(buf)?;
     }
     let ghjk_shim = ghjk_shim_posix(ghjk_dir_str, ghjk_exec_path, ghjk_shim_name);
@@ -611,7 +695,7 @@ fn build_fish_script(
     ghjk_dir_str: &str,
     data_dir_str: &str,
     env_vars: &IndexMap<String, String>,
-    path_vars: &IndexMap<String, String>,
+    path_vars: &IndexMap<String, Vec<String>>,
     on_enter_hooks: &[String],
     on_exit_hooks: &[String],
     aliases: &[AliasSpec],
@@ -673,16 +757,15 @@ set {data_dir_var} "{data_dir_str}"
 "#
     )?;
 
-    for (key, val) in path_vars {
-        let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
-        writeln!(
-            buf,
-            r#"set --global --append GHJK_CLEANUP_FISH 'set --global --export --path {key} (string match --invert --regex \''"^{safe_val}"'\' ${key});';"#
-        )?;
-        writeln!(
-            buf,
-            r#"set --global --export --prepend {key} "{safe_val}";"#
-        )?;
+    for (key, values) in path_vars {
+        // prepend all entries in order (bin, bin2, ...)
+        for val in values.iter().rev() {
+            let safe_val = val.replace("\\", "\\\\").replace("'", "'\\''");
+            writeln!(
+                buf,
+                r#"set --global --export --prepend {key} "{safe_val}";"#
+            )?;
+        }
         writeln!(buf)?;
     }
     let ghjk_shim = ghjk_shim_fish(ghjk_dir_str, ghjk_exec_path, ghjk_shim_name);
