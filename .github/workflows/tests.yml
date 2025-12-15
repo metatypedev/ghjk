@@ -36,13 +36,13 @@ jobs:
     permissions:
       pull-requests: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
   test-pre-commit:
     timeout-minutes: 60
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dsherret/rust-toolchain-file@v1
       - uses: denoland/setup-deno@v2
         with:
@@ -85,7 +85,7 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         with:
           detached: true
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dsherret/rust-toolchain-file@v1
       - uses: denoland/setup-deno@v2
         with:
@@ -113,7 +113,7 @@ jobs:
   # test-action:
   #   runs-on: ubuntu-22.04
   #   steps:
-  #     - uses: actions/checkout@v5
+  #     - uses: actions/checkout@v6
   #     - uses: dsherret/rust-toolchain-file@v1
   #     - uses: metatypedev/setup-ghjk@b4ab7287a841fd5f8a4117f3efc14131c7ec62e1
   #       with:

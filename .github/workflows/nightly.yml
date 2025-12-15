@@ -29,7 +29,7 @@ jobs:
             platform: darwin/aarch64
           # - os: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dsherret/rust-toolchain-file@v1
       - uses: denoland/setup-deno@v2
         with:
@@ -54,7 +54,7 @@ jobs:
   # test-action:
   #   runs-on: ubuntu-22.04
   #   steps:
-  #     - uses: actions/checkout@v5
+  #     - uses: actions/checkout@v6
   #     - uses: metatypedev/setup-ghjk@318209a9d215f70716a4ac89dbeb9653a2deb8bc
   #       with:
   #         installer-url: ./install.ts
