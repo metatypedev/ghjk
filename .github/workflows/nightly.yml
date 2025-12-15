@@ -35,7 +35,7 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - name: Cache deno dir
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.DENO_DIR }}
           key: deno-${{ hashFiles('**/deno.lock') }}
