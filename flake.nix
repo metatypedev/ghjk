@@ -32,6 +32,7 @@
           buildInputs = with pkgs; [
             rustChannel
             clang
+            cmake
             llvmPackages.libclang
             pkg-config
             sqlite

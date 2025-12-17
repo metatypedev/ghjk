@@ -83,6 +83,13 @@ pub async fn cli() -> Res<std::process::ExitCode> {
     };
     let gcx = Arc::new(gcx);
 
+    // Handle plumbing fast-path before any dynamic CLI/system init
+    if let QuickCliResult::ExecDenoTask(json_path) = &quick_res {
+        let res = crate::systems::tasks::exec::exec_deno_task_from_json(&gcx, json_path).await;
+        deno_cx.terminate().await?;
+        return res.map(|_| ExitCode::SUCCESS);
+    }
+
     // ready system contexts
     let (system_manifests, envs_ctx, deno_sys_cx) = {
         let (sys_envs, envs_ctx) = systems::envs::system(gcx.clone(), &ghjkdir_path).await?;
@@ -169,6 +176,8 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         root_cmd = root_cmd.subcommand(cmd);
     }
 
+    // (plumbing command now lives in QuickCommands and is handled earlier)
+
     // Register CLI completion reducer on envs with the fully-built root_cmd
     // FIXME: this means completions are always generated even if we're not
     // writing activator scripts
@@ -222,6 +231,19 @@ pub async fn cli() -> Res<std::process::ExitCode> {
         Ok(QuickCommands::Deno { .. }) => {
             unreachable!("deno_quick_cli will prevent this")
         }
+        Ok(QuickCommands::Plumbing { commands }) => match commands {
+            PlumbingCommands::ExecDenoTask { json } => {
+                let res = crate::systems::tasks::exec::exec_deno_task_from_json(
+                    &gcx,
+                    std::path::Path::new(&json),
+                )
+                .await;
+                systems.write_lockfile_or_log().await;
+                deno_sys_cx.terminate().await?;
+                deno_cx.terminate().await?;
+                return res.map(|_| ExitCode::SUCCESS);
+            }
+        },
         Err(err) => {
             let kind = err.kind();
             use clap::error::ErrorKind;
@@ -268,6 +290,7 @@ enum QuickCliResult {
     ClapErr(clap::Error),
     Completions(CompletionShell),
     Exit(ExitCode),
+    ExecDenoTask(std::path::PathBuf),
 }
 impl QuickCliResult {
     fn exit(self, cmd: Option<&mut clap::Command>) -> ExitCode {
@@ -293,6 +316,7 @@ impl QuickCliResult {
                 ExitCode::SUCCESS
             }
             QuickCliResult::Exit(_) => unreachable!("can't happen"),
+            QuickCliResult::ExecDenoTask(_) => unreachable!("handled earlier"),
         }
     }
 }
@@ -333,6 +357,11 @@ async fn try_quick_cli(config: &Config) -> Res<QuickCliResult> {
         }
         QuickCommands::Init { commands } => commands.action(config).await?,
         QuickCommands::Deno { .. } => unreachable!("deno quick cli will have prevented this"),
+        QuickCommands::Plumbing { commands } => match commands {
+            PlumbingCommands::ExecDenoTask { json } => {
+                return Ok(QuickCliResult::ExecDenoTask(std::path::PathBuf::from(json)));
+            }
+        },
     }
 
     Ok(QuickCliResult::Exit(ExitCode::SUCCESS))
@@ -399,6 +428,23 @@ enum QuickCommands {
     Deno {
         #[arg(raw(true))]
         args: String,
+    },
+    /// Internal commands (subject to change)
+    #[clap(hide = true)]
+    Plumbing {
+        #[command(subcommand)]
+        commands: PlumbingCommands,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+enum PlumbingCommands {
+    /// Execute a Deno-backed task from a JSON request file
+    #[clap(hide = true, name = "exec-deno-task")]
+    ExecDenoTask {
+        /// Path to the JSON request file
+        #[arg(value_name = "JSON_FILE", value_hint = clap::ValueHint::FilePath)]
+        json: String,
     },
 }
 

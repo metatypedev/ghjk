@@ -1,6 +1,6 @@
 use crate::interlude::*;
 
-mod exec;
+pub mod exec;
 mod reducers;
 pub mod types;
 

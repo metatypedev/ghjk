@@ -537,7 +537,6 @@
             "ghjkEnvProvInstSet____rust": {
               "installs": [
                 "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
-                "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
                 "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q",
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
@@ -552,7 +551,6 @@
                 "bciqhsrsmayibhhhcp3jmay4tnrsyhz5od6ngtaazymx3o64xxzbqiha",
                 "bciqasgft3ee3shnt2sivmethcza5cebrudgfyw5ntqetu5jnuniqblq",
                 "bciqikjfnbntvagpghawbzlfp2es6lnqzhba3qx5de7tdrmvhuzhsjqa",
-                "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi",
                 "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q",
                 "bciqe72molvtvcuj3tuh47ziue2oqd6t4qetxn3rsoa764ofup6uwjmi",
                 "bciqe4zlekl4uqqbhxunac7br24mrf6cdpfrfblahqa4vrgaqjujcl4i",
@@ -579,6 +577,7 @@
             "test": {
               "ty": "denoFile@v1",
               "key": "test",
+              "workingDir": "./src",
               "envKey": "bciqonerdglss7wgwanl5kmaobd65m62hhjbttwhi6kdy5sqf6us6b4a"
             },
             "lock-sed": {
@@ -1155,40 +1154,6 @@
           "version": "0.1.0",
           "moduleSpecifier": "file:///ports/protoc.ts"
         }
-      },
-      "bciqfrfun7z7soj7yxzziyvmt2jnebqvneeoozk5vynmg5pa6wqynhvi": {
-        "port": {
-          "ty": "denoWorker@v1",
-          "name": "pipi_pypi",
-          "platforms": [
-            "x86_64-linux",
-            "aarch64-linux",
-            "x86_64-darwin",
-            "aarch64-darwin",
-            "x86_64-windows",
-            "aarch64-windows",
-            "x86_64-freebsd",
-            "aarch64-freebsd",
-            "x86_64-netbsd",
-            "aarch64-netbsd",
-            "x86_64-aix",
-            "aarch64-aix",
-            "x86_64-solaris",
-            "aarch64-solaris",
-            "x86_64-illumos",
-            "aarch64-illumos",
-            "x86_64-android",
-            "aarch64-android"
-          ],
-          "version": "0.1.0",
-          "buildDeps": [
-            {
-              "name": "cpy_bs_ghrel"
-            }
-          ],
-          "moduleSpecifier": "file:///ports/pipi.ts"
-        },
-        "packageName": "cmake"
       },
       "bciqlmoqot4jk2lb2b34pldr5iiwsfm3biuipzesjkkwmc2n2o6nlw4q": {
         "version": "v2.4.0",

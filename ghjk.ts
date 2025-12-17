@@ -51,7 +51,6 @@ ghjk.env("_rust")
   .install(
     // install rust using rustup or nix (there's a flake.nix file)
     ports.protoc(),
-    ports.pipi({ packageName: "cmake" })[0],
     ...(Deno.build.os == "linux" && !Deno.env.has("NO_MOLD")
       ? [ports.mold({
         version: "v2.4.0",
@@ -208,6 +207,10 @@ ghjk.task(
   { inherit: false },
 );
 
-ghjk.task(function test($) {
-  console.log($.argv);
+ghjk.task(async function test($) {
+  console.log($.workingDir, "custom");
+  await $`echo $PWD`;
+  console.log(Deno.cwd(), "posix");
+}, {
+  workingDir: "./src",
 });
