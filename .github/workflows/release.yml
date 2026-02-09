@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: WyriHaximus/github-action-get-previous-tag@v1.4.0
+      - uses: WyriHaximus/github-action-get-previous-tag@v2.0.0
         id: latest-tag
       - uses: ncipollo/release-action@v1
         with:
@@ -68,7 +68,7 @@ jobs:
         with:
           fetch-depth: 0
       # some targets don't use cross so will require the deps in the host
-      - uses: WyriHaximus/github-action-get-previous-tag@v1.4.0
+      - uses: WyriHaximus/github-action-get-previous-tag@v2.0.0
         id: latest-tag
       - uses: dsherret/rust-toolchain-file@v1
         with:
